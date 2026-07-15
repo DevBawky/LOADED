@@ -5,7 +5,7 @@ public class BoardManager : MonoBehaviour
 {
     [Header("Board Settings")]
     [SerializeField, Min(0)] private int boardCount;
-    [SerializeField] private float boardDistance = 1f;
+    [SerializeField, Min(0.01f)] private float boardDistance = 1f;
 
     [Header("References")]
     [SerializeField] private GameObject tilePrefab;
@@ -13,6 +13,38 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private Transform tileParent;
 
     private bool isGenerated;
+
+    public bool TryGetAdjacentTilePosition(
+        Vector3 currentWorldPosition,
+        int direction,
+        out Vector3 targetWorldPosition)
+    {
+        targetWorldPosition = currentWorldPosition;
+
+        if (tileParent == null || boardCount <= 0 || boardDistance <= 0f
+            || direction == 0)
+        {
+            return false;
+        }
+
+        float startOffset = GetStartOffset();
+        Vector3 currentLocalPosition = tileParent.InverseTransformPoint(currentWorldPosition);
+        int currentIndex = Mathf.RoundToInt(
+            (currentLocalPosition.x - startOffset) / boardDistance);
+        currentIndex = Mathf.Clamp(currentIndex, 0, boardCount - 1);
+
+        int moveDirection = direction > 0 ? 1 : -1;
+        int targetIndex = currentIndex + moveDirection;
+
+        if (targetIndex < 0 || targetIndex >= boardCount)
+        {
+            return false;
+        }
+
+        currentLocalPosition.x = startOffset + boardDistance * targetIndex;
+        targetWorldPosition = tileParent.TransformPoint(currentLocalPosition);
+        return true;
+    }
 
     private void Start()
     {
@@ -26,20 +58,20 @@ public class BoardManager : MonoBehaviour
             return;
         }
 
-        if (tilePrefab == null || tileParent == null)
-        {
-            Debug.LogError("Tile Prefab과 Tile Parent를 Inspector에서 할당해야 합니다.", this);
-            return;
-        }
-
         if (boardCount < 0)
         {
             Debug.LogError("Board Count는 0 이상이어야 합니다.", this);
             return;
         }
 
+        if (boardDistance <= 0f)
+        {
+            Debug.LogError("Board Distance는 0보다 커야 합니다.", this);
+            return;
+        }
+
         isGenerated = true;
-        float startOffset = -(boardCount - 1) * boardDistance * 0.5f;
+        float startOffset = GetStartOffset();
 
         for (int index = 0; index < boardCount; index++)
         {
@@ -50,5 +82,10 @@ public class BoardManager : MonoBehaviour
                 new Vector3(positionX, 0f, 0f),
                 Quaternion.identity);
         }
+    }
+
+    private float GetStartOffset()
+    {
+        return -(boardCount - 1) * boardDistance * 0.5f;
     }
 }
