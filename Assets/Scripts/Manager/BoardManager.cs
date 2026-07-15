@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class BoardManager : MonoBehaviour
 {
@@ -8,7 +9,8 @@ public class BoardManager : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private GameObject tilePrefab;
-    [SerializeField] private Transform spawnOrigin;
+    [FormerlySerializedAs("spawnOrigin")]
+    [SerializeField] private Transform tileParent;
 
     private bool isGenerated;
 
@@ -24,9 +26,9 @@ public class BoardManager : MonoBehaviour
             return;
         }
 
-        if (tilePrefab == null || spawnOrigin == null)
+        if (tilePrefab == null || tileParent == null)
         {
-            Debug.LogError("Tile Prefab과 Spawn Origin을 Inspector에서 할당해야 합니다.", this);
+            Debug.LogError("Tile Prefab과 Tile Parent를 Inspector에서 할당해야 합니다.", this);
             return;
         }
 
@@ -37,13 +39,16 @@ public class BoardManager : MonoBehaviour
         }
 
         isGenerated = true;
+        float startOffset = -(boardCount - 1) * boardDistance * 0.5f;
 
         for (int index = 0; index < boardCount; index++)
         {
-            Vector3 spawnPosition = spawnOrigin.position
-                + spawnOrigin.right * (boardDistance * index);
+            float positionX = startOffset + boardDistance * index;
+            GameObject tile = Instantiate(tilePrefab, tileParent);
 
-            Instantiate(tilePrefab, spawnPosition, spawnOrigin.rotation, transform);
+            tile.transform.SetLocalPositionAndRotation(
+                new Vector3(positionX, 0f, 0f),
+                Quaternion.identity);
         }
     }
 }
