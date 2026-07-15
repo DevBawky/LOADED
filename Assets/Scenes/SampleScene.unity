@@ -200,7 +200,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 181601312}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: PlayerMove, Assembly-CSharp
+        m_MethodName: Rotate
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &181601312
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1006,7 +1018,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1316273135}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: PlayerMove, Assembly-CSharp
+        m_MethodName: MoveForward
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1316273135
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1312,7 +1336,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1916262587}
-  - component: {fileID: 1916262588}
   m_Layer: 0
   m_Name: '##--BOARDS--##'
   m_TagString: Untagged
@@ -1335,22 +1358,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1916262588
+--- !u!1 &2023230406 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+  m_PrefabInstance: {fileID: 350554640947637847}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2023230408
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1916262586}
+  m_GameObject: {fileID: 2023230406}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6777056048646d04f882e5449b188acb, type: 3}
+  m_Script: {fileID: 11500000, guid: a8553233e6711cc4f8f0d8cc9709b7dd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BoardManager
-  boardCount: 9
-  boardDistance: 1
-  tilePrefab: {fileID: 0}
-  tileParent: {fileID: 1916262587}
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerMove
+  boardManager: {fileID: 561211666}
 --- !u!1 &2086871342
 GameObject:
   m_ObjectHideFlags: 0
@@ -1432,7 +1457,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 2086871345}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: PlayerMove, Assembly-CSharp
+        m_MethodName: Wait
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &2086871345
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1479,6 +1516,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 377287570409392425, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: boardManager
+      value: 
+      objectReference: {fileID: 561211666}
     - target: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_Name
       value: Player
@@ -1489,7 +1530,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4654777449252698111, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: 4654777449252698111, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_LocalPosition.z
@@ -1526,7 +1567,10 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2023230408}
   m_SourcePrefab: {fileID: 100100000, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
