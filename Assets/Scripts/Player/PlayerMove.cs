@@ -12,6 +12,11 @@ public class PlayerMove : MonoBehaviour
 
     private void Update()
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         Keyboard keyboard = Keyboard.current;
 
         if (keyboard != null)
@@ -51,22 +56,42 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveForward()
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         int direction = transform.localScale.x >= 0f ? 1 : -1;
         Move(direction);
     }
 
     public void MoveLeft()
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         Move(-1);
     }
 
     public void MoveRight()
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         Move(1);
     }
 
     public void Rotate()
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         Vector3 localScale = transform.localScale;
         localScale.x *= -1f;
         transform.localScale = localScale;
@@ -76,6 +101,11 @@ public class PlayerMove : MonoBehaviour
 
     public void Wait()
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         CompleteTurn();
     }
 
