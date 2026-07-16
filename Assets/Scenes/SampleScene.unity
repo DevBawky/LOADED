@@ -276,7 +276,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 2023230408}
         m_TargetAssemblyTypeName: PlayerMove, Assembly-CSharp
         m_MethodName: Rotate
         m_Mode: 1
