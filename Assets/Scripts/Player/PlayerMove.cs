@@ -38,12 +38,6 @@ public class PlayerMove : MonoBehaviour
                 Wait();
                 return;
             }
-
-            if (keyboard.wKey.wasPressedThisFrame)
-            {
-                Rotate();
-                return;
-            }
         }
 
         Mouse mouse = Mouse.current;

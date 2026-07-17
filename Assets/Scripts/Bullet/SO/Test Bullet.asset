@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Test Bullet
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: 0
+  displayName: Test Bullet
+  description: 
+  sprite: {fileID: 0}
+  damage: 10
+  maxRange: 5
+  knockbackDistance: 0
+  stunDurationTurns: 0
+  markDurationTurns: 0
+  markDamageMultiplier: 1
+  penetrationChances:
+  - chance: 0.8
+  - chance: 0.6
+  - chance: 0.4
+  - chance: 0.2
+  trailMaterial: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
+  trailColor: {r: 1, g: 1, b: 1, a: 1}
