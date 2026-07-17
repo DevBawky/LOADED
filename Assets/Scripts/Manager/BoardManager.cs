@@ -46,6 +46,43 @@ public class BoardManager : MonoBehaviour
         return true;
     }
 
+    public bool TryGetRangedTilePosition(
+        Vector3 currentWorldPosition,
+        int direction,
+        int range,
+        out Vector3 targetWorldPosition)
+    {
+        targetWorldPosition = currentWorldPosition;
+
+        if (tileParent == null || boardCount <= 0 || boardDistance <= 0f
+            || direction == 0 || range <= 0)
+        {
+            return false;
+        }
+
+        float startOffset = GetStartOffset();
+        Vector3 currentLocalPosition = tileParent.InverseTransformPoint(currentWorldPosition);
+        int currentIndex = Mathf.RoundToInt(
+            (currentLocalPosition.x - startOffset) / boardDistance);
+        currentIndex = Mathf.Clamp(currentIndex, 0, boardCount - 1);
+
+        int moveDirection = direction > 0 ? 1 : -1;
+        int targetIndex = Mathf.Clamp(
+            currentIndex + moveDirection * range,
+            0,
+            boardCount - 1);
+
+        if (targetIndex == currentIndex)
+        {
+            return false;
+        }
+
+        float targetPositionX = startOffset + boardDistance * targetIndex;
+        targetWorldPosition = tileParent.TransformPoint(
+            new Vector3(targetPositionX, 0f, 0f));
+        return true;
+    }
+
     private void Start()
     {
         GenerateBoard();

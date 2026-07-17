@@ -27,5 +27,7 @@ MonoBehaviour:
   - chance: 0.6
   - chance: 0.4
   - chance: 0.2
-  trailMaterial: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
-  trailColor: {r: 1, g: 1, b: 1, a: 1}
+  lineMaterial: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
+  lineColor: {r: 1, g: 0.2028302, b: 0.2028302, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.1
