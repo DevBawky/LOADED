@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -9,6 +10,16 @@ public class WaveManager : MonoBehaviour
         new List<EnemyController>();
     [Min(0)]
     [SerializeField] private int maxActiveEnemies = 3;
+    [SerializeField] private Vector3 spawnPositionOffset =
+        new Vector3(0f, 0.3f, 0f);
+    [Min(0)]
+    [SerializeField] private int spawnTerm = 2;
+
+    [Header("Turn Timing")]
+    [Min(0f)]
+    [SerializeField] private float enemyTurnDelay = 0.35f;
+    [Min(0f)]
+    [SerializeField] private float enemyActionInterval = 0.15f;
 
     [Header("References")]
     [SerializeField] private BoardManager boardManager;
@@ -19,17 +30,28 @@ public class WaveManager : MonoBehaviour
     [Header("Runtime State")]
     [SerializeField] private List<EnemyController> activeEnemies =
         new List<EnemyController>();
+    [SerializeField] private int remainingSpawnTurns;
 
     private bool isResolvingTurn;
+    private Coroutine enemyTurnCoroutine;
+    private readonly List<EnemyTargetData> enemyTargetBuffer =
+        new List<EnemyTargetData>();
 
     public event Action StateChanged;
 
     public IReadOnlyList<EnemyController> ActiveEnemies => activeEnemies;
     public int MaxActiveEnemies => maxActiveEnemies;
+    public Vector3 SpawnPositionOffset => spawnPositionOffset;
+    public int SpawnTerm => spawnTerm;
+    public int RemainingSpawnTurns => remainingSpawnTurns;
+    public float EnemyTurnDelay => enemyTurnDelay;
+    public float EnemyActionInterval => enemyActionInterval;
+    public bool IsResolvingTurn => isResolvingTurn;
 
     private void Awake()
     {
         activeEnemies.Clear();
+        ResetSpawnCountdown();
     }
 
     private void OnEnable()
@@ -50,14 +72,28 @@ public class WaveManager : MonoBehaviour
         }
 
         playerMove.SetWaveManager(this);
-        FillAvailableEnemySlots();
+
+        if (remainingSpawnTurns == 0)
+        {
+            FillAvailableEnemySlots();
+            ResetSpawnCountdown();
+        }
     }
 
     private void OnDisable()
     {
+        if (enemyTurnCoroutine != null)
+        {
+            StopCoroutine(enemyTurnCoroutine);
+            enemyTurnCoroutine = null;
+        }
+
+        isResolvingTurn = false;
+
         if (playerMove != null)
         {
             playerMove.TurnCompleted -= HandlePlayerTurnCompleted;
+            playerMove.SetEnemyTurnResolving(false);
         }
 
         UnsubscribeFromActiveEnemies();
@@ -94,6 +130,7 @@ public class WaveManager : MonoBehaviour
         }
 
         results.Clear();
+        enemyTargetBuffer.Clear();
 
         if (boardManager == null || direction == 0 || maxRange <= 0
             || !boardManager.TryGetTileIndex(originWorldPosition, out int originIndex))
@@ -117,16 +154,22 @@ public class WaveManager : MonoBehaviour
 
             if (offset * normalizedDirection > 0 && Mathf.Abs(offset) <= maxRange)
             {
-                results.Add(enemy);
+                enemyTargetBuffer.Add(new EnemyTargetData(
+                    enemy,
+                    Mathf.Abs(offset),
+                    enemyIndex));
             }
         }
 
-        results.Sort((first, second) =>
-            GetTileDistanceFromOrigin(originIndex, first)
-                .CompareTo(GetTileDistanceFromOrigin(originIndex, second)));
+        enemyTargetBuffer.Sort(CompareEnemyTargets);
+
+        foreach (EnemyTargetData targetData in enemyTargetBuffer)
+        {
+            results.Add(targetData.Enemy);
+        }
     }
 
-    public void FillAvailableEnemySlots()
+    private void FillAvailableEnemySlots()
     {
         if (!ValidateReferences() || maxActiveEnemies <= 0)
         {
@@ -151,22 +194,68 @@ public class WaveManager : MonoBehaviour
             return;
         }
 
+        enemyTurnCoroutine = StartCoroutine(ResolveEnemyTurns());
+    }
+
+    private IEnumerator ResolveEnemyTurns()
+    {
         isResolvingTurn = true;
+        playerMove.SetEnemyTurnResolving(true);
+        StateChanged?.Invoke();
+
+        yield return WaitForTurnTime(enemyTurnDelay);
         RemoveMissingEnemies();
 
         EnemyController[] enemiesThisTurn = activeEnemies.ToArray();
 
-        foreach (EnemyController enemy in enemiesThisTurn)
+        for (int enemyIndex = 0;
+             enemyIndex < enemiesThisTurn.Length;
+             enemyIndex++)
         {
+            EnemyController enemy = enemiesThisTurn[enemyIndex];
+
             if (enemy != null && activeEnemies.Contains(enemy))
             {
                 enemy.TakeTurn();
+
+                while (enemy != null && enemy.IsActing)
+                {
+                    yield return null;
+                }
+
+                if (playerHealth.IsDefeated)
+                {
+                    break;
+                }
+
+                if (enemyIndex < enemiesThisTurn.Length - 1)
+                {
+                    yield return WaitForTurnTime(enemyActionInterval);
+                }
             }
         }
 
         RemoveMissingEnemies();
-        FillAvailableEnemySlots();
+        AdvanceSpawnCountdown();
+        playerMove.SetEnemyTurnResolving(false);
         isResolvingTurn = false;
+        enemyTurnCoroutine = null;
+        StateChanged?.Invoke();
+    }
+
+    private IEnumerator WaitForTurnTime(float duration)
+    {
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+            }
+        }
     }
 
     private bool TrySpawnRandomEnemy()
@@ -243,7 +332,14 @@ public class WaveManager : MonoBehaviour
 
         int randomListIndex = UnityEngine.Random.Range(0, availableTileIndices.Count);
         int randomTileIndex = availableTileIndices[randomListIndex];
-        return boardManager.TryGetTilePosition(randomTileIndex, out spawnPosition);
+
+        if (!boardManager.TryGetTilePosition(randomTileIndex, out spawnPosition))
+        {
+            return false;
+        }
+
+        spawnPosition += spawnPositionOffset;
+        return true;
     }
 
     private void HandleEnemyDefeated(EnemyController enemy)
@@ -289,18 +385,47 @@ public class WaveManager : MonoBehaviour
         }
     }
 
-    private int GetTileDistanceFromOrigin(
-        int originIndex,
-        EnemyController enemy)
+    private int CompareEnemyTargets(
+        EnemyTargetData first,
+        EnemyTargetData second)
     {
-        if (enemy == null || !boardManager.TryGetTileIndex(
-                enemy.transform.position,
-                out int enemyIndex))
+        int distanceComparison = first.Distance.CompareTo(second.Distance);
+
+        if (distanceComparison != 0)
         {
-            return int.MaxValue;
+            return distanceComparison;
         }
 
-        return Mathf.Abs(enemyIndex - originIndex);
+        return first.TileIndex.CompareTo(second.TileIndex);
+    }
+
+    private void AdvanceSpawnCountdown()
+    {
+        if (activeEnemies.Count >= maxActiveEnemies || maxActiveEnemies <= 0)
+        {
+            ResetSpawnCountdown();
+            return;
+        }
+
+        if (remainingSpawnTurns > 0)
+        {
+            remainingSpawnTurns--;
+            StateChanged?.Invoke();
+        }
+
+        if (remainingSpawnTurns > 0)
+        {
+            return;
+        }
+
+        FillAvailableEnemySlots();
+        ResetSpawnCountdown();
+        StateChanged?.Invoke();
+    }
+
+    private void ResetSpawnCountdown()
+    {
+        remainingSpawnTurns = Mathf.Max(0, spawnTerm);
     }
 
     private bool ValidateReferences()
@@ -314,5 +439,22 @@ public class WaveManager : MonoBehaviour
             "Board Manager, Player Move, and Player Health must be assigned in the Inspector.",
             this);
         return false;
+    }
+
+    private readonly struct EnemyTargetData
+    {
+        public EnemyTargetData(
+            EnemyController enemy,
+            int distance,
+            int tileIndex)
+        {
+            Enemy = enemy;
+            Distance = distance;
+            TileIndex = tileIndex;
+        }
+
+        public EnemyController Enemy { get; }
+        public int Distance { get; }
+        public int TileIndex { get; }
     }
 }

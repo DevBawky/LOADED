@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -18,18 +20,23 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private EnemyData enemyData;
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Image healthFillImage;
+    [SerializeField] private Transform canvasTransform;
+    [SerializeField] private ActorMotion actorMotion;
 
     [Header("Runtime State")]
     [SerializeField] private int currentHealth;
     [SerializeField] private EnemyActionData loadedAttackAction;
     [SerializeField] private bool isAttackPrepared;
+    [SerializeField] private bool isRetreating;
     [SerializeField] private EnemyTurnActionType lastTurnAction;
+    [SerializeField] private bool isActing;
 
     private BoardManager boardManager;
     private PlayerMove playerMove;
     private PlayerHealth playerHealth;
     private WaveManager waveManager;
     private bool isInitialized;
+    private readonly List<Vector3> movePath = new List<Vector3>();
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
@@ -40,12 +47,15 @@ public class EnemyController : MonoBehaviour
     public int CurrentHealth => currentHealth;
     public EnemyActionData LoadedAttackAction => loadedAttackAction;
     public bool IsAttackPrepared => isAttackPrepared;
+    public bool IsRetreating => isRetreating;
     public EnemyTurnActionType LastTurnAction => lastTurnAction;
+    public bool IsActing => isActing;
 
     private void Awake()
     {
         ResetRuntimeState();
         ApplySprite();
+        ApplyCanvasOrientation();
     }
 
     public bool Initialize(
@@ -56,10 +66,10 @@ public class EnemyController : MonoBehaviour
     {
         if (enemyData == null || assignedBoardManager == null
             || assignedPlayerMove == null || assignedPlayerHealth == null
-            || assignedWaveManager == null)
+            || assignedWaveManager == null || actorMotion == null)
         {
             Debug.LogError(
-                "Enemy Data, Board Manager, Player Move, Player Health, and Wave Manager must be assigned.",
+                "Enemy Data, Actor Motion, Board Manager, Player Move, Player Health, and Wave Manager must be assigned.",
                 this);
             return false;
         }
@@ -70,14 +80,22 @@ public class EnemyController : MonoBehaviour
         waveManager = assignedWaveManager;
         ResetRuntimeState();
         ApplySprite();
+        ApplyCanvasOrientation();
         isInitialized = true;
         return true;
     }
 
     public void TakeTurn()
     {
+        if (isActing)
+        {
+            return;
+        }
+
+        isActing = true;
+
         if (!isInitialized || enemyData == null || boardManager == null
-            || playerMove == null || waveManager == null)
+            || playerMove == null || waveManager == null || actorMotion == null)
         {
             CompleteAction(EnemyTurnActionType.Wait);
             return;
@@ -104,6 +122,11 @@ public class EnemyController : MonoBehaviour
         TakeRangeTurn(directionToPlayer, distanceToPlayer);
     }
 
+    private void OnDisable()
+    {
+        isActing = false;
+    }
+
     public bool ApplyDamage(int damage)
     {
         if (damage <= 0 || currentHealth <= 0)
@@ -126,6 +149,20 @@ public class EnemyController : MonoBehaviour
 
     private void TakeMeleeTurn(int directionToPlayer, int distanceToPlayer)
     {
+        if (isRetreating)
+        {
+            if (enemyData.PreferredDistance <= 0
+                || distanceToPlayer >= enemyData.PreferredDistance)
+            {
+                isRetreating = false;
+            }
+            else
+            {
+                MoveAwayFromPlayer(directionToPlayer, distanceToPlayer);
+                return;
+            }
+        }
+
         EnemyActionData attackAction = loadedAttackAction != null
             ? loadedAttackAction
             : FindAction(EnemyActionType.MeleeAttack);
@@ -256,6 +293,8 @@ public class EnemyController : MonoBehaviour
 
         playerHealth.ApplyDamage(attackData.Damage);
         AttackExecuted?.Invoke(this, attackData);
+        isRetreating = enemyData.BehaviorType == EnemyBehaviorType.Melee
+            && enemyData.PreferredDistance > 0;
         loadedAttackAction = null;
         isAttackPrepared = false;
         CompleteAction(EnemyTurnActionType.Fire);
@@ -263,17 +302,7 @@ public class EnemyController : MonoBehaviour
 
     private void RotateToward(int directionToPlayer)
     {
-        Vector3 localScale = transform.localScale;
-        float scaleMagnitude = Mathf.Abs(localScale.x);
-
-        if (scaleMagnitude <= Mathf.Epsilon)
-        {
-            scaleMagnitude = 1f;
-        }
-
-        localScale.x = scaleMagnitude * directionToPlayer;
-        transform.localScale = localScale;
-        CompleteAction(EnemyTurnActionType.Rotate);
+        StartCoroutine(RotateRoutine(directionToPlayer));
     }
 
     private void MoveTowardPlayer(int directionToPlayer)
@@ -287,14 +316,62 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
-        Vector3 currentPosition = transform.position;
-        bool moved = false;
+        if (TryBuildMovePath(
+                directionToPlayer,
+                approachAction.MovementDistance,
+                out Vector3[] path))
+        {
+            StartCoroutine(MoveRoutine(path, false));
+        }
+        else
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+        }
+    }
 
-        for (int step = 0; step < approachAction.MovementDistance; step++)
+    private void MoveAwayFromPlayer(
+        int directionToPlayer,
+        int distanceToPlayer)
+    {
+        if (directionToPlayer == 0)
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        EnemyActionData retreatAction = FindAction(EnemyActionType.Retreat);
+        int movementDistance = retreatAction != null
+            && retreatAction.MovementDistance > 0
+                ? retreatAction.MovementDistance
+                : 1;
+        int distanceToPreferred = enemyData.PreferredDistance - distanceToPlayer;
+        movementDistance = Mathf.Min(movementDistance, distanceToPreferred);
+
+        if (!TryBuildMovePath(
+                -directionToPlayer,
+                movementDistance,
+                out Vector3[] path))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        StartCoroutine(MoveRoutine(path, true));
+    }
+
+    private bool TryBuildMovePath(
+        int direction,
+        int movementDistance,
+        out Vector3[] path)
+    {
+        movePath.Clear();
+        Vector3 currentPosition = transform.position;
+
+        for (int step = 0; step < movementDistance; step++)
         {
             if (!boardManager.TryGetAdjacentTilePosition(
                     currentPosition,
-                    directionToPlayer,
+                    direction,
                     out Vector3 targetPosition)
                 || !boardManager.TryGetTileIndex(targetPosition, out int targetIndex)
                 || !boardManager.TryGetTileIndex(
@@ -307,18 +384,35 @@ public class EnemyController : MonoBehaviour
             }
 
             currentPosition = targetPosition;
-            moved = true;
+            movePath.Add(targetPosition);
         }
 
-        if (moved)
+        path = movePath.ToArray();
+        return path.Length > 0;
+    }
+
+    private IEnumerator MoveRoutine(Vector3[] path, bool updateRetreatState)
+    {
+        yield return actorMotion.MoveAlongPath(path);
+
+        if (updateRetreatState
+            && boardManager.TryGetTileDistance(
+                transform.position,
+                playerMove.transform.position,
+                out int updatedDistanceToPlayer)
+            && updatedDistanceToPlayer >= enemyData.PreferredDistance)
         {
-            transform.position = currentPosition;
-            CompleteAction(EnemyTurnActionType.Move);
+            isRetreating = false;
         }
-        else
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-        }
+
+        CompleteAction(EnemyTurnActionType.Move);
+    }
+
+    private IEnumerator RotateRoutine(int directionToPlayer)
+    {
+        yield return actorMotion.RotateToDirection(directionToPlayer);
+        ApplyCanvasOrientation();
+        CompleteAction(EnemyTurnActionType.Rotate);
     }
 
     private bool TryGetTurnContext(
@@ -375,7 +469,9 @@ public class EnemyController : MonoBehaviour
         currentHealth = enemyData == null ? 0 : enemyData.MaxHealth;
         loadedAttackAction = null;
         isAttackPrepared = false;
+        isRetreating = false;
         lastTurnAction = EnemyTurnActionType.None;
+        isActing = false;
         RefreshHealthUI();
     }
 
@@ -400,9 +496,36 @@ public class EnemyController : MonoBehaviour
             : (float)currentHealth / maxHealth;
     }
 
+    private void ApplyCanvasOrientation()
+    {
+        if (actorMotion != null)
+        {
+            actorMotion.RefreshOrientationLock();
+            return;
+        }
+
+        if (canvasTransform == null)
+        {
+            return;
+        }
+
+        Vector3 canvasScale = canvasTransform.localScale;
+        float scaleMagnitude = Mathf.Abs(canvasScale.x);
+
+        if (scaleMagnitude <= Mathf.Epsilon)
+        {
+            scaleMagnitude = 1f;
+        }
+
+        float enemyDirection = transform.localScale.x >= 0f ? 1f : -1f;
+        canvasScale.x = scaleMagnitude * enemyDirection;
+        canvasTransform.localScale = canvasScale;
+    }
+
     private void CompleteAction(EnemyTurnActionType actionType)
     {
         lastTurnAction = actionType;
+        isActing = false;
         TurnActionCompleted?.Invoke(this, actionType);
     }
 }

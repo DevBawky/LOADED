@@ -1,10 +1,18 @@
+using System.Collections;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class BulletLine : MonoBehaviour
 {
+    private static readonly int SecondaryColorId =
+        Shader.PropertyToID("_SecondaryColor");
+
     [SerializeField] private LineRenderer lineRenderer;
     [Min(0.01f)]
-    [SerializeField] private float lineDuration = 0.1f;
+    [FormerlySerializedAs("lineDuration")]
+    [SerializeField] private float fadeDuration = 0.1f;
+
+    private MaterialPropertyBlock materialPropertyBlock;
 
     public BulletData Data { get; private set; }
 
@@ -29,14 +37,60 @@ public class BulletLine : MonoBehaviour
             lineRenderer.sharedMaterial = bulletData.LineMaterial;
         }
 
-        lineRenderer.startColor = bulletData.LineColor;
-        lineRenderer.endColor = bulletData.LineColor;
+        lineRenderer.startColor = bulletData.PrimaryLineColor;
+        lineRenderer.endColor = bulletData.PrimaryLineColor;
+        ApplySecondaryColor(bulletData.SecondaryLineColor);
         lineRenderer.useWorldSpace = true;
         lineRenderer.positionCount = 2;
         lineRenderer.SetPosition(0, startPoint);
         lineRenderer.SetPosition(1, endPoint);
 
-        Destroy(gameObject, lineDuration);
+        StartCoroutine(FadeOut());
         return true;
+    }
+
+    private void ApplySecondaryColor(Color secondaryColor)
+    {
+        if (materialPropertyBlock == null)
+        {
+            materialPropertyBlock = new MaterialPropertyBlock();
+        }
+
+        materialPropertyBlock.Clear();
+        materialPropertyBlock.SetColor(SecondaryColorId, secondaryColor);
+        lineRenderer.SetPropertyBlock(materialPropertyBlock);
+    }
+
+    private IEnumerator FadeOut()
+    {
+        Color startColor = lineRenderer.startColor;
+        Color endColor = lineRenderer.endColor;
+        float startAlpha = startColor.a;
+        float endAlpha = endColor.a;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < fadeDuration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / fadeDuration);
+            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
+            startColor.a = Mathf.Lerp(startAlpha, 0f, smoothProgress);
+            endColor.a = Mathf.Lerp(endAlpha, 0f, smoothProgress);
+            lineRenderer.startColor = startColor;
+            lineRenderer.endColor = endColor;
+        }
+
+        startColor.a = 0f;
+        endColor.a = 0f;
+        lineRenderer.startColor = startColor;
+        lineRenderer.endColor = endColor;
+        Destroy(gameObject);
     }
 }

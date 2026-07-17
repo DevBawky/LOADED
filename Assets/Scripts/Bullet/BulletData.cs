@@ -34,7 +34,9 @@ public class BulletData : ScriptableObject
     [FormerlySerializedAs("trailMaterial")]
     [SerializeField] private Material lineMaterial;
     [FormerlySerializedAs("trailColor")]
-    [SerializeField] private Color lineColor = Color.white;
+    [FormerlySerializedAs("lineColor")]
+    [SerializeField] private Color primaryLineColor = Color.white;
+    [SerializeField] private Color secondaryLineColor = Color.white;
     [SerializeField] private bool doesNotConsumeTurn;
     [Min(0f)]
     [SerializeField] private float recoilStrength;
@@ -52,7 +54,9 @@ public class BulletData : ScriptableObject
     public IReadOnlyList<PenetrationChanceData> PenetrationChances => penetrationChances;
     public int MaxHitCount => penetrationChances.Count + 1;
     public Material LineMaterial => lineMaterial;
-    public Color LineColor => lineColor;
+    public Color PrimaryLineColor => primaryLineColor;
+    public Color SecondaryLineColor => secondaryLineColor;
+    public Color LineColor => primaryLineColor;
     public bool DoesNotConsumeTurn => doesNotConsumeTurn;
     public float RecoilStrength => recoilStrength;
 

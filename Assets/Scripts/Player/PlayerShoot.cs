@@ -44,11 +44,23 @@ public class PlayerShoot : MonoBehaviour
 
     private void Awake()
     {
+        if (playerMove != null)
+        {
+            playerMove.SetShooting(false);
+        }
+
         ResetCameraRecoil();
     }
 
     private void OnDisable()
     {
+        isFiring = false;
+
+        if (playerMove != null)
+        {
+            playerMove.SetShooting(false);
+        }
+
         if (cameraRecoilCoroutine != null)
         {
             StopCoroutine(cameraRecoilCoroutine);
@@ -104,6 +116,11 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
+        if (!playerMove.CanStartAction)
+        {
+            return;
+        }
+
         if (deckManager.TryReload())
         {
             playerMove.CompleteTurn();
@@ -117,23 +134,23 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
-        if (deckManager == null || boardManager == null || waveManager == null
-            || firePoint == null || bulletLinePrefab == null)
+        if (deckManager == null || playerMove == null || boardManager == null
+            || waveManager == null || firePoint == null
+            || bulletLinePrefab == null)
         {
             Debug.LogError(
-                "Deck Manager, Board Manager, Wave Manager, Fire Point, and Bullet Line Prefab must be assigned in the Inspector.",
+                "Deck Manager, Player Move, Board Manager, Wave Manager, Fire Point, and Bullet Line Prefab must be assigned in the Inspector.",
                 this);
+            return;
+        }
+
+        if (!playerMove.CanStartAction)
+        {
             return;
         }
 
         if (deckManager.LoadedBullets.Count == 0)
         {
-            return;
-        }
-
-        if (RequiresTurnAfterFiring() && playerMove == null)
-        {
-            Debug.LogError("Player Move must be assigned when loaded bullets consume a turn.", this);
             return;
         }
 
@@ -146,23 +163,13 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
-        waveManager.GetEnemiesInDirection(
-            transform.position,
-            horizontalDirection,
-            firstBullet.MaxRange,
-            targetBuffer);
-
-        if (targetBuffer.Count == 0)
-        {
-            return;
-        }
-
         StartCoroutine(ShootLoadedBullets(horizontalDirection));
     }
 
     private IEnumerator ShootLoadedBullets(int horizontalDirection)
     {
         isFiring = true;
+        playerMove.SetShooting(true);
         bool firedAnyBullet = false;
         bool consumesTurn = false;
 
@@ -186,13 +193,20 @@ public class PlayerShoot : MonoBehaviour
                 bulletData.MaxRange,
                 targetBuffer);
 
-            if (targetBuffer.Count == 0)
-            {
-                break;
-            }
+            Vector3 endPoint;
 
-            BuildHitTargets(bulletData);
-            Vector3 endPoint = hitBuffer[hitBuffer.Count - 1].transform.position;
+            if (targetBuffer.Count > 0)
+            {
+                BuildHitTargets(bulletData);
+                endPoint = hitBuffer[hitBuffer.Count - 1].transform.position;
+            }
+            else
+            {
+                hitBuffer.Clear();
+                endPoint = GetMissEndPoint(
+                    horizontalDirection,
+                    bulletData.MaxRange);
+            }
 
             BulletLine bulletLine = Instantiate(
                 bulletLinePrefab,
@@ -215,13 +229,7 @@ public class PlayerShoot : MonoBehaviour
             firedAnyBullet = true;
             consumesTurn |= !bulletData.DoesNotConsumeTurn;
 
-            foreach (EnemyController enemy in hitBuffer)
-            {
-                if (enemy != null)
-                {
-                    enemy.ApplyDamage(bulletData.Damage);
-                }
-            }
+            ApplyDamageToHitTargets(bulletData);
 
             GenerateRecoil(bulletData);
 
@@ -241,6 +249,7 @@ public class PlayerShoot : MonoBehaviour
         }
 
         isFiring = false;
+        playerMove.SetShooting(false);
     }
 
     private void BuildHitTargets(BulletData bulletData)
@@ -264,6 +273,49 @@ public class PlayerShoot : MonoBehaviour
         }
     }
 
+    private void ApplyDamageToHitTargets(BulletData bulletData)
+    {
+        if (bulletData == null || hitBuffer.Count == 0)
+        {
+            return;
+        }
+
+        EnemyController frontEnemy = hitBuffer[0];
+
+        if (frontEnemy == null || !frontEnemy.ApplyDamage(bulletData.Damage))
+        {
+            return;
+        }
+
+        for (int hitIndex = 1; hitIndex < hitBuffer.Count; hitIndex++)
+        {
+            EnemyController penetratedEnemy = hitBuffer[hitIndex];
+
+            if (penetratedEnemy != null)
+            {
+                penetratedEnemy.ApplyDamage(bulletData.Damage);
+            }
+        }
+    }
+
+    private Vector3 GetMissEndPoint(int horizontalDirection, int maxRange)
+    {
+        if (boardManager.TryGetRangedTilePosition(
+                transform.position,
+                horizontalDirection,
+                maxRange,
+                out Vector3 rangedTilePosition))
+        {
+            return rangedTilePosition;
+        }
+
+        float fallbackDistance = Mathf.Max(
+            boardManager.BoardDistance * Mathf.Max(1, maxRange),
+            0.01f);
+        return firePoint.position
+            + Vector3.right * horizontalDirection * fallbackDistance;
+    }
+
     private IEnumerator WaitForShotInterval()
     {
         float elapsedTime = 0f;
@@ -277,19 +329,6 @@ public class PlayerShoot : MonoBehaviour
                 elapsedTime += Time.deltaTime;
             }
         }
-    }
-
-    private bool RequiresTurnAfterFiring()
-    {
-        foreach (BulletData bulletData in deckManager.LoadedBullets)
-        {
-            if (bulletData != null && !bulletData.DoesNotConsumeTurn)
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private void GenerateRecoil(BulletData bulletData)

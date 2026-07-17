@@ -3224,11 +3224,16 @@ MonoBehaviour:
   stageEnemyPool:
   - {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
   maxActiveEnemies: 2
+  spawnPositionOffset: {x: 0, y: 0.7, z: 0}
+  spawnTerm: 2
+  enemyTurnDelay: 0.35
+  enemyActionInterval: 0.15
   boardManager: {fileID: 561211666}
   playerMove: {fileID: 2023230408}
   playerHealth: {fileID: 2023230410}
   enemyParent: {fileID: 114065785}
   activeEnemies: []
+  remainingSpawnTurns: 0
 --- !u!1 &1689356991
 GameObject:
   m_ObjectHideFlags: 0
@@ -4181,7 +4186,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8556440550991854019, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
   m_PrefabInstance: {fileID: 350554640947637847}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2124418302}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8553233e6711cc4f8f0d8cc9709b7dd, type: 3}
@@ -4192,7 +4197,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 8322958607048117707, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
   m_PrefabInstance: {fileID: 350554640947637847}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2124418302}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8f2fcdfb32e44a679d17f5a0cc6cf195, type: 3}
@@ -4203,7 +4208,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 6372297391433345502, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
   m_PrefabInstance: {fileID: 350554640947637847}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2124418302}
+  m_GameObject: {fileID: 0}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b09fb6273a7f4756b4ec3120305920f4, type: 3}
@@ -4493,43 +4498,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2123456030}
   m_CullTransparentMesh: 1
---- !u!1 &2124418302 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
-  m_PrefabInstance: {fileID: 350554640947637847}
-  m_PrefabAsset: {fileID: 0}
---- !u!4 &2124418303 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 4654777449252698111, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
-  m_PrefabInstance: {fileID: 350554640947637847}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &2124418304
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2124418302}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3d0593f9bbaf2f74f9af3b75b2932679, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::PlayerShoot
-  deckManager: {fileID: 396869080}
-  playerMove: {fileID: 2023230408}
-  boardManager: {fileID: 561211666}
-  waveManager: {fileID: 1522463505}
-  firePoint: {fileID: 2124418303}
-  bulletLinePrefab: {fileID: 6585112541486572157, guid: c60b717d5afabb641a126316109fd44c, type: 3}
-  recoilNoise: {fileID: 519420037}
-  recoilCameraTransform: {fileID: 519420032}
-  eventSystem: {fileID: 501680681}
-  shotInterval: 0.2
-  cameraRecoilScale: 1.6
-  recoilFrequencyGain: 1.2
-  recoilAttackDuration: 0.15
-  recoilRecoveryDuration: 0.6
-  cameraRestPosition: {x: 0, y: 0, z: -10}
 --- !u!1 &2147182588
 GameObject:
   m_ObjectHideFlags: 0
@@ -4918,6 +4886,30 @@ PrefabInstance:
       propertyPath: m_Name
       value: Player
       objectReference: {fileID: 0}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: deckManager
+      value: 
+      objectReference: {fileID: 396869080}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: eventSystem
+      value: 
+      objectReference: {fileID: 501680681}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: recoilNoise
+      value: 
+      objectReference: {fileID: 519420037}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: waveManager
+      value: 
+      objectReference: {fileID: 1522463505}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: boardManager
+      value: 
+      objectReference: {fileID: 561211666}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: recoilCameraTransform
+      value: 
+      objectReference: {fileID: 519420032}
     - target: {fileID: 4654777449252698111, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -4973,10 +4965,7 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 2124418304}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
