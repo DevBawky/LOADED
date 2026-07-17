@@ -57,15 +57,17 @@
 
 ### Output Summary
 
-실제로 수정한 파일은 `BulletData.cs`, `BulletLine.cs`, `DeckManager.cs`, `BoardManager.cs`, `WaveManager.cs`, `PlayerMove.cs`, `PlayerShoot.cs`, `ActorMotion.cs`, `Bullet.prefab`, `Player.prefab`, `Test Enemy.prefab`, `SampleScene.unity`, `Test Bullet.asset`, `BulletSmokeFlameLine.shader`, `BulletSmokeFlameLine.mat`, `0717_Combat_DeckManager_PlayerShoot.md`이며 기존 `BulletProjectile.cs`는 `BulletLine.cs`로 대체했다.
+실제로 수정한 파일은 `BulletData.cs`, `BulletLine.cs`, `DeckManager.cs`, `BoardManager.cs`, `WaveManager.cs`, `PlayerMove.cs`, `PlayerShoot.cs`, `PlayerCylinderUI.cs`, `ActorMotion.cs`, `Bullet.prefab`, `Player.prefab`, `Test Enemy.prefab`, `SampleScene.unity`, `Test Bullet.asset`, `BulletSmokeFlameLine.shader`, `BulletSmokeFlameLine.mat`, `0717_Combat_DeckManager_PlayerShoot.md`이며 기존 `BulletProjectile.cs`는 `BulletLine.cs`로 대체했다.
 
 `BulletData`에 `doesNotConsumeTurn`과 `[Min(0f)]`가 적용된 `recoilStrength`를 추가했다. 두 필드는 기존 필드 뒤에 추가했으며, 후속 LineRenderer 변경에서 기존 `lineColor`를 `primaryLineColor`로 확장하고 `FormerlySerializedAs`를 사용해 기존 탄환 에셋 값을 유지했다. `secondaryLineColor`를 별도로 추가해 두 색을 탄환 SO마다 설정할 수 있다.
 
 `DeckManager`는 `startingBullets`를 `Awake`에서 런타임 `deck`으로 복사하고 Fisher-Yates 방식으로 셔플한다. 리스트의 마지막 요소를 덱의 위로 사용한다. `maxReloadAmount`는 기본 6이며, `TryReload`를 호출할 때마다 덱 위 탄환 한 발을 `loadedBullets` 끝에 추가한다. 덱이 비어 있으면 `graveyard` 전체를 덱으로 옮겨 다시 셔플한다. 최대 장전 수량에 도달하거나 덱과 무덤이 모두 비면 장전하지 않는다.
 
-현재 셔플 순서인 `deck`, 장전 순서인 `loadedBullets`, 발사 완료 순서인 `graveyard`는 `Runtime State` 아래의 직렬화 필드로 선언해 Play Mode Inspector에서 확인할 수 있다. 외부 UI에는 `Deck`, `LoadedBullets`, `Graveyard`, `MaxReloadAmount` 읽기 전용 프로퍼티와 `StateChanged` 이벤트를 제공한다. `TryFireLoadedBullet`은 `loadedBullets`의 첫 번째 탄환을 제거해 무덤 끝에 추가한다.
+현재 셔플 순서인 `deck`, 장전 순서인 `loadedBullets`, 발사 완료 순서인 `graveyard`는 `Runtime State` 아래의 직렬화 필드로 선언해 Play Mode Inspector에서 확인할 수 있다. 외부 UI에는 `Deck`, `LoadedBullets`, `Graveyard`, `MaxReloadAmount` 읽기 전용 프로퍼티와 `StateChanged` 이벤트를 제공한다. 리스트의 끝을 장전 큐의 위로 사용하며 `TryFireLoadedBullet`은 마지막에 장전한 탄환부터 제거해 무덤 끝에 추가한다.
 
-`PlayerShoot`은 R, Space, 마우스 왼쪽 버튼을 새 Input System으로 처리하고 공개 `Reload`, `Shoot` 메소드를 제공한다. `shotInterval`은 기본 0.2초이며, `Shoot`은 Coroutine을 시작해 장전 목록의 첫 탄환부터 전부 순차 발사한다. 연속 발사 중에는 `isFiring`으로 R, Space, 마우스 발사와 UI의 Reload 및 Shoot 재호출을 막는다. 동시에 `PlayerMove.SetShooting(true)`를 전달해 키보드·마우스 및 UI에서 호출되는 이동, 회전, 대기도 모두 차단한다. 발사 묶음의 턴 완료 처리까지 끝난 뒤 잠금을 해제하며 PlayerShoot이 비활성화될 때도 잠금 상태를 복구한다. `Time.frameCount`를 이용한 같은 프레임 중복 방어도 유지했다. UI 위의 마우스 클릭은 Inspector에서 연결한 `EventSystem`으로 판별해 월드 발사 입력에서 제외한다.
+`PlayerShoot`은 R, Space, 마우스 왼쪽 버튼을 새 Input System으로 처리하고 공개 `Reload`, `Shoot` 메소드를 제공한다. `shotInterval`은 기본 0.2초이며, `Shoot`은 Coroutine을 시작해 장전 목록의 마지막 탄환부터 LIFO 순서로 전부 발사한다. 연속 발사 중에는 `isFiring`으로 R, Space, 마우스 발사와 UI의 Reload 및 Shoot 재호출을 막는다. 동시에 `PlayerMove.SetShooting(true)`를 전달해 키보드·마우스 및 UI에서 호출되는 이동, 회전, 대기도 모두 차단한다. 발사 묶음의 턴 완료 처리까지 끝난 뒤 잠금을 해제하며 PlayerShoot이 비활성화될 때도 잠금 상태를 복구한다. `Time.frameCount`를 이용한 같은 프레임 중복 방어도 유지했다. UI 위의 마우스 클릭은 Inspector에서 연결한 `EventSystem`으로 판별해 월드 발사 입력에서 제외한다.
+
+`Assets/Scripts/Player/PlayerCylinderUI.cs`를 추가하고 Player 프리팹의 `Image | Cylinder`와 위쪽부터 회전 순서대로 배치된 6개의 `Image | Bullets`를 직렬화 참조로 연결했다. 첫 탄환이 장전되면 Cylinder가 활성화되고, 이후 탄환이 추가될 때마다 Z축을 `-60`도씩 SmoothStep 보간한다. LIFO 발사로 탄환이 하나 제거될 때마다 `+60`도 회전하며 마지막 탄환 제거 회전이 끝나면 Cylinder를 비활성화하고 각도를 0으로 초기화한다. 각 슬롯은 `BulletData.Sprite`를 표시하고 Sprite가 null이면 해당 탄환의 `PrimaryLineColor`를 사용한다. `PlayerShoot > Cylinder UI`가 DeckManager의 `StateChanged`를 구독하도록 초기화하며 런타임 자동 탐색은 사용하지 않는다.
 
 성공한 한 발 장전은 `PlayerMove.CompleteTurn`을 호출한다. 연속 발사에서는 실제 발사된 탄환 중 `DoesNotConsumeTurn`이 false인 탄환이 하나라도 있을 때 모든 발사가 끝난 뒤 `CompleteTurn`을 한 번만 호출한다. 모든 탄환이 턴 비소비 탄환이면 턴을 소비하지 않는다. 실패한 장전과 한 발도 발사하지 못한 Shoot에서는 호출하지 않는다. 기존 `TurnCount`와 `TurnCompleted` 이벤트를 그대로 사용하기 위해 `CompleteTurn`의 접근 범위만 public으로 변경했다.
 
@@ -104,7 +106,9 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * Fisher-Yates 반복 범위와 무작위 인덱스 범위 정적 검토
   * 덱, 장전 탄환, 무덤 사이의 이동 규칙 대입 확인
   * `MaxReloadAmount` 도달 전후의 추가 장전 조건 확인
-  * 장전 목록의 첫 탄환부터 `ShotInterval` 간격으로 발사되는 Coroutine 정적 검토
+  * 장전 목록의 마지막 탄환부터 `ShotInterval` 간격으로 발사되는 LIFO Coroutine 정적 검토
+  * `PlayerCylinderUI`의 첫 장전 활성화, 추가 장전 `-60`도, 발사 제거 `+60`도 및 빈 장전 상태 비활성화 조건 확인
+  * 탄환 Sprite와 Sprite null 시 `PrimaryLineColor` 표시 경로 확인
   * 연속 발사 중 입력 차단과 일시정지 중 간격 정지 조건 확인
   * 발사 중 PlayerMove의 키보드·마우스·UI 공개 메소드 차단 확인
   * BulletLine의 시작/끝 알파 SmoothStep 보간과 종료 후 제거 확인
@@ -127,7 +131,10 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
 
   * 초기 보유 탄환은 null 항목을 제외하고 런타임 덱에 복사되며 원본 `startingBullets`는 수정되지 않는다.
   * 장전 시 덱의 마지막 탄환 하나가 `LoadedBullets` 끝에 추가되며 기본 최대 6발까지 반복 장전된다.
-  * 발사 시 `LoadedBullets`의 첫 탄환부터 순서대로 제거되어 `Graveyard` 끝에 추가된다.
+  * 발사 시 `LoadedBullets`의 마지막 탄환부터 LIFO 순서로 제거되어 `Graveyard` 끝에 추가된다.
+  * 첫 장전에서 Cylinder가 활성화되고 두 번째 탄환부터 장전할 때마다 `-60`도, 발사로 제거할 때마다 `+60`도 회전한다.
+  * 마지막 탄환 제거 애니메이션 후 Cylinder와 모든 Bullet Image가 비활성화된다.
+  * BulletData Sprite가 있으면 슬롯 이미지에 표시하고 null이면 Primary Line Color로 표시한다.
   * 빈 덱에서 장전하면 무덤 전체가 덱으로 이동하고 셔플된 뒤 한 발이 장전된다.
   * 덱과 무덤이 모두 비어 있거나 장전 수량이 `MaxReloadAmount`에 도달한 경우 상태와 턴이 변경되지 않는다.
   * 기본 설정에서는 장전된 여러 탄환이 0.2초 간격으로 전부 발사된다.
@@ -160,13 +167,15 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
 
 Cinemachine 3.1.7 패키지와 Scene의 Cinemachine Brain 및 Cinemachine Camera는 작업 시작 전에 이미 존재했다. 작업 중이던 `SampleScene.unity`, `Packages/manifest.json`, `Packages/packages-lock.json` 변경은 보존했으며 Codex가 수정하지 않았다.
 
-Player 프리팹과 Scene에는 프로젝트별 BulletData 목록과 카메라 설정이 필요하다. 기존 Bullet 프리팹의 TrailRenderer는 LineRenderer로 교체하고 `BulletLine`의 `Line Renderer` 필드에 직접 연결했으며, 기존 Sprite 오브젝트는 비활성화했다. Scene의 기존 Basic Multi Channel Perlin과 Main Camera Transform은 `PlayerShoot`에 직접 연결했다.
+Player 프리팹과 Scene에는 프로젝트별 BulletData 목록과 카메라 설정이 필요하다. 기존 Bullet 프리팹의 TrailRenderer는 LineRenderer로 교체하고 `BulletLine`의 `Line Renderer` 필드에 직접 연결했으며, 기존 Sprite 오브젝트는 비활성화했다. Scene의 기존 Basic Multi Channel Perlin과 Main Camera Transform은 `PlayerShoot`에 직접 연결했다. Player 프리팹의 기존 `Image | Cylinder` 및 6개 `Image | Bullets`에는 `PlayerCylinderUI`를 연결했고 Player Canvas가 회전 중 뒤집히지 않도록 `ActorMotion > Orientation Locked Transform`에 Canvas를 지정했다.
 
 ### Final Result
 
 보유 탄환은 게임 시작 시 복사·셔플된 덱, 최대 수량까지 누적되는 장전 탄환 목록, 발사된 탄환이 쌓이는 무덤으로 관리된다. 덱이 소진되면 다음 장전 시 무덤 전체가 다시 덱으로 순환한다. 세 목록은 Play Mode의 DeckManager Inspector에서 현재 순서대로 확인할 수 있다.
 
-R 키와 공개 `Reload` 메소드는 최대 장전 수량까지 한 발씩 추가 장전한다. Space 키·마우스 왼쪽 버튼·공개 `Shoot` 메소드는 장전된 모든 탄환을 설정된 시간 간격으로 플레이어가 바라보는 X축에 발사한다. 기본값은 최대 6발과 발사 간격 0.2초다. 발사 중에는 이동, 회전, 대기를 포함한 모든 플레이어 행동이 잠긴다. 성공 여부와 발사 묶음의 탄환 설정에 따라 기존 `PlayerMove`의 턴 카운트와 이벤트가 갱신된다.
+R 키와 공개 `Reload` 메소드는 최대 장전 수량까지 한 발씩 추가 장전한다. Space 키·마우스 왼쪽 버튼·공개 `Shoot` 메소드는 마지막에 장전한 탄환부터 LIFO 순서로, 설정된 시간 간격을 두고 플레이어가 바라보는 X축에 발사한다. 기본값은 최대 6발과 발사 간격 0.2초다. 발사 중에는 이동, 회전, 대기를 포함한 모든 플레이어 행동이 잠긴다. 성공 여부와 발사 묶음의 탄환 설정에 따라 기존 `PlayerMove`의 턴 카운트와 이벤트가 갱신된다.
+
+Player 프리팹의 `PlayerCylinderUI`는 `Cylinder Transform`, 위쪽부터 순서대로 등록된 `Bullet Images`, `Rotation Step = 60`, `Rotation Duration = 0.15`를 사용한다. 첫 장전 시 `Image | Cylinder`가 켜지고 추가 장전은 `-60`도, 발사 제거는 `+60`도로 부드럽게 회전한다. 현재 장전 수가 0이면 Cylinder가 꺼지며 마지막 발사 후에도 제거 회전이 끝난 즉시 비활성화된다. `PlayerShoot > Cylinder UI`에는 같은 루트의 PlayerCylinderUI가 연결되어 있다.
 
 각 BulletLine은 프리팹의 `Fade Duration` 동안 RGB를 유지한 채 알파만 부드럽게 0으로 줄어든 뒤 제거된다. SampleScene에서 사용하는 Bullet 프리팹의 기본 Fade Duration은 0.2초다.
 

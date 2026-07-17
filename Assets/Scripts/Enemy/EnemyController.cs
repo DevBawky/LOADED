@@ -11,7 +11,10 @@ public enum EnemyTurnActionType
     Rotate,
     Wait,
     Reload,
-    Fire
+    Fire,
+    CreateQueue,
+    RegisterAttack,
+    PrepareAttack
 }
 
 public class EnemyController : MonoBehaviour
@@ -22,10 +25,19 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private Image healthFillImage;
     [SerializeField] private Transform canvasTransform;
     [SerializeField] private ActorMotion actorMotion;
+    [SerializeField] private EnemyActionQueueUI actionQueueUI;
+
+    [Header("Attack Queue")]
+    [Range(1, 3)]
+    [SerializeField] private int maxQueuedAttacks = 3;
+    [Min(0f)]
+    [SerializeField] private float queuedActionInterval = 0.2f;
 
     [Header("Runtime State")]
     [SerializeField] private int currentHealth;
-    [SerializeField] private EnemyActionData loadedAttackAction;
+    [SerializeField] private List<EnemyActionData> queuedAttackActions =
+        new List<EnemyActionData>();
+    [SerializeField] private bool isQueueCreated;
     [SerializeField] private bool isAttackPrepared;
     [SerializeField] private bool isRetreating;
     [SerializeField] private EnemyTurnActionType lastTurnAction;
@@ -45,7 +57,12 @@ public class EnemyController : MonoBehaviour
 
     public EnemyData Data => enemyData;
     public int CurrentHealth => currentHealth;
-    public EnemyActionData LoadedAttackAction => loadedAttackAction;
+    public EnemyActionData LoadedAttackAction => queuedAttackActions.Count > 0
+        ? queuedAttackActions[0]
+        : null;
+    public IReadOnlyList<EnemyActionData> QueuedAttackActions =>
+        queuedAttackActions;
+    public bool IsQueueCreated => isQueueCreated;
     public bool IsAttackPrepared => isAttackPrepared;
     public bool IsRetreating => isRetreating;
     public EnemyTurnActionType LastTurnAction => lastTurnAction;
@@ -66,10 +83,11 @@ public class EnemyController : MonoBehaviour
     {
         if (enemyData == null || assignedBoardManager == null
             || assignedPlayerMove == null || assignedPlayerHealth == null
-            || assignedWaveManager == null || actorMotion == null)
+            || assignedWaveManager == null || actorMotion == null
+            || actionQueueUI == null)
         {
             Debug.LogError(
-                "Enemy Data, Actor Motion, Board Manager, Player Move, Player Health, and Wave Manager must be assigned.",
+                "Enemy Data, Actor Motion, Action Queue UI, Board Manager, Player Move, Player Health, and Wave Manager must be assigned.",
                 this);
             return false;
         }
@@ -107,6 +125,12 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
+        if (isAttackPrepared)
+        {
+            StartCoroutine(FireAttackQueue());
+            return;
+        }
+
         if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
         {
             RotateToward(directionToPlayer);
@@ -140,6 +164,11 @@ public class EnemyController : MonoBehaviour
 
         if (currentHealth == 0)
         {
+            if (actionQueueUI != null)
+            {
+                actionQueueUI.ResetDisplay();
+            }
+
             Defeated?.Invoke(this);
             Destroy(gameObject);
         }
@@ -163,141 +192,268 @@ public class EnemyController : MonoBehaviour
             }
         }
 
-        EnemyActionData attackAction = loadedAttackAction != null
-            ? loadedAttackAction
-            : FindAction(EnemyActionType.MeleeAttack);
-
-        if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
-        {
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
-
-        if (isAttackPrepared)
-        {
-            ResolvePreparedAttack(
-                directionToPlayer,
-                distanceToPlayer,
-                attackData.Range);
-            return;
-        }
-
-        if (loadedAttackAction != null)
-        {
-            if (distanceToPlayer <= attackData.Range)
-            {
-                PrepareAttack();
-            }
-            else
-            {
-                MoveTowardPlayer(directionToPlayer);
-            }
-
-            return;
-        }
-
-        int reloadDistance = Mathf.Max(enemyData.PreferredDistance, attackData.Range);
-
-        if (distanceToPlayer <= reloadDistance)
-        {
-            ReloadAttack(attackAction);
-        }
-        else
-        {
-            MoveTowardPlayer(directionToPlayer);
-        }
+        HandleAttackQueue(
+            EnemyActionType.MeleeAttack,
+            directionToPlayer,
+            distanceToPlayer);
     }
 
     private void TakeRangeTurn(int directionToPlayer, int distanceToPlayer)
     {
-        EnemyActionData attackAction = loadedAttackAction != null
-            ? loadedAttackAction
-            : FindAction(EnemyActionType.RangedAttack);
-
-        if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        if (isAttackPrepared)
-        {
-            ResolvePreparedAttack(
-                directionToPlayer,
-                distanceToPlayer,
-                attackData.Range);
-            return;
-        }
-
-        if (loadedAttackAction == null)
-        {
-            ReloadAttack(attackAction);
-            return;
-        }
-
-        if (distanceToPlayer <= attackData.Range)
-        {
-            PrepareAttack();
-        }
-        else
-        {
-            MoveTowardPlayer(directionToPlayer);
-        }
+        HandleAttackQueue(
+            EnemyActionType.RangedAttack,
+            directionToPlayer,
+            distanceToPlayer);
     }
 
-    private void ResolvePreparedAttack(
+    private void HandleAttackQueue(
+        EnemyActionType attackActionType,
         int directionToPlayer,
-        int distanceToPlayer,
-        int attackRange)
+        int distanceToPlayer)
     {
-        if (distanceToPlayer <= attackRange)
+        int definedAttackCount = GetAvailableAttackCount(attackActionType);
+        int queueLimit = Mathf.Clamp(maxQueuedAttacks, 1, 3);
+
+        if (definedAttackCount == 0)
         {
-            FireAttack();
+            ClearAttackQueue();
+            MoveTowardPlayer(directionToPlayer);
             return;
         }
 
-        isAttackPrepared = false;
+        if (!isQueueCreated)
+        {
+            isQueueCreated = true;
+            isAttackPrepared = false;
+            actionQueueUI.ShowQueue();
+            CompleteAction(EnemyTurnActionType.CreateQueue);
+            return;
+        }
+
+        if (attackActionType == EnemyActionType.MeleeAttack)
+        {
+            HandleMeleeAttackQueue(
+                definedAttackCount,
+                queueLimit,
+                directionToPlayer,
+                distanceToPlayer);
+            return;
+        }
+
+        int availableAttackCount = Mathf.Min(
+            definedAttackCount,
+            queueLimit);
+
+        if (queuedAttackActions.Count < availableAttackCount)
+        {
+            RegisterAttack(
+                attackActionType,
+                queuedAttackActions.Count);
+            return;
+        }
+
+        int preparationRange = GetPreparationRange();
+
+        if (distanceToPlayer > preparationRange)
+        {
+            MoveTowardPlayer(directionToPlayer);
+            return;
+        }
+
+        isAttackPrepared = true;
+        actionQueueUI.SetPrepared(true);
+        CompleteAction(EnemyTurnActionType.PrepareAttack);
+    }
+
+    private void HandleMeleeAttackQueue(
+        int definedAttackCount,
+        int queueLimit,
+        int directionToPlayer,
+        int distanceToPlayer)
+    {
+        if (queuedAttackActions.Count == 0)
+        {
+            RegisterAttack(EnemyActionType.MeleeAttack, 0);
+            return;
+        }
+
+        if (distanceToPlayer <= 1)
+        {
+            isAttackPrepared = true;
+            actionQueueUI.SetPrepared(true);
+            CompleteAction(EnemyTurnActionType.PrepareAttack);
+            return;
+        }
+
+        if (distanceToPlayer <= enemyData.PreferredDistance
+            && queuedAttackActions.Count < queueLimit)
+        {
+            int attackIndex = queuedAttackActions.Count
+                % definedAttackCount;
+            RegisterAttack(EnemyActionType.MeleeAttack, attackIndex);
+            return;
+        }
+
         MoveTowardPlayer(directionToPlayer);
     }
 
-    private void ReloadAttack(EnemyActionData attackAction)
+    private void RegisterAttack(
+        EnemyActionType attackActionType,
+        int attackIndex)
     {
-        loadedAttackAction = attackAction;
-        isAttackPrepared = false;
-        CompleteAction(EnemyTurnActionType.Reload);
-    }
+        EnemyActionData attackAction = GetAvailableAttackAction(
+            attackActionType,
+            attackIndex);
 
-    private void PrepareAttack()
-    {
-        isAttackPrepared = true;
-        CompleteAction(EnemyTurnActionType.Wait);
-    }
-
-    private void FireAttack()
-    {
-        if (!TryGetAttackData(loadedAttackAction, out EnemyAttackData attackData))
+        if (attackAction == null
+            || !actionQueueUI.AddAttackIcon(attackAction))
         {
-            loadedAttackAction = null;
-            isAttackPrepared = false;
             CompleteAction(EnemyTurnActionType.Wait);
             return;
         }
 
-        if (attackData.AttackEffectPrefab != null)
+        queuedAttackActions.Add(attackAction);
+        CompleteAction(EnemyTurnActionType.RegisterAttack);
+    }
+
+    private IEnumerator FireAttackQueue()
+    {
+        while (queuedAttackActions.Count > 0)
         {
-            Instantiate(
-                attackData.AttackEffectPrefab,
-                playerMove.transform.position,
-                Quaternion.identity);
+            EnemyActionData attackAction = queuedAttackActions[0];
+            queuedAttackActions.RemoveAt(0);
+            ExecuteQueuedAttack(attackAction);
+            actionQueueUI.RemoveFirstIcon();
+
+            if (queuedAttackActions.Count > 0)
+            {
+                yield return WaitForQueuedActionInterval();
+            }
         }
 
-        playerHealth.ApplyDamage(attackData.Damage);
-        AttackExecuted?.Invoke(this, attackData);
         isRetreating = enemyData.BehaviorType == EnemyBehaviorType.Melee
             && enemyData.PreferredDistance > 0;
-        loadedAttackAction = null;
+        isQueueCreated = false;
         isAttackPrepared = false;
+        actionQueueUI.ResetDisplay();
         CompleteAction(EnemyTurnActionType.Fire);
+    }
+
+    private void ExecuteQueuedAttack(EnemyActionData attackAction)
+    {
+        if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
+        {
+            return;
+        }
+
+        bool canHitPlayer = TryGetTurnContext(
+                out int directionToPlayer,
+                out int distanceToPlayer)
+            && directionToPlayer != 0
+            && IsFacing(directionToPlayer)
+            && distanceToPlayer <= attackData.Range;
+
+        if (canHitPlayer)
+        {
+            if (attackData.AttackEffectPrefab != null)
+            {
+                Instantiate(
+                    attackData.AttackEffectPrefab,
+                    playerMove.transform.position,
+                    Quaternion.identity);
+            }
+
+            playerHealth.ApplyDamage(attackData.Damage);
+        }
+
+        AttackExecuted?.Invoke(this, attackData);
+    }
+
+    private IEnumerator WaitForQueuedActionInterval()
+    {
+        float elapsedTime = 0f;
+
+        while (elapsedTime < queuedActionInterval)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+            }
+        }
+    }
+
+    private int GetAvailableAttackCount(EnemyActionType attackActionType)
+    {
+        int count = 0;
+
+        foreach (EnemyActionData actionData in enemyData.Actions)
+        {
+            if (actionData != null
+                && actionData.ActionType == attackActionType
+                && TryGetAttackData(actionData, out _))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private EnemyActionData GetAvailableAttackAction(
+        EnemyActionType attackActionType,
+        int attackIndex)
+    {
+        int currentIndex = 0;
+
+        foreach (EnemyActionData actionData in enemyData.Actions)
+        {
+            if (actionData == null
+                || actionData.ActionType != attackActionType
+                || !TryGetAttackData(actionData, out _))
+            {
+                continue;
+            }
+
+            if (currentIndex == attackIndex)
+            {
+                return actionData;
+            }
+
+            currentIndex++;
+        }
+
+        return null;
+    }
+
+    private int GetPreparationRange()
+    {
+        int preparationRange = int.MaxValue;
+
+        foreach (EnemyActionData actionData in queuedAttackActions)
+        {
+            if (TryGetAttackData(actionData, out EnemyAttackData attackData))
+            {
+                preparationRange = Mathf.Min(
+                    preparationRange,
+                    attackData.Range);
+            }
+        }
+
+        return preparationRange == int.MaxValue ? 0 : preparationRange;
+    }
+
+    private void ClearAttackQueue()
+    {
+        queuedAttackActions.Clear();
+        isQueueCreated = false;
+        isAttackPrepared = false;
+
+        if (actionQueueUI != null)
+        {
+            actionQueueUI.ResetDisplay();
+        }
     }
 
     private void RotateToward(int directionToPlayer)
@@ -467,11 +623,18 @@ public class EnemyController : MonoBehaviour
     private void ResetRuntimeState()
     {
         currentHealth = enemyData == null ? 0 : enemyData.MaxHealth;
-        loadedAttackAction = null;
+        queuedAttackActions.Clear();
+        isQueueCreated = false;
         isAttackPrepared = false;
         isRetreating = false;
         lastTurnAction = EnemyTurnActionType.None;
         isActing = false;
+
+        if (actionQueueUI != null)
+        {
+            actionQueueUI.ResetDisplay();
+        }
+
         RefreshHealthUI();
     }
 
