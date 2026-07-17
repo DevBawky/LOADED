@@ -14,6 +14,64 @@ public class BoardManager : MonoBehaviour
 
     private bool isGenerated;
 
+    public int BoardCount => boardCount;
+    public float BoardDistance => boardDistance;
+
+    public bool TryGetTilePosition(int tileIndex, out Vector3 worldPosition)
+    {
+        worldPosition = Vector3.zero;
+
+        if (tileParent == null || boardCount <= 0 || boardDistance <= 0f
+            || tileIndex < 0 || tileIndex >= boardCount)
+        {
+            return false;
+        }
+
+        float positionX = GetStartOffset() + boardDistance * tileIndex;
+        worldPosition = tileParent.TransformPoint(new Vector3(positionX, 0f, 0f));
+        return true;
+    }
+
+    public bool TryGetTileIndex(Vector3 worldPosition, out int tileIndex)
+    {
+        tileIndex = -1;
+
+        if (tileParent == null || boardCount <= 0 || boardDistance <= 0f)
+        {
+            return false;
+        }
+
+        Vector3 localPosition = tileParent.InverseTransformPoint(worldPosition);
+        float rawIndex = (localPosition.x - GetStartOffset()) / boardDistance;
+        int nearestIndex = Mathf.RoundToInt(rawIndex);
+
+        if (nearestIndex < 0 || nearestIndex >= boardCount
+            || Mathf.Abs(rawIndex - nearestIndex) > 0.5f)
+        {
+            return false;
+        }
+
+        tileIndex = nearestIndex;
+        return true;
+    }
+
+    public bool TryGetTileDistance(
+        Vector3 firstWorldPosition,
+        Vector3 secondWorldPosition,
+        out int tileDistance)
+    {
+        tileDistance = 0;
+
+        if (!TryGetTileIndex(firstWorldPosition, out int firstIndex)
+            || !TryGetTileIndex(secondWorldPosition, out int secondIndex))
+        {
+            return false;
+        }
+
+        tileDistance = Mathf.Abs(firstIndex - secondIndex);
+        return true;
+    }
+
     public bool TryGetAdjacentTilePosition(
         Vector3 currentWorldPosition,
         int direction,

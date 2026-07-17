@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -10,6 +11,7 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private BoardManager boardManager;
+    [SerializeField] private WaveManager waveManager;
     [SerializeField] private Transform firePoint;
     [FormerlySerializedAs("projectilePrefab")]
     [SerializeField] private BulletLine bulletLinePrefab;
@@ -33,6 +35,10 @@ public class PlayerShoot : MonoBehaviour
     private int lastActionFrame = -1;
     private bool isFiring;
     private Coroutine cameraRecoilCoroutine;
+    private readonly List<EnemyController> targetBuffer =
+        new List<EnemyController>();
+    private readonly List<EnemyController> hitBuffer =
+        new List<EnemyController>();
 
     public bool IsFiring => isFiring;
 
@@ -111,11 +117,11 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
-        if (deckManager == null || boardManager == null || firePoint == null
-            || bulletLinePrefab == null)
+        if (deckManager == null || boardManager == null || waveManager == null
+            || firePoint == null || bulletLinePrefab == null)
         {
             Debug.LogError(
-                "Deck Manager, Board Manager, Fire Point, and Bullet Line Prefab must be assigned in the Inspector.",
+                "Deck Manager, Board Manager, Wave Manager, Fire Point, and Bullet Line Prefab must be assigned in the Inspector.",
                 this);
             return;
         }
@@ -134,11 +140,19 @@ public class PlayerShoot : MonoBehaviour
         int horizontalDirection = transform.localScale.x >= 0f ? 1 : -1;
         BulletData firstBullet = deckManager.LoadedBullets[0];
 
-        if (!boardManager.TryGetRangedTilePosition(
-                transform.position,
-                horizontalDirection,
-                firstBullet.MaxRange,
-                out _))
+        if (firstBullet == null
+            || !boardManager.TryGetTileIndex(transform.position, out _))
+        {
+            return;
+        }
+
+        waveManager.GetEnemiesInDirection(
+            transform.position,
+            horizontalDirection,
+            firstBullet.MaxRange,
+            targetBuffer);
+
+        if (targetBuffer.Count == 0)
         {
             return;
         }
@@ -161,14 +175,24 @@ public class PlayerShoot : MonoBehaviour
 
             BulletData bulletData = deckManager.LoadedBullets[0];
 
-            if (!boardManager.TryGetRangedTilePosition(
-                    transform.position,
-                    horizontalDirection,
-                    bulletData.MaxRange,
-                    out Vector3 endPoint))
+            if (bulletData == null)
             {
                 break;
             }
+
+            waveManager.GetEnemiesInDirection(
+                transform.position,
+                horizontalDirection,
+                bulletData.MaxRange,
+                targetBuffer);
+
+            if (targetBuffer.Count == 0)
+            {
+                break;
+            }
+
+            BuildHitTargets(bulletData);
+            Vector3 endPoint = hitBuffer[hitBuffer.Count - 1].transform.position;
 
             BulletLine bulletLine = Instantiate(
                 bulletLinePrefab,
@@ -190,6 +214,15 @@ public class PlayerShoot : MonoBehaviour
 
             firedAnyBullet = true;
             consumesTurn |= !bulletData.DoesNotConsumeTurn;
+
+            foreach (EnemyController enemy in hitBuffer)
+            {
+                if (enemy != null)
+                {
+                    enemy.ApplyDamage(bulletData.Damage);
+                }
+            }
+
             GenerateRecoil(bulletData);
 
             if (deckManager.LoadedBullets.Count > 0 && shotInterval > 0f)
@@ -208,6 +241,27 @@ public class PlayerShoot : MonoBehaviour
         }
 
         isFiring = false;
+    }
+
+    private void BuildHitTargets(BulletData bulletData)
+    {
+        hitBuffer.Clear();
+        hitBuffer.Add(targetBuffer[0]);
+        int hitCount = 1;
+
+        for (int targetIndex = 1;
+             targetIndex < targetBuffer.Count
+             && hitCount < bulletData.MaxHitCount;
+             targetIndex++)
+        {
+            if (!bulletData.RollPenetrationAfterHit(hitCount))
+            {
+                break;
+            }
+
+            hitBuffer.Add(targetBuffer[targetIndex]);
+            hitCount++;
+        }
     }
 
     private IEnumerator WaitForShotInterval()

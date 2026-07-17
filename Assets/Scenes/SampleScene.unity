@@ -119,6 +119,37 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!1 &114065784
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 114065785}
+  m_Layer: 0
+  m_Name: '@_Enemies'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &114065785
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 114065784}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 498823613}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &181601309
 GameObject:
   m_ObjectHideFlags: 0
@@ -756,6 +787,8 @@ Transform:
   m_Children:
   - {fileID: 561211667}
   - {fileID: 396869079}
+  - {fileID: 1522463504}
+  - {fileID: 114065785}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &498823614
@@ -3144,6 +3177,58 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1514755401}
   m_CullTransparentMesh: 1
+--- !u!1 &1522463503
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1522463504}
+  - component: {fileID: 1522463505}
+  m_Layer: 0
+  m_Name: '@_WaveManager'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1522463504
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1522463503}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 498823613}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1522463505
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1522463503}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6b12152853f4c599a840bb413fb863f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WaveManager
+  stageEnemyPool:
+  - {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+  maxActiveEnemies: 2
+  boardManager: {fileID: 561211666}
+  playerMove: {fileID: 2023230408}
+  playerHealth: {fileID: 2023230410}
+  enemyParent: {fileID: 114065785}
+  activeEnemies: []
 --- !u!1 &1689356991
 GameObject:
   m_ObjectHideFlags: 0
@@ -4113,6 +4198,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f2fcdfb32e44a679d17f5a0cc6cf195, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &2023230410 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6372297391433345502, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+  m_PrefabInstance: {fileID: 350554640947637847}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2124418302}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b09fb6273a7f4756b4ec3120305920f4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
 --- !u!1 &2086871342
 GameObject:
   m_ObjectHideFlags: 0
@@ -4422,6 +4518,7 @@ MonoBehaviour:
   deckManager: {fileID: 396869080}
   playerMove: {fileID: 2023230408}
   boardManager: {fileID: 561211666}
+  waveManager: {fileID: 1522463505}
   firePoint: {fileID: 2124418303}
   bulletLinePrefab: {fileID: 6585112541486572157, guid: c60b717d5afabb641a126316109fd44c, type: 3}
   recoilNoise: {fileID: 519420037}
@@ -4861,6 +4958,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6372297391433345502, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: healthText
+      value: 
+      objectReference: {fileID: 997515988}
+    - target: {fileID: 6372297391433345502, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: healthFillImage
+      value: 
+      objectReference: {fileID: 2123456032}
     - target: {fileID: 8556440550991854019, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: boardManager
       value: 
