@@ -123,7 +123,7 @@ public class PlayerMove : MonoBehaviour
         CompleteTurn();
     }
 
-    private void CompleteTurn()
+    public void CompleteTurn()
     {
         TurnCount++;
         TurnCompleted?.Invoke();
