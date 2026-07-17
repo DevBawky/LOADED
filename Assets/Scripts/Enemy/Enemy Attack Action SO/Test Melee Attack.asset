@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 88615d6674bc44199ab7dfb3d705db35, type: 3}
-  m_Name: New Enemy Attack
+  m_Name: Test Melee Attack
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
-  skillId: 
-  displayName: 
+  skillId: 0
+  displayName: Test Attack
   description: 
-  damage: 0
-  range: 0
+  damage: 10
+  range: 1
   knockbackDistance: 0
   stunDurationTurns: 0
   markDurationTurns: 0

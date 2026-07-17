@@ -29,6 +29,6 @@ MonoBehaviour:
   - chance: 20
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 1, g: 0.2028302, b: 0.2028302, a: 1}
-  secondaryLineColor: {r: 1, g: 0.8018868, b: 0.0990566, a: 1}
+  secondaryLineColor: {r: 1, g: 0.19998612, b: 0.09803921, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1

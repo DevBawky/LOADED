@@ -18,6 +18,7 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private CinemachineBasicMultiChannelPerlin recoilNoise;
     [SerializeField] private Transform recoilCameraTransform;
     [SerializeField] private EventSystem eventSystem;
+    [SerializeField] private PlayerCylinderUI cylinderUI;
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.2f;
 
@@ -50,6 +51,14 @@ public class PlayerShoot : MonoBehaviour
         }
 
         ResetCameraRecoil();
+    }
+
+    private void Start()
+    {
+        if (cylinderUI != null)
+        {
+            cylinderUI.Initialize(deckManager);
+        }
     }
 
     private void OnDisable()
@@ -155,7 +164,8 @@ public class PlayerShoot : MonoBehaviour
         }
 
         int horizontalDirection = transform.localScale.x >= 0f ? 1 : -1;
-        BulletData firstBullet = deckManager.LoadedBullets[0];
+        int firstBulletIndex = deckManager.LoadedBullets.Count - 1;
+        BulletData firstBullet = deckManager.LoadedBullets[firstBulletIndex];
 
         if (firstBullet == null
             || !boardManager.TryGetTileIndex(transform.position, out _))
@@ -180,7 +190,8 @@ public class PlayerShoot : MonoBehaviour
                 yield return null;
             }
 
-            BulletData bulletData = deckManager.LoadedBullets[0];
+            int bulletIndex = deckManager.LoadedBullets.Count - 1;
+            BulletData bulletData = deckManager.LoadedBullets[bulletIndex];
 
             if (bulletData == null)
             {

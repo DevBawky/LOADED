@@ -58,8 +58,9 @@ public class DeckManager : MonoBehaviour
             return false;
         }
 
-        bulletData = loadedBullets[0];
-        loadedBullets.RemoveAt(0);
+        int topIndex = loadedBullets.Count - 1;
+        bulletData = loadedBullets[topIndex];
+        loadedBullets.RemoveAt(topIndex);
         graveyard.Add(bulletData);
         StateChanged?.Invoke();
         return true;
