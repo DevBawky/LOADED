@@ -264,6 +264,7 @@ GameObject:
   - component: {fileID: 5684080676408962077}
   - component: {fileID: 3144865413975228650}
   - component: {fileID: 7796848737825960580}
+  - component: {fileID: 1235869742036814597}
   m_Layer: 0
   m_Name: Test Enemy
   m_TagString: Untagged
@@ -361,7 +362,28 @@ MonoBehaviour:
   enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
   spriteRenderer: {fileID: 3144865413975228650}
   healthFillImage: {fileID: 2830886066907440819}
+  canvasTransform: {fileID: 2012758511208510004}
+  actorMotion: {fileID: 1235869742036814597}
   currentHealth: 0
   loadedAttackAction: {fileID: 11400000, guid: e86794259aec7ab48aa8a538ccb82888, type: 2}
   isAttackPrepared: 0
+  isRetreating: 0
   lastTurnAction: 0
+  isActing: 0
+--- !u!114 &1235869742036814597
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8378092708147667353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2794d1ccaba04e72a10ef2c9d616fdac, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ActorMotion
+  actorTransform: {fileID: 5684080676408962077}
+  orientationLockedTransform: {fileID: 2012758511208510004}
+  moveDuration: 0.2
+  jumpHeight: 0.25
+  rotateDuration: 0.2

@@ -1,25 +1,51 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class PlayerMove : MonoBehaviour
 {
+    [Header("References")]
     [SerializeField] private BoardManager boardManager;
+    [SerializeField] private ActorMotion actorMotion;
 
     private WaveManager waveManager;
+    private bool isShooting;
+    private bool isActing;
+    private bool isEnemyTurnResolving;
 
     public event Action TurnCompleted;
 
     public int TurnCount { get; private set; }
+    public bool IsShooting => isShooting;
+    public bool IsActing => isActing;
+    public bool IsEnemyTurnResolving => isEnemyTurnResolving;
+    public bool CanStartAction => CanPerformAction();
 
     public void SetWaveManager(WaveManager assignedWaveManager)
     {
         waveManager = assignedWaveManager;
     }
 
+    public void SetShooting(bool shooting)
+    {
+        isShooting = shooting;
+    }
+
+    public void SetEnemyTurnResolving(bool resolving)
+    {
+        isEnemyTurnResolving = resolving;
+    }
+
+    private void OnDisable()
+    {
+        isActing = false;
+        isEnemyTurnResolving = false;
+    }
+
     private void Update()
     {
-        if (GamePauseController.IsPaused)
+        if (!CanPerformAction())
         {
             return;
         }
@@ -57,7 +83,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveForward()
     {
-        if (GamePauseController.IsPaused)
+        if (!CanPerformAction())
         {
             return;
         }
@@ -68,7 +94,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveLeft()
     {
-        if (GamePauseController.IsPaused)
+        if (!CanPerformAction())
         {
             return;
         }
@@ -78,7 +104,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveRight()
     {
-        if (GamePauseController.IsPaused)
+        if (!CanPerformAction())
         {
             return;
         }
@@ -88,21 +114,18 @@ public class PlayerMove : MonoBehaviour
 
     public void Rotate()
     {
-        if (GamePauseController.IsPaused)
+        if (!CanPerformAction() || actorMotion == null)
         {
             return;
         }
 
-        Vector3 localScale = transform.localScale;
-        localScale.x *= -1f;
-        transform.localScale = localScale;
-
-        CompleteTurn();
+        int targetDirection = transform.localScale.x >= 0f ? -1 : 1;
+        StartCoroutine(RotateRoutine(targetDirection));
     }
 
     public void Wait()
     {
-        if (GamePauseController.IsPaused)
+        if (!CanPerformAction())
         {
             return;
         }
@@ -112,10 +135,10 @@ public class PlayerMove : MonoBehaviour
 
     private void Move(int direction)
     {
-        if (boardManager == null || waveManager == null)
+        if (boardManager == null || waveManager == null || actorMotion == null)
         {
             Debug.LogError(
-                "Board Manager must be assigned and Wave Manager must initialize Player Move.",
+                "Board Manager and Actor Motion must be assigned, and Wave Manager must initialize Player Move.",
                 this);
             return;
         }
@@ -134,13 +157,36 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        transform.position = targetPosition;
+        StartCoroutine(MoveRoutine(targetPosition));
+    }
+
+    private IEnumerator MoveRoutine(Vector3 targetPosition)
+    {
+        isActing = true;
+        yield return actorMotion.MoveTo(targetPosition);
         CompleteTurn();
+        isActing = false;
+    }
+
+    private IEnumerator RotateRoutine(int targetDirection)
+    {
+        isActing = true;
+        yield return actorMotion.RotateToDirection(targetDirection);
+        CompleteTurn();
+        isActing = false;
     }
 
     public void CompleteTurn()
     {
         TurnCount++;
         TurnCompleted?.Invoke();
+    }
+
+    private bool CanPerformAction()
+    {
+        return !GamePauseController.IsPaused
+            && !isShooting
+            && !isActing
+            && !isEnemyTurnResolving;
     }
 }

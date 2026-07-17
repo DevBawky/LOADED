@@ -12,6 +12,8 @@ GameObject:
   - component: {fileID: 8556440550991854019}
   - component: {fileID: 8322958607048117707}
   - component: {fileID: 6372297391433345502}
+  - component: {fileID: 4183098370449869801}
+  - component: {fileID: 7459208863926184471}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -33,6 +35,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 65084732724674196}
+  - {fileID: 1546687425952665600}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &8556440550991854019
@@ -48,6 +51,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMove
   boardManager: {fileID: 0}
+  actorMotion: {fileID: 7459208863926184471}
+--- !u!114 &7459208863926184471
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 918824946450782430}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2794d1ccaba04e72a10ef2c9d616fdac, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::ActorMotion
+  actorTransform: {fileID: 4654777449252698111}
+  orientationLockedTransform: {fileID: 0}
+  moveDuration: 0.2
+  jumpHeight: 0.25
+  rotateDuration: 0.2
 --- !u!114 &8322958607048117707
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -74,13 +95,71 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b09fb6273a7f4756b4ec3120305920f4, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerHealth
   maxHealth: 100
   startingHealth: 100
   healthFillImage: {fileID: 0}
   healthText: {fileID: 0}
   currentHealth: 0
+--- !u!114 &4183098370449869801
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 918824946450782430}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3d0593f9bbaf2f74f9af3b75b2932679, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PlayerShoot
+  deckManager: {fileID: 0}
+  playerMove: {fileID: 8556440550991854019}
+  boardManager: {fileID: 0}
+  waveManager: {fileID: 0}
+  firePoint: {fileID: 1546687425952665600}
+  bulletLinePrefab: {fileID: 6585112541486572157, guid: c60b717d5afabb641a126316109fd44c, type: 3}
+  recoilNoise: {fileID: 0}
+  recoilCameraTransform: {fileID: 0}
+  eventSystem: {fileID: 0}
+  shotInterval: 0.2
+  cameraRecoilScale: 1.6
+  recoilFrequencyGain: 1.2
+  recoilAttackDuration: 0.15
+  recoilRecoveryDuration: 0.6
+  cameraRestPosition: {x: 0, y: 0, z: -10}
+--- !u!1 &1766241549305578079
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1546687425952665600}
+  m_Layer: 0
+  m_Name: FirePoint
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1546687425952665600
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1766241549305578079}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.5, y: 0.7, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4654777449252698111}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2119503244023395875
 GameObject:
   m_ObjectHideFlags: 0
