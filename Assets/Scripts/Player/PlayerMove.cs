@@ -6,9 +6,16 @@ public class PlayerMove : MonoBehaviour
 {
     [SerializeField] private BoardManager boardManager;
 
+    private WaveManager waveManager;
+
     public event Action TurnCompleted;
 
     public int TurnCount { get; private set; }
+
+    public void SetWaveManager(WaveManager assignedWaveManager)
+    {
+        waveManager = assignedWaveManager;
+    }
 
     private void Update()
     {
@@ -105,9 +112,11 @@ public class PlayerMove : MonoBehaviour
 
     private void Move(int direction)
     {
-        if (boardManager == null)
+        if (boardManager == null || waveManager == null)
         {
-            Debug.LogError("Board Manager를 Inspector에서 할당해야 합니다.", this);
+            Debug.LogError(
+                "Board Manager must be assigned and Wave Manager must initialize Player Move.",
+                this);
             return;
         }
 
@@ -115,6 +124,12 @@ public class PlayerMove : MonoBehaviour
                 transform.position,
                 direction,
                 out Vector3 targetPosition))
+        {
+            return;
+        }
+
+        if (!boardManager.TryGetTileIndex(targetPosition, out int targetTileIndex)
+            || waveManager.IsTileOccupied(targetTileIndex))
         {
             return;
         }
