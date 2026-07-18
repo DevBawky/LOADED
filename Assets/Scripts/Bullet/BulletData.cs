@@ -1,6 +1,49 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
+
+public enum BulletEffectType
+{
+    Poison = 0,
+    Stun = 1,
+    Mark = 2,
+    Knockback = 3,
+    PositionSwap = 4,
+    LifeSteal = 5,
+    Weakness = 6
+}
+
+[Serializable]
+public class BulletEffectData
+{
+    [SerializeField] private BulletEffectType effectType;
+    [Range(0f, 100f)]
+    [SerializeField] private float activationChance = 100f;
+    [Min(1)]
+    [Tooltip("Poison, Stun, Mark, and Weakness stack count. Ignored by other effects.")]
+    [SerializeField] private int stackCount = 1;
+    [Min(1)]
+    [Tooltip("Maximum travel tiles for Knockback. Ignored by other effects.")]
+    [SerializeField] private int knockbackDistance = 1;
+
+    public BulletEffectType EffectType => effectType;
+    public float ActivationChance => activationChance;
+    public int StackCount => stackCount;
+    public int KnockbackDistance => knockbackDistance;
+
+    public bool RollActivation()
+    {
+        return CanActivate(UnityEngine.Random.Range(0f, 100f));
+    }
+
+    public bool CanActivate(float roll)
+    {
+        float chance = Mathf.Clamp(activationChance, 0f, 100f);
+        return chance >= 100f
+            || chance > 0f && roll >= 0f && roll < chance;
+    }
+}
 
 [System.Serializable]
 public class PenetrationChanceData
@@ -22,16 +65,10 @@ public class BulletData : ScriptableObject
     [SerializeField] private int damage;
     [Range(1, 10)]
     [SerializeField] private int maxRange = 1;
-    [Min(0)]
-    [SerializeField] private int knockbackDistance;
-    [Min(0)]
-    [SerializeField] private int stunDurationTurns;
-    [Min(0)]
-    [SerializeField] private int markDurationTurns;
-    [Min(0)]
-    [SerializeField] private int poisonDurationTurns;
-    [Range(1f, 3f)]
-    [SerializeField] private float markDamageMultiplier = 1f;
+    [Min(1f)]
+    [SerializeField] private float criticalDamageMultiplier = 2f;
+    [SerializeField] private List<BulletEffectData> effects =
+        new List<BulletEffectData>();
     [SerializeField] private List<PenetrationChanceData> penetrationChances = new List<PenetrationChanceData>();
     [FormerlySerializedAs("trailMaterial")]
     [SerializeField] private Material lineMaterial;
@@ -49,13 +86,14 @@ public class BulletData : ScriptableObject
     public Sprite Sprite => sprite;
     public int Damage => damage;
     public int MaxRange => maxRange;
-    public int KnockbackDistance => knockbackDistance;
-    public int StunDurationTurns => stunDurationTurns;
-    public int MarkDurationTurns => markDurationTurns;
-    public int PoisonDurationTurns => poisonDurationTurns;
-    public float MarkDamageMultiplier => markDamageMultiplier;
-    public IReadOnlyList<PenetrationChanceData> PenetrationChances => penetrationChances;
-    public int MaxHitCount => penetrationChances.Count + 1;
+    public float CriticalDamageMultiplier =>
+        Mathf.Max(1f, criticalDamageMultiplier);
+    public IReadOnlyList<BulletEffectData> Effects =>
+        effects ?? (IReadOnlyList<BulletEffectData>)Array.Empty<BulletEffectData>();
+    public IReadOnlyList<PenetrationChanceData> PenetrationChances =>
+        penetrationChances
+        ?? (IReadOnlyList<PenetrationChanceData>)Array.Empty<PenetrationChanceData>();
+    public int MaxHitCount => PenetrationChances.Count + 1;
     public Material LineMaterial => lineMaterial;
     public Color PrimaryLineColor => primaryLineColor;
     public Color SecondaryLineColor => secondaryLineColor;
@@ -65,19 +103,21 @@ public class BulletData : ScriptableObject
 
     public bool RollPenetrationAfterHit(int hitCount)
     {
-        return CanPenetrateAfterHit(hitCount, Random.Range(0f, 100f));
+        return CanPenetrateAfterHit(
+            hitCount,
+            UnityEngine.Random.Range(0f, 100f));
     }
 
     public bool CanPenetrateAfterHit(int hitCount, float roll)
     {
         int chanceIndex = hitCount - 1;
 
-        if (chanceIndex < 0 || chanceIndex >= penetrationChances.Count)
+        if (chanceIndex < 0 || chanceIndex >= PenetrationChances.Count)
         {
             return false;
         }
 
-        PenetrationChanceData chanceData = penetrationChances[chanceIndex];
+        PenetrationChanceData chanceData = PenetrationChances[chanceIndex];
 
         if (chanceData == null)
         {

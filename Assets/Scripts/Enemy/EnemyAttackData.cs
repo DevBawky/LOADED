@@ -22,8 +22,8 @@ public class EnemyAttackData : ScriptableObject
     [SerializeField] private int markDurationTurns;
     [Min(0)]
     [SerializeField] private int poisonDurationTurns;
-    [Min(0f)]
-    [SerializeField] private float markDamageMultiplier = 1f;
+    [Min(0)]
+    [SerializeField] private int weaknessDurationTurns;
     [SerializeField] private GameObject attackEffectPrefab;
 
     public string SkillId => skillId;
@@ -35,6 +35,6 @@ public class EnemyAttackData : ScriptableObject
     public int StunDurationTurns => stunDurationTurns;
     public int MarkDurationTurns => markDurationTurns;
     public int PoisonDurationTurns => poisonDurationTurns;
-    public float MarkDamageMultiplier => markDamageMultiplier;
+    public int WeaknessDurationTurns => weaknessDurationTurns;
     public GameObject AttackEffectPrefab => attackEffectPrefab;
 }

@@ -14,15 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: 0
   displayName: Pierce
-  description: 
+  description: "(100-\uAC70\uB9AC)% \uD655\uB960\uB85C \uC801\uC744 \uAD00\uD1B5\uD569\uB2C8\uB2E4."
   sprite: {fileID: 0}
-  damage: 25
+  damage: 30
   maxRange: 5
-  knockbackDistance: 0
-  stunDurationTurns: 0
-  markDurationTurns: 0
-  poisonDurationTurns: 0
-  markDamageMultiplier: 1
+  criticalDamageMultiplier: 2
+  effects: []
   penetrationChances:
   - chance: 80
   - chance: 60

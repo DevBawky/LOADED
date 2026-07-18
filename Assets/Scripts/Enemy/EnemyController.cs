@@ -173,9 +173,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyDamage(int damage)
     {
+        return ApplyAttackDamage(damage) > 0;
+    }
+
+    public int ApplyAttackDamage(int damage)
+    {
         if (damage <= 0 || currentHealth <= 0)
         {
-            return false;
+            return 0;
         }
 
         int modifiedDamage = statusEffects == null
@@ -186,12 +191,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyStatusDamage(int damage)
     {
-        return ApplyDamageInternal(damage);
+        return ApplyDamageInternal(damage) > 0;
     }
 
     public bool ApplyCollisionDamage(int damage)
     {
-        return ApplyDamageInternal(damage);
+        return ApplyDamageInternal(damage) > 0;
     }
 
     public IEnumerator FlyTo(
@@ -232,14 +237,16 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             && statusEffects.Add(type, stacks);
     }
 
-    private bool ApplyDamageInternal(int damage)
+    private int ApplyDamageInternal(int damage)
     {
         if (damage <= 0 || currentHealth <= 0)
         {
-            return false;
+            return 0;
         }
 
+        int previousHealth = currentHealth;
         currentHealth = Mathf.Max(0, currentHealth - damage);
+        int appliedDamage = previousHealth - currentHealth;
         RefreshHealthUI();
         HealthChanged?.Invoke(this, currentHealth, enemyData.MaxHealth);
 
@@ -254,7 +261,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             Destroy(gameObject);
         }
 
-        return true;
+        return appliedDamage;
     }
 
     private void TakeMeleeTurn(int directionToPlayer, int distanceToPlayer)
@@ -457,7 +464,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                     Quaternion.identity);
             }
 
-            playerHealth.ApplyDamage(attackData.Damage);
+            int attackDamage = statusEffects == null
+                ? attackData.Damage
+                : statusEffects.ModifyOutgoingAttackDamage(
+                    attackData.Damage);
+            playerHealth.ApplyDamage(attackDamage);
 
             if (!playerHealth.IsDefeated)
             {
@@ -470,6 +481,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 playerHealth.AddStatusEffect(
                     StatusEffectType.Stun,
                     attackData.StunDurationTurns);
+                playerHealth.AddStatusEffect(
+                    StatusEffectType.Weakness,
+                    attackData.WeaknessDurationTurns);
             }
         }
 

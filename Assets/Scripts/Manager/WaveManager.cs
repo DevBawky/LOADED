@@ -454,7 +454,8 @@ public class WaveManager : MonoBehaviour
         out List<int> selectedTileIndices)
     {
         selectedTileIndices = new List<int>();
-        List<int> availableTileIndices = new List<int>();
+        List<int> preferredTileIndices = new List<int>();
+        List<int> adjacentFallbackTileIndices = new List<int>();
 
         if (requestedCount <= 0 || boardManager == null || playerMove == null
             || !boardManager.TryGetTileIndex(
@@ -466,29 +467,57 @@ public class WaveManager : MonoBehaviour
 
         for (int tileIndex = 0; tileIndex < boardManager.BoardCount; tileIndex++)
         {
-            if (tileIndex != playerIndex && !IsTileOccupied(tileIndex))
+            if (tileIndex == playerIndex || IsTileOccupied(tileIndex))
             {
-                availableTileIndices.Add(tileIndex);
+                continue;
+            }
+
+            if (Mathf.Abs(tileIndex - playerIndex) == 1)
+            {
+                adjacentFallbackTileIndices.Add(tileIndex);
+            }
+            else
+            {
+                preferredTileIndices.Add(tileIndex);
             }
         }
 
-        if (availableTileIndices.Count < requestedCount)
+        if (preferredTileIndices.Count
+            + adjacentFallbackTileIndices.Count < requestedCount)
         {
             return false;
         }
 
-        for (int selectionIndex = 0;
-             selectionIndex < requestedCount;
-             selectionIndex++)
+        SelectRandomSpawnTiles(
+            preferredTileIndices,
+            requestedCount,
+            selectedTileIndices);
+
+        if (selectedTileIndices.Count < requestedCount)
+        {
+            SelectRandomSpawnTiles(
+                adjacentFallbackTileIndices,
+                requestedCount,
+                selectedTileIndices);
+        }
+
+        return selectedTileIndices.Count == requestedCount;
+    }
+
+    private void SelectRandomSpawnTiles(
+        List<int> candidates,
+        int requestedTotalCount,
+        List<int> selectedTileIndices)
+    {
+        while (selectedTileIndices.Count < requestedTotalCount
+               && candidates.Count > 0)
         {
             int randomListIndex = UnityEngine.Random.Range(
                 0,
-                availableTileIndices.Count);
-            selectedTileIndices.Add(availableTileIndices[randomListIndex]);
-            availableTileIndices.RemoveAt(randomListIndex);
+                candidates.Count);
+            selectedTileIndices.Add(candidates[randomListIndex]);
+            candidates.RemoveAt(randomListIndex);
         }
-
-        return true;
     }
 
     private void RollBackWaveSpawn(List<EnemyController> spawnedEnemies)

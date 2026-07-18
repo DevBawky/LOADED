@@ -605,6 +605,8 @@ MonoBehaviour:
   markSprite: {fileID: 905750167250926724, guid: 38d8e94fbdd1fb748b93f786e06bb8b1, type: 3}
   poisonSprite: {fileID: 4572096609698180999, guid: 92c773c3dfea45f4793e3f6e1903d566, type: 3}
   stunSprite: {fileID: 5947414366408575533, guid: 57e5db4bece8e5743a459aad7888248b, type: 3}
+  weaknessSprite: {fileID: 0}
   markStacks: 0
   poisonStacks: 0
   stunStacks: 0
+  weaknessStacks: 0
