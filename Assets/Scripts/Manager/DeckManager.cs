@@ -66,6 +66,18 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public bool TryAddBullet(BulletData bulletData)
+    {
+        if (bulletData == null)
+        {
+            return false;
+        }
+
+        deck.Add(bulletData);
+        StateChanged?.Invoke();
+        return true;
+    }
+
     private void InitializeDeck()
     {
         deck.Clear();

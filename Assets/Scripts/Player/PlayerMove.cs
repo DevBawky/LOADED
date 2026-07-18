@@ -44,6 +44,7 @@ public class PlayerMove : MonoBehaviour
     private bool isShooting;
     private bool isActing;
     private bool isEnemyTurnResolving;
+    private bool isInputLocked;
     private bool isPushVisualDisplaced;
     private Vector3 pushVisualRestLocalPosition;
     private Vector3 pushVisualRestWorldPosition;
@@ -56,6 +57,7 @@ public class PlayerMove : MonoBehaviour
     public bool IsShooting => isShooting;
     public bool IsActing => isActing;
     public bool IsEnemyTurnResolving => isEnemyTurnResolving;
+    public bool IsInputLocked => isInputLocked;
     public bool CanStartAction => CanPerformAction();
     public int RemainingPushCooldownTurns => Mathf.Max(
         0,
@@ -80,6 +82,11 @@ public class PlayerMove : MonoBehaviour
     public void SetEnemyTurnResolving(bool resolving)
     {
         isEnemyTurnResolving = resolving;
+    }
+
+    public void SetInputLocked(bool inputLocked)
+    {
+        isInputLocked = inputLocked;
     }
 
     private void OnDisable()
@@ -591,7 +598,8 @@ public class PlayerMove : MonoBehaviour
 
     public bool TrySkipStunnedTurn()
     {
-        if (GamePauseController.IsPaused || isShooting || isActing
+        if (GamePauseController.IsPaused || isInputLocked
+            || isShooting || isActing
             || isEnemyTurnResolving || statusEffects == null
             || !statusEffects.ConsumeStunTurn())
         {
@@ -605,6 +613,7 @@ public class PlayerMove : MonoBehaviour
     private bool CanPerformAction()
     {
         return !GamePauseController.IsPaused
+            && !isInputLocked
             && !isShooting
             && !isActing
             && !isEnemyTurnResolving;

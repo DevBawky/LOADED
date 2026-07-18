@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8a11d19cd1b46158a0908ee4d20e96d, type: 3}
+  m_Name: Stage 1 Battle 05
+  m_EditorClassIdentifier: Assembly-CSharp::BattleData
+  battleId: stage_1_battle_05
+  displayName: Stage 1 Boss
+  battleType: 1
+  boardCount: 7
+  tilePrefab: {fileID: 6102437938462105721, guid: a8a92d97c094e1b42bdbf5fbb08aa209, type: 3}
+  spawnTerm: 2
+  waves:
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 3

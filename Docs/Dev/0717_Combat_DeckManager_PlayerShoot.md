@@ -73,7 +73,7 @@
 
 `Stage 1`의 `Panel | Floating > Bullet FeedBack Image`를 `PlayerShoot > Bullet Feedback Image`에 직접 연결했다. 탄환이 실제로 장전 목록에서 제거된 직후 해당 탄환의 `Primary Line Color` RGB와 고정 알파 0.2를 적용해 활성화하며, 현재 `Shot Interval` 동안 알파만 선형으로 0까지 감소시킨 뒤 비활성화한다. 다음 탄환이 먼저 발사되면 기존 페이드를 중단하고 새 탄환 색상으로 처음부터 다시 시작한다. 일시정지 중에는 페이드 시간이 진행되지 않으며, 전체 화면 Image가 UI 입력을 가로채지 않도록 Raycast Target을 런타임에 해제한다.
 
-`Assets/Scripts/Player/PlayerCylinderUI.cs`를 추가하고 Player 프리팹의 `Image | Cylinder`와 위쪽부터 회전 순서대로 배치된 6개의 `Image | Bullets`를 직렬화 참조로 연결했다. 첫 탄환이 장전되면 Cylinder가 활성화되고, 이후 탄환이 추가될 때마다 Z축을 `-60`도씩 SmoothStep 보간한다. LIFO 발사로 탄환이 하나 제거될 때마다 `+60`도 회전하며 마지막 탄환 제거 회전이 끝나면 Cylinder를 비활성화하고 각도를 0으로 초기화한다. 각 슬롯은 `BulletData.Sprite`를 표시하고 Sprite가 null이면 해당 탄환의 `PrimaryLineColor`를 사용한다. `PlayerShoot > Cylinder UI`가 DeckManager의 `StateChanged`를 구독하도록 초기화하며 런타임 자동 탐색은 사용하지 않는다.
+`Assets/Scripts/Player/PlayerCylinderUI.cs`를 추가하고 Player 프리팹의 `Image | Cylinder`와 위쪽부터 회전 순서대로 배치된 6개의 `Image | Bullets`를 직렬화 참조로 연결했다. 첫 탄환이 장전되면 Cylinder가 활성화되고, 이후 탄환이 추가될 때마다 Z축을 `-60`도씩 SmoothStep 보간한다. LIFO 발사로 탄환이 하나 제거될 때마다 `+60`도 회전하며 마지막 탄환 제거 회전이 끝나면 Cylinder를 비활성화하고 각도를 0으로 초기화한다. 각 슬롯은 `BulletData.CylinderIcon`만 표시하며 Image 색상은 항상 `(1, 1, 1, 1)`이다. Cylinder Icon이 비어 있으면 해당 슬롯 Image를 숨기며 Bullet Icon이나 PrimaryLineColor로 대체하지 않는다. `PlayerShoot > Cylinder UI`가 DeckManager의 `StateChanged`를 구독하도록 초기화하며 런타임 자동 탐색은 사용하지 않는다.
 
 성공한 한 발 장전은 `PlayerMove.CompleteTurn`을 호출한다. 연속 발사에서는 실제 발사된 탄환 중 `DoesNotConsumeTurn`이 false인 탄환이 하나라도 있을 때 모든 발사가 끝난 뒤 `CompleteTurn`을 한 번만 호출한다. 모든 탄환이 턴 비소비 탄환이면 턴을 소비하지 않는다. 실패한 장전과 한 발도 발사하지 못한 Shoot에서는 호출하지 않는다. 기존 `TurnCount`와 `TurnCompleted` 이벤트를 그대로 사용하기 위해 `CompleteTurn`의 접근 범위만 public으로 변경했다.
 
@@ -152,7 +152,7 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * 발사 시 `LoadedBullets`의 마지막 탄환부터 LIFO 순서로 제거되어 `Graveyard` 끝에 추가된다.
   * 첫 장전에서 Cylinder가 활성화되고 두 번째 탄환부터 장전할 때마다 `-60`도, 발사로 제거할 때마다 `+60`도 회전한다.
   * 마지막 탄환 제거 애니메이션 후 Cylinder와 모든 Bullet Image가 비활성화된다.
-  * BulletData Sprite가 있으면 슬롯 이미지에 표시하고 null이면 Primary Line Color로 표시한다.
+  * 슬롯 이미지는 BulletData Cylinder Icon만 원본 색상으로 표시하고 Image 색상을 항상 흰색으로 유지한다. 아이콘이 비어 있으면 슬롯 Image를 숨긴다.
   * 빈 덱에서 장전하면 무덤 전체가 덱으로 이동하고 셔플된 뒤 한 발이 장전된다.
   * 덱과 무덤이 모두 비어 있거나 장전 수량이 `MaxReloadAmount`에 도달한 경우 상태와 턴이 변경되지 않는다.
   * 기본 설정에서는 장전된 여러 탄환이 0.2초 간격으로 전부 발사된다.

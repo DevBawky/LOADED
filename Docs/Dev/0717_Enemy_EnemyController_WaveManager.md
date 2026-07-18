@@ -1,5 +1,7 @@
 ## AI-006: EnemyController & WaveManager
 
+> 260718 후속 변경: `WaveManager`는 현재 전투의 웨이브 실행만 담당한다. 전투 하나는 독립 `BattleData`, `StageData`는 BattleData 참조 배열이며 MainGame·Stage Clear·Shop 전환은 `StateManager`가 담당한다. 최신 적용 구조는 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.
+
 ### Basic Information
 
 * Date: 260717

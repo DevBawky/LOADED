@@ -158,18 +158,13 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void ApplyBulletImage(Image bulletImage, BulletData bulletData)
     {
-        if (bulletData == null || bulletData.Sprite == null)
-        {
-            bulletImage.sprite = null;
-            bulletImage.color = bulletData == null
-                ? Color.white
-                : bulletData.PrimaryLineColor;
-            return;
-        }
-
-        bulletImage.sprite = bulletData.Sprite;
-        bulletImage.color = Color.white;
+        Sprite cylinderIcon = bulletData == null
+            ? null
+            : bulletData.CylinderIcon;
+        bulletImage.sprite = cylinderIcon;
+        bulletImage.color = new Color(1f, 1f, 1f, 1f);
         bulletImage.preserveAspect = true;
+        bulletImage.enabled = cylinderIcon != null;
     }
 
     private void StartCylinderRotation(

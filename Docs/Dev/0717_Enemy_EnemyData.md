@@ -1,5 +1,7 @@
 ## AI-005: EnemyData
 
+> 260718 후속 변경: 기존 `Defeat Reward`는 공용 `Drop Chance`와 가중치형 `Drop Items` 표로 교체되었다. 골드/아이템/탄환 보상 설정은 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.
+
 ### Basic Information
 
 * Date: 260717

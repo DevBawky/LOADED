@@ -12,11 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
   m_Name: Ghost
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
-  bulletId: 0
-  displayName: Venom
+  bulletId: bullet_ghost
+  displayName: Ghost
   description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD560
     \uC218 \uC788\uC2B5\uB2C8\uB2E4."
-  sprite: {fileID: 0}
+  bulletIcon: {fileID: -6138938593977612690, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: -321094208572080090, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  price: 14
+  grade: 2
   damage: 20
   maxRange: 3
   criticalDamageMultiplier: 2

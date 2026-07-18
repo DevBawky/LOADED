@@ -1,5 +1,7 @@
 ## AI-003: BulletData
 
+> 260718 후속 변경: 상점용 `Price`, `Grade`, `Bullet Icon`, `Cylinder Icon`과 기존 `sprite` 직렬화 이전 규칙은 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.
+
 ### Basic Information
 
 * Date: 260717
