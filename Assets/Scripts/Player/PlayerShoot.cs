@@ -4,10 +4,13 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.Serialization;
+using UnityEngine.UI;
 using Unity.Cinemachine;
 
 public class PlayerShoot : MonoBehaviour
 {
+    private const float BulletFeedbackStartAlpha = 0.2f;
+
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
@@ -20,6 +23,7 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private Transform recoilCameraTransform;
     [SerializeField] private EventSystem eventSystem;
     [SerializeField] private PlayerCylinderUI cylinderUI;
+    [SerializeField] private Image bulletFeedbackImage;
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.2f;
 
@@ -45,6 +49,7 @@ public class PlayerShoot : MonoBehaviour
     private int lastActionFrame = -1;
     private bool isFiring;
     private Coroutine cameraRecoilCoroutine;
+    private Coroutine bulletFeedbackCoroutine;
     private readonly List<EnemyController> targetBuffer =
         new List<EnemyController>();
     private readonly List<EnemyController> hitBuffer =
@@ -60,6 +65,7 @@ public class PlayerShoot : MonoBehaviour
             playerMove.SetShooting(false);
         }
 
+        ResetBulletFeedback();
         ResetCameraRecoil();
     }
 
@@ -86,6 +92,13 @@ public class PlayerShoot : MonoBehaviour
             cameraRecoilCoroutine = null;
         }
 
+        if (bulletFeedbackCoroutine != null)
+        {
+            StopCoroutine(bulletFeedbackCoroutine);
+            bulletFeedbackCoroutine = null;
+        }
+
+        ResetBulletFeedback();
         ResetCameraRecoil();
     }
 
@@ -258,6 +271,7 @@ public class PlayerShoot : MonoBehaviour
             firedAnyBullet = true;
             consumesTurn |= !bulletData.DoesNotConsumeTurn;
 
+            ShowBulletFeedback(bulletData);
             GenerateRecoil(bulletData);
             bool isCritical = RollCritical();
             yield return ApplyHitResults(
@@ -504,6 +518,82 @@ public class PlayerShoot : MonoBehaviour
                 elapsedTime += Time.deltaTime;
             }
         }
+    }
+
+    private void ShowBulletFeedback(BulletData bulletData)
+    {
+        if (bulletFeedbackImage == null || bulletData == null)
+        {
+            return;
+        }
+
+        if (bulletFeedbackCoroutine != null)
+        {
+            StopCoroutine(bulletFeedbackCoroutine);
+            bulletFeedbackCoroutine = null;
+        }
+
+        Color feedbackColor = bulletData.PrimaryLineColor;
+        feedbackColor.a = BulletFeedbackStartAlpha;
+        bulletFeedbackImage.raycastTarget = false;
+        bulletFeedbackImage.color = feedbackColor;
+        bulletFeedbackImage.gameObject.SetActive(true);
+
+        if (shotInterval <= 0f)
+        {
+            ResetBulletFeedback();
+            return;
+        }
+
+        bulletFeedbackCoroutine = StartCoroutine(
+            FadeBulletFeedback(feedbackColor));
+    }
+
+    private IEnumerator FadeBulletFeedback(Color startColor)
+    {
+        float fadeDuration = shotInterval;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < fadeDuration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            if (bulletFeedbackImage == null)
+            {
+                bulletFeedbackCoroutine = null;
+                yield break;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / fadeDuration);
+            startColor.a = Mathf.Lerp(
+                BulletFeedbackStartAlpha,
+                0f,
+                progress);
+            bulletFeedbackImage.color = startColor;
+        }
+
+        ResetBulletFeedback();
+        bulletFeedbackCoroutine = null;
+    }
+
+    private void ResetBulletFeedback()
+    {
+        if (bulletFeedbackImage == null)
+        {
+            return;
+        }
+
+        Color feedbackColor = bulletFeedbackImage.color;
+        feedbackColor.a = 0f;
+        bulletFeedbackImage.raycastTarget = false;
+        bulletFeedbackImage.color = feedbackColor;
+        bulletFeedbackImage.gameObject.SetActive(false);
     }
 
     private void GenerateRecoil(BulletData bulletData)

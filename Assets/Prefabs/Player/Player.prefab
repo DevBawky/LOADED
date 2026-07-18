@@ -198,6 +198,7 @@ MonoBehaviour:
   recoilCameraTransform: {fileID: 0}
   eventSystem: {fileID: 0}
   cylinderUI: {fileID: 6842197531604829375}
+  bulletFeedbackImage: {fileID: 0}
   shotInterval: 0.2
   criticalChance: 0
   maxRandomShotAngle: 5
