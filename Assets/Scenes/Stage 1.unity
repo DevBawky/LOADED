@@ -1457,6 +1457,7 @@ Transform:
   - {fileID: 561211667}
   - {fileID: 396869079}
   - {fileID: 1522463504}
+  - {fileID: 2400001002}
   - {fileID: 114065785}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -1688,7 +1689,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.7, z: -10}
+  m_LocalPosition: {x: 0, y: 0, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2052,7 +2053,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &556220749
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4929,38 +4930,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d6b12152853f4c599a840bb413fb863f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaveManager
-  waves:
-  - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-      count: 2
-  - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-      count: 2
-  - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-      count: 2
-  - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-      count: 2
-  - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-      count: 3
   spawnPositionOffset: {x: 0, y: 0.7, z: 0}
-  spawnTerm: 2
   enemyTurnDelay: 0.2
   enemyActionInterval: 0.1
   boardManager: {fileID: 561211666}
   playerMove: {fileID: 2023230408}
   playerHealth: {fileID: 2023230410}
   enemyParent: {fileID: 114065785}
-  mainGamePanel: {fileID: 810092179}
-  stageClearPanel: {fileID: 2073699329}
+  rewardManager: {fileID: 2400001006}
   activeEnemies: []
   reservedSpawnTileIndices: 
   currentWaveIndex: -1
   remainingSpawnTurns: 0
   isWaitingForNextWave: 0
-  isStageCleared: 0
+  isBattleCompleted: 0
 --- !u!1 &1635157205
 GameObject:
   m_ObjectHideFlags: 0
@@ -7383,6 +7366,146 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2304500010}
   m_CullTransparentMesh: 1
+--- !u!1 &2400001001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2400001002}
+  - component: {fileID: 2400001003}
+  - component: {fileID: 2400001004}
+  - component: {fileID: 2400001005}
+  - component: {fileID: 2400001006}
+  m_Layer: 0
+  m_Name: '@_StateManager'
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2400001002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2400001001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 498823613}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2400001003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2400001001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec091625db8f4eb7fad354729061ce55, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StateManager
+  stages:
+  - {fileID: 11400000, guid: f21b3847fda04fc8abf57694b283e077, type: 2}
+  startingStageIndex: 0
+  playerSpawnOffset: {x: 0, y: 0, z: 0}
+  waveManager: {fileID: 1522463505}
+  boardManager: {fileID: 561211666}
+  shopManager: {fileID: 2400001004}
+  playerMove: {fileID: 2023230408}
+  playerHealth: {fileID: 2023230410}
+  mainGamePanel: {fileID: 810092179}
+  stageClearPanel: {fileID: 2073699329}
+  shopPanel: {fileID: 556220748}
+  goToMaintenanceButton: {fileID: 127623720}
+  goToMaintenanceText: {fileID: 766663602}
+  goToBattleButton: {fileID: 1265770794}
+  goToBattleText: {fileID: 1966641351}
+  currentStageIndex: -1
+  currentBattleIndex: -1
+  currentState: 0
+--- !u!114 &2400001004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2400001001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cae7f403b96d4c95d8b132507e4fac33, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShopManager
+  currencyManager: {fileID: 2400001005}
+  deckManager: {fileID: 396869080}
+  bulletPool:
+  - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
+  - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
+  - {fileID: 11400000, guid: 5b1cc3f10fc87664185df1b66d740e6d, type: 2}
+  - {fileID: 11400000, guid: 310b3e790ca558641b654f60fc863234, type: 2}
+  - {fileID: 11400000, guid: d32abd2fbde76bd489fb16a6f7fac438, type: 2}
+  - {fileID: 11400000, guid: 2c8721611477a5a498b670f1e06250bb, type: 2}
+  - {fileID: 11400000, guid: 4f93775b5e4e7a841a79e7507aa3e636, type: 2}
+  - {fileID: 11400000, guid: 44adbf2ba18471449a0f594c01212641, type: 2}
+  gradeWeights:
+  - grade: 0
+    appearanceWeight: 100
+  - grade: 1
+    appearanceWeight: 60
+  - grade: 2
+    appearanceWeight: 25
+  - grade: 3
+    appearanceWeight: 10
+  - grade: 4
+    appearanceWeight: 3
+  slots:
+  - button: {fileID: 1196990097}
+    bulletIcon: {fileID: 308142143}
+    costText: {fileID: 379951590}
+  - button: {fileID: 841612327}
+    bulletIcon: {fileID: 1635157207}
+    costText: {fileID: 37803916}
+  - button: {fileID: 273098503}
+    bulletIcon: {fileID: 1791891727}
+    costText: {fileID: 664113471}
+--- !u!114 &2400001005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2400001001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8c5f2d1e74b4a73b6f9103e5c2d8a11, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CurrencyManager
+  startingMoney: 0
+  currentMoneyText: {fileID: 1766732963}
+  currentMoney: 0
+--- !u!114 &2400001006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2400001001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9d6e3f2a85c4b84c7a0214f6d3e9b22, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RewardManager
+  currencyManager: {fileID: 2400001005}
+  deckManager: {fileID: 396869080}
+  playerInventory: {fileID: 2023230409}
 --- !u!1001 &350554640947637847
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -7457,7 +7580,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4654777449252698111, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.7
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4654777449252698111, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_LocalPosition.z

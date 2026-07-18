@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbf80514ca7e4da6e9c243618f50bd44, type: 3}
+  m_Name: Stage 1
+  m_EditorClassIdentifier: Assembly-CSharp::StageData
+  stageId: stage_1
+  displayName: Stage 1
+  battles:
+  - {fileID: 11400000, guid: 53925893ac2f4e6d9314572bf022f005, type: 2}
+  - {fileID: 11400000, guid: 1c1e1846439143e6887f349ec18e8d80, type: 2}
+  - {fileID: 11400000, guid: ef1b8fcc41554a0c88bae0677a172055, type: 2}
+  - {fileID: 11400000, guid: fc48d8139ca64fb3911bf817a99e3dfc, type: 2}
+  - {fileID: 11400000, guid: f26678f0173a474ab0e60009063e56eb, type: 2}

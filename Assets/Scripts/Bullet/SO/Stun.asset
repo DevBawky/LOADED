@@ -12,10 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
   m_Name: Stun
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
-  bulletId: 0
+  bulletId: bullet_stun
   displayName: Stun
   description: "70% \uD655\uB960\uB85C \uAE30\uC808\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
-  sprite: {fileID: 0}
+  bulletIcon: {fileID: 1595849069685491311, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: 2281616994717487372, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  price: 10
+  grade: 1
   damage: 10
   maxRange: 3
   criticalDamageMultiplier: 2

@@ -14,6 +14,15 @@ public enum BulletEffectType
     Weakness = 6
 }
 
+public enum BulletGrade
+{
+    Common = 0,
+    Uncommon = 1,
+    Rare = 2,
+    Epic = 3,
+    Legendary = 4
+}
+
 [Serializable]
 public class BulletEffectData
 {
@@ -57,10 +66,18 @@ public class PenetrationChanceData
 [CreateAssetMenu(fileName = "New Bullet", menuName = "Loaded/Bullet")]
 public class BulletData : ScriptableObject
 {
+    [Header("Basic Information")]
     [SerializeField] private string bulletId;
     [SerializeField] private string displayName;
     [SerializeField, TextArea] private string description;
-    [SerializeField] private Sprite sprite;
+    [FormerlySerializedAs("sprite")]
+    [SerializeField] private Sprite bulletIcon;
+    [SerializeField] private Sprite cylinderIcon;
+    [Min(0)]
+    [SerializeField] private int price;
+    [SerializeField] private BulletGrade grade;
+
+    [Header("Combat")]
     [Min(0)]
     [SerializeField] private int damage;
     [Range(1, 10)]
@@ -83,7 +100,10 @@ public class BulletData : ScriptableObject
     public string BulletId => bulletId;
     public string DisplayName => displayName;
     public string Description => description;
-    public Sprite Sprite => sprite;
+    public Sprite BulletIcon => bulletIcon;
+    public Sprite CylinderIcon => cylinderIcon;
+    public int Price => Mathf.Max(0, price);
+    public BulletGrade Grade => grade;
     public int Damage => damage;
     public int MaxRange => maxRange;
     public float CriticalDamageMultiplier =>

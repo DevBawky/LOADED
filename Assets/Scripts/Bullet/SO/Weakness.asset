@@ -12,10 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
   m_Name: Weakness
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
-  bulletId: 0
-  displayName: Life Steal
+  bulletId: bullet_weakness
+  displayName: Weakness
   description: "70% \uD655\uB960\uB85C \uC57D\uD654\uB97C 3 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
-  sprite: {fileID: 0}
+  bulletIcon: {fileID: 3029603797402824116, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: -3300396339194205850, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  price: 12
+  grade: 1
   damage: 10
   maxRange: 3
   criticalDamageMultiplier: 2

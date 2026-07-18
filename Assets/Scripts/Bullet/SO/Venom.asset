@@ -12,10 +12,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
   m_Name: Venom
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
-  bulletId: 0
+  bulletId: bullet_venom
   displayName: Venom
   description: "70% \uD655\uB960\uB85C \uB3C5\uC744 5\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
-  sprite: {fileID: 0}
+  bulletIcon: {fileID: -7715894896725399453, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: 1823540885998108106, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  price: 10
+  grade: 1
   damage: 10
   maxRange: 3
   criticalDamageMultiplier: 2
