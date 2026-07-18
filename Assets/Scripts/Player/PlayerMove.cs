@@ -152,7 +152,8 @@ public class PlayerMove : MonoBehaviour
         }
 
         if (!boardManager.TryGetTileIndex(targetPosition, out int targetTileIndex)
-            || waveManager.IsTileOccupied(targetTileIndex))
+            || waveManager.IsTileOccupied(targetTileIndex)
+            || waveManager.IsTileReservedForSpawn(targetTileIndex))
         {
             return;
         }

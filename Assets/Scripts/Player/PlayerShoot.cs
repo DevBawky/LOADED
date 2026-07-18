@@ -22,6 +22,10 @@ public class PlayerShoot : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.2f;
 
+    [Header("Shot Presentation")]
+    [Min(0f)]
+    [SerializeField] private float maxRandomShotAngle = 5f;
+
     [Header("Camera Recoil")]
     [Min(0f)]
     [SerializeField] private float cameraRecoilScale = 0.02f;
@@ -219,12 +223,20 @@ public class PlayerShoot : MonoBehaviour
                     bulletData.MaxRange);
             }
 
+            Vector3 shotStartPoint = firePoint.position;
+            Vector3 shotEndPoint = GetShotLineEndPoint(
+                shotStartPoint,
+                endPoint);
+
             BulletLine bulletLine = Instantiate(
                 bulletLinePrefab,
-                firePoint.position,
+                shotStartPoint,
                 Quaternion.identity);
 
-            if (!bulletLine.Initialize(bulletData, firePoint.position, endPoint))
+            if (!bulletLine.Initialize(
+                    bulletData,
+                    shotStartPoint,
+                    shotEndPoint))
             {
                 Destroy(bulletLine.gameObject);
                 break;
@@ -325,6 +337,25 @@ public class PlayerShoot : MonoBehaviour
             0.01f);
         return firePoint.position
             + Vector3.right * horizontalDirection * fallbackDistance;
+    }
+
+    private Vector3 GetShotLineEndPoint(
+        Vector3 startPoint,
+        Vector3 targetEndPoint)
+    {
+        Vector3 horizontalEndPoint = new Vector3(
+            targetEndPoint.x,
+            startPoint.y,
+            startPoint.z);
+        Vector3 horizontalShotVector = horizontalEndPoint - startPoint;
+        float angleLimit = Mathf.Max(0f, maxRandomShotAngle);
+        float randomAngle = UnityEngine.Random.Range(
+            -angleLimit,
+            angleLimit);
+        Vector3 angledShotVector = Quaternion.AngleAxis(
+            randomAngle,
+            Vector3.forward) * horizontalShotVector;
+        return startPoint + angledShotVector;
     }
 
     private IEnumerator WaitForShotInterval()

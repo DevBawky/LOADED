@@ -14,6 +14,8 @@ Shader "Loaded/Bullet Smoke Flame Line"
 
         [Header(Energy)]
         _CoreIntensity("Core Intensity", Range(0.0, 5.0)) = 2.4
+        _CoreOpacity("Core Opacity", Range(0.0, 1.0)) = 0.82
+        _SmokeBrightness("Smoke Brightness", Range(0.5, 3.0)) = 1.35
         _SparkDensity("Spark Density", Range(0.0, 1.0)) = 0.86
         _SparkIntensity("Spark Intensity", Range(0.0, 5.0)) = 2.7
         _OverallAlpha("Overall Alpha", Range(0.0, 1.0)) = 0.9
@@ -23,6 +25,7 @@ Shader "Loaded/Bullet Smoke Flame Line"
         _EndSoftness("End Softness", Range(0.001, 0.35)) = 0.08
 
         [Header(Color Mix)]
+        [HDR] _PrimaryColor("Primary Color", Color) = (1.0, 0.2, 0.1, 1.0)
         [HDR] _SecondaryColor("Secondary Color", Color) = (1.0, 0.45, 0.08, 1.0)
         _ColorBlend("Secondary Blend", Range(0.0, 1.0)) = 0.72
     }
@@ -75,11 +78,14 @@ Shader "Loaded/Bullet Smoke Flame Line"
                 float _CoreWidth;
                 float _TailTaper;
                 float _CoreIntensity;
+                float _CoreOpacity;
+                float _SmokeBrightness;
                 float _SparkDensity;
                 float _SparkIntensity;
                 float _OverallAlpha;
                 float _SmokeBreakup;
                 float _EndSoftness;
+                half4 _PrimaryColor;
                 half4 _SecondaryColor;
                 float _ColorBlend;
             CBUFFER_END
@@ -140,38 +146,64 @@ Shader "Loaded/Bullet Smoke Flame Line"
                     input.uv.x * _NoiseScale * 2.1 + time * 1.7,
                     input.uv.y * 5.3 - domainNoise * 1.4 - time * 0.2));
 
-                float distanceFromCore = abs(input.uv.y * 2.0 - 1.0);
-                float warpedDistance = saturate(
-                    distanceFromCore
-                    + (broadNoise - 0.5) * _EdgeDistortion);
+                float centeredY = input.uv.y * 2.0 - 1.0;
+                float centerWarp = (domainNoise - 0.5) * 0.28
+                    + (broadNoise - 0.5) * _EdgeDistortion;
+                float warpedDistance = abs(centeredY + centerWarp);
+                float smokeRadius = lerp(0.58, 0.88, broadNoise);
+                float edgeFeather = max(0.035, _EdgeSoftness * 0.32);
                 float smokeMask = 1.0 - smoothstep(
-                    1.0 - _EdgeSoftness,
-                    1.0,
+                    smokeRadius - edgeFeather,
+                    smokeRadius + edgeFeather,
                     warpedDistance);
                 float densityNoise = saturate(
                     broadNoise * 0.52
                     + fineNoise * 0.3
                     + domainNoise * 0.18);
+                float breakupEnd = _SmokeBreakup
+                    + max(0.02, (1.0 - _SmokeBreakup) * 0.28);
                 float breakupMask = smoothstep(
                     _SmokeBreakup,
-                    _SmokeBreakup + 0.35,
-                    densityNoise + smokeMask * 0.48);
+                    breakupEnd,
+                    densityNoise + smokeMask * 0.32);
                 float coreMask = 1.0 - smoothstep(
                     _CoreWidth,
-                    min(1.0, _CoreWidth + 0.2),
-                    distanceFromCore);
+                    min(1.0, _CoreWidth + 0.24),
+                    warpedDistance);
                 float tailMask = lerp(
                     1.0 - _TailTaper,
                     1.0,
                     smoothstep(0.0, 0.4, input.uv.x));
-                float endMask = smoothstep(
+                float startJitter = (domainNoise - 0.5)
+                    * _EndSoftness * 1.8;
+                float endJitter = (fineNoise - 0.5)
+                    * _EndSoftness * 1.8;
+                float irregularEndMask = smoothstep(
                     0.0,
                     _EndSoftness,
-                    input.uv.x)
-                    * (1.0 - smoothstep(
-                        1.0 - _EndSoftness,
-                        1.0,
-                        input.uv.x));
+                    input.uv.x + startJitter)
+                    * smoothstep(
+                        0.0,
+                        _EndSoftness,
+                        1.0 - input.uv.x + endJitter);
+                float boundaryMask = smoothstep(0.0, 0.012, input.uv.x)
+                    * smoothstep(0.0, 0.012, 1.0 - input.uv.x);
+                float endMask = irregularEndMask * boundaryMask;
+
+                float wispDistance = abs(
+                    centeredY
+                    + (fineNoise - 0.5) * _EdgeDistortion * 1.8);
+                float wispShape = 1.0 - smoothstep(
+                    0.48,
+                    1.05,
+                    wispDistance);
+                float wispNoise = smoothstep(
+                    0.44,
+                    0.78,
+                    densityNoise + domainNoise * 0.18);
+                float wisps = wispShape
+                    * wispNoise
+                    * (1.0 - coreMask * 0.75);
 
                 float2 sparkPosition = float2(
                     input.uv.x * 48.0 - time * 6.0,
@@ -185,32 +217,46 @@ Shader "Loaded/Bullet Smoke Flame Line"
                     length(sparkLocal * float2(0.45, 1.0)));
                 float sparks = smoothstep(
                     _SparkDensity,
-                    1.0,
-                    sparkSeed) * sparkShape * smokeMask * endMask;
+                    max(1.001, _SparkDensity + 0.001),
+                    sparkSeed) * sparkShape * max(smokeMask, wisps) * endMask;
 
-                float wispMask = lerp(
-                    0.42,
-                    1.0,
-                    saturate(broadNoise * 0.65 + fineNoise * 0.35));
-                float alpha = saturate(
-                    smokeMask * breakupMask * wispMask + sparks * 0.8)
+                float smokeAlpha = smokeMask
+                    * lerp(0.52, 1.0, breakupMask);
+                float alpha = saturate(max(
+                        smokeAlpha + wisps * 0.28 + sparks * 0.75,
+                        coreMask * _CoreOpacity))
                     * tailMask
                     * endMask
                     * _OverallAlpha
                     * input.color.a;
-                float brightness = lerp(0.48, 0.85, broadNoise)
-                    + coreMask * _CoreIntensity
-                    + sparks * _SparkIntensity;
-                float secondaryMix = saturate(
-                    fineNoise * 0.35
-                    + coreMask * 0.7
-                    + sparks)
+
+                float flowingColorMix = saturate(
+                    0.16
+                    + broadNoise * 0.42
+                    + fineNoise * 0.28)
                     * _ColorBlend
                     * _SecondaryColor.a;
-                half3 mixedColor = lerp(
-                    input.color.rgb,
+                half3 smokeColor = lerp(
+                    _PrimaryColor.rgb,
                     _SecondaryColor.rgb,
-                    secondaryMix);
+                    flowingColorMix);
+                half3 coreColor = lerp(
+                    _SecondaryColor.rgb,
+                    _PrimaryColor.rgb,
+                    0.76);
+                half3 mixedColor = lerp(
+                    smokeColor,
+                    coreColor,
+                    coreMask);
+                mixedColor = lerp(
+                    mixedColor,
+                    _SecondaryColor.rgb * 1.2,
+                    saturate(sparks));
+
+                float brightness = _SmokeBrightness
+                    * lerp(0.72, 1.12, densityNoise)
+                    + coreMask * _CoreIntensity
+                    + sparks * _SparkIntensity;
 
                 return half4(mixedColor * brightness, alpha);
             }

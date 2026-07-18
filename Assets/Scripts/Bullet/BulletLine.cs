@@ -4,6 +4,8 @@ using UnityEngine.Serialization;
 
 public class BulletLine : MonoBehaviour
 {
+    private static readonly int PrimaryColorId =
+        Shader.PropertyToID("_PrimaryColor");
     private static readonly int SecondaryColorId =
         Shader.PropertyToID("_SecondaryColor");
 
@@ -39,7 +41,9 @@ public class BulletLine : MonoBehaviour
 
         lineRenderer.startColor = bulletData.PrimaryLineColor;
         lineRenderer.endColor = bulletData.PrimaryLineColor;
-        ApplySecondaryColor(bulletData.SecondaryLineColor);
+        ApplyLineColors(
+            bulletData.PrimaryLineColor,
+            bulletData.SecondaryLineColor);
         lineRenderer.useWorldSpace = true;
         lineRenderer.positionCount = 2;
         lineRenderer.SetPosition(0, startPoint);
@@ -49,7 +53,7 @@ public class BulletLine : MonoBehaviour
         return true;
     }
 
-    private void ApplySecondaryColor(Color secondaryColor)
+    private void ApplyLineColors(Color primaryColor, Color secondaryColor)
     {
         if (materialPropertyBlock == null)
         {
@@ -57,6 +61,7 @@ public class BulletLine : MonoBehaviour
         }
 
         materialPropertyBlock.Clear();
+        materialPropertyBlock.SetColor(PrimaryColorId, primaryColor);
         materialPropertyBlock.SetColor(SecondaryColorId, secondaryColor);
         lineRenderer.SetPropertyBlock(materialPropertyBlock);
     }

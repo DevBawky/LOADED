@@ -42,10 +42,13 @@
 * 탄환 LineRenderer는 설정한 시간 동안 알파가 서서히 0으로 감소한 뒤 제거됩니다.
 * 발사된 탄환 중 `doesNotConsumeTurn`이 false인 탄환이 하나라도 있으면 전체 발사 완료 후 턴을 한 번 소비합니다.
 * 이동하는 Projectile 대신 LineRenderer를 즉시 표시합니다.
-* LineRenderer 시작점은 Fire Point, 끝점은 바라보는 방향과 최대 사거리 안에서 관통 판정까지 통과한 마지막 적의 위치로 설정합니다.
+* LineRenderer 시작점은 Fire Point, 길이는 바라보는 방향과 최대 사거리 안에서 관통 판정까지 통과한 마지막 적의 X 거리로 설정합니다.
+* 발사선의 기준 높이는 Fire Point의 Y로 고정하고 탄환마다 설정 가능한 `-N° ~ +N°` 랜덤 각도 편차를 적용합니다.
 * 유효 사거리 안에 적이 없어도 발사를 실행하고 탄환 및 턴 규칙을 정상 처리합니다.
 * 최대 사거리가 보드 경계를 넘으면 마지막 유효 타일의 정중앙을 끝점으로 사용합니다.
 * Line Material이 비어 있으면 프리팹의 Material을 유지하고 Primary/Secondary Line Color를 적용합니다.
+* Primary와 Secondary 색을 밝은 중심부와 불규칙한 외곽 연기층에 함께 사용하고, 사각형처럼 보이지 않는 노이즈 기반 실루엣을 만듭니다.
+* 어두운 배경과 밝은 배경 모두에서 식별할 수 있도록 연기 불투명도, 코어 밝기와 LineRenderer 폭을 보강합니다.
 * 공격력, 관통, 밀어내기, 기절, 표식 데이터는 이후 적중 코드가 사용할 수 있도록 발사선에 전달합니다.
 * 설치된 Cinemachine 버전에 맞는 Basic Multi Channel Perlin의 Amplitude Gain과 Frequency Gain을 사용합니다.
 * 발사 반동이 끝나면 두 Gain을 0으로 만들고 Main Camera를 원래 위치 `(0, 0, -10)`으로 복구합니다.
@@ -73,15 +76,19 @@
 
 `BulletLine`은 전달된 `BulletData`를 `Data`에 보관한다. 후속 Enemy 시스템 연결에서 `PlayerShoot`이 정면 사거리 안의 적을 가까운 순서로 찾고 공격력과 관통 확률을 적용하도록 확장했다. 밀어내기, 기절, 표식 실행은 아직 구현하지 않았다. 이동하는 Projectile은 제거했으며 발사선은 `Fade Duration` 동안 시작 색상과 끝 색상의 알파를 SmoothStep으로 0까지 보간한 뒤 자동 제거된다. 일시정지 중에는 페이드 시간이 진행되지 않는다.
 
-`WaveManager.GetEnemiesInDirection`은 플레이어 타일을 기준으로 바라보는 방향과 `MaxRange` 안의 적을 가까운 순서로 제공한다. 수집 시 각 적의 타일 거리와 타일 인덱스를 한 번만 저장하고 그 값으로 정렬해, 정렬 비교 도중 Transform 위치를 다시 조회하며 순서가 달라지는 경로를 제거했다. 첫 적은 확정 적중하고 이후 적은 `Penetration Chances`를 단계별로 판정한다. `PlayerShoot`은 가장 앞의 적에게 피해를 먼저 적용하며, 첫 피해 적용이 실패하면 뒤쪽 관통 대상의 피해도 중단한다. 적이 있으면 LineRenderer 끝점은 마지막 적중 적의 위치다. 적이 없으면 바라보는 방향의 최대 사거리 내 가장 먼 유효 타일 중앙까지 발사하고, 보드 끝에서 바깥을 바라보는 경우에만 Fire Point에서 사거리만큼 전방을 fallback 끝점으로 사용한다. 빗나간 탄환도 장전 목록에서 무덤으로 이동하고 반동과 `DoesNotConsumeTurn` 규칙을 정상 적용한다.
+`WaveManager.GetEnemiesInDirection`은 플레이어 타일을 기준으로 바라보는 방향과 `MaxRange` 안의 적을 가까운 순서로 제공한다. 수집 시 각 적의 타일 거리와 타일 인덱스를 한 번만 저장하고 그 값으로 정렬해, 정렬 비교 도중 Transform 위치를 다시 조회하며 순서가 달라지는 경로를 제거했다. 첫 적은 확정 적중하고 이후 적은 `Penetration Chances`를 단계별로 판정한다. `PlayerShoot`은 가장 앞의 적에게 피해를 먼저 적용하며, 첫 피해 적용이 실패하면 뒤쪽 관통 대상의 피해도 중단한다. 적이 있으면 LineRenderer 길이는 마지막 적중 적까지의 X 거리로 계산한다. 적이 없으면 바라보는 방향의 최대 사거리 내 가장 먼 유효 타일까지의 X 거리를 사용하고, 보드 끝에서 바깥을 바라보는 경우에만 Fire Point에서 사거리만큼 전방을 fallback 거리로 사용한다. 실제 발사선은 Fire Point Y의 수평 기준에서 랜덤 각도를 적용한다. 빗나간 탄환도 장전 목록에서 무덤으로 이동하고 반동과 `DoesNotConsumeTurn` 규칙을 정상 적용한다.
 
-발사 초기화 시 LineRenderer의 위치 개수를 2로 설정하고 시작점과 끝점을 즉시 적용한다. Line Material이 null이 아닐 때만 `sharedMaterial` 참조를 교체하므로 null이면 프리팹 Material이 유지된다. Primary Line Color는 시작 색상과 끝 색상에 함께 적용하고 Secondary Line Color는 `MaterialPropertyBlock`으로 해당 LineRenderer 인스턴스에만 전달한다. 공유 Material 속성이나 `BulletData` 원본은 수정하지 않는다. 기존 `trailMaterial`, `trailColor`, `lineColor` 필드는 `FormerlySerializedAs`를 사용해 기존 에셋 값을 유지한다. `lineDuration`은 `FormerlySerializedAs`를 적용한 `fadeDuration`으로 변경해 기존 프리팹 값을 유지한다. Bullet 프리팹에는 `Line Renderer`와 `Fade Duration`이 직렬화되어 있다.
+발사 초기화 시 LineRenderer의 위치 개수를 2로 설정하고 시작점과 끝점을 즉시 적용한다. Line Material이 null이 아닐 때만 `sharedMaterial` 참조를 교체하므로 null이면 프리팹 Material이 유지된다. Primary Line Color는 시작·끝 vertex color와 `_PrimaryColor`에, Secondary Line Color는 `_SecondaryColor`에 적용한다. 두 셰이더 색은 하나의 `MaterialPropertyBlock`으로 해당 LineRenderer 인스턴스에만 전달하므로 공유 Material 속성이나 `BulletData` 원본을 수정하지 않는다. vertex alpha는 기존 Fade Out에 계속 사용한다. 기존 `trailMaterial`, `trailColor`, `lineColor` 필드는 `FormerlySerializedAs`를 사용해 기존 에셋 값을 유지한다. `lineDuration`은 `FormerlySerializedAs`를 적용한 `fadeDuration`으로 변경해 기존 프리팹 값을 유지한다. Bullet 프리팹에는 `Line Renderer`와 `Fade Duration`이 직렬화되어 있다.
 
-`BulletSmokeFlameLine.mat`은 URP용 `Loaded/Bullet Smoke Flame Line` 셰이더 하나를 사용한다. 별도 텍스처 없이 다중 단계 노이즈와 domain warp로 끊어진 연기 밀도, 부드러운 양 끝, 밝은 중심부, 흐르는 불꽃과 스파크 알파 마스크를 만든다. LineRenderer 폭 곡선도 시작·중간·끝의 두께가 다른 테이퍼 형태로 변경했다. 셰이더는 vertex color의 Primary와 PropertyBlock의 Secondary를 노이즈 및 코어 마스크로 혼합한다. Material은 Bullet 프리팹의 기본 LineRenderer와 테스트 Bullet의 `Line Material`에 동일한 공유 참조로 연결했으며 런타임에는 Material 속성을 변경하지 않는다.
+`BulletSmokeFlameLine.mat`은 URP용 `Loaded/Bullet Smoke Flame Line` 셰이더 하나를 사용한다. 별도 텍스처 없이 다중 단계 노이즈와 domain warp로 중심선 자체를 흔들고, 노이즈마다 연기 반경을 바꿔 상하 외곽이 평행한 사각형으로 보이지 않게 했다. 바깥 wisp와 밀도 breakup, 노이즈로 서로 다르게 깎이는 양 끝, 작은 spark를 합성하며 메시 경계에서는 알파를 강제로 0으로 만들어 직사각형 모서리를 숨긴다.
+
+색상은 `_PrimaryColor`와 `_SecondaryColor`를 모두 PropertyBlock으로 받는다. 외곽 연기층은 흐르는 노이즈 값으로 두 색을 섞고, 중심 코어는 Primary 비중을 높이며 spark에는 Secondary를 강조한다. 가독성을 위해 Material의 `Overall Alpha`를 1, `Smoke Brightness`를 1.45, `Core Intensity`를 3.2, `Core Opacity`를 0.86으로 조정했다. LineRenderer `Width Multiplier`는 1.35로 키우고 폭 곡선은 초반 팽창 후 끝으로 갈수록 여러 단계로 가늘어지도록 변경했다. Material은 Bullet 프리팹의 기본 LineRenderer와 테스트 Bullet의 `Line Material`에 동일한 공유 참조로 연결했으며 런타임에는 공유 속성을 변경하지 않는다.
 
 `PlayerShoot`의 프리팹 참조 필드는 `projectilePrefab`에서 `bulletLinePrefab`으로 변경했으며 `FormerlySerializedAs`를 적용해 기존 Inspector 참조가 유지되도록 했다. Inspector에서는 `Bullet Line Prefab`에 LineRenderer가 연결된 Bullet 프리팹을 할당한다.
 
-Inspector에서 `DeckManager > Deck Settings > Max Reload Amount`로 최대 장전 수량을 조절하고, `PlayerShoot > Shot Interval`로 각 발사 사이의 시간을 조절한다. Bullet 프리팹의 `BulletLine > Fade Duration`으로 각 발사선이 완전히 투명해질 때까지의 시간을 조절한다. 연속 발사 도중 일시정지하면 발사 대기 시간과 LineRenderer 페이드 시간이 모두 진행하지 않으며 재개 후 계속된다.
+후속 발사 연출 변경으로 적 또는 타일의 Y를 발사선 끝점에 직접 사용하지 않고, 먼저 끝점 Y와 Z를 Fire Point의 값으로 맞춰 수평 기준 벡터를 만든다. 각 탄환을 발사할 때마다 이 벡터를 Z축 기준 `-Max Random Shot Angle`부터 `+Max Random Shot Angle` 사이에서 무작위로 회전한다. 기본값은 5도다. 명중 대상, 관통, 피해 판정은 기존 타일 기반 결과를 그대로 사용하므로 랜덤 각도는 LineRenderer 연출에만 영향을 주며 명중률을 변경하지 않는다.
+
+Inspector에서 `DeckManager > Deck Settings > Max Reload Amount`로 최대 장전 수량을 조절하고, `PlayerShoot > Shot Interval`로 각 발사 사이의 시간을 조절한다. `PlayerShoot > Shot Presentation > Max Random Shot Angle`은 발사선의 최대 각도 편차 N을 도 단위로 설정하며 0이면 Fire Point Y의 완전한 수평선이 된다. Bullet 프리팹의 `BulletLine > Fade Duration`으로 각 발사선이 완전히 투명해질 때까지의 시간을 조절한다. 연속 발사 도중 일시정지하면 발사 대기 시간과 LineRenderer 페이드 시간이 모두 진행하지 않으며 재개 후 계속된다.
 
 프로젝트에 설치된 Cinemachine 3.1.7의 `CinemachineBasicMultiChannelPerlin`을 사용한다. `PlayerShoot`은 Inspector에서 `recoilNoise`와 `recoilCameraTransform`을 직접 참조하고 런타임 자동 탐색을 사용하지 않는다. Scene의 Main Camera에 연결된 Noise Profile을 유지하면서 `AmplitudeGain`과 `FrequencyGain`만 런타임에 조절한다.
 
@@ -115,11 +122,12 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * 장전 및 발사의 성공·실패별 `CompleteTurn` 호출 조건 확인
   * R, Space, 마우스 왼쪽 버튼과 한 프레임 중복 방어 코드 확인
   * 현재 타일, 바라보는 X축 방향, `MaxRange`, 보드 경계를 이용한 끝점 타일 인덱스 계산 확인
-  * LineRenderer 시작점과 마지막 적중 Enemy 위치 끝점 적용 확인
+  * LineRenderer 시작점, 마지막 적중 Enemy까지의 X 거리와 Fire Point Y 수평 기준 적용 확인
+  * 각 발사선의 시작점과 수평 기준 Y가 Fire Point Y를 사용하고, 설정 범위 안의 개별 랜덤 각도가 적용되는지 확인
   * 유효 적이 없을 때 최대 유효 사거리 타일 끝점, 탄환 소비, 반동 및 턴 조건 확인
   * 적의 타일 거리를 수집 시 캐시해 가까운 순서로 정렬하고 첫 적의 피해를 관통 대상보다 먼저 처리하는지 확인
-  * null Line Material 유지, Primary/Secondary Line Color 적용, 공유 에셋 미수정 확인
-  * URP Line 셰이더가 vertex color, MaterialPropertyBlock, 인스턴스 알파를 사용하고 공유 Material 속성을 수정하지 않는지 정적 확인
+  * null Line Material 유지, Primary/Secondary Line Color의 단일 PropertyBlock 적용, 공유 에셋 미수정 확인
+  * URP Line 셰이더가 Primary 코어, 혼합 연기층, 불규칙 외곽·끝단 마스크와 인스턴스 알파를 사용하는지 정적 확인
   * Cinemachine 3.1.7 패키지 소스에서 `CinemachineBasicMultiChannelPerlin.AmplitudeGain`, `FrequencyGain` API 확인
   * Orthographic Size 5 기준 Recoil Scale 0.02, Frequency Gain 0.8, Attack 0.1초, Recovery 0.45초 확인
   * 5차 SmootherStep Gain 보간과 Recovery 중 Camera 위치 보간 확인
@@ -146,10 +154,10 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * 기본값에서 목표 Amplitude Gain은 `RecoilStrength * 0.02`, Frequency Gain은 0.8이다.
   * 반동은 0.1초 Attack과 0.45초 Recovery 및 5차 SmootherStep으로 처리된다.
   * Recovery 동안 Camera 위치도 원위치로 보간되고, 완료 후 두 Gain은 0이 되며 Camera 위치는 정확히 `(0, 0, -10)`으로 설정된다.
-  * 정면 최대 사거리 안의 적이 거리순으로 선택되고 관통에 성공한 마지막 적의 위치가 끝점이 된다.
+  * 정면 최대 사거리 안의 적이 거리순으로 선택되고 관통에 성공한 마지막 적까지의 X 거리가 발사선 길이로 사용된다.
   * 정면에 적이 없어도 장전 탄환이 발사되어 무덤으로 이동하고 최대 유효 타일 중앙까지 발사선이 생성된다.
   * 정렬 중 적 위치를 재조회하지 않으며 가장 앞 적의 피해가 성공한 뒤에만 뒤쪽 관통 대상의 피해를 순서대로 적용한다.
-  * Line Material이 null이면 프리팹 Material을 유지하며 Primary는 양 끝 vertex color, Secondary는 인스턴스 PropertyBlock에 적용된다.
+  * Line Material이 null이면 프리팹 Material을 유지하며 Primary와 Secondary 모두 인스턴스 PropertyBlock에 적용된다. Primary vertex alpha는 Fade Out을 제어한다.
   * Bullet 프리팹과 테스트 Bullet은 동일한 `BulletSmokeFlameLine` Material을 사용하며 Material 자체의 색상은 런타임에 변경하지 않는다.
   * C# 빌드 결과는 경고 0개, 오류 0개였다.
   * Unity Play Mode 검증은 수행하지 않았다.
@@ -179,7 +187,7 @@ Player 프리팹의 `PlayerCylinderUI`는 `Cylinder Transform`, 위쪽부터 순
 
 각 BulletLine은 프리팹의 `Fade Duration` 동안 RGB를 유지한 채 알파만 부드럽게 0으로 줄어든 뒤 제거된다. SampleScene에서 사용하는 Bullet 프리팹의 기본 Fade Duration은 0.2초다.
 
-발사 시 Fire Point에서 관통 판정을 통과한 마지막 적까지 LineRenderer가 즉시 표시된다. 적중한 적은 `BulletData.Damage`만큼 체력이 감소한다. 유효한 적이 없어도 최대 유효 사거리 타일까지 발사선이 표시되고 장전 탄환은 무덤으로 이동하며, 탄환 데이터에 따라 턴을 소비한다.
+발사 시 Fire Point에서 관통 판정을 통과한 마지막 적의 X 거리까지 LineRenderer가 즉시 표시된다. 발사선은 Fire Point Y를 수평 기준으로 삼고 탄환마다 `Max Random Shot Angle` 범위의 시각적 각도 편차를 적용한다. 적중한 적은 각도 연출과 관계없이 `BulletData.Damage`만큼 체력이 감소한다. 유효한 적이 없어도 최대 유효 사거리 타일의 X 거리까지 발사선이 표시되고 장전 탄환은 무덤으로 이동하며, 탄환 데이터에 따라 턴을 소비한다.
 
 Cinemachine Basic Multi Channel Perlin의 Gain은 탄환의 `RecoilStrength`와 `Camera Recoil Scale`에 비례해 5차 SmootherStep으로 부드럽게 상승·감소한다. 낮은 Frequency Gain과 긴 Recovery를 사용하며 Camera 위치도 Recovery 동안 함께 원위치로 보간한다. 반동이 끝나면 Gain을 모두 0으로 만들고 Main Camera를 정확히 `(0, 0, -10)`으로 복구한다. C# 빌드에서 경고와 오류가 발생하지 않았다. Unity Play Mode 최종 검증은 별도로 필요하다.
 
@@ -199,4 +207,4 @@ Orthographic Size가 작은 2D 카메라에서는 탄환의 수치 데이터를 
 
 행동 잠금은 입력을 처리하는 컴포넌트 하나만 막아서는 충분하지 않다. 공개 UI 메소드가 있는 PlayerMove에도 명시적인 사격 상태를 전달해야 키보드와 버튼이 동일한 규칙을 따를 수 있다. 짧은 발사선은 공유 Material의 알파를 변경하지 않고 LineRenderer 인스턴스의 시작·끝 색상 알파를 보간해야 다른 발사선에 영향을 주지 않는다.
 
-관통 대상 정렬에서는 비교 함수 안에서 Transform을 다시 조회하지 않고 수집 순간의 타일 거리 값을 캐시해야 첫 대상 순서를 안정적으로 유지할 수 있다. 또한 Primary는 LineRenderer vertex color, Secondary는 MaterialPropertyBlock으로 전달하면 공용 Material 하나를 유지하면서 탄환별 두 색을 ScriptableObject에서 독립적으로 관리할 수 있다. 직사각형 LineRenderer는 셰이더 알파만 바꾸는 것보다 폭 곡선의 테이퍼, 양 끝 마스크, 밀도 breakup을 함께 적용해야 연기 형태가 분명해진다.
+관통 대상 정렬에서는 비교 함수 안에서 Transform을 다시 조회하지 않고 수집 순간의 타일 거리 값을 캐시해야 첫 대상 순서를 안정적으로 유지할 수 있다. Primary와 Secondary를 같은 MaterialPropertyBlock으로 전달하면 공용 Material 하나를 유지하면서 탄환별 두 색을 ScriptableObject에서 독립적으로 관리할 수 있다. 직사각형 LineRenderer는 단순 알파 페이드만으로 숨기기 어렵기 때문에 중심선 warp, 위치별 반경 변화, 외곽 wisp, 비대칭 양 끝 마스크와 다단 폭 곡선을 함께 적용해야 연기 형태가 분명해진다.

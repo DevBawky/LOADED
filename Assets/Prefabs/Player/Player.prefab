@@ -185,6 +185,7 @@ MonoBehaviour:
   eventSystem: {fileID: 0}
   cylinderUI: {fileID: 6842197531604829375}
   shotInterval: 0.2
+  maxRandomShotAngle: 5
   cameraRecoilScale: 1.6
   recoilFrequencyGain: 1.2
   recoilAttackDuration: 0.15

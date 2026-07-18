@@ -471,6 +471,7 @@ MonoBehaviour:
   actionQueueUI: {fileID: 4925572819471286301}
   maxQueuedAttacks: 3
   queuedActionInterval: 0.2
+  meleeAdditionalAttackChance: 0.5
   currentHealth: 0
   queuedAttackActions: []
   isQueueCreated: 0

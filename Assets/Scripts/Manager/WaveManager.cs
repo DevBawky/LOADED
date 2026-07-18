@@ -3,13 +3,31 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[Serializable]
+public class EnemyWaveEntry
+{
+    [SerializeField] private EnemyController enemyPrefab;
+    [Min(1)]
+    [SerializeField] private int count = 1;
+
+    public EnemyController EnemyPrefab => enemyPrefab;
+    public int Count => count;
+}
+
+[Serializable]
+public class EnemyWave
+{
+    [SerializeField] private EnemyWaveEntry[] enemies =
+        Array.Empty<EnemyWaveEntry>();
+
+    public IReadOnlyList<EnemyWaveEntry> Enemies =>
+        enemies ?? Array.Empty<EnemyWaveEntry>();
+}
+
 public class WaveManager : MonoBehaviour
 {
     [Header("Stage Settings")]
-    [SerializeField] private List<EnemyController> stageEnemyPool =
-        new List<EnemyController>();
-    [Min(0)]
-    [SerializeField] private int maxActiveEnemies = 3;
+    [SerializeField] private EnemyWave[] waves = Array.Empty<EnemyWave>();
     [SerializeField] private Vector3 spawnPositionOffset =
         new Vector3(0f, 0.3f, 0f);
     [Min(0)]
@@ -26,11 +44,18 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private Transform enemyParent;
+    [SerializeField] private GameObject mainGamePanel;
+    [SerializeField] private GameObject stageClearPanel;
 
     [Header("Runtime State")]
     [SerializeField] private List<EnemyController> activeEnemies =
         new List<EnemyController>();
+    [SerializeField] private List<int> reservedSpawnTileIndices =
+        new List<int>();
+    [SerializeField] private int currentWaveIndex = -1;
     [SerializeField] private int remainingSpawnTurns;
+    [SerializeField] private bool isWaitingForNextWave;
+    [SerializeField] private bool isStageCleared;
 
     private bool isResolvingTurn;
     private Coroutine enemyTurnCoroutine;
@@ -40,18 +65,26 @@ public class WaveManager : MonoBehaviour
     public event Action StateChanged;
 
     public IReadOnlyList<EnemyController> ActiveEnemies => activeEnemies;
-    public int MaxActiveEnemies => maxActiveEnemies;
+    public IReadOnlyList<EnemyWave> Waves => waves ?? Array.Empty<EnemyWave>();
+    public int CurrentWaveIndex => currentWaveIndex;
     public Vector3 SpawnPositionOffset => spawnPositionOffset;
     public int SpawnTerm => spawnTerm;
     public int RemainingSpawnTurns => remainingSpawnTurns;
     public float EnemyTurnDelay => enemyTurnDelay;
     public float EnemyActionInterval => enemyActionInterval;
+    public bool IsWaitingForNextWave => isWaitingForNextWave;
+    public bool IsStageCleared => isStageCleared;
     public bool IsResolvingTurn => isResolvingTurn;
 
     private void Awake()
     {
         activeEnemies.Clear();
-        ResetSpawnCountdown();
+        reservedSpawnTileIndices.Clear();
+        currentWaveIndex = -1;
+        remainingSpawnTurns = 0;
+        isWaitingForNextWave = false;
+        isStageCleared = false;
+        SetStageClearUI(false);
     }
 
     private void OnEnable()
@@ -73,15 +106,19 @@ public class WaveManager : MonoBehaviour
 
         playerMove.SetWaveManager(this);
 
-        if (remainingSpawnTurns == 0)
+        if (waves == null || waves.Length == 0)
         {
-            FillAvailableEnemySlots();
-            ResetSpawnCountdown();
+            CompleteStage();
+            return;
         }
+
+        TrySpawnNextWave();
     }
 
     private void OnDisable()
     {
+        ClearSpawnWarnings();
+
         if (enemyTurnCoroutine != null)
         {
             StopCoroutine(enemyTurnCoroutine);
@@ -116,6 +153,11 @@ public class WaveManager : MonoBehaviour
         }
 
         return false;
+    }
+
+    public bool IsTileReservedForSpawn(int tileIndex)
+    {
+        return reservedSpawnTileIndices.Contains(tileIndex);
     }
 
     public void GetEnemiesInDirection(
@@ -169,27 +211,9 @@ public class WaveManager : MonoBehaviour
         }
     }
 
-    private void FillAvailableEnemySlots()
-    {
-        if (!ValidateReferences() || maxActiveEnemies <= 0)
-        {
-            return;
-        }
-
-        RemoveMissingEnemies();
-
-        while (activeEnemies.Count < maxActiveEnemies)
-        {
-            if (!TrySpawnRandomEnemy())
-            {
-                break;
-            }
-        }
-    }
-
     private void HandlePlayerTurnCompleted()
     {
-        if (isResolvingTurn || !ValidateReferences())
+        if (isResolvingTurn || isStageCleared || !ValidateReferences())
         {
             return;
         }
@@ -236,7 +260,7 @@ public class WaveManager : MonoBehaviour
         }
 
         RemoveMissingEnemies();
-        AdvanceSpawnCountdown();
+        AdvanceWaveCountdown();
         playerMove.SetEnemyTurnResolving(false);
         isResolvingTurn = false;
         enemyTurnCoroutine = null;
@@ -258,14 +282,91 @@ public class WaveManager : MonoBehaviour
         }
     }
 
-    private bool TrySpawnRandomEnemy()
+    private bool TrySpawnNextWave()
     {
-        EnemyController enemyPrefab = GetRandomEnemyPrefab();
+        int nextWaveIndex = currentWaveIndex + 1;
 
-        if (enemyPrefab == null || !TryGetRandomAvailableTile(out Vector3 spawnPosition))
+        if (waves == null || nextWaveIndex < 0 || nextWaveIndex >= waves.Length)
+        {
+            CompleteStage();
+            return false;
+        }
+
+        EnemyWave nextWave = waves[nextWaveIndex];
+
+        if (!TryGetWaveEnemyCount(nextWave, out int enemyCount)
+            || enemyCount > GetAvailableSpawnTileCount())
+        {
+            Debug.LogError(
+                $"Wave {nextWaveIndex + 1} must contain valid enemy prefabs and fit on the available board tiles.",
+                this);
+            return false;
+        }
+
+        List<int> spawnTileIndices;
+
+        if (reservedSpawnTileIndices.Count == enemyCount)
+        {
+            spawnTileIndices = new List<int>(reservedSpawnTileIndices);
+        }
+        else if (!TrySelectSpawnTileIndices(enemyCount, out spawnTileIndices))
+        {
+            Debug.LogError(
+                $"Wave {nextWaveIndex + 1} spawn tiles could not be selected.",
+                this);
+            return false;
+        }
+
+        List<EnemyController> spawnedEnemies = new List<EnemyController>();
+        int spawnTileListIndex = 0;
+
+        foreach (EnemyWaveEntry entry in nextWave.Enemies)
+        {
+            for (int count = 0; count < entry.Count; count++)
+            {
+                int spawnTileIndex = spawnTileIndices[spawnTileListIndex];
+                spawnTileListIndex++;
+
+                if (!TrySpawnEnemy(
+                        entry.EnemyPrefab,
+                        spawnTileIndex,
+                        out EnemyController enemy))
+                {
+                    RollBackWaveSpawn(spawnedEnemies);
+                    Debug.LogError(
+                        $"Wave {nextWaveIndex + 1} could not be spawned completely.",
+                        this);
+                    return false;
+                }
+
+                spawnedEnemies.Add(enemy);
+            }
+        }
+
+        currentWaveIndex = nextWaveIndex;
+        remainingSpawnTurns = 0;
+        isWaitingForNextWave = false;
+        ClearSpawnWarnings();
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    private bool TrySpawnEnemy(
+        EnemyController enemyPrefab,
+        int spawnTileIndex,
+        out EnemyController spawnedEnemy)
+    {
+        spawnedEnemy = null;
+
+        if (enemyPrefab == null
+            || !boardManager.TryGetTilePosition(
+                spawnTileIndex,
+                out Vector3 spawnPosition))
         {
             return false;
         }
+
+        spawnPosition += spawnPositionOffset;
 
         EnemyController enemy = Instantiate(
             enemyPrefab,
@@ -281,36 +382,65 @@ public class WaveManager : MonoBehaviour
 
         activeEnemies.Add(enemy);
         enemy.Defeated += HandleEnemyDefeated;
-        StateChanged?.Invoke();
+        spawnedEnemy = enemy;
         return true;
     }
 
-    private EnemyController GetRandomEnemyPrefab()
+    private bool TryGetWaveEnemyCount(EnemyWave wave, out int enemyCount)
     {
-        List<EnemyController> validPrefabs = new List<EnemyController>();
+        enemyCount = 0;
 
-        foreach (EnemyController enemyPrefab in stageEnemyPool)
+        if (wave == null || wave.Enemies == null || wave.Enemies.Count == 0)
         {
-            if (enemyPrefab != null && enemyPrefab.Data != null)
+            return false;
+        }
+
+        foreach (EnemyWaveEntry entry in wave.Enemies)
+        {
+            if (entry == null || entry.EnemyPrefab == null
+                || entry.EnemyPrefab.Data == null || entry.Count <= 0)
             {
-                validPrefabs.Add(enemyPrefab);
+                return false;
+            }
+
+            enemyCount += entry.Count;
+        }
+
+        return enemyCount > 0;
+    }
+
+    private int GetAvailableSpawnTileCount()
+    {
+        if (boardManager == null || playerMove == null
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerIndex))
+        {
+            return 0;
+        }
+
+        int availableCount = 0;
+
+        for (int tileIndex = 0; tileIndex < boardManager.BoardCount; tileIndex++)
+        {
+            if (tileIndex != playerIndex && !IsTileOccupied(tileIndex))
+            {
+                availableCount++;
             }
         }
 
-        if (validPrefabs.Count == 0)
-        {
-            return null;
-        }
-
-        return validPrefabs[UnityEngine.Random.Range(0, validPrefabs.Count)];
+        return availableCount;
     }
 
-    private bool TryGetRandomAvailableTile(out Vector3 spawnPosition)
+    private bool TrySelectSpawnTileIndices(
+        int requestedCount,
+        out List<int> selectedTileIndices)
     {
-        spawnPosition = Vector3.zero;
+        selectedTileIndices = new List<int>();
         List<int> availableTileIndices = new List<int>();
 
-        if (!boardManager.TryGetTileIndex(
+        if (requestedCount <= 0 || boardManager == null || playerMove == null
+            || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
                 out int playerIndex))
         {
@@ -325,21 +455,79 @@ public class WaveManager : MonoBehaviour
             }
         }
 
-        if (availableTileIndices.Count == 0)
+        if (availableTileIndices.Count < requestedCount)
         {
             return false;
         }
 
-        int randomListIndex = UnityEngine.Random.Range(0, availableTileIndices.Count);
-        int randomTileIndex = availableTileIndices[randomListIndex];
-
-        if (!boardManager.TryGetTilePosition(randomTileIndex, out spawnPosition))
+        for (int selectionIndex = 0;
+             selectionIndex < requestedCount;
+             selectionIndex++)
         {
-            return false;
+            int randomListIndex = UnityEngine.Random.Range(
+                0,
+                availableTileIndices.Count);
+            selectedTileIndices.Add(availableTileIndices[randomListIndex]);
+            availableTileIndices.RemoveAt(randomListIndex);
         }
 
-        spawnPosition += spawnPositionOffset;
         return true;
+    }
+
+    private void RollBackWaveSpawn(List<EnemyController> spawnedEnemies)
+    {
+        foreach (EnemyController enemy in spawnedEnemies)
+        {
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            enemy.Defeated -= HandleEnemyDefeated;
+            activeEnemies.Remove(enemy);
+            Destroy(enemy.gameObject);
+        }
+    }
+
+    private bool PrepareNextWaveWarnings()
+    {
+        ClearSpawnWarnings();
+        int nextWaveIndex = currentWaveIndex + 1;
+
+        if (waves == null || nextWaveIndex < 0 || nextWaveIndex >= waves.Length
+            || !TryGetWaveEnemyCount(waves[nextWaveIndex], out int enemyCount)
+            || !TrySelectSpawnTileIndices(
+                enemyCount,
+                out List<int> selectedTileIndices))
+        {
+            return false;
+        }
+
+        reservedSpawnTileIndices.AddRange(selectedTileIndices);
+
+        foreach (int tileIndex in reservedSpawnTileIndices)
+        {
+            if (!boardManager.SetTileWarningActive(tileIndex, true))
+            {
+                ClearSpawnWarnings();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void ClearSpawnWarnings()
+    {
+        if (boardManager != null)
+        {
+            foreach (int tileIndex in reservedSpawnTileIndices)
+            {
+                boardManager.SetTileWarningActive(tileIndex, false);
+            }
+        }
+
+        reservedSpawnTileIndices.Clear();
     }
 
     private void HandleEnemyDefeated(EnemyController enemy)
@@ -351,13 +539,100 @@ public class WaveManager : MonoBehaviour
 
         enemy.Defeated -= HandleEnemyDefeated;
         activeEnemies.Remove(enemy);
+
+        if (activeEnemies.Count == 0)
+        {
+            HandleWaveCleared();
+        }
+
         StateChanged?.Invoke();
+    }
+
+    private void HandleWaveCleared()
+    {
+        if (currentWaveIndex < 0 || isStageCleared)
+        {
+            return;
+        }
+
+        if (waves == null || currentWaveIndex >= waves.Length - 1)
+        {
+            CompleteStage();
+            return;
+        }
+
+        isWaitingForNextWave = true;
+        remainingSpawnTurns = Mathf.Max(0, spawnTerm);
+
+        if (!PrepareNextWaveWarnings())
+        {
+            Debug.LogError(
+                $"Wave {currentWaveIndex + 2} spawn warnings could not be prepared.",
+                this);
+        }
+
+        if (remainingSpawnTurns == 0)
+        {
+            TrySpawnNextWave();
+        }
+    }
+
+    private void AdvanceWaveCountdown()
+    {
+        if (!isWaitingForNextWave || isStageCleared || activeEnemies.Count > 0)
+        {
+            return;
+        }
+
+        if (remainingSpawnTurns > 0)
+        {
+            remainingSpawnTurns--;
+            StateChanged?.Invoke();
+        }
+
+        if (remainingSpawnTurns == 0)
+        {
+            TrySpawnNextWave();
+        }
+    }
+
+    private void CompleteStage()
+    {
+        if (isStageCleared)
+        {
+            return;
+        }
+
+        isStageCleared = true;
+        isWaitingForNextWave = false;
+        remainingSpawnTurns = 0;
+        ClearSpawnWarnings();
+        SetStageClearUI(true);
+        StateChanged?.Invoke();
+    }
+
+    private void SetStageClearUI(bool isCleared)
+    {
+        if (stageClearPanel != null)
+        {
+            stageClearPanel.SetActive(isCleared);
+        }
+
+        if (mainGamePanel != null)
+        {
+            mainGamePanel.SetActive(!isCleared);
+        }
     }
 
     private void RemoveMissingEnemies()
     {
         if (activeEnemies.RemoveAll(enemy => enemy == null) > 0)
         {
+            if (activeEnemies.Count == 0)
+            {
+                HandleWaveCleared();
+            }
+
             StateChanged?.Invoke();
         }
     }
@@ -399,44 +674,16 @@ public class WaveManager : MonoBehaviour
         return first.TileIndex.CompareTo(second.TileIndex);
     }
 
-    private void AdvanceSpawnCountdown()
-    {
-        if (activeEnemies.Count >= maxActiveEnemies || maxActiveEnemies <= 0)
-        {
-            ResetSpawnCountdown();
-            return;
-        }
-
-        if (remainingSpawnTurns > 0)
-        {
-            remainingSpawnTurns--;
-            StateChanged?.Invoke();
-        }
-
-        if (remainingSpawnTurns > 0)
-        {
-            return;
-        }
-
-        FillAvailableEnemySlots();
-        ResetSpawnCountdown();
-        StateChanged?.Invoke();
-    }
-
-    private void ResetSpawnCountdown()
-    {
-        remainingSpawnTurns = Mathf.Max(0, spawnTerm);
-    }
-
     private bool ValidateReferences()
     {
-        if (boardManager != null && playerMove != null && playerHealth != null)
+        if (boardManager != null && playerMove != null && playerHealth != null
+            && mainGamePanel != null && stageClearPanel != null)
         {
             return true;
         }
 
         Debug.LogError(
-            "Board Manager, Player Move, and Player Health must be assigned in the Inspector.",
+            "Board Manager, Player Move, Player Health, Main Game Panel, and Stage Clear Panel must be assigned in the Inspector.",
             this);
         return false;
     }
