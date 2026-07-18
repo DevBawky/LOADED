@@ -25,8 +25,10 @@
 탄환 데이터를 `ScriptableObject`로 구현해주세요.
 
 * 탄환 ID, 이름, 설명, 스프라이트를 저장합니다.
-* 공격력, 최대 사거리 1~10칸, 밀어내기 거리, 기절 지속 턴, 표식 지속 턴을 저장합니다.
-* 표식 피해 배율은 `float` 1~3 범위로 저장합니다.
+* 공격력, 탄환별 크리티컬 피해 배율과 최대 사거리 1~10칸을 저장합니다.
+* 독, 기절, 표식, 밀치기, 위치 교환, 흡혈, 약화는 `Effects` 배열 항목으로 저장합니다.
+* 각 효과에는 0~100% 발동 확률을 두고 디버프 스택과 밀치기 거리를 타입에 맞게 사용합니다.
+* 표식 피해 증가는 탄환별 변수가 아닌 상태 시스템의 고정 50% 규칙을 사용합니다.
 * Trail Material과 Trail Color를 저장합니다.
 * 관통은 bool이나 고정된 `maxHitCount`가 아니라 `PenetrationChanceData` 리스트로 관리합니다.
 * 첫 번째 적은 반드시 적중하고, 각 리스트 값은 현재 적을 맞힌 뒤 다음 적까지 관통할 확률로 사용합니다.
@@ -41,9 +43,11 @@
 
 ### Output Summary
 
-`Assets/Scripts/Bullet/BulletData.cs`에 `PenetrationChanceData`와 `BulletData`를 구현했다. `BulletData`는 요청된 식별 정보, 전투 수치, 상태 효과, 관통 확률 리스트, Trail Material, Trail Color를 직렬화 필드로 보관하며 읽기 전용 프로퍼티로 제공한다.
+> 260718 후속 변경: 개별 `Knockback Distance`, `Stun Duration Turns`, `Mark Duration Turns`, `Poison Duration Turns`, `Mark Damage Multiplier` 필드는 `Effects` 배열로 대체했다. 이후 탄환별 `Critical Damage Multiplier`와 `LifeSteal`, `Weakness` 효과를 추가했다. 현재 구조와 적용 규칙은 `0718_Combat_BulletEffects.md`를 기준으로 한다.
 
-`MaxRange`에는 1~10, `MarkDamageMultiplier`에는 1~3, 각 관통 확률에는 0~100의 Inspector 범위 제한을 적용했다. `MaxHitCount`는 별도 직렬화 필드를 만들지 않고 `penetrationChances.Count + 1`로 계산한다.
+`Assets/Scripts/Bullet/BulletData.cs`에 `PenetrationChanceData`, `BulletEffectData`, `BulletData`를 구현했다. `BulletData`는 요청된 식별 정보, 전투 수치, 최소 1로 보정되는 크리티컬 배율, 상태 효과 배열, 관통 확률 리스트, Trail Material, Trail Color를 직렬화 필드로 보관하며 읽기 전용 프로퍼티로 제공한다.
+
+`MaxRange`에는 1~10, 각 관통 및 효과 발동 확률에는 0~100의 Inspector 범위 제한을 적용했다. `MaxHitCount`는 별도 직렬화 필드를 만들지 않고 `penetrationChances.Count + 1`로 계산한다.
 
 관통 판정은 현재까지 적중한 적 수에서 1을 뺀 값을 리스트 인덱스로 사용한다. `RollPenetrationAfterHit`은 런타임 확률 판정을 제공하고, `CanPenetrateAfterHit`은 외부에서 전달한 0 이상 100 미만의 roll 값으로 동일한 규칙을 검증할 수 있도록 구성했다.
 
@@ -63,6 +67,7 @@
 * 검증 방법:
 
   * `BulletData`의 모든 요청 필드와 Inspector 범위 속성 확인
+  * 모든 기존 BulletData 에셋에 `Critical Damage Multiplier = 2`가 직렬화됐는지 확인
   * 관통 리스트 인덱스 계산과 `MaxHitCount` 계산식 정적 검토
   * 빈 리스트, `[100]`, `[100, 50]`에 대한 적중 순서 대입 확인
   * `BulletProjectile.Initialize`의 null 방어, Clear 호출 순서, Material 및 Color 적용 코드 확인

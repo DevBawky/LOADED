@@ -10,23 +10,23 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
-  m_Name: Stun
+  m_Name: Weakness
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: 0
-  displayName: Stun
-  description: "70% \uD655\uB960\uB85C \uAE30\uC808\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  displayName: Life Steal
+  description: "70% \uD655\uB960\uB85C \uC57D\uD654\uB97C 3 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
   sprite: {fileID: 0}
   damage: 10
   maxRange: 3
   criticalDamageMultiplier: 2
   effects:
-  - effectType: 1
+  - effectType: 6
     activationChance: 70
-    stackCount: 1
+    stackCount: 3
     knockbackDistance: 1
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-  primaryLineColor: {r: 0.72627974, g: 0, b: 1, a: 1}
-  secondaryLineColor: {r: 0.16617921, g: 0, b: 0.34901962, a: 1}
+  primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
+  secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1

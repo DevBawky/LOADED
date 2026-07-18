@@ -10,6 +10,7 @@ public class PlayerShoot : MonoBehaviour
 {
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private PlayerMove playerMove;
+    [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private WaveManager waveManager;
     [SerializeField] private Transform firePoint;
@@ -21,6 +22,10 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private PlayerCylinderUI cylinderUI;
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.2f;
+
+    [Header("Critical")]
+    [Range(0f, 100f)]
+    [SerializeField] private float criticalChance;
 
     [Header("Shot Presentation")]
     [Min(0f)]
@@ -46,6 +51,7 @@ public class PlayerShoot : MonoBehaviour
         new List<EnemyController>();
 
     public bool IsFiring => isFiring;
+    public float CriticalChance => criticalChance;
 
     private void Awake()
     {
@@ -147,12 +153,12 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
-        if (deckManager == null || playerMove == null || boardManager == null
-            || waveManager == null || firePoint == null
+        if (deckManager == null || playerMove == null || playerHealth == null
+            || boardManager == null || waveManager == null || firePoint == null
             || bulletLinePrefab == null)
         {
             Debug.LogError(
-                "Deck Manager, Player Move, Board Manager, Wave Manager, Fire Point, and Bullet Line Prefab must be assigned in the Inspector.",
+                "Deck Manager, Player Move, Player Health, Board Manager, Wave Manager, Fire Point, and Bullet Line Prefab must be assigned in the Inspector.",
                 this);
             return;
         }
@@ -252,9 +258,12 @@ public class PlayerShoot : MonoBehaviour
             firedAnyBullet = true;
             consumesTurn |= !bulletData.DoesNotConsumeTurn;
 
-            ApplyDamageToHitTargets(bulletData);
-
             GenerateRecoil(bulletData);
+            bool isCritical = RollCritical();
+            yield return ApplyHitResults(
+                bulletData,
+                horizontalDirection,
+                isCritical);
 
             if (deckManager.LoadedBullets.Count > 0 && shotInterval > 0f)
             {
@@ -296,12 +305,19 @@ public class PlayerShoot : MonoBehaviour
         }
     }
 
-    private void ApplyDamageToHitTargets(BulletData bulletData)
+    private IEnumerator ApplyHitResults(
+        BulletData bulletData,
+        int horizontalDirection,
+        bool isCritical)
     {
         if (bulletData == null || hitBuffer.Count == 0)
         {
-            return;
+            yield break;
         }
+
+        int attackDamage = CalculateAttackDamage(
+            bulletData,
+            isCritical);
 
         for (int hitIndex = 0; hitIndex < hitBuffer.Count; hitIndex++)
         {
@@ -312,24 +328,130 @@ public class PlayerShoot : MonoBehaviour
                 continue;
             }
 
-            if (bulletData.Damage > 0)
-            {
-                enemy.ApplyDamage(bulletData.Damage);
-            }
+            int appliedDamage = enemy.ApplyAttackDamage(attackDamage);
 
-            if (enemy != null && enemy.CurrentHealth > 0)
+            IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
+
+            for (int effectIndex = 0;
+                 effectIndex < effects.Count;
+                effectIndex++)
             {
-                enemy.AddStatusEffect(
-                    StatusEffectType.Mark,
-                    bulletData.MarkDurationTurns);
-                enemy.AddStatusEffect(
-                    StatusEffectType.Poison,
-                    bulletData.PoisonDurationTurns);
-                enemy.AddStatusEffect(
-                    StatusEffectType.Stun,
-                    bulletData.StunDurationTurns);
+                BulletEffectData effect = effects[effectIndex];
+
+                if (effect == null)
+                {
+                    continue;
+                }
+
+                bool canApplyToDefeatedTarget =
+                    effect.EffectType == BulletEffectType.LifeSteal;
+
+                if (!canApplyToDefeatedTarget
+                    && (enemy == null || enemy.CurrentHealth <= 0))
+                {
+                    continue;
+                }
+
+                if (!effect.RollActivation())
+                {
+                    continue;
+                }
+
+                yield return ApplyBulletEffect(
+                    effect,
+                    enemy,
+                    horizontalDirection,
+                    appliedDamage);
             }
         }
+    }
+
+    private IEnumerator ApplyBulletEffect(
+        BulletEffectData effect,
+        EnemyController enemy,
+        int horizontalDirection,
+        int appliedDamage)
+    {
+        if (effect == null)
+        {
+            yield break;
+        }
+
+        if (effect.EffectType == BulletEffectType.LifeSteal)
+        {
+            playerHealth.Heal(appliedDamage);
+            yield break;
+        }
+
+        if (enemy == null || enemy.CurrentHealth <= 0)
+        {
+            yield break;
+        }
+
+        switch (effect.EffectType)
+        {
+            case BulletEffectType.Poison:
+                enemy.AddStatusEffect(
+                    StatusEffectType.Poison,
+                    effect.StackCount);
+                break;
+            case BulletEffectType.Stun:
+                enemy.AddStatusEffect(
+                    StatusEffectType.Stun,
+                    effect.StackCount);
+                break;
+            case BulletEffectType.Mark:
+                enemy.AddStatusEffect(
+                    StatusEffectType.Mark,
+                    effect.StackCount);
+                break;
+            case BulletEffectType.Knockback:
+                yield return playerMove.PushEnemyFromBullet(
+                    enemy,
+                    horizontalDirection,
+                    effect.KnockbackDistance);
+                break;
+            case BulletEffectType.PositionSwap:
+                yield return playerMove.SwapPositionWithEnemy(enemy);
+                break;
+            case BulletEffectType.Weakness:
+                enemy.AddStatusEffect(
+                    StatusEffectType.Weakness,
+                    effect.StackCount);
+                break;
+        }
+    }
+
+    private int CalculateAttackDamage(
+        BulletData bulletData,
+        bool isCritical)
+    {
+        if (bulletData == null || bulletData.Damage <= 0)
+        {
+            return 0;
+        }
+
+        int damage = bulletData.Damage;
+
+        if (isCritical)
+        {
+            damage = Mathf.CeilToInt(
+                damage * bulletData.CriticalDamageMultiplier);
+        }
+
+        return playerHealth.ModifyOutgoingAttackDamage(damage);
+    }
+
+    private bool RollCritical()
+    {
+        return CanTriggerCritical(UnityEngine.Random.Range(0f, 100f));
+    }
+
+    public bool CanTriggerCritical(float roll)
+    {
+        float chance = Mathf.Clamp(criticalChance, 0f, 100f);
+        return chance >= 100f
+            || chance > 0f && roll >= 0f && roll < chance;
     }
 
     private Vector3 GetMissEndPoint(int horizontalDirection, int maxRange)

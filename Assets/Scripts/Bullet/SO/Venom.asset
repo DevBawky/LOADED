@@ -14,15 +14,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: 0
   displayName: Venom
-  description: 
+  description: "70% \uD655\uB960\uB85C \uB3C5\uC744 5\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
   sprite: {fileID: 0}
   damage: 10
   maxRange: 3
-  knockbackDistance: 0
-  stunDurationTurns: 0
-  markDurationTurns: 0
-  poisonDurationTurns: 5
-  markDamageMultiplier: 1
+  criticalDamageMultiplier: 2
+  effects:
+  - effectType: 0
+    activationChance: 70
+    stackCount: 5
+    knockbackDistance: 1
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}

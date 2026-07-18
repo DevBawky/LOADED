@@ -233,14 +233,153 @@ public class PlayerMove : MonoBehaviour
     {
         isActing = true;
 
-        if (pushedEnemy == null
-            || !TryBuildPushPath(
+        if (!TryCreateEnemyPushPlan(
                 pushedEnemy,
                 direction,
-                out EnemyController collidedEnemy))
+                int.MaxValue,
+                out EnemyPushPlan pushPlan))
         {
             isActing = false;
             yield break;
+        }
+
+        yield return ExecuteEnemyPush(pushPlan, true);
+
+        nextPushAvailableTurn = TurnCount
+            + Mathf.Max(0, pushCooldownTurns)
+            + 1;
+        isActing = false;
+        CompleteTurn();
+    }
+
+    public IEnumerator PushEnemyFromBullet(
+        EnemyController pushedEnemy,
+        int direction,
+        int knockbackDistance)
+    {
+        if (knockbackDistance <= 0
+            || !TryCreateEnemyPushPlan(
+                pushedEnemy,
+                direction,
+                knockbackDistance,
+                out EnemyPushPlan pushPlan))
+        {
+            yield break;
+        }
+
+        yield return ExecuteEnemyPush(pushPlan, false);
+    }
+
+    public IEnumerator SwapPositionWithEnemy(EnemyController enemy)
+    {
+        if (enemy == null || enemy.CurrentHealth <= 0
+            || boardManager == null || actorMotion == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int playerTileIndex)
+            || !boardManager.TryGetTileIndex(
+                enemy.transform.position,
+                out int enemyTileIndex)
+            || playerTileIndex == enemyTileIndex
+            || !boardManager.TryGetTilePosition(
+                playerTileIndex,
+                out Vector3 playerTilePosition)
+            || !boardManager.TryGetTilePosition(
+                enemyTileIndex,
+                out Vector3 enemyTilePosition))
+        {
+            yield break;
+        }
+
+        Vector3 playerPositionOffset = transform.position - playerTilePosition;
+        Vector3 enemyPositionOffset = enemy.transform.position - enemyTilePosition;
+        Vector3 playerTargetPosition = enemyTilePosition + playerPositionOffset;
+        Vector3 enemyTargetPosition = playerTilePosition + enemyPositionOffset;
+        float swapDuration = Mathf.Max(0f, actorMotion.MoveDuration);
+
+        Coroutine enemySwapRoutine = StartCoroutine(
+            enemy.FlyTo(enemyTargetPosition, swapDuration));
+        yield return actorMotion.FlyTo(playerTargetPosition, swapDuration);
+
+        if (enemySwapRoutine != null)
+        {
+            yield return enemySwapRoutine;
+        }
+    }
+
+    private IEnumerator ExecuteEnemyPush(
+        EnemyPushPlan pushPlan,
+        bool playPlayerImpact)
+    {
+        if (pushPlan == null || pushPlan.PushedEnemy == null)
+        {
+            yield break;
+        }
+
+        Coroutine playerReturnRoutine = null;
+
+        if (playPlayerImpact)
+        {
+            yield return PlayPlayerPushImpact(
+                pushPlan.PushedEnemy.transform.position);
+            playerReturnRoutine = isPushVisualDisplaced
+                ? StartCoroutine(ReturnPlayerPushVisual())
+                : null;
+        }
+
+        if (pushPlan.CollidedEnemy != null)
+        {
+            Vector3 impactPosition = Vector3.Lerp(
+                pushPlan.RestingPosition,
+                pushPlan.CollidedEnemy.transform.position,
+                Mathf.Clamp01(pushCollisionImpactRatio));
+            impactPosition.y = pushPlan.RestingPosition.y
+                + Mathf.Max(0f, pushCollisionImpactHeight);
+            impactPosition.z = pushPlan.RestingPosition.z;
+
+            yield return pushPlan.PushedEnemy.FlyIntoCollision(
+                impactPosition,
+                pushPlan.RestingPosition,
+                pushPlan.FlightDuration,
+                pushCollisionSettleDuration);
+        }
+        else if (pushPlan.VacatesStartingTile)
+        {
+            yield return pushPlan.PushedEnemy.FlyTo(
+                pushPlan.RestingPosition,
+                pushPlan.FlightDuration);
+        }
+
+        if (playerReturnRoutine != null)
+        {
+            yield return playerReturnRoutine;
+        }
+
+        if (pushPlan.CollidedEnemy != null
+            && pushPlan.PushedEnemy != null)
+        {
+            ApplyPushCollisionDamage(
+                pushPlan.PushedEnemy,
+                pushPlan.CollidedEnemy);
+        }
+    }
+
+    private bool TryCreateEnemyPushPlan(
+        EnemyController pushedEnemy,
+        int direction,
+        int maxTravelDistance,
+        out EnemyPushPlan pushPlan)
+    {
+        pushPlan = null;
+
+        if (pushedEnemy == null || maxTravelDistance <= 0
+            || !TryBuildPushPath(
+                pushedEnemy,
+                direction,
+                maxTravelDistance,
+                out EnemyController collidedEnemy))
+        {
+            return false;
         }
 
         bool vacatesStartingTile = pushPathBuffer.Count > 0;
@@ -252,49 +391,13 @@ public class PlayerMove : MonoBehaviour
         float flightDuration = Mathf.Max(0f, pushTileDuration)
             * flightTileCount;
 
-        yield return PlayPlayerPushImpact(pushedEnemy.transform.position);
-        Coroutine playerReturnRoutine = isPushVisualDisplaced
-            ? StartCoroutine(ReturnPlayerPushVisual())
-            : null;
-
-        if (collidedEnemy != null)
-        {
-            Vector3 impactPosition = Vector3.Lerp(
-                restingPosition,
-                collidedEnemy.transform.position,
-                Mathf.Clamp01(pushCollisionImpactRatio));
-            impactPosition.y = restingPosition.y
-                + Mathf.Max(0f, pushCollisionImpactHeight);
-            impactPosition.z = restingPosition.z;
-
-            yield return pushedEnemy.FlyIntoCollision(
-                impactPosition,
-                restingPosition,
-                flightDuration,
-                pushCollisionSettleDuration);
-        }
-        else if (vacatesStartingTile)
-        {
-            yield return pushedEnemy.FlyTo(
-                restingPosition,
-                flightDuration);
-        }
-
-        if (playerReturnRoutine != null)
-        {
-            yield return playerReturnRoutine;
-        }
-
-        if (collidedEnemy != null && pushedEnemy != null)
-        {
-            ApplyPushCollisionDamage(pushedEnemy, collidedEnemy);
-        }
-
-        nextPushAvailableTurn = TurnCount
-            + Mathf.Max(0, pushCooldownTurns)
-            + 1;
-        isActing = false;
-        CompleteTurn();
+        pushPlan = new EnemyPushPlan(
+            pushedEnemy,
+            collidedEnemy,
+            restingPosition,
+            vacatesStartingTile,
+            flightDuration);
+        return true;
     }
 
     private IEnumerator PlayPlayerPushImpact(Vector3 enemyPosition)
@@ -388,6 +491,7 @@ public class PlayerMove : MonoBehaviour
     private bool TryBuildPushPath(
         EnemyController pushedEnemy,
         int direction,
+        int maxTravelDistance,
         out EnemyController collidedEnemy)
     {
         collidedEnemy = null;
@@ -403,10 +507,15 @@ public class PlayerMove : MonoBehaviour
 
         int moveDirection = direction > 0 ? 1 : -1;
 
+        int inspectedTileCount = 0;
+
         for (int tileIndex = pushedEnemyIndex + moveDirection;
-             tileIndex >= 0 && tileIndex < boardManager.BoardCount;
+             tileIndex >= 0 && tileIndex < boardManager.BoardCount
+             && inspectedTileCount < maxTravelDistance;
              tileIndex += moveDirection)
         {
+            inspectedTileCount++;
+
             if (waveManager.TryGetEnemyAtTile(
                     tileIndex,
                     out collidedEnemy,
@@ -499,5 +608,28 @@ public class PlayerMove : MonoBehaviour
             && !isShooting
             && !isActing
             && !isEnemyTurnResolving;
+    }
+
+    private sealed class EnemyPushPlan
+    {
+        public EnemyPushPlan(
+            EnemyController pushedEnemy,
+            EnemyController collidedEnemy,
+            Vector3 restingPosition,
+            bool vacatesStartingTile,
+            float flightDuration)
+        {
+            PushedEnemy = pushedEnemy;
+            CollidedEnemy = collidedEnemy;
+            RestingPosition = restingPosition;
+            VacatesStartingTile = vacatesStartingTile;
+            FlightDuration = flightDuration;
+        }
+
+        public EnemyController PushedEnemy { get; }
+        public EnemyController CollidedEnemy { get; }
+        public Vector3 RestingPosition { get; }
+        public bool VacatesStartingTile { get; }
+        public float FlightDuration { get; }
     }
 }

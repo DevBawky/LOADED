@@ -4,9 +4,10 @@ using UnityEngine;
 
 public enum StatusEffectType
 {
-    Mark,
-    Poison,
-    Stun
+    Mark = 0,
+    Poison = 1,
+    Stun = 2,
+    Weakness = 3
 }
 
 public interface IStatusEffectTarget
@@ -17,7 +18,6 @@ public interface IStatusEffectTarget
 
 public class StatusEffectController : MonoBehaviour
 {
-    public const float MarkDamageMultiplier = 1.5f;
     public const float PoisonHealthRatio = 0.05f;
 
     [Header("UI")]
@@ -26,6 +26,7 @@ public class StatusEffectController : MonoBehaviour
     [SerializeField] private Sprite markSprite;
     [SerializeField] private Sprite poisonSprite;
     [SerializeField] private Sprite stunSprite;
+    [SerializeField] private Sprite weaknessSprite;
 
     [Header("Runtime State")]
     [Min(0)]
@@ -34,6 +35,8 @@ public class StatusEffectController : MonoBehaviour
     [SerializeField] private int poisonStacks;
     [Min(0)]
     [SerializeField] private int stunStacks;
+    [Min(0)]
+    [SerializeField] private int weaknessStacks;
 
     private IStatusEffectTarget target;
     private readonly Dictionary<StatusEffectType, DebuffIconUI> icons =
@@ -44,8 +47,10 @@ public class StatusEffectController : MonoBehaviour
     public int MarkStacks => markStacks;
     public int PoisonStacks => poisonStacks;
     public int StunStacks => stunStacks;
+    public int WeaknessStacks => weaknessStacks;
     public bool IsMarked => markStacks > 0;
     public bool IsStunned => stunStacks > 0;
+    public bool IsWeakened => weaknessStacks > 0;
 
     private void Awake()
     {
@@ -63,6 +68,8 @@ public class StatusEffectController : MonoBehaviour
                 return poisonStacks;
             case StatusEffectType.Stun:
                 return stunStacks;
+            case StatusEffectType.Weakness:
+                return weaknessStacks;
             default:
                 return 0;
         }
@@ -87,7 +94,17 @@ public class StatusEffectController : MonoBehaviour
             return damage;
         }
 
-        return Mathf.CeilToInt(damage * MarkDamageMultiplier);
+        return Mathf.CeilToInt(damage * 1.5f);
+    }
+
+    public int ModifyOutgoingAttackDamage(int damage)
+    {
+        if (damage <= 0 || !IsWeakened)
+        {
+            return damage;
+        }
+
+        return Mathf.Max(1, Mathf.FloorToInt(damage * 0.7f));
     }
 
     public bool ConsumeStunTurn()
@@ -113,6 +130,11 @@ public class StatusEffectController : MonoBehaviour
         {
             SetStacks(StatusEffectType.Mark, markStacks - 1);
         }
+
+        if (weaknessStacks > 0)
+        {
+            SetStacks(StatusEffectType.Weakness, weaknessStacks - 1);
+        }
     }
 
     public void Clear()
@@ -120,6 +142,7 @@ public class StatusEffectController : MonoBehaviour
         SetStacks(StatusEffectType.Mark, 0);
         SetStacks(StatusEffectType.Poison, 0);
         SetStacks(StatusEffectType.Stun, 0);
+        SetStacks(StatusEffectType.Weakness, 0);
     }
 
     private void ApplyPoisonDamage()
@@ -150,6 +173,9 @@ public class StatusEffectController : MonoBehaviour
             case StatusEffectType.Stun:
                 stunStacks = clampedStacks;
                 break;
+            case StatusEffectType.Weakness:
+                weaknessStacks = clampedStacks;
+                break;
         }
 
         RefreshIcon(type, clampedStacks);
@@ -161,6 +187,7 @@ public class StatusEffectController : MonoBehaviour
         RefreshIcon(StatusEffectType.Mark, markStacks);
         RefreshIcon(StatusEffectType.Poison, poisonStacks);
         RefreshIcon(StatusEffectType.Stun, stunStacks);
+        RefreshIcon(StatusEffectType.Weakness, weaknessStacks);
     }
 
     private void RefreshIcon(StatusEffectType type, int stacks)
@@ -235,6 +262,8 @@ public class StatusEffectController : MonoBehaviour
                 return poisonSprite;
             case StatusEffectType.Stun:
                 return stunSprite;
+            case StatusEffectType.Weakness:
+                return weaknessSprite;
             default:
                 return null;
         }

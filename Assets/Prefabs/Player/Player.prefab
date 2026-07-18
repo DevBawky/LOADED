@@ -189,6 +189,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerShoot
   deckManager: {fileID: 0}
   playerMove: {fileID: 8556440550991854019}
+  playerHealth: {fileID: 6372297391433345502}
   boardManager: {fileID: 0}
   waveManager: {fileID: 0}
   firePoint: {fileID: 1546687425952665600}
@@ -198,6 +199,7 @@ MonoBehaviour:
   eventSystem: {fileID: 0}
   cylinderUI: {fileID: 6842197531604829375}
   shotInterval: 0.2
+  criticalChance: 0
   maxRandomShotAngle: 5
   cameraRecoilScale: 1.6
   recoilFrequencyGain: 1.2
@@ -1012,6 +1014,8 @@ MonoBehaviour:
   markSprite: {fileID: 905750167250926724, guid: 38d8e94fbdd1fb748b93f786e06bb8b1, type: 3}
   poisonSprite: {fileID: 4572096609698180999, guid: 92c773c3dfea45f4793e3f6e1903d566, type: 3}
   stunSprite: {fileID: 5947414366408575533, guid: 57e5db4bece8e5743a459aad7888248b, type: 3}
+  weaknessSprite: {fileID: 0}
   markStacks: 0
   poisonStacks: 0
   stunStacks: 0
+  weaknessStacks: 0

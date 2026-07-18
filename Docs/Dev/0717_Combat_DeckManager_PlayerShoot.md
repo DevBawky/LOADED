@@ -49,7 +49,7 @@
 * Line Material이 비어 있으면 프리팹의 Material을 유지하고 Primary/Secondary Line Color를 적용합니다.
 * Primary와 Secondary 색을 밝은 중심부와 불규칙한 외곽 연기층에 함께 사용하고, 사각형처럼 보이지 않는 노이즈 기반 실루엣을 만듭니다.
 * 어두운 배경과 밝은 배경 모두에서 식별할 수 있도록 연기 불투명도, 코어 밝기와 LineRenderer 폭을 보강합니다.
-* 공격력, 관통, 밀어내기, 기절, 표식 데이터는 이후 적중 코드가 사용할 수 있도록 발사선에 전달합니다.
+* 공격력, 크리티컬 배율, 관통과 `Effects` 배열 데이터는 적중 코드가 사용할 수 있도록 발사선에 전달합니다.
 * 설치된 Cinemachine 버전에 맞는 Basic Multi Channel Perlin의 Amplitude Gain과 Frequency Gain을 사용합니다.
 * 발사 반동이 끝나면 두 Gain을 0으로 만들고 Main Camera를 원래 위치 `(0, 0, -10)`으로 복구합니다.
 * Orthographic Size 5에서 과도하게 흔들리지 않도록 탄환 반동값에 작은 Recoil Scale을 적용합니다.
@@ -74,9 +74,11 @@
 
 성공한 한 발 장전은 `PlayerMove.CompleteTurn`을 호출한다. 연속 발사에서는 실제 발사된 탄환 중 `DoesNotConsumeTurn`이 false인 탄환이 하나라도 있을 때 모든 발사가 끝난 뒤 `CompleteTurn`을 한 번만 호출한다. 모든 탄환이 턴 비소비 탄환이면 턴을 소비하지 않는다. 실패한 장전과 한 발도 발사하지 못한 Shoot에서는 호출하지 않는다. 기존 `TurnCount`와 `TurnCompleted` 이벤트를 그대로 사용하기 위해 `CompleteTurn`의 접근 범위만 public으로 변경했다.
 
-`BulletLine`은 전달된 `BulletData`를 `Data`에 보관한다. 후속 Enemy 시스템 연결에서 `PlayerShoot`이 정면 사거리 안의 적을 가까운 순서로 찾고 공격력과 관통 확률을 적용하도록 확장했다. 밀어내기, 기절, 표식 실행은 아직 구현하지 않았다. 이동하는 Projectile은 제거했으며 발사선은 `Fade Duration` 동안 시작 색상과 끝 색상의 알파를 SmoothStep으로 0까지 보간한 뒤 자동 제거된다. 일시정지 중에는 페이드 시간이 진행되지 않는다.
+`BulletLine`은 전달된 `BulletData`를 `Data`에 보관한다. 후속 Enemy 시스템 연결에서 `PlayerShoot`이 정면 사거리 안의 적을 가까운 순서로 찾고 공격력과 관통 확률을 적용하도록 확장했다. 260718 후속 작업에서 독, 기절, 표식, 밀치기, 위치 교환, 흡혈, 약화를 확률형 `Effects` 배열로 실행한다. 이동하는 Projectile은 제거했으며 발사선은 `Fade Duration` 동안 시작 색상과 끝 색상의 알파를 SmoothStep으로 0까지 보간한 뒤 자동 제거된다. 일시정지 중에는 페이드 시간이 진행되지 않는다.
 
-`WaveManager.GetEnemiesInDirection`은 플레이어 타일을 기준으로 바라보는 방향과 `MaxRange` 안의 적을 가까운 순서로 제공한다. 수집 시 각 적의 타일 거리와 타일 인덱스를 한 번만 저장하고 그 값으로 정렬해, 정렬 비교 도중 Transform 위치를 다시 조회하며 순서가 달라지는 경로를 제거했다. 첫 적은 확정 적중하고 이후 적은 `Penetration Chances`를 단계별로 판정한다. `PlayerShoot`은 가장 앞의 적에게 피해를 먼저 적용하며, 첫 피해 적용이 실패하면 뒤쪽 관통 대상의 피해도 중단한다. 적이 있으면 LineRenderer 길이는 마지막 적중 적까지의 X 거리로 계산한다. 적이 없으면 바라보는 방향의 최대 사거리 내 가장 먼 유효 타일까지의 X 거리를 사용하고, 보드 끝에서 바깥을 바라보는 경우에만 Fire Point에서 사거리만큼 전방을 fallback 거리로 사용한다. 실제 발사선은 Fire Point Y의 수평 기준에서 랜덤 각도를 적용한다. 빗나간 탄환도 장전 목록에서 무덤으로 이동하고 반동과 `DoesNotConsumeTurn` 규칙을 정상 적용한다.
+`PlayerShoot > Critical Chance`는 모든 탄환의 공통 크리티컬 확률을 0~100으로 관리한다. 실제 발사에 성공한 탄환마다 한 번 판정하고 관통 대상 전체가 그 결과를 공유하며, 성공 시 해당 `BulletData.Critical Damage Multiplier`를 기본 피해에 적용한다. Player 프리팹에는 같은 루트의 `PlayerHealth`를 직접 연결했다. 이 참조를 통해 플레이어 약화의 공격력 감소를 적용하고, `LifeSteal`이 성공하면 대상에게 실제 적용된 직접 피해만큼 최대 체력 안에서 회복한다. 상세 계산 순서는 `0718_Combat_BulletEffects.md`를 따른다.
+
+`WaveManager.GetEnemiesInDirection`은 플레이어 타일을 기준으로 바라보는 방향과 `MaxRange` 안의 적을 가까운 순서로 제공한다. 수집 시 각 적의 타일 거리와 타일 인덱스를 한 번만 저장하고 그 값으로 정렬해, 정렬 비교 도중 Transform 위치를 다시 조회하며 순서가 달라지는 경로를 제거했다. 첫 적은 확정 적중하고 이후 적은 `Penetration Chances`를 단계별로 판정한다. `PlayerShoot`은 확정된 관통 대상들을 가까운 순서로 각각 처리하며, 앞 대상이 이미 제거됐거나 직접 피해가 0이어도 뒤쪽 대상 처리를 계속한다. 적이 있으면 LineRenderer 길이는 마지막 적중 적까지의 X 거리로 계산한다. 적이 없으면 바라보는 방향의 최대 사거리 내 가장 먼 유효 타일까지의 X 거리를 사용하고, 보드 끝에서 바깥을 바라보는 경우에만 Fire Point에서 사거리만큼 전방을 fallback 거리로 사용한다. 실제 발사선은 Fire Point Y의 수평 기준에서 랜덤 각도를 적용한다. 빗나간 탄환도 장전 목록에서 무덤으로 이동하고 반동과 `DoesNotConsumeTurn` 규칙을 정상 적용한다.
 
 발사 초기화 시 LineRenderer의 위치 개수를 2로 설정하고 시작점과 끝점을 즉시 적용한다. Line Material이 null이 아닐 때만 `sharedMaterial` 참조를 교체하므로 null이면 프리팹 Material이 유지된다. Primary Line Color는 시작·끝 vertex color와 `_PrimaryColor`에, Secondary Line Color는 `_SecondaryColor`에 적용한다. 두 셰이더 색은 하나의 `MaterialPropertyBlock`으로 해당 LineRenderer 인스턴스에만 전달하므로 공유 Material 속성이나 `BulletData` 원본을 수정하지 않는다. vertex alpha는 기존 Fade Out에 계속 사용한다. 기존 `trailMaterial`, `trailColor`, `lineColor` 필드는 `FormerlySerializedAs`를 사용해 기존 에셋 값을 유지한다. `lineDuration`은 `FormerlySerializedAs`를 적용한 `fadeDuration`으로 변경해 기존 프리팹 값을 유지한다. Bullet 프리팹에는 `Line Renderer`와 `Fade Duration`이 직렬화되어 있다.
 
@@ -126,6 +128,9 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * 각 발사선의 시작점과 수평 기준 Y가 Fire Point Y를 사용하고, 설정 범위 안의 개별 랜덤 각도가 적용되는지 확인
   * 유효 적이 없을 때 최대 유효 사거리 타일 끝점, 탄환 소비, 반동 및 턴 조건 확인
   * 적의 타일 거리를 수집 시 캐시해 가까운 순서로 정렬하고 첫 적의 피해를 관통 대상보다 먼저 처리하는지 확인
+  * 탄환당 크리티컬 판정이 한 번만 실행되고 모든 관통 대상이 같은 결과를 공유하는지 확인
+  * 플레이어 약화가 직접 공격 피해에 적용되고 흡혈이 실제 적용 피해만 회복하는지 확인
+  * 처치 대상도 효과 배열의 흡혈 항목까지 처리하는지 확인
   * null Line Material 유지, Primary/Secondary Line Color의 단일 PropertyBlock 적용, 공유 에셋 미수정 확인
   * URP Line 셰이더가 Primary 코어, 혼합 연기층, 불규칙 외곽·끝단 마스크와 인스턴스 알파를 사용하는지 정적 확인
   * Cinemachine 3.1.7 패키지 소스에서 `CinemachineBasicMultiChannelPerlin.AmplitudeGain`, `FrequencyGain` API 확인
@@ -156,7 +161,9 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * Recovery 동안 Camera 위치도 원위치로 보간되고, 완료 후 두 Gain은 0이 되며 Camera 위치는 정확히 `(0, 0, -10)`으로 설정된다.
   * 정면 최대 사거리 안의 적이 거리순으로 선택되고 관통에 성공한 마지막 적까지의 X 거리가 발사선 길이로 사용된다.
   * 정면에 적이 없어도 장전 탄환이 발사되어 무덤으로 이동하고 최대 유효 타일 중앙까지 발사선이 생성된다.
-  * 정렬 중 적 위치를 재조회하지 않으며 가장 앞 적의 피해가 성공한 뒤에만 뒤쪽 관통 대상의 피해를 순서대로 적용한다.
+  * 정렬 중 적 위치를 재조회하지 않으며 확정된 관통 대상은 앞 대상의 피해 성공 여부와 무관하게 가까운 순서로 처리한다.
+  * 크리티컬 확률은 `PlayerShoot`, 배율은 각 `BulletData`에서 관리하며 관통 대상은 탄환 단위 판정 결과를 공유한다.
+  * 흡혈은 표식, 크리티컬, 약화와 남은 체력 제한을 반영한 실제 직접 피해량을 사용하므로 처치 및 초과 피해에서도 회복량이 정확하다.
   * Line Material이 null이면 프리팹 Material을 유지하며 Primary와 Secondary 모두 인스턴스 PropertyBlock에 적용된다. Primary vertex alpha는 Fade Out을 제어한다.
   * Bullet 프리팹과 테스트 Bullet은 동일한 `BulletSmokeFlameLine` Material을 사용하며 Material 자체의 색상은 런타임에 변경하지 않는다.
   * C# 빌드 결과는 경고 0개, 오류 0개였다.
@@ -164,7 +171,7 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
 
 * 발견한 문제:
 
-  * 후속 Enemy 시스템에서 공격력과 관통은 실제 적 체력에 연결했다. 밀어내기, 기절, 표식은 실행 대상 상태 컴포넌트가 없어 아직 적용하지 않는다.
+  * 후속 Enemy 및 상태 시스템에서 공격력, 관통과 `Effects` 배열을 실제 적 체력, 디버프, 강제 이동 처리에 연결했다.
   * UI 버튼 클릭은 마우스 왼쪽 발사와 동시에 해석될 수 있으므로 `eventSystem` 참조를 추가하고 UI 위의 포인터 입력을 발사에서 제외했다.
   * 연속 발사 중 추가 입력이 들어오면 장전 목록과 Coroutine 상태가 충돌할 수 있으므로 `isFiring` 동안 장전과 발사 진입을 차단하고 PlayerMove에는 별도의 사격 잠금을 전달했다.
   * IDE용 Unity 생성 프로젝트 파일이 변경된 스크립트 파일명을 즉시 반영하지 않아 컴파일 검증 때 `BulletLine`과 Cinemachine 참조를 빌드 입력에 명시했다. 검증 후 생성 프로젝트 파일 변경은 원상 복구했다.

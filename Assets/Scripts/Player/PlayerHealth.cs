@@ -65,6 +65,13 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
             && statusEffects.Add(type, stacks);
     }
 
+    public int ModifyOutgoingAttackDamage(int damage)
+    {
+        return statusEffects == null
+            ? damage
+            : statusEffects.ModifyOutgoingAttackDamage(damage);
+    }
+
     public bool Heal(int amount)
     {
         if (amount <= 0 || IsDefeated || currentHealth >= maxHealth)
