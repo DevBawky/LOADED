@@ -303,20 +303,31 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
-        EnemyController frontEnemy = hitBuffer[0];
-
-        if (frontEnemy == null || !frontEnemy.ApplyDamage(bulletData.Damage))
+        for (int hitIndex = 0; hitIndex < hitBuffer.Count; hitIndex++)
         {
-            return;
-        }
+            EnemyController enemy = hitBuffer[hitIndex];
 
-        for (int hitIndex = 1; hitIndex < hitBuffer.Count; hitIndex++)
-        {
-            EnemyController penetratedEnemy = hitBuffer[hitIndex];
-
-            if (penetratedEnemy != null)
+            if (enemy == null || enemy.CurrentHealth <= 0)
             {
-                penetratedEnemy.ApplyDamage(bulletData.Damage);
+                continue;
+            }
+
+            if (bulletData.Damage > 0)
+            {
+                enemy.ApplyDamage(bulletData.Damage);
+            }
+
+            if (enemy != null && enemy.CurrentHealth > 0)
+            {
+                enemy.AddStatusEffect(
+                    StatusEffectType.Mark,
+                    bulletData.MarkDurationTurns);
+                enemy.AddStatusEffect(
+                    StatusEffectType.Poison,
+                    bulletData.PoisonDurationTurns);
+                enemy.AddStatusEffect(
+                    StatusEffectType.Stun,
+                    bulletData.StunDurationTurns);
             }
         }
     }
