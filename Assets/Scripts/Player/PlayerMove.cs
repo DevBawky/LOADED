@@ -9,6 +9,7 @@ public class PlayerMove : MonoBehaviour
     [Header("References")]
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private ActorMotion actorMotion;
+    [SerializeField] private Transform pushVisualTransform;
 
     [Header("Push")]
     [Range(0f, 1f)]
@@ -21,6 +22,15 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private float pushCollisionImpactHeight = 0.2f;
     [Min(0f)]
     [SerializeField] private float pushCollisionSettleDuration = 0.12f;
+    [Header("Push Player Motion")]
+    [Range(0f, 1f)]
+    [SerializeField] private float playerPushImpactRatio = 0.65f;
+    [Min(0f)]
+    [SerializeField] private float playerPushImpactDuration = 0.08f;
+    [Min(0f)]
+    [SerializeField] private float playerPushReturnDuration = 0.12f;
+    [Min(0f)]
+    [SerializeField] private float playerPushImpactHeight = 0.08f;
     [Min(0)]
     [SerializeField] private int pushCooldownTurns = 3;
 
@@ -34,6 +44,9 @@ public class PlayerMove : MonoBehaviour
     private bool isShooting;
     private bool isActing;
     private bool isEnemyTurnResolving;
+    private bool isPushVisualDisplaced;
+    private Vector3 pushVisualRestLocalPosition;
+    private Vector3 pushVisualRestWorldPosition;
     private readonly List<Vector3> pushPathBuffer = new List<Vector3>();
 
     public event Action TurnCompleted;
@@ -71,6 +84,7 @@ public class PlayerMove : MonoBehaviour
 
     private void OnDisable()
     {
+        RestorePushVisualPosition();
         isActing = false;
         isEnemyTurnResolving = false;
     }
@@ -199,7 +213,6 @@ public class PlayerMove : MonoBehaviour
             {
                 StartCoroutine(PushRoutine(
                     adjacentEnemy,
-                    targetPosition,
                     direction));
             }
 
@@ -216,7 +229,6 @@ public class PlayerMove : MonoBehaviour
 
     private IEnumerator PushRoutine(
         EnemyController pushedEnemy,
-        Vector3 playerTargetPosition,
         int direction)
     {
         isActing = true;
@@ -239,6 +251,11 @@ public class PlayerMove : MonoBehaviour
             + (collidedEnemy == null ? 0 : 1);
         float flightDuration = Mathf.Max(0f, pushTileDuration)
             * flightTileCount;
+
+        yield return PlayPlayerPushImpact(pushedEnemy.transform.position);
+        Coroutine playerReturnRoutine = isPushVisualDisplaced
+            ? StartCoroutine(ReturnPlayerPushVisual())
+            : null;
 
         if (collidedEnemy != null)
         {
@@ -263,15 +280,14 @@ public class PlayerMove : MonoBehaviour
                 flightDuration);
         }
 
+        if (playerReturnRoutine != null)
+        {
+            yield return playerReturnRoutine;
+        }
+
         if (collidedEnemy != null && pushedEnemy != null)
         {
             ApplyPushCollisionDamage(pushedEnemy, collidedEnemy);
-        }
-
-        if (vacatesStartingTile || pushedEnemy == null
-            || pushedEnemy.CurrentHealth <= 0)
-        {
-            yield return actorMotion.MoveTo(playerTargetPosition);
         }
 
         nextPushAvailableTurn = TurnCount
@@ -279,6 +295,94 @@ public class PlayerMove : MonoBehaviour
             + 1;
         isActing = false;
         CompleteTurn();
+    }
+
+    private IEnumerator PlayPlayerPushImpact(Vector3 enemyPosition)
+    {
+        if (pushVisualTransform == null)
+        {
+            yield break;
+        }
+
+        pushVisualRestLocalPosition = pushVisualTransform.localPosition;
+        pushVisualRestWorldPosition = pushVisualTransform.position;
+        isPushVisualDisplaced = true;
+
+        Vector3 impactPosition = Vector3.Lerp(
+            pushVisualRestWorldPosition,
+            enemyPosition,
+            Mathf.Clamp01(playerPushImpactRatio));
+        impactPosition.y = pushVisualRestWorldPosition.y;
+        impactPosition.z = pushVisualRestWorldPosition.z;
+
+        yield return MovePushVisual(
+            pushVisualRestWorldPosition,
+            impactPosition,
+            playerPushImpactDuration,
+            playerPushImpactHeight);
+    }
+
+    private IEnumerator ReturnPlayerPushVisual()
+    {
+        yield return MovePushVisual(
+            pushVisualTransform.position,
+            pushVisualRestWorldPosition,
+            playerPushReturnDuration,
+            0f);
+
+        RestorePushVisualPosition();
+    }
+
+    private IEnumerator MovePushVisual(
+        Vector3 startPosition,
+        Vector3 targetPosition,
+        float duration,
+        float arcHeight)
+    {
+        duration = Mathf.Max(0f, duration);
+        arcHeight = Mathf.Max(0f, arcHeight);
+
+        if (duration <= 0f)
+        {
+            pushVisualTransform.position = targetPosition;
+            yield break;
+        }
+
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / duration);
+            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
+            Vector3 position = Vector3.Lerp(
+                startPosition,
+                targetPosition,
+                smoothProgress);
+            position += Vector3.up
+                * (Mathf.Sin(progress * Mathf.PI) * arcHeight);
+            pushVisualTransform.position = position;
+        }
+
+        pushVisualTransform.position = targetPosition;
+    }
+
+    private void RestorePushVisualPosition()
+    {
+        if (!isPushVisualDisplaced || pushVisualTransform == null)
+        {
+            return;
+        }
+
+        pushVisualTransform.localPosition = pushVisualRestLocalPosition;
+        isPushVisualDisplaced = false;
     }
 
     private bool TryBuildPushPath(

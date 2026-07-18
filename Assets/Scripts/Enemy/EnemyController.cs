@@ -266,10 +266,15 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             {
                 isRetreating = false;
             }
+            else if (TryMoveAwayFromPlayer(
+                         directionToPlayer,
+                         distanceToPlayer))
+            {
+                return;
+            }
             else
             {
-                MoveAwayFromPlayer(directionToPlayer, distanceToPlayer);
-                return;
+                isRetreating = false;
             }
         }
 
@@ -587,14 +592,13 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
     }
 
-    private void MoveAwayFromPlayer(
+    private bool TryMoveAwayFromPlayer(
         int directionToPlayer,
         int distanceToPlayer)
     {
         if (directionToPlayer == 0)
         {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
+            return false;
         }
 
         EnemyActionData retreatAction = FindAction(EnemyActionType.Retreat);
@@ -610,11 +614,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 movementDistance,
                 out Vector3[] path))
         {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
+            return false;
         }
 
         StartCoroutine(MoveRoutine(path, true));
+        return true;
     }
 
     private bool TryBuildMovePath(
