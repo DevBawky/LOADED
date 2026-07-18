@@ -60,6 +60,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public EnemyData Data => enemyData;
     public int CurrentHealth => currentHealth;
+    public int MaxHealth => enemyData == null ? 0 : enemyData.MaxHealth;
     public EnemyActionData LoadedAttackAction => queuedAttackActions.Count > 0
         ? queuedAttackActions[0]
         : null;
@@ -186,6 +187,43 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     public bool ApplyStatusDamage(int damage)
     {
         return ApplyDamageInternal(damage);
+    }
+
+    public bool ApplyCollisionDamage(int damage)
+    {
+        return ApplyDamageInternal(damage);
+    }
+
+    public IEnumerator FlyTo(
+        Vector3 targetPosition,
+        float duration)
+    {
+        if (actorMotion == null)
+        {
+            yield break;
+        }
+
+        yield return actorMotion.FlyTo(targetPosition, duration);
+        ApplyCanvasOrientation();
+    }
+
+    public IEnumerator FlyIntoCollision(
+        Vector3 impactPosition,
+        Vector3 restingPosition,
+        float flightDuration,
+        float settleDuration)
+    {
+        if (actorMotion == null)
+        {
+            yield break;
+        }
+
+        yield return actorMotion.FlyIntoCollision(
+            impactPosition,
+            restingPosition,
+            flightDuration,
+            settleDuration);
+        ApplyCanvasOrientation();
     }
 
     public bool AddStatusEffect(StatusEffectType type, int stacks)

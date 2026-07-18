@@ -48,6 +48,13 @@ public class ActorMotion : MonoBehaviour
 
     public IEnumerator MoveAlongPath(IReadOnlyList<Vector3> path)
     {
+        yield return MoveAlongPath(path, moveDuration);
+    }
+
+    public IEnumerator MoveAlongPath(
+        IReadOnlyList<Vector3> path,
+        float durationPerStep)
+    {
         if (actorTransform == null || path == null || path.Count == 0)
         {
             yield break;
@@ -57,9 +64,46 @@ public class ActorMotion : MonoBehaviour
 
         for (int pathIndex = 0; pathIndex < path.Count; pathIndex++)
         {
-            yield return MoveBetweenPositions(path[pathIndex]);
+            yield return MoveBetweenPositions(
+                path[pathIndex],
+                Mathf.Max(0f, durationPerStep));
         }
 
+        IsAnimating = false;
+    }
+
+    public IEnumerator FlyTo(Vector3 targetPosition, float duration)
+    {
+        if (actorTransform == null)
+        {
+            yield break;
+        }
+
+        IsAnimating = true;
+        yield return MoveBetweenPositions(
+            targetPosition,
+            Mathf.Max(0f, duration));
+        IsAnimating = false;
+    }
+
+    public IEnumerator FlyIntoCollision(
+        Vector3 impactPosition,
+        Vector3 restingPosition,
+        float flightDuration,
+        float settleDuration)
+    {
+        if (actorTransform == null)
+        {
+            yield break;
+        }
+
+        IsAnimating = true;
+        yield return MoveBetweenPositions(
+            impactPosition,
+            Mathf.Max(0f, flightDuration));
+        yield return SettleFromImpact(
+            restingPosition,
+            Mathf.Max(0f, settleDuration));
         IsAnimating = false;
     }
 
@@ -122,11 +166,13 @@ public class ActorMotion : MonoBehaviour
         ApplyOrientationLock(direction);
     }
 
-    private IEnumerator MoveBetweenPositions(Vector3 targetPosition)
+    private IEnumerator MoveBetweenPositions(
+        Vector3 targetPosition,
+        float duration)
     {
         Vector3 startPosition = actorTransform.position;
 
-        if (moveDuration <= 0f)
+        if (duration <= 0f)
         {
             actorTransform.position = targetPosition;
             yield break;
@@ -134,7 +180,7 @@ public class ActorMotion : MonoBehaviour
 
         float elapsedTime = 0f;
 
-        while (elapsedTime < moveDuration)
+        while (elapsedTime < duration)
         {
             yield return null;
 
@@ -144,7 +190,7 @@ public class ActorMotion : MonoBehaviour
             }
 
             elapsedTime += Time.deltaTime;
-            float progress = Mathf.Clamp01(elapsedTime / moveDuration);
+            float progress = Mathf.Clamp01(elapsedTime / duration);
             float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
             Vector3 position = Vector3.Lerp(
                 startPosition,
@@ -152,6 +198,47 @@ public class ActorMotion : MonoBehaviour
                 smoothProgress);
             position += Vector3.up
                 * (Mathf.Sin(progress * Mathf.PI) * jumpHeight);
+            actorTransform.position = position;
+        }
+
+        actorTransform.position = targetPosition;
+    }
+
+    private IEnumerator SettleFromImpact(
+        Vector3 targetPosition,
+        float duration)
+    {
+        Vector3 startPosition = actorTransform.position;
+
+        if (duration <= 0f)
+        {
+            actorTransform.position = targetPosition;
+            yield break;
+        }
+
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / duration);
+            float horizontalProgress = Mathf.SmoothStep(0f, 1f, progress);
+            float fallProgress = progress * progress;
+            Vector3 position = Vector3.Lerp(
+                startPosition,
+                targetPosition,
+                horizontalProgress);
+            position.y = Mathf.Lerp(
+                startPosition.y,
+                targetPosition.y,
+                fallProgress);
             actorTransform.position = position;
         }
 
