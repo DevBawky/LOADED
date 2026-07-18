@@ -28,6 +28,8 @@ public class BulletData : ScriptableObject
     [SerializeField] private int stunDurationTurns;
     [Min(0)]
     [SerializeField] private int markDurationTurns;
+    [Min(0)]
+    [SerializeField] private int poisonDurationTurns;
     [Range(1f, 3f)]
     [SerializeField] private float markDamageMultiplier = 1f;
     [SerializeField] private List<PenetrationChanceData> penetrationChances = new List<PenetrationChanceData>();
@@ -50,6 +52,7 @@ public class BulletData : ScriptableObject
     public int KnockbackDistance => knockbackDistance;
     public int StunDurationTurns => stunDurationTurns;
     public int MarkDurationTurns => markDurationTurns;
+    public int PoisonDurationTurns => poisonDurationTurns;
     public float MarkDamageMultiplier => markDamageMultiplier;
     public IReadOnlyList<PenetrationChanceData> PenetrationChances => penetrationChances;
     public int MaxHitCount => penetrationChances.Count + 1;

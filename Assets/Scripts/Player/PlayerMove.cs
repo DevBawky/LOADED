@@ -9,6 +9,8 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private ActorMotion actorMotion;
 
+    private StatusEffectController statusEffects;
+
     private WaveManager waveManager;
     private bool isShooting;
     private bool isActing;
@@ -21,6 +23,11 @@ public class PlayerMove : MonoBehaviour
     public bool IsActing => isActing;
     public bool IsEnemyTurnResolving => isEnemyTurnResolving;
     public bool CanStartAction => CanPerformAction();
+
+    private void Awake()
+    {
+        statusEffects = GetComponent<StatusEffectController>();
+    }
 
     public void SetWaveManager(WaveManager assignedWaveManager)
     {
@@ -179,8 +186,26 @@ public class PlayerMove : MonoBehaviour
 
     public void CompleteTurn()
     {
+        if (statusEffects != null)
+        {
+            statusEffects.ProcessTurnEnd();
+        }
+
         TurnCount++;
         TurnCompleted?.Invoke();
+    }
+
+    public bool TrySkipStunnedTurn()
+    {
+        if (GamePauseController.IsPaused || isShooting || isActing
+            || isEnemyTurnResolving || statusEffects == null
+            || !statusEffects.ConsumeStunTurn())
+        {
+            return false;
+        }
+
+        CompleteTurn();
+        return true;
     }
 
     private bool CanPerformAction()

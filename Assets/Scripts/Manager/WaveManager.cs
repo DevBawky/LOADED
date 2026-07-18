@@ -213,7 +213,8 @@ public class WaveManager : MonoBehaviour
 
     private void HandlePlayerTurnCompleted()
     {
-        if (isResolvingTurn || isStageCleared || !ValidateReferences())
+        if (isResolvingTurn || isStageCleared || !ValidateReferences()
+            || playerHealth.IsDefeated)
         {
             return;
         }
@@ -265,6 +266,11 @@ public class WaveManager : MonoBehaviour
         isResolvingTurn = false;
         enemyTurnCoroutine = null;
         StateChanged?.Invoke();
+
+        if (!isStageCleared && !playerHealth.IsDefeated)
+        {
+            playerMove.TrySkipStunnedTurn();
+        }
     }
 
     private IEnumerator WaitForTurnTime(float duration)

@@ -20,5 +20,6 @@ MonoBehaviour:
   knockbackDistance: 0
   stunDurationTurns: 0
   markDurationTurns: 0
+  poisonDurationTurns: 0
   markDamageMultiplier: 1
   attackEffectPrefab: {fileID: 0}

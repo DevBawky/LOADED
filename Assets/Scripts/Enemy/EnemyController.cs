@@ -17,7 +17,7 @@ public enum EnemyTurnActionType
     PrepareAttack
 }
 
-public class EnemyController : MonoBehaviour
+public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
     [Header("Data")]
     [SerializeField] private EnemyData enemyData;
@@ -26,6 +26,7 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private Transform canvasTransform;
     [SerializeField] private ActorMotion actorMotion;
     [SerializeField] private EnemyActionQueueUI actionQueueUI;
+    [SerializeField] private StatusEffectController statusEffects;
 
     [Header("Attack Queue")]
     [Range(1, 3)]
@@ -72,6 +73,11 @@ public class EnemyController : MonoBehaviour
 
     private void Awake()
     {
+        if (statusEffects == null)
+        {
+            statusEffects = GetComponent<StatusEffectController>();
+        }
+
         ResetRuntimeState();
         ApplySprite();
         ApplyCanvasOrientation();
@@ -114,6 +120,12 @@ public class EnemyController : MonoBehaviour
 
         isActing = true;
 
+        if (statusEffects != null && statusEffects.ConsumeStunTurn())
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
         if (!isInitialized || enemyData == null || boardManager == null
             || playerMove == null || waveManager == null || actorMotion == null)
         {
@@ -121,15 +133,20 @@ public class EnemyController : MonoBehaviour
             return;
         }
 
-        if (!TryGetTurnContext(out int directionToPlayer, out int distanceToPlayer))
+        if (isAttackPrepared && queuedAttackActions.Count == 0)
         {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
+            ClearAttackQueue();
         }
 
         if (isAttackPrepared)
         {
             StartCoroutine(FireAttackQueue());
+            return;
+        }
+
+        if (!TryGetTurnContext(out int directionToPlayer, out int distanceToPlayer))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
             return;
         }
 
@@ -154,6 +171,30 @@ public class EnemyController : MonoBehaviour
     }
 
     public bool ApplyDamage(int damage)
+    {
+        if (damage <= 0 || currentHealth <= 0)
+        {
+            return false;
+        }
+
+        int modifiedDamage = statusEffects == null
+            ? damage
+            : statusEffects.ModifyIncomingAttackDamage(damage);
+        return ApplyDamageInternal(modifiedDamage);
+    }
+
+    public bool ApplyStatusDamage(int damage)
+    {
+        return ApplyDamageInternal(damage);
+    }
+
+    public bool AddStatusEffect(StatusEffectType type, int stacks)
+    {
+        return currentHealth > 0 && statusEffects != null
+            && statusEffects.Add(type, stacks);
+    }
+
+    private bool ApplyDamageInternal(int damage)
     {
         if (damage <= 0 || currentHealth <= 0)
         {
@@ -374,6 +415,19 @@ public class EnemyController : MonoBehaviour
             }
 
             playerHealth.ApplyDamage(attackData.Damage);
+
+            if (!playerHealth.IsDefeated)
+            {
+                playerHealth.AddStatusEffect(
+                    StatusEffectType.Mark,
+                    attackData.MarkDurationTurns);
+                playerHealth.AddStatusEffect(
+                    StatusEffectType.Poison,
+                    attackData.PoisonDurationTurns);
+                playerHealth.AddStatusEffect(
+                    StatusEffectType.Stun,
+                    attackData.StunDurationTurns);
+            }
         }
 
         AttackExecuted?.Invoke(this, attackData);
@@ -641,6 +695,11 @@ public class EnemyController : MonoBehaviour
         lastTurnAction = EnemyTurnActionType.None;
         isActing = false;
 
+        if (statusEffects != null)
+        {
+            statusEffects.Clear();
+        }
+
         if (actionQueueUI != null)
         {
             actionQueueUI.ResetDisplay();
@@ -698,6 +757,11 @@ public class EnemyController : MonoBehaviour
 
     private void CompleteAction(EnemyTurnActionType actionType)
     {
+        if (statusEffects != null && currentHealth > 0)
+        {
+            statusEffects.ProcessTurnEnd();
+        }
+
         lastTurnAction = actionType;
         isActing = false;
         TurnActionCompleted?.Invoke(this, actionType);

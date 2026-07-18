@@ -789,13 +789,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
   - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
   - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
-  - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
-  - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
-  - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
-  - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
-  - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
-  - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
-  - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
+  - {fileID: 11400000, guid: 5b1cc3f10fc87664185df1b66d740e6d, type: 2}
+  - {fileID: 11400000, guid: 5b1cc3f10fc87664185df1b66d740e6d, type: 2}
+  - {fileID: 11400000, guid: 5b1cc3f10fc87664185df1b66d740e6d, type: 2}
+  - {fileID: 11400000, guid: 310b3e790ca558641b654f60fc863234, type: 2}
+  - {fileID: 11400000, guid: 310b3e790ca558641b654f60fc863234, type: 2}
+  - {fileID: 11400000, guid: 310b3e790ca558641b654f60fc863234, type: 2}
   maxReloadAmount: 6
   deck: []
   loadedBullets: []
@@ -5373,6 +5372,10 @@ PrefabInstance:
       propertyPath: boardManager
       value: 
       objectReference: {fileID: 561211666}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: maxRandomShotAngle
+      value: 5
+      objectReference: {fileID: 0}
     - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: recoilCameraTransform
       value: 

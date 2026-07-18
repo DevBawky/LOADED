@@ -3,7 +3,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-public class PlayerHealth : MonoBehaviour
+public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
 {
     [Header("Health")]
     [Min(1)]
@@ -18,6 +18,8 @@ public class PlayerHealth : MonoBehaviour
     [Header("Runtime State")]
     [SerializeField] private int currentHealth;
 
+    private StatusEffectController statusEffects;
+
     public event Action<int, int> HealthChanged;
     public event Action Defeated;
 
@@ -27,6 +29,7 @@ public class PlayerHealth : MonoBehaviour
 
     private void Awake()
     {
+        statusEffects = GetComponent<StatusEffectController>();
         currentHealth = Mathf.Clamp(startingHealth, 0, maxHealth);
         RefreshUI();
     }
@@ -38,8 +41,28 @@ public class PlayerHealth : MonoBehaviour
             return false;
         }
 
+        int modifiedDamage = statusEffects == null
+            ? damage
+            : statusEffects.ModifyIncomingAttackDamage(damage);
+        SetCurrentHealth(currentHealth - modifiedDamage);
+        return true;
+    }
+
+    public bool ApplyStatusDamage(int damage)
+    {
+        if (damage <= 0 || IsDefeated)
+        {
+            return false;
+        }
+
         SetCurrentHealth(currentHealth - damage);
         return true;
+    }
+
+    public bool AddStatusEffect(StatusEffectType type, int stacks)
+    {
+        return !IsDefeated && statusEffects != null
+            && statusEffects.Add(type, stacks);
     }
 
     public bool Heal(int amount)
