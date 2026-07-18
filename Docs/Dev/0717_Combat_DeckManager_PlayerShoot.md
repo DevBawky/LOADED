@@ -38,6 +38,7 @@
 * 성공한 장전은 턴을 소비하고 실패한 장전과 발사는 턴을 소비하지 않습니다.
 * `shotInterval`을 추가하고 기본값을 0.2초로 설정합니다.
 * Shoot 한 번에 장전된 탄환을 `shotInterval` 간격으로 전부 순차 발사합니다.
+* 각 탄환 발사 시 `Panel | Floating > Bullet FeedBack Image`를 해당 탄환의 Primary Line Color와 알파 0.2로 활성화하고 `shotInterval` 동안 알파를 0까지 감소시킵니다.
 * 연속 발사 중 장전, 추가 발사, 이동, 회전, 대기를 포함한 모든 플레이어 행동을 실행하지 않습니다.
 * 탄환 LineRenderer는 설정한 시간 동안 알파가 서서히 0으로 감소한 뒤 제거됩니다.
 * 발사된 탄환 중 `doesNotConsumeTurn`이 false인 탄환이 하나라도 있으면 전체 발사 완료 후 턴을 한 번 소비합니다.
@@ -70,6 +71,8 @@
 
 `PlayerShoot`은 R, Space, 마우스 왼쪽 버튼을 새 Input System으로 처리하고 공개 `Reload`, `Shoot` 메소드를 제공한다. `shotInterval`은 기본 0.2초이며, `Shoot`은 Coroutine을 시작해 장전 목록의 마지막 탄환부터 LIFO 순서로 전부 발사한다. 연속 발사 중에는 `isFiring`으로 R, Space, 마우스 발사와 UI의 Reload 및 Shoot 재호출을 막는다. 동시에 `PlayerMove.SetShooting(true)`를 전달해 키보드·마우스 및 UI에서 호출되는 이동, 회전, 대기도 모두 차단한다. 발사 묶음의 턴 완료 처리까지 끝난 뒤 잠금을 해제하며 PlayerShoot이 비활성화될 때도 잠금 상태를 복구한다. `Time.frameCount`를 이용한 같은 프레임 중복 방어도 유지했다. UI 위의 마우스 클릭은 Inspector에서 연결한 `EventSystem`으로 판별해 월드 발사 입력에서 제외한다.
 
+`Stage 1`의 `Panel | Floating > Bullet FeedBack Image`를 `PlayerShoot > Bullet Feedback Image`에 직접 연결했다. 탄환이 실제로 장전 목록에서 제거된 직후 해당 탄환의 `Primary Line Color` RGB와 고정 알파 0.2를 적용해 활성화하며, 현재 `Shot Interval` 동안 알파만 선형으로 0까지 감소시킨 뒤 비활성화한다. 다음 탄환이 먼저 발사되면 기존 페이드를 중단하고 새 탄환 색상으로 처음부터 다시 시작한다. 일시정지 중에는 페이드 시간이 진행되지 않으며, 전체 화면 Image가 UI 입력을 가로채지 않도록 Raycast Target을 런타임에 해제한다.
+
 `Assets/Scripts/Player/PlayerCylinderUI.cs`를 추가하고 Player 프리팹의 `Image | Cylinder`와 위쪽부터 회전 순서대로 배치된 6개의 `Image | Bullets`를 직렬화 참조로 연결했다. 첫 탄환이 장전되면 Cylinder가 활성화되고, 이후 탄환이 추가될 때마다 Z축을 `-60`도씩 SmoothStep 보간한다. LIFO 발사로 탄환이 하나 제거될 때마다 `+60`도 회전하며 마지막 탄환 제거 회전이 끝나면 Cylinder를 비활성화하고 각도를 0으로 초기화한다. 각 슬롯은 `BulletData.Sprite`를 표시하고 Sprite가 null이면 해당 탄환의 `PrimaryLineColor`를 사용한다. `PlayerShoot > Cylinder UI`가 DeckManager의 `StateChanged`를 구독하도록 초기화하며 런타임 자동 탐색은 사용하지 않는다.
 
 성공한 한 발 장전은 `PlayerMove.CompleteTurn`을 호출한다. 연속 발사에서는 실제 발사된 탄환 중 `DoesNotConsumeTurn`이 false인 탄환이 하나라도 있을 때 모든 발사가 끝난 뒤 `CompleteTurn`을 한 번만 호출한다. 모든 탄환이 턴 비소비 탄환이면 턴을 소비하지 않는다. 실패한 장전과 한 발도 발사하지 못한 Shoot에서는 호출하지 않는다. 기존 `TurnCount`와 `TurnCompleted` 이벤트를 그대로 사용하기 위해 `CompleteTurn`의 접근 범위만 public으로 변경했다.
@@ -90,7 +93,7 @@
 
 후속 발사 연출 변경으로 적 또는 타일의 Y를 발사선 끝점에 직접 사용하지 않고, 먼저 끝점 Y와 Z를 Fire Point의 값으로 맞춰 수평 기준 벡터를 만든다. 각 탄환을 발사할 때마다 이 벡터를 Z축 기준 `-Max Random Shot Angle`부터 `+Max Random Shot Angle` 사이에서 무작위로 회전한다. 기본값은 5도다. 명중 대상, 관통, 피해 판정은 기존 타일 기반 결과를 그대로 사용하므로 랜덤 각도는 LineRenderer 연출에만 영향을 주며 명중률을 변경하지 않는다.
 
-Inspector에서 `DeckManager > Deck Settings > Max Reload Amount`로 최대 장전 수량을 조절하고, `PlayerShoot > Shot Interval`로 각 발사 사이의 시간을 조절한다. `PlayerShoot > Shot Presentation > Max Random Shot Angle`은 발사선의 최대 각도 편차 N을 도 단위로 설정하며 0이면 Fire Point Y의 완전한 수평선이 된다. Bullet 프리팹의 `BulletLine > Fade Duration`으로 각 발사선이 완전히 투명해질 때까지의 시간을 조절한다. 연속 발사 도중 일시정지하면 발사 대기 시간과 LineRenderer 페이드 시간이 모두 진행하지 않으며 재개 후 계속된다.
+Inspector에서 `DeckManager > Deck Settings > Max Reload Amount`로 최대 장전 수량을 조절하고, `PlayerShoot > Shot Interval`로 각 발사 사이의 시간과 Bullet Feedback 페이드 시간을 함께 조절한다. `PlayerShoot > Bullet Feedback Image`에는 `Panel | Floating > Bullet FeedBack Image`의 Image 컴포넌트를 연결한다. `PlayerShoot > Shot Presentation > Max Random Shot Angle`은 발사선의 최대 각도 편차 N을 도 단위로 설정하며 0이면 Fire Point Y의 완전한 수평선이 된다. Bullet 프리팹의 `BulletLine > Fade Duration`으로 각 발사선이 완전히 투명해질 때까지의 시간을 조절한다. 연속 발사 도중 일시정지하면 발사 대기 시간, Bullet Feedback과 LineRenderer 페이드 시간이 모두 진행하지 않으며 재개 후 계속된다.
 
 프로젝트에 설치된 Cinemachine 3.1.7의 `CinemachineBasicMultiChannelPerlin`을 사용한다. `PlayerShoot`은 Inspector에서 `recoilNoise`와 `recoilCameraTransform`을 직접 참조하고 런타임 자동 탐색을 사용하지 않는다. Scene의 Main Camera에 연결된 Noise Profile을 유지하면서 `AmplitudeGain`과 `FrequencyGain`만 런타임에 조절한다.
 
@@ -119,6 +122,8 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * `PlayerCylinderUI`의 첫 장전 활성화, 추가 장전 `-60`도, 발사 제거 `+60`도 및 빈 장전 상태 비활성화 조건 확인
   * 탄환 Sprite와 Sprite null 시 `PrimaryLineColor` 표시 경로 확인
   * 연속 발사 중 입력 차단과 일시정지 중 간격 정지 조건 확인
+  * 각 발사 시 Bullet Feedback Image가 Primary Line Color와 알파 0.2로 재시작하고 Shot Interval 동안 0까지 감소하는지 확인
+  * Bullet Feedback Image 비활성화와 Raycast Target 해제로 UI 입력을 막지 않는지 확인
   * 발사 중 PlayerMove의 키보드·마우스·UI 공개 메소드 차단 확인
   * BulletLine의 시작/끝 알파 SmoothStep 보간과 종료 후 제거 확인
   * 장전 및 발사의 성공·실패별 `CompleteTurn` 호출 조건 확인
@@ -151,6 +156,7 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * 빈 덱에서 장전하면 무덤 전체가 덱으로 이동하고 셔플된 뒤 한 발이 장전된다.
   * 덱과 무덤이 모두 비어 있거나 장전 수량이 `MaxReloadAmount`에 도달한 경우 상태와 턴이 변경되지 않는다.
   * 기본 설정에서는 장전된 여러 탄환이 0.2초 간격으로 전부 발사된다.
+  * 각 탄환 발사 직후 Bullet Feedback Image가 해당 Primary Line Color로 교체되고 0.2에서 0까지 감소한 뒤 비활성화된다.
   * 성공한 장전은 한 발마다 턴을 소비하며, 연속 발사 묶음은 턴 소비 탄환이 하나라도 있을 때 완료 후 턴을 한 번 소비한다.
   * 발사 코루틴 시작부터 턴 완료 처리까지 PlayerMove의 이동, 회전, 대기가 잠기고 코루틴 종료 또는 PlayerShoot 비활성화 시 잠금이 해제된다.
   * BulletLine은 Fade Duration 동안 알파가 0까지 감소하며 일시정지 중에는 페이드가 멈춘다.
