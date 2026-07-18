@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -8,14 +9,27 @@ public class BoardManager : MonoBehaviour
     [SerializeField, Min(0.01f)] private float boardDistance = 1f;
 
     [Header("References")]
-    [SerializeField] private GameObject tilePrefab;
+    [SerializeField] private BoardTile tilePrefab;
     [FormerlySerializedAs("spawnOrigin")]
     [SerializeField] private Transform tileParent;
 
     private bool isGenerated;
+    private readonly List<BoardTile> spawnedTiles = new List<BoardTile>();
 
     public int BoardCount => boardCount;
     public float BoardDistance => boardDistance;
+
+    public bool SetTileWarningActive(int tileIndex, bool isActive)
+    {
+        if (tileIndex < 0 || tileIndex >= spawnedTiles.Count
+            || spawnedTiles[tileIndex] == null)
+        {
+            return false;
+        }
+
+        spawnedTiles[tileIndex].SetWarningActive(isActive);
+        return true;
+    }
 
     public bool TryGetTilePosition(int tileIndex, out Vector3 worldPosition)
     {
@@ -166,16 +180,18 @@ public class BoardManager : MonoBehaviour
         }
 
         isGenerated = true;
+        spawnedTiles.Clear();
         float startOffset = GetStartOffset();
 
         for (int index = 0; index < boardCount; index++)
         {
             float positionX = startOffset + boardDistance * index;
-            GameObject tile = Instantiate(tilePrefab, tileParent);
+            BoardTile tile = Instantiate(tilePrefab, tileParent);
 
             tile.transform.SetLocalPositionAndRotation(
                 new Vector3(positionX, 0f, 0f),
                 Quaternion.identity);
+            spawnedTiles.Add(tile);
         }
     }
 

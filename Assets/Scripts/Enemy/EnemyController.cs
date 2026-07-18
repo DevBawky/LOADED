@@ -32,6 +32,8 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private int maxQueuedAttacks = 3;
     [Min(0f)]
     [SerializeField] private float queuedActionInterval = 0.2f;
+    [Range(0f, 1f)]
+    [SerializeField] private float meleeAdditionalAttackChance = 0.5f;
 
     [Header("Runtime State")]
     [SerializeField] private int currentHealth;
@@ -288,9 +290,17 @@ public class EnemyController : MonoBehaviour
         if (distanceToPlayer <= enemyData.PreferredDistance
             && queuedAttackActions.Count < queueLimit)
         {
-            int attackIndex = queuedAttackActions.Count
-                % definedAttackCount;
-            RegisterAttack(EnemyActionType.MeleeAttack, attackIndex);
+            if (UnityEngine.Random.value < meleeAdditionalAttackChance)
+            {
+                int attackIndex = queuedAttackActions.Count
+                    % definedAttackCount;
+                RegisterAttack(EnemyActionType.MeleeAttack, attackIndex);
+            }
+            else
+            {
+                MoveTowardPlayer(directionToPlayer);
+            }
+
             return;
         }
 
@@ -534,7 +544,8 @@ public class EnemyController : MonoBehaviour
                     playerMove.transform.position,
                     out int playerIndex)
                 || targetIndex == playerIndex
-                || waveManager.IsTileOccupied(targetIndex, this))
+                || waveManager.IsTileOccupied(targetIndex, this)
+                || waveManager.IsTileReservedForSpawn(targetIndex))
             {
                 break;
             }

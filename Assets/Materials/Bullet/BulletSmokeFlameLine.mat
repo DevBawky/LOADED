@@ -21,17 +21,20 @@ Material:
     m_TexEnvs: []
     m_Floats:
     - _ColorBlend: 0.72
-    - _CoreIntensity: 2.4
-    - _CoreWidth: 0.2
-    - _EdgeDistortion: 0.22
-    - _EdgeSoftness: 0.42
-    - _EndSoftness: 0.08
-    - _NoiseScale: 9
-    - _OverallAlpha: 0.9
+    - _CoreIntensity: 3.2
+    - _CoreOpacity: 0.86
+    - _CoreWidth: 0.16
+    - _EdgeDistortion: 0.34
+    - _EdgeSoftness: 0.3
+    - _EndSoftness: 0.14
+    - _NoiseScale: 7.5
+    - _OverallAlpha: 1
     - _ScrollSpeed: 2.6
-    - _SparkDensity: 0.86
-    - _SparkIntensity: 2.7
-    - _SmokeBreakup: 0.38
-    - _TailTaper: 0.35
+    - _SmokeBrightness: 1.45
+    - _SparkDensity: 0.9
+    - _SparkIntensity: 3.2
+    - _SmokeBreakup: 0.3
+    - _TailTaper: 0.22
     m_Colors:
+    - _PrimaryColor: {r: 1, g: 0.2, b: 0.1, a: 1}
     - _SecondaryColor: {r: 1, g: 0.45, b: 0.08, a: 1}
