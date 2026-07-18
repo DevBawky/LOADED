@@ -138,6 +138,16 @@ public class WaveManager : MonoBehaviour
 
     public bool IsTileOccupied(int tileIndex, EnemyController ignoredEnemy = null)
     {
+        return TryGetEnemyAtTile(tileIndex, out _, ignoredEnemy);
+    }
+
+    public bool TryGetEnemyAtTile(
+        int tileIndex,
+        out EnemyController foundEnemy,
+        EnemyController ignoredEnemy = null)
+    {
+        foundEnemy = null;
+
         foreach (EnemyController enemy in activeEnemies)
         {
             if (enemy == null || enemy == ignoredEnemy)
@@ -148,6 +158,7 @@ public class WaveManager : MonoBehaviour
             if (boardManager.TryGetTileIndex(enemy.transform.position, out int enemyIndex)
                 && enemyIndex == tileIndex)
             {
+                foundEnemy = enemy;
                 return true;
             }
         }

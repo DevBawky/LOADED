@@ -130,6 +130,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PlayerMove
   boardManager: {fileID: 0}
   actorMotion: {fileID: 7459208863926184471}
+  pushCollisionDamageRatio: 0.1
+  pushTileDuration: 0.1
+  pushCollisionImpactRatio: 0.5
+  pushCollisionImpactHeight: 0.2
+  pushCollisionSettleDuration: 0.12
+  pushCooldownTurns: 3
+  nextPushAvailableTurn: 0
 --- !u!114 &8322958607048117707
 MonoBehaviour:
   m_ObjectHideFlags: 0
