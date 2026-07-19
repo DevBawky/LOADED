@@ -171,7 +171,9 @@ namespace VolFx.Editor
                             
                             UrpBuilder.CreateFeature(_urpFeatureType, n =>
                             {
-                                var pipline = UrpBuilder.GetDefaultPipline();
+                                // The active URP asset can be overridden per quality level.
+                                // Use the same pipeline that HasFeature/CreateFeature use.
+                                var pipline = UrpBuilder.GetPipline();
                                 var data    = UrpBuilder._getDefaultRenderer(pipline as UniversalRenderPipelineAsset);
                                 Selection.activeObject = data;
                                 EditorGUIUtility.PingObject(data);
@@ -281,22 +283,32 @@ namespace VolFx.Editor
         public static void CreateFeature(Type type, Action<ScriptableRendererFeature> onComplete)
         {
             var feature  = ScriptableObject.CreateInstance(type) as ScriptableRendererFeature;
+            if (feature == null)
+                throw new InvalidOperationException($"{type?.FullName ?? "The requested type"} is not a ScriptableRendererFeature.");
+
             feature.name = type.Name;
                 
-            AddRenderFeature(feature);
+            var rendererData = AddRenderFeature(feature);
             
             var so        = new SerializedObject(feature);
             var property  = so.FindProperty("_pass");
-            var fieldType = feature.GetType().GetField("_pass").FieldType;
+            var passField = feature.GetType().GetField("_pass", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (property == null || passField == null)
+                throw new MissingFieldException(feature.GetType().FullName, "_pass");
+
+            var fieldType = passField.FieldType;
             var pass      = ScriptableObject.CreateInstance(fieldType);
             pass.hideFlags    = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
             feature.hideFlags = HideFlags.HideInHierarchy | HideFlags.HideInInspector;
 
-            AssetDatabase.AddObjectToAsset(pass, property.serializedObject.targetObject);
+            // Both objects belong to the renderer data asset. Adding the pass to the
+            // feature itself can fail before Unity has re-imported the new sub-asset.
+            AssetDatabase.AddObjectToAsset(pass, rendererData);
             property.objectReferenceValue = pass;
 
             EditorUtility.SetDirty(property.serializedObject.targetObject);
             EditorUtility.SetDirty(pass);
+            EditorUtility.SetDirty(rendererData);
 
             property.serializedObject.ApplyModifiedPropertiesWithoutUndo();
             feature.Create();
@@ -468,12 +480,19 @@ namespace VolFx.Editor
 #endif
         }
         
-        private static void AddRenderFeature(ScriptableRendererFeature feature)
+        private static ScriptableRendererData AddRenderFeature(ScriptableRendererFeature feature)
         {
-            var pipline = GetDefaultPipline();
+            // QualitySettings can override the Graphics default pipeline. The old
+            // implementation checked that active pipeline, but tried to install into
+            // GraphicsSettings.defaultRenderPipeline instead. When the latter was
+            // null, the feature was never persisted and AddObjectToAsset failed later.
+            var pipline = GetPipline();
             var data    = _getDefaultRenderer(pipline as UniversalRenderPipelineAsset);
             if (data == null)
-                return;
+                throw new InvalidOperationException("The active URP asset has no default renderer data.");
+
+            if (EditorUtility.IsPersistent(data) == false || string.IsNullOrEmpty(AssetDatabase.GetAssetPath(data)))
+                throw new InvalidOperationException($"The active URP renderer '{data.name}' is not a persistent asset.");
 
             // Let's mirror what Unity does.
             var serializedObject = new SerializedObject(data);
@@ -484,10 +503,9 @@ namespace VolFx.Editor
             serializedObject.Update();
 
             // Store this new effect as a sub-asset so we can reference it safely afterwards.
-            // Only when we're not dealing with an instantiated asset
-            if (EditorUtility.IsPersistent(data))
-                AssetDatabase.AddObjectToAsset(feature, data);
-            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out var guid, out long localId);
+            AssetDatabase.AddObjectToAsset(feature, data);
+            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out _, out long localId) == false || localId == 0)
+                throw new InvalidOperationException($"Failed to persist render feature '{feature.name}' in '{AssetDatabase.GetAssetPath(data)}'.");
 
             // Grow the list first, then add - that's how serialized lists work in Unity
             renderFeaturesProp.arraySize++;
@@ -499,13 +517,13 @@ namespace VolFx.Editor
             var guidProp = renderFeaturesMapProp.GetArrayElementAtIndex(renderFeaturesMapProp.arraySize - 1);
             guidProp.longValue = localId;
 
-            // Force save / refresh
-            if (EditorUtility.IsPersistent(data))
-                AssetDatabase.SaveAssetIfDirty(data);
-
             serializedObject.ApplyModifiedProperties();
+            EditorUtility.SetDirty(data);
+            EditorUtility.SetDirty(feature);
+            AssetDatabase.SaveAssetIfDirty(data);
             
             // Debug.Log($"The feature {feature.GetType().Name} was created at {data.name} (click to inspect)", data);
+            return data;
         }
 
         public static ScriptableRendererData _getDefaultRenderer(UniversalRenderPipelineAsset asset)

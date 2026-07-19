@@ -232,7 +232,7 @@ public class InventoryTooltipUI : MonoBehaviour
             bulletGradeText.color = bullet.GradeNameColor;
         }
 
-        bulletDescriptionText.text = bullet.GetDescription(level);
+        bulletDescriptionText.text = bullet.GetDetailedDescription(level);
         ApplyIcon(bulletIcon, bullet.BulletIcon);
         ApplyIcon(bulletCylinderIcon, bullet.CylinderIcon);
         bulletTooltip.gameObject.SetActive(true);

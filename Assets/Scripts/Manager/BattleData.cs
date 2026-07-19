@@ -13,7 +13,20 @@ public class BattleData : ScriptableObject
 {
     [Header("Basic Information")]
     [SerializeField] private string battleId;
+
+    [Header("Battle Start Notice")]
+    [Tooltip("Text | Stage Info에 표시할 제목입니다.")]
     [SerializeField] private string displayName;
+    [Tooltip("Text | Stage Sub Title에 표시할 설명입니다.")]
+    [TextArea(1, 3)]
+    [SerializeField] private string noticeDescription;
+
+    [Header("Battle Clear Notice")]
+    [Tooltip("전투 클리어 시 Text | Stage Info에 표시할 제목입니다.")]
+    [SerializeField] private string clearNoticeTitle = "BATTLE CLEAR";
+    [Tooltip("전투 클리어 시 Text | Stage Sub Title에 표시할 설명입니다.")]
+    [TextArea(1, 3)]
+    [SerializeField] private string clearNoticeDescription;
 
     [Header("Battle Settings")]
     [SerializeField] private BattleType battleType;
@@ -26,6 +39,15 @@ public class BattleData : ScriptableObject
 
     public string BattleId => battleId;
     public string DisplayName => displayName;
+    public string NoticeTitle => string.IsNullOrWhiteSpace(displayName)
+        ? name
+        : displayName;
+    public string NoticeDescription => noticeDescription ?? string.Empty;
+    public string ClearNoticeTitle => string.IsNullOrWhiteSpace(clearNoticeTitle)
+        ? "BATTLE CLEAR"
+        : clearNoticeTitle;
+    public string ClearNoticeDescription =>
+        clearNoticeDescription ?? string.Empty;
     public BattleType BattleType => battleType;
     public bool IsBoss => battleType == BattleType.Boss;
     public int BoardCount => Mathf.Max(1, boardCount);

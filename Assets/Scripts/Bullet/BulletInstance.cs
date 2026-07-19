@@ -24,6 +24,9 @@ public sealed class BulletInstance
     public string Description => data == null
         ? string.Empty
         : data.GetDescription(Level);
+    public string DetailedDescription => data == null
+        ? string.Empty
+        : data.GetDetailedDescription(Level);
     public Sprite BulletIcon => data == null ? null : data.BulletIcon;
     public Sprite CylinderIcon => data == null ? null : data.CylinderIcon;
     public BulletGrade Grade => data == null ? BulletGrade.Common : data.Grade;

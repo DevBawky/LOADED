@@ -50,6 +50,49 @@ MonoBehaviour:
   dirtIntensity:
     m_OverrideState: 0
     m_Value: 9.06
+--- !u!114 &-7040620756359278876
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb28ea5c871044b4c90a10169555151b, type: 3}
+  m_Name: OldMovieVol
+  m_EditorClassIdentifier: OldMovieFx.Runtime::VolFx.OldMovieVol
+  active: 1
+  m_Grain:
+    m_OverrideState: 1
+    m_Value: 0.356
+  m_Noise:
+    m_OverrideState: 1
+    m_Value: 3
+  m_NoiseAlpha:
+    m_OverrideState: 1
+    m_Value: 1
+  m_Jolt:
+    m_OverrideState: 0
+    m_Value: 0.05
+  m_Fps:
+    m_OverrideState: 0
+    m_Value: 40.3
+  m_Vignette:
+    m_OverrideState: 1
+    m_Value: {r: 0, g: 0, b: 0, a: 1}
+  m_GrainTex:
+    m_OverrideState: 1
+    m_Value: 7
+  m_Audio:
+    m_OverrideState: 0
+    m_Value: 0
+  m_Volume:
+    m_OverrideState: 0
+    m_Value: 0
+  m_Pich:
+    m_OverrideState: 0
+    m_Value: 0
 --- !u!114 &-5563618878843997772
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -85,6 +128,7 @@ MonoBehaviour:
   - {fileID: 9168957292856962094}
   - {fileID: -9056597304326036985}
   - {fileID: -5563618878843997772}
+  - {fileID: -7040620756359278876}
 --- !u!114 &9168957292856962094
 MonoBehaviour:
   m_ObjectHideFlags: 3

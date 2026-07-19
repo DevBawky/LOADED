@@ -13,7 +13,10 @@ MonoBehaviour:
   m_Name: Stage 1 Battle 04
   m_EditorClassIdentifier: Assembly-CSharp::BattleData
   battleId: stage_1_battle_04
-  displayName: Stage 1 Battle 04
+  displayName: "\uC2A4\uD14C\uC774\uC9C0 1-4"
+  noticeDescription: "\uC801\uB4E4\uC744 \uBAA8\uB450 \uC18C\uD0D5\uD558\uC2ED\uC2DC\uC624."
+  clearNoticeTitle: "\uD074\uB9AC\uC5B4"
+  clearNoticeDescription: "\uBAA8\uB4E0 \uC801\uC744 \uC18C\uD0D5\uD588\uC2B5\uB2C8\uB2E4!"
   battleType: 0
   boardCount: 7
   tilePrefab: {fileID: 6102437938462105721, guid: a8a92d97c094e1b42bdbf5fbb08aa209, type: 3}

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 using UnityEngine.Serialization;
 
@@ -382,6 +383,27 @@ public class BulletData : ScriptableObject
     {
         BulletLevelData levelData = GetUpgradeLevelData(level);
         return levelData == null ? description : levelData.Description;
+    }
+
+    public string GetDetailedDescription(int level)
+    {
+        StringBuilder builder = new StringBuilder();
+        string levelDescription = GetDescription(level);
+
+        if (!string.IsNullOrWhiteSpace(levelDescription))
+        {
+            builder.AppendLine(levelDescription);
+            builder.AppendLine();
+        }
+
+        builder.Append("대미지: ")
+            .AppendLine(GetDamage(level).ToString());
+        builder.Append("유효 범위: ")
+            .Append(GetMaxRange(level))
+            .AppendLine(" 칸");
+        builder.Append("크리티컬 배율: x")
+            .AppendLine(GetCriticalDamageMultiplier(level).ToString("0.##"));
+        return builder.ToString().Trim();
     }
 
     public int GetDamage(int level)

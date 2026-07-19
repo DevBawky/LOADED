@@ -30,6 +30,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private ShopManager shopManager;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private GameStartUI gameStartUI;
 
     [Header("Panels")]
     [SerializeField] private GameObject mainGamePanel;
@@ -49,6 +50,7 @@ public class StateManager : MonoBehaviour
         GameFlowState.Initializing;
 
     private Coroutine battleClearCoroutine;
+    private Coroutine battleStartCoroutine;
 
     public event Action StateChanged;
 
@@ -59,6 +61,7 @@ public class StateManager : MonoBehaviour
     private void Awake()
     {
         SetPanels(false, false, false);
+        gameStartUI?.ResetAndHide();
 
         if (playerMove != null)
         {
@@ -107,6 +110,8 @@ public class StateManager : MonoBehaviour
 
     private void OnDisable()
     {
+        StopBattleStartPresentation();
+
         if (battleClearCoroutine != null)
         {
             StopCoroutine(battleClearCoroutine);
@@ -139,6 +144,16 @@ public class StateManager : MonoBehaviour
     {
         if (currentState != GameFlowState.BattleClear
             || !TryGetCurrentBattle(out _))
+        {
+            return;
+        }
+
+        OpenShopAfterBattleClear();
+    }
+
+    private void OpenShopAfterBattleClear()
+    {
+        if (currentState != GameFlowState.BattleClear)
         {
             return;
         }
@@ -183,6 +198,7 @@ public class StateManager : MonoBehaviour
 
     private void StartCurrentBattle()
     {
+        StopBattleStartPresentation();
         waveManager.StopBattle();
 
         if (!TryGetCurrentBattle(out BattleData battle)
@@ -198,8 +214,35 @@ public class StateManager : MonoBehaviour
         MovePlayerToBoardCenter(battle.BoardCount);
         currentState = GameFlowState.Battle;
         SetPanels(true, false, false);
-        SetInputLocked(false);
+        SetInputLocked(true);
         StateChanged?.Invoke();
+
+        if (gameStartUI != null)
+        {
+            battleStartCoroutine = StartCoroutine(
+                PlayBattleStart(battle));
+            return;
+        }
+
+        BeginBattleGameplay(battle);
+    }
+
+    private IEnumerator PlayBattleStart(BattleData battle)
+    {
+        yield return gameStartUI.Play(
+            battle,
+            () => BeginBattleGameplay(battle));
+        battleStartCoroutine = null;
+    }
+
+    private void BeginBattleGameplay(BattleData battle)
+    {
+        if (currentState != GameFlowState.Battle || battle == null)
+        {
+            return;
+        }
+
+        SetInputLocked(false);
 
         if (!waveManager.BeginBattle(battle.Waves, battle.SpawnTerm))
         {
@@ -215,6 +258,7 @@ public class StateManager : MonoBehaviour
             return;
         }
 
+        StopBattleStartPresentation();
         SetInputLocked(true);
         battleClearCoroutine = StartCoroutine(ShowBattleClearWhenSettled());
     }
@@ -229,33 +273,37 @@ public class StateManager : MonoBehaviour
             yield return null;
         }
 
-        battleClearCoroutine = null;
-
         if (currentState != GameFlowState.Battle
-            || !TryGetCurrentBattle(out _))
+            || !TryGetCurrentBattle(out BattleData battle))
         {
+            battleClearCoroutine = null;
             yield break;
         }
 
         currentState = GameFlowState.BattleClear;
-        SetPanels(false, true, false);
+        SetPanels(false, false, false);
         SetInputLocked(true);
-
-        if (goToMaintenanceButton != null)
-        {
-            goToMaintenanceButton.interactable = true;
-        }
-
-        if (goToMaintenanceText != null)
-        {
-            goToMaintenanceText.text = "TO MAINTENANCE";
-        }
-
         StateChanged?.Invoke();
+
+        if (gameStartUI != null)
+        {
+            yield return gameStartUI.PlayBattleClear(battle);
+        }
+
+        if (currentState != GameFlowState.BattleClear)
+        {
+            battleClearCoroutine = null;
+            yield break;
+        }
+
+        battleClearCoroutine = null;
+        OpenShopAfterBattleClear();
     }
 
     private void HandleBattleFailed()
     {
+        StopBattleStartPresentation();
+
         if (battleClearCoroutine != null)
         {
             StopCoroutine(battleClearCoroutine);
@@ -271,6 +319,8 @@ public class StateManager : MonoBehaviour
         {
             return;
         }
+
+        StopBattleStartPresentation();
 
         if (battleClearCoroutine != null)
         {
@@ -298,6 +348,7 @@ public class StateManager : MonoBehaviour
 
     private void ShowRunComplete(string label)
     {
+        StopBattleStartPresentation();
         currentState = GameFlowState.RunComplete;
         SetPanels(false, true, false);
         SetInputLocked(true);
@@ -313,6 +364,17 @@ public class StateManager : MonoBehaviour
         }
 
         StateChanged?.Invoke();
+    }
+
+    private void StopBattleStartPresentation()
+    {
+        if (battleStartCoroutine != null)
+        {
+            StopCoroutine(battleStartCoroutine);
+            battleStartCoroutine = null;
+        }
+
+        gameStartUI?.ResetAndHide();
     }
 
     private bool TryGetCurrentBattle(out BattleData battle)

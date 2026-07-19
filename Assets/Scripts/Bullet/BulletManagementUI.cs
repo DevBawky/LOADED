@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Text;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -259,7 +258,7 @@ public class BulletManagementUI : MonoBehaviour
 
         if (bulletDescriptionText != null)
         {
-            bulletDescriptionText.text = BuildDescription(selectedBullet);
+            bulletDescriptionText.text = selectedBullet.DetailedDescription;
         }
 
         int currentMoney = currencyManager == null
@@ -335,89 +334,6 @@ public class BulletManagementUI : MonoBehaviour
         {
             upgradeButtonText.text = "Upgrade";
         }
-    }
-
-    private static string BuildDescription(BulletInstance bullet)
-    {
-        StringBuilder builder = new StringBuilder();
-        builder.AppendLine(bullet.Description);
-        builder.AppendLine();
-        builder.Append("Damage: ").AppendLine(bullet.Damage.ToString());
-        builder.Append("Range: ").AppendLine(bullet.MaxRange.ToString());
-        builder.Append("Critical: x")
-            .AppendLine(bullet.CriticalDamageMultiplier.ToString("0.##"));
-        builder.Append("Recoil: ")
-            .AppendLine(bullet.RecoilStrength.ToString("0.##"));
-        builder.Append("Turn Free: ")
-            .AppendLine(bullet.DoesNotConsumeTurn ? "Yes" : "No");
-        builder.Append("Effects: ")
-            .AppendLine(FormatEffects(bullet.Effects));
-        builder.Append("Penetration: ")
-            .Append(FormatPenetration(bullet.PenetrationChances));
-        return builder.ToString().Trim();
-    }
-
-    private static string FormatEffects(
-        IReadOnlyList<BulletEffectData> effects)
-    {
-        if (effects == null || effects.Count == 0)
-        {
-            return "None";
-        }
-
-        StringBuilder builder = new StringBuilder();
-
-        for (int index = 0; index < effects.Count; index++)
-        {
-            BulletEffectData effect = effects[index];
-
-            if (effect == null)
-            {
-                continue;
-            }
-
-            if (builder.Length > 0)
-            {
-                builder.Append(", ");
-            }
-
-            builder.Append(effect.EffectType)
-                .Append(' ')
-                .Append(effect.ActivationChance.ToString("0.##"))
-                .Append('%');
-        }
-
-        return builder.Length == 0 ? "None" : builder.ToString();
-    }
-
-    private static string FormatPenetration(
-        IReadOnlyList<PenetrationChanceData> chances)
-    {
-        if (chances == null || chances.Count == 0)
-        {
-            return "None";
-        }
-
-        StringBuilder builder = new StringBuilder();
-
-        for (int index = 0; index < chances.Count; index++)
-        {
-            PenetrationChanceData chance = chances[index];
-
-            if (chance == null)
-            {
-                continue;
-            }
-
-            if (builder.Length > 0)
-            {
-                builder.Append(" / ");
-            }
-
-            builder.Append(chance.Chance.ToString("0.##")).Append('%');
-        }
-
-        return builder.Length == 0 ? "None" : builder.ToString();
     }
 
     private void BindEvents()
