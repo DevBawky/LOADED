@@ -153,7 +153,8 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
-        if (deckManager.TryReload())
+        if (deckManager.TryReload(out BulletInstance loadedBullet)
+            && (loadedBullet == null || !loadedBullet.DoesNotConsumeTurn))
         {
             playerMove.CompleteTurn();
         }

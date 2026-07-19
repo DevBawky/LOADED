@@ -35,6 +35,13 @@ public class DeckManager : MonoBehaviour
 
     public bool TryReload()
     {
+        return TryReload(out _);
+    }
+
+    public bool TryReload(out BulletInstance loadedBullet)
+    {
+        loadedBullet = null;
+
         if (loadedBullets.Count >= Mathf.Max(1, maxReloadAmount))
         {
             return false;
@@ -48,7 +55,8 @@ public class DeckManager : MonoBehaviour
         }
 
         int topIndex = deck.Count - 1;
-        loadedBullets.Add(deck[topIndex]);
+        loadedBullet = deck[topIndex];
+        loadedBullets.Add(loadedBullet);
         deck.RemoveAt(topIndex);
         RecycleGraveyardBeforeDeckRunsOut();
         StateChanged?.Invoke();
