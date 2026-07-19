@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 0b94c74cdb33963448fd494c9cabbcdb
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 270021
+  packageName: Old Movie - Old Film Screen Effect
+  packageVersion: 1.4.1
+  assetPath: Assets/OldMovie/Runtime/OldMovieFx.Runtime.asmdef
+  uploadId: 719437
