@@ -156,7 +156,7 @@ public class PlayerCylinderUI : MonoBehaviour
             loadedCount == 0);
     }
 
-    private void ApplyBulletImage(Image bulletImage, BulletData bulletData)
+    private void ApplyBulletImage(Image bulletImage, BulletInstance bulletData)
     {
         Sprite cylinderIcon = bulletData == null
             ? null

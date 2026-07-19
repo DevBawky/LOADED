@@ -154,10 +154,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8f2fcdfb32e44a679d17f5a0cc6cf195, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  slotCount: 5
-  startingItems:
-  - {fileID: 11400000, guid: 63f9ffcefb944fc8bbeb16e419249663, type: 2}
-  - {fileID: 11400000, guid: 593c3c05f9ee62842a3f0279f6b5a844, type: 2}
+  playerHealth: {fileID: 0}
+  deckManager: {fileID: 0}
+  slotCount: 3
+  startingItems: []
 --- !u!114 &6372297391433345502
 MonoBehaviour:
   m_ObjectHideFlags: 0

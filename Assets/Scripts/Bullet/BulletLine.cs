@@ -16,9 +16,12 @@ public class BulletLine : MonoBehaviour
 
     private MaterialPropertyBlock materialPropertyBlock;
 
-    public BulletData Data { get; private set; }
+    public BulletInstance Data { get; private set; }
 
-    public bool Initialize(BulletData bulletData, Vector3 startPoint, Vector3 endPoint)
+    public bool Initialize(
+        BulletInstance bulletData,
+        Vector3 startPoint,
+        Vector3 endPoint)
     {
         if (lineRenderer == null)
         {

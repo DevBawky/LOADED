@@ -188,7 +188,7 @@ public class PlayerShoot : MonoBehaviour
 
         int horizontalDirection = transform.localScale.x >= 0f ? 1 : -1;
         int firstBulletIndex = deckManager.LoadedBullets.Count - 1;
-        BulletData firstBullet = deckManager.LoadedBullets[firstBulletIndex];
+        BulletInstance firstBullet = deckManager.LoadedBullets[firstBulletIndex];
 
         if (firstBullet == null
             || !boardManager.TryGetTileIndex(transform.position, out _))
@@ -214,7 +214,7 @@ public class PlayerShoot : MonoBehaviour
             }
 
             int bulletIndex = deckManager.LoadedBullets.Count - 1;
-            BulletData bulletData = deckManager.LoadedBullets[bulletIndex];
+            BulletInstance bulletData = deckManager.LoadedBullets[bulletIndex];
 
             if (bulletData == null)
             {
@@ -261,7 +261,7 @@ public class PlayerShoot : MonoBehaviour
                 break;
             }
 
-            if (!deckManager.TryFireLoadedBullet(out BulletData firedBullet)
+            if (!deckManager.TryFireLoadedBullet(out BulletInstance firedBullet)
                 || firedBullet != bulletData)
             {
                 Destroy(bulletLine.gameObject);
@@ -298,7 +298,7 @@ public class PlayerShoot : MonoBehaviour
         playerMove.SetShooting(false);
     }
 
-    private void BuildHitTargets(BulletData bulletData)
+    private void BuildHitTargets(BulletInstance bulletData)
     {
         hitBuffer.Clear();
         hitBuffer.Add(targetBuffer[0]);
@@ -320,7 +320,7 @@ public class PlayerShoot : MonoBehaviour
     }
 
     private IEnumerator ApplyHitResults(
-        BulletData bulletData,
+        BulletInstance bulletData,
         int horizontalDirection,
         bool isCritical)
     {
@@ -437,7 +437,7 @@ public class PlayerShoot : MonoBehaviour
     }
 
     private int CalculateAttackDamage(
-        BulletData bulletData,
+        BulletInstance bulletData,
         bool isCritical)
     {
         if (bulletData == null || bulletData.Damage <= 0)
@@ -520,7 +520,7 @@ public class PlayerShoot : MonoBehaviour
         }
     }
 
-    private void ShowBulletFeedback(BulletData bulletData)
+    private void ShowBulletFeedback(BulletInstance bulletData)
     {
         if (bulletFeedbackImage == null || bulletData == null)
         {
@@ -596,7 +596,7 @@ public class PlayerShoot : MonoBehaviour
         bulletFeedbackImage.gameObject.SetActive(false);
     }
 
-    private void GenerateRecoil(BulletData bulletData)
+    private void GenerateRecoil(BulletInstance bulletData)
     {
         if (bulletData.RecoilStrength <= 0f || cameraRecoilScale <= 0f)
         {

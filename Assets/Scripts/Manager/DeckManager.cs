@@ -5,21 +5,28 @@ using UnityEngine;
 public class DeckManager : MonoBehaviour
 {
     [Header("Deck Settings")]
-    [SerializeField] private List<BulletData> startingBullets = new List<BulletData>();
+    [SerializeField] private List<BulletData> startingBullets =
+        new List<BulletData>();
     [Min(1)]
     [SerializeField] private int maxReloadAmount = 6;
 
     [Header("Runtime State")]
-    [SerializeField] private List<BulletData> deck = new List<BulletData>();
-    [SerializeField] private List<BulletData> loadedBullets = new List<BulletData>();
-    [SerializeField] private List<BulletData> graveyard = new List<BulletData>();
+    [SerializeField] private List<BulletInstance> deck =
+        new List<BulletInstance>();
+    [SerializeField] private List<BulletInstance> loadedBullets =
+        new List<BulletInstance>();
+    [SerializeField] private List<BulletInstance> graveyard =
+        new List<BulletInstance>();
+    [SerializeField] private int nextAcquisitionOrder;
 
     public event Action StateChanged;
 
-    public IReadOnlyList<BulletData> Deck => deck;
-    public IReadOnlyList<BulletData> LoadedBullets => loadedBullets;
-    public IReadOnlyList<BulletData> Graveyard => graveyard;
+    public IReadOnlyList<BulletInstance> Deck => deck;
+    public IReadOnlyList<BulletInstance> LoadedBullets => loadedBullets;
+    public IReadOnlyList<BulletInstance> Graveyard => graveyard;
     public int MaxReloadAmount => maxReloadAmount;
+    public int OwnedBulletCount => deck.Count + loadedBullets.Count
+        + graveyard.Count;
 
     private void Awake()
     {
@@ -33,10 +40,7 @@ public class DeckManager : MonoBehaviour
             return false;
         }
 
-        if (deck.Count == 0)
-        {
-            RecycleGraveyard();
-        }
+        RecycleGraveyardBeforeDeckRunsOut();
 
         if (deck.Count == 0)
         {
@@ -46,22 +50,23 @@ public class DeckManager : MonoBehaviour
         int topIndex = deck.Count - 1;
         loadedBullets.Add(deck[topIndex]);
         deck.RemoveAt(topIndex);
+        RecycleGraveyardBeforeDeckRunsOut();
         StateChanged?.Invoke();
         return true;
     }
 
-    public bool TryFireLoadedBullet(out BulletData bulletData)
+    public bool TryFireLoadedBullet(out BulletInstance bullet)
     {
         if (loadedBullets.Count == 0)
         {
-            bulletData = null;
+            bullet = null;
             return false;
         }
 
         int topIndex = loadedBullets.Count - 1;
-        bulletData = loadedBullets[topIndex];
+        bullet = loadedBullets[topIndex];
         loadedBullets.RemoveAt(topIndex);
-        graveyard.Add(bulletData);
+        graveyard.Add(bullet);
         StateChanged?.Invoke();
         return true;
     }
@@ -73,7 +78,77 @@ public class DeckManager : MonoBehaviour
             return false;
         }
 
-        deck.Add(bulletData);
+        deck.Add(CreateBulletInstance(bulletData));
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    public bool TryUpgradeBullet(BulletInstance bullet)
+    {
+        if (!Contains(bullet) || !bullet.TryUpgrade())
+        {
+            return false;
+        }
+
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    public bool TryRemoveBullet(BulletInstance bullet)
+    {
+        if (bullet == null)
+        {
+            return false;
+        }
+
+        bool removed = deck.Remove(bullet);
+        removed = loadedBullets.Remove(bullet) || removed;
+        removed = graveyard.Remove(bullet) || removed;
+
+        if (!removed)
+        {
+            return false;
+        }
+
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    public bool Contains(BulletInstance bullet)
+    {
+        return bullet != null && (deck.Contains(bullet)
+            || loadedBullets.Contains(bullet)
+            || graveyard.Contains(bullet));
+    }
+
+    public void GetOwnedBullets(List<BulletInstance> results)
+    {
+        if (results == null)
+        {
+            return;
+        }
+
+        results.Clear();
+        results.AddRange(deck);
+        results.AddRange(loadedBullets);
+        results.AddRange(graveyard);
+        results.Sort((left, right) => left.AcquisitionOrder.CompareTo(
+            right.AcquisitionOrder));
+    }
+
+    public BulletInstance PeekNextBullet()
+    {
+        return deck.Count == 0 ? null : deck[deck.Count - 1];
+    }
+
+    public bool ReshuffleDeck()
+    {
+        if (deck.Count == 0)
+        {
+            return false;
+        }
+
+        ShuffleDeck();
         StateChanged?.Invoke();
         return true;
     }
@@ -83,17 +158,27 @@ public class DeckManager : MonoBehaviour
         deck.Clear();
         loadedBullets.Clear();
         graveyard.Clear();
+        nextAcquisitionOrder = 0;
 
         foreach (BulletData bulletData in startingBullets)
         {
             if (bulletData != null)
             {
-                deck.Add(bulletData);
+                deck.Add(CreateBulletInstance(bulletData));
             }
         }
 
         ShuffleDeck();
         StateChanged?.Invoke();
+    }
+
+    private BulletInstance CreateBulletInstance(BulletData bulletData)
+    {
+        BulletInstance bullet = new BulletInstance(
+            bulletData,
+            nextAcquisitionOrder);
+        nextAcquisitionOrder++;
+        return bullet;
     }
 
     private void RecycleGraveyard()
@@ -108,12 +193,20 @@ public class DeckManager : MonoBehaviour
         ShuffleDeck();
     }
 
+    private void RecycleGraveyardBeforeDeckRunsOut()
+    {
+        if (deck.Count <= 1)
+        {
+            RecycleGraveyard();
+        }
+    }
+
     private void ShuffleDeck()
     {
         for (int index = deck.Count - 1; index > 0; index--)
         {
             int randomIndex = UnityEngine.Random.Range(0, index + 1);
-            BulletData temporary = deck[index];
+            BulletInstance temporary = deck[index];
             deck[index] = deck[randomIndex];
             deck[randomIndex] = temporary;
         }
