@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c3e6225e521879f45baa5941e8ca467c
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Editor/Resources/DNP/Style/Cool/Healh.asset
+  uploadId: 953944

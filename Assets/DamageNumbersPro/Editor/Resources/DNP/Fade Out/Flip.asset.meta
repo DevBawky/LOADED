@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 38699114efc24c94e9c048f65f20063f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Editor/Resources/DNP/Fade Out/Flip.asset
+  uploadId: 953944

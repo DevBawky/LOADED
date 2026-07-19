@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f8b4ebfc07248ee4fb72292fb0c53b02
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo/Scripts/DNP_CubeHighlight.cs
+  uploadId: 953944

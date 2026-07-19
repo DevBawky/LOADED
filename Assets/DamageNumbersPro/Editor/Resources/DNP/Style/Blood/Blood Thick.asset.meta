@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 69af19bed9c54724b9d084e76a341bcf
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Editor/Resources/DNP/Style/Blood/Blood Thick.asset
+  uploadId: 953944

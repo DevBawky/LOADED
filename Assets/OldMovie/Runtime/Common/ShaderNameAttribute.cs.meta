@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: bec7e567f736d6a4f97a66e7cb996d20
+timeCreated: 1697614508
+AssetOrigin:
+  serializedVersion: 1
+  productId: 270021
+  packageName: Old Movie - Old Film Screen Effect
+  packageVersion: 1.4.1
+  assetPath: Assets/OldMovie/Runtime/Common/ShaderNameAttribute.cs
+  uploadId: 719437

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: be2429837e46598448fc6ce1739b4082
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Scripts/Settings/FollowSettings.cs
+  uploadId: 953944

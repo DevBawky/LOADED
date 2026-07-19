@@ -14,22 +14,91 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_pierce
   displayName: Pierce
-  description: "(100-\uAC70\uB9AC*20)% \uD655\uB960\uB85C \uC801\uC744 \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+  description: "(100-\uAC70\uB9AC*30)% \uD655\uB960\uB85C \uC801\uC744 \uAD00\uD1B5\uD569\uB2C8\uB2E4."
   bulletIcon: {fileID: 8191024754275108436, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   cylinderIcon: {fileID: 6088543973832532824, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
-  price: 8
-  grade: 1
+  price: 20
+  grade: 4
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   damage: 30
   maxRange: 5
   criticalDamageMultiplier: 2
   effects: []
   penetrationChances:
-  - chance: 80
-  - chance: 60
+  - chance: 70
   - chance: 40
-  - chance: 20
+  - chance: 10
+  - chance: 0
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0, b: 0, a: 1}
   secondaryLineColor: {r: 0.7264151, g: 0.7264151, b: 0.7264151, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
+  removeCost: 5
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "(100-\uAC70\uB9AC*25)% \uD655\uB960\uB85C \uC801\uC744 \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 30
+    maxRange: 5
+    criticalDamageMultiplier: 2
+    effects: []
+    penetrationChances:
+    - chance: 75
+    - chance: 50
+    - chance: 25
+    - chance: 0
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0, b: 0, a: 1}
+    secondaryLineColor: {r: 0.7264151, g: 0.7264151, b: 0.7264151, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "(100-\uAC70\uB9AC*20)% \uD655\uB960\uB85C \uC801\uC744 \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n50%
+      \uD655\uB960\uB85C \uAE30\uC808\uC744 1\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    damage: 30
+    maxRange: 5
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 1
+      activationChance: 50
+      stackCount: 1
+      knockbackDistance: 0
+    penetrationChances:
+    - chance: 80
+    - chance: 60
+    - chance: 40
+    - chance: 20
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0, b: 0, a: 1}
+    secondaryLineColor: {r: 0.7264151, g: 0.7264151, b: 0.7264151, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "(100-\uAC70\uB9AC*10)% \uD655\uB960\uB85C \uC801\uC744 \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n80%
+      \uD655\uB960\uB85C \uAE30\uC808\uC744 1\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    damage: 30
+    maxRange: 5
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 1
+      activationChance: 80
+      stackCount: 1
+      knockbackDistance: 0
+    penetrationChances:
+    - chance: 90
+    - chance: 80
+    - chance: 70
+    - chance: 60
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0, b: 0, a: 1}
+    secondaryLineColor: {r: 0.7264151, g: 0.7264151, b: 0.7264151, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10

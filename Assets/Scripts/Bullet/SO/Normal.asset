@@ -19,9 +19,14 @@ MonoBehaviour:
   cylinderIcon: {fileID: 4385501425044414559, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   price: 5
   grade: 0
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   damage: 20
   maxRange: 3
-  criticalDamageMultiplier: 2
+  criticalDamageMultiplier: 1.5
   effects: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -29,3 +34,47 @@ MonoBehaviour:
   secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
+  removeCost: 5
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "\uC870\uAE08 \uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
+      \uD0C4\uD658\uC785\uB2C8\uB2E4."
+    damage: 30
+    maxRange: 3
+    criticalDamageMultiplier: 1.8
+    effects: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "\uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+    damage: 35
+    maxRange: 3
+    criticalDamageMultiplier: 2
+    effects: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "\uB354 \uB9CE\uC774 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
+      \uD0C4\uD658\uC785\uB2C8\uB2E4."
+    damage: 50
+    maxRange: 3
+    criticalDamageMultiplier: 2.75
+    effects: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.35
+    removeCost: 5
+    upgradeCost: 10

@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 7b8c01b1d7077754fbbd8454e3cbab63
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo C#/Demo_Popup.prefab
+  uploadId: 953944

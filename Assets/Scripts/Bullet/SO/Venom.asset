@@ -14,18 +14,23 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_venom
   displayName: Venom
-  description: "70% \uD655\uB960\uB85C \uB3C5\uC744 5\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  description: "70% \uD655\uB960\uB85C \uB3C5\uC744 3\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
   bulletIcon: {fileID: -7715894896725399453, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   cylinderIcon: {fileID: 1823540885998108106, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   price: 10
   grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   damage: 10
   maxRange: 3
   criticalDamageMultiplier: 2
   effects:
   - effectType: 0
     activationChance: 70
-    stackCount: 5
+    stackCount: 3
     knockbackDistance: 1
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -33,3 +38,67 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
+  removeCost: 5
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "70% \uD655\uB960\uB85C \uB3C5\uC744 5\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    damage: 20
+    maxRange: 3
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 0
+      activationChance: 70
+      stackCount: 5
+      knockbackDistance: 1
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
+    secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "70% \uD655\uB960\uB85C \uB3C5\uC744 10\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n20%
+      \uD655\uB960\uB85C \uB3C5\uC744 \uCD94\uAC00\uB85C 10\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    damage: 30
+    maxRange: 3
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 0
+      activationChance: 70
+      stackCount: 10
+      knockbackDistance: 1
+    - effectType: 0
+      activationChance: 20
+      stackCount: 10
+      knockbackDistance: 1
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
+    secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "100% \uD655\uB960\uB85C \uB3C5\uC744 10\uB9CC\uD07C \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n70%
+      \uD655\uB960\uB85C \uB3C5\uC744 10\uB9CC\uD07C \uCD94\uAC00 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    damage: 35
+    maxRange: 3
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 0
+      activationChance: 100
+      stackCount: 10
+      knockbackDistance: 1
+    - effectType: 0
+      activationChance: 70
+      stackCount: 10
+      knockbackDistance: 1
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
+    secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10

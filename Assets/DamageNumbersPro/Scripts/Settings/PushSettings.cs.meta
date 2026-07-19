@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: cd1255669b0b7134dad1cd3c2851f27b
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Scripts/Settings/PushSettings.cs
+  uploadId: 953944
