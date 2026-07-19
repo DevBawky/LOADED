@@ -19,17 +19,66 @@ MonoBehaviour:
   cylinderIcon: {fileID: -9052392895300060863, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   price: 20
   grade: 3
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   damage: 80
   maxRange: 3
   criticalDamageMultiplier: 2
-  effects:
-  - effectType: 0
-    activationChance: 100
-    stackCount: 5
-    knockbackDistance: 1
+  effects: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
   secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
+  removeCost: 5
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "\uC544\uC8FC \uC544\uC8FC \uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4."
+    damage: 100
+    maxRange: 3
+    criticalDamageMultiplier: 2.25
+    effects: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
+    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "\uC544\uC8FC \uC544\uC8FC \uC544\uC8FC \uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4."
+    damage: 120
+    maxRange: 3
+    criticalDamageMultiplier: 2.5
+    effects:
+    - effectType: 0
+      activationChance: 100
+      stackCount: 5
+      knockbackDistance: 1
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
+    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "\uC774 \uAC8C\uC784\uC5D0\uC11C \uAC00\uC7A5 \uAC15\uB825\uD55C
+      \uD0C4\uD658\uC785\uB2C8\uB2E4.\n70% \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 150
+    maxRange: 3
+    criticalDamageMultiplier: 3
+    effects: []
+    penetrationChances:
+    - chance: 70
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
+    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
