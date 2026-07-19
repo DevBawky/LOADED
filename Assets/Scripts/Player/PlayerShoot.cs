@@ -343,7 +343,9 @@ public class PlayerShoot : MonoBehaviour
                 continue;
             }
 
-            int appliedDamage = enemy.ApplyAttackDamage(attackDamage);
+            int appliedDamage = enemy.ApplyAttackDamage(
+                attackDamage,
+                isCritical);
 
             IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
 
@@ -395,6 +397,12 @@ public class PlayerShoot : MonoBehaviour
         if (effect.EffectType == BulletEffectType.LifeSteal)
         {
             playerHealth.Heal(appliedDamage);
+
+            if (appliedDamage > 0 && enemy != null)
+            {
+                enemy.ShowLifeStealStatus();
+            }
+
             yield break;
         }
 

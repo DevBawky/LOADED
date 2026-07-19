@@ -18,7 +18,7 @@ MonoBehaviour:
   clearNoticeTitle: "\uD074\uB9AC\uC5B4"
   clearNoticeDescription: "\uBAA8\uB4E0 \uC801\uC744 \uC18C\uD0D5\uD588\uC2B5\uB2C8\uB2E4!"
   battleType: 1
-  boardCount: 7
+  boardCount: 13
   tilePrefab: {fileID: 6102437938462105721, guid: a8a92d97c094e1b42bdbf5fbb08aa209, type: 3}
   spawnTerm: 2
   waves:
