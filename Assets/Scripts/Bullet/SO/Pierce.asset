@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_pierce
   displayName: Pierce
-  description: "(100-\uAC70\uB9AC)% \uD655\uB960\uB85C \uC801\uC744 \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+  description: "(100-\uAC70\uB9AC*20)% \uD655\uB960\uB85C \uC801\uC744 \uAD00\uD1B5\uD569\uB2C8\uB2E4."
   bulletIcon: {fileID: 8191024754275108436, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   cylinderIcon: {fileID: 6088543973832532824, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   price: 8

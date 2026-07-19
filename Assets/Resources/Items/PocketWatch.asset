@@ -12,6 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34a12ef1c8e64b0d9cddfdb4e581a6e9, type: 3}
   m_Name: PocketWatch
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  displayName: Pocket Watch
-  description: Time Bbakku
+  displayName: "\uB371 \uC7AC\uC154\uD50C\uB7EC"
+  description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uD604\uC7AC \uB4DC\uB85C\uC6B0 \uB371\uC744 \uC989\uC2DC \uB2E4\uC2DC \uC11E\uC2B5\uB2C8\uB2E4."
   icon: {fileID: -7045340985220011445, guid: a36d8bfe9a805e4408464f0caf7221f6, type: 3}
+  price: 5
+  effectType: 1
+  effectAmount: 0

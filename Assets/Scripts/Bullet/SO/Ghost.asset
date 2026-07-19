@@ -20,6 +20,11 @@ MonoBehaviour:
   cylinderIcon: {fileID: -321094208572080090, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   price: 14
   grade: 2
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   damage: 20
   maxRange: 3
   criticalDamageMultiplier: 2
@@ -30,3 +35,48 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 1}
   doesNotConsumeTurn: 1
   recoilStrength: 0.1
+  removeCost: 5
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD560
+      \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+    damage: 20
+    maxRange: 3
+    criticalDamageMultiplier: 2
+    effects: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+    secondaryLineColor: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD560
+      \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+    damage: 20
+    maxRange: 3
+    criticalDamageMultiplier: 2
+    effects: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+    secondaryLineColor: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
+  - description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD560
+      \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+    damage: 20
+    maxRange: 3
+    criticalDamageMultiplier: 2
+    effects: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+    secondaryLineColor: {r: 0.5188679, g: 0.5188679, b: 0.5188679, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10
