@@ -55,7 +55,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 30649d3a9faa99c48a7b1166b86bf2a0, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.HorizontalLayoutGroup
   m_Padding:
     m_Left: 0
@@ -442,6 +442,7 @@ GameObject:
   - component: {fileID: 1235869742036814597}
   - component: {fileID: 4925572819471286301}
   - component: {fileID: 700000000000000001}
+  - component: {fileID: 700000000000000002}
   m_Layer: 0
   m_Name: Test Enemy
   m_TagString: Untagged
@@ -543,6 +544,7 @@ MonoBehaviour:
   actorMotion: {fileID: 1235869742036814597}
   actionQueueUI: {fileID: 4925572819471286301}
   statusEffects: {fileID: 700000000000000001}
+  damageNumberDisplay: {fileID: 700000000000000002}
   maxQueuedAttacks: 3
   queuedActionInterval: 0.2
   meleeAdditionalAttackChance: 0.5
@@ -598,7 +600,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e1f9aa7ff31a4e728dcfb51ce6f4c03d, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StatusEffectController
   statusIconParent: {fileID: 4018369371245492536}
   debuffIconPrefab: {fileID: 2146537680677166396, guid: 6e3ec2102ac0b974e8fc878109463ca1, type: 3}
@@ -610,3 +612,32 @@ MonoBehaviour:
   poisonStacks: 0
   stunStacks: 0
   weaknessStacks: 0
+--- !u!114 &700000000000000002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8378092708147667353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3b2a11ef4864d48a0b42aef5c2e9107, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDamageNumberDisplay
+  normalDamagePrefab: {fileID: 7093171668410684382, guid: 69d3740759199d243aba77143fcdc2b4, type: 3}
+  criticalDamagePrefab: {fileID: 7093171668410684382, guid: d687fa0addb64b544a8b80246de4d981, type: 3}
+  poisonDamagePrefab: {fileID: 7093171668410684382, guid: a49e2b552cb04934d89ca44805ae4a77, type: 3}
+  markBonusDamagePrefab: {fileID: 7093171668410684382, guid: 0f2a5a8123d65b74ba098d0fc562e6de, type: 3}
+  poisonStatusPrefab: {fileID: 8736109667816764904, guid: 6498f7e1513ff5549baa1df8ebdf4240, type: 3}
+  markStatusPrefab: {fileID: 6899225095673140928, guid: 11b3ccffc851b3b4ca0d93bccb4f28e7, type: 3}
+  stunStatusPrefab: {fileID: 5278638099579632197, guid: 06387bb3c72ae6f4e813af6bccb11301, type: 3}
+  lifeStealStatusPrefab: {fileID: 8571378310487275999, guid: ac4368b1495fc31459ecca140884d31d, type: 3}
+  weaknessStatusPrefab: {fileID: 7762319318894557678, guid: 1d6319f8d921689408a902941fe6961d, type: 3}
+  poisonText: Poison
+  markText: Mark
+  stunText: Stun
+  lifeStealText: Life Steel
+  weaknessText: Weakness
+  damageOffset: {x: 0, y: 0.75, z: -1}
+  statusOffset: {x: 0, y: 1, z: -1}
+  followTarget: 1

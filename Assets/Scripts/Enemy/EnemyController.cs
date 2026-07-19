@@ -27,6 +27,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private ActorMotion actorMotion;
     [SerializeField] private EnemyActionQueueUI actionQueueUI;
     [SerializeField] private StatusEffectController statusEffects;
+    [SerializeField] private EnemyDamageNumberDisplay damageNumberDisplay;
 
     [Header("Attack Queue")]
     [Range(1, 3)]
@@ -77,6 +78,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (statusEffects == null)
         {
             statusEffects = GetComponent<StatusEffectController>();
+        }
+
+        if (damageNumberDisplay == null)
+        {
+            damageNumberDisplay = GetComponent<EnemyDamageNumberDisplay>();
         }
 
         ResetRuntimeState();
@@ -178,6 +184,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public int ApplyAttackDamage(int damage)
     {
+        return ApplyAttackDamage(damage, false);
+    }
+
+    public int ApplyAttackDamage(int damage, bool isCritical)
+    {
         if (damage <= 0 || currentHealth <= 0)
         {
             return 0;
@@ -186,17 +197,28 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int modifiedDamage = statusEffects == null
             ? damage
             : statusEffects.ModifyIncomingAttackDamage(damage);
-        return ApplyDamageInternal(modifiedDamage);
+        int appliedDamage = ApplyDamageInternal(modifiedDamage);
+        int markBonusDamage = Mathf.Max(0, modifiedDamage - damage);
+
+        // Damage popups communicate the attack's full power, not the amount
+        // clamped by the enemy's remaining health.
+        damageNumberDisplay?.ShowAttackDamage(damage, isCritical);
+        damageNumberDisplay?.ShowMarkBonusDamage(markBonusDamage);
+        return appliedDamage;
     }
 
     public bool ApplyStatusDamage(int damage)
     {
-        return ApplyDamageInternal(damage) > 0;
+        int appliedDamage = ApplyDamageInternal(damage);
+        damageNumberDisplay?.ShowPoisonDamage(appliedDamage);
+        return appliedDamage > 0;
     }
 
     public bool ApplyCollisionDamage(int damage)
     {
-        return ApplyDamageInternal(damage) > 0;
+        int appliedDamage = ApplyDamageInternal(damage);
+        damageNumberDisplay?.ShowAttackDamage(appliedDamage, false);
+        return appliedDamage > 0;
     }
 
     public IEnumerator FlyTo(
@@ -233,8 +255,20 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public bool AddStatusEffect(StatusEffectType type, int stacks)
     {
-        return currentHealth > 0 && statusEffects != null
+        bool applied = currentHealth > 0 && statusEffects != null
             && statusEffects.Add(type, stacks);
+
+        if (applied)
+        {
+            damageNumberDisplay?.ShowStatus(type);
+        }
+
+        return applied;
+    }
+
+    public void ShowLifeStealStatus()
+    {
+        damageNumberDisplay?.ShowLifeStealStatus();
     }
 
     private int ApplyDamageInternal(int damage)

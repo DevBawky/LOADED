@@ -268,7 +268,7 @@ MonoBehaviour:
   gameplayCanvas: {fileID: 1349437576}
   cinemachineCamera: {fileID: 519420036}
   playerTrackingTarget: {fileID: 2023230414}
-  noticeRevealDuration: 2
+  noticeRevealDuration: 1
   noticeHoldDuration: 2
   fightHoldDuration: 1
   fightFadeDuration: 1
