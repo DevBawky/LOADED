@@ -20,6 +20,7 @@ public class DeckManager : MonoBehaviour
     [SerializeField] private int nextAcquisitionOrder;
 
     public event Action StateChanged;
+    public event Action LoadedBulletsCleared;
 
     public IReadOnlyList<BulletInstance> Deck => deck;
     public IReadOnlyList<BulletInstance> LoadedBullets => loadedBullets;
@@ -125,6 +126,30 @@ public class DeckManager : MonoBehaviour
     public bool TryDestroyBullet(BulletInstance bullet)
     {
         return TryRemoveBullet(bullet);
+    }
+
+    public bool ClearLoadedBullets()
+    {
+        if (loadedBullets.Count == 0)
+        {
+            return false;
+        }
+
+        graveyard.AddRange(loadedBullets);
+        loadedBullets.Clear();
+        StateChanged?.Invoke();
+        LoadedBulletsCleared?.Invoke();
+        return true;
+    }
+
+    public void PrepareForNewStage()
+    {
+        deck.AddRange(loadedBullets);
+        deck.AddRange(graveyard);
+        loadedBullets.Clear();
+        graveyard.Clear();
+        ShuffleDeck();
+        StateChanged?.Invoke();
     }
 
     public bool Contains(BulletInstance bullet)

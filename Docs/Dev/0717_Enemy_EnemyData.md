@@ -91,7 +91,7 @@
 
 ### Final Result
 
-Unity Project 창에서 `Assets > Create > Loaded > Enemy > Attack`을 선택해 `EnemyAttackData` 에셋을 만든다. `Skill Id`, `Display Name`, `Description`, `Damage`, `Range`, `Knockback Distance`, `Stun Duration Turns`, `Mark Duration Turns`, `Poison Duration Turns`, `Weakness Duration Turns`, `Attack Effect Prefab`을 설정한다. 표식 피해 증가는 상태 시스템의 고정 50% 규칙을 사용하므로 공격별 배율 필드는 없다. `Weakness Duration Turns`가 1 이상이면 적중한 플레이어의 직접 공격 피해가 남은 스택 동안 30% 감소한다.
+Unity Project 창에서 `Assets > Create > Loaded > Enemy > Attack`을 선택해 `EnemyAttackData` 에셋을 만든다. `Skill Id`, `Display Name`, `Description`, `Damage`, `Range`, `Knockback Distance`, `Stun Duration Turns`, `Mark Duration Turns`, `Poison Stack Count`, `Weakness Duration Turns`, `Attack Effect Prefab`을 설정한다. 표식 피해 증가는 상태 시스템의 고정 50% 규칙을 사용하므로 공격별 배율 필드는 없다. `Poison Stack Count`는 적중 시 플레이어에게 부여할 독 스택이며, 현재 스택만큼 턴 종료 피해를 준 뒤 1씩 감소한다. `Weakness Duration Turns`가 1 이상이면 적중한 플레이어의 직접 공격 피해가 남은 스택 동안 30% 감소한다.
 
 다음으로 `Assets > Create > Loaded > Enemy > Action`을 선택해 `EnemyActionData` 에셋을 만든다. `Action Type`, `Movement Distance`, `Attack Data`, `Icon`, `Description`을 설정한다. `MeleeAttack` 또는 `RangedAttack` 행동이라면 앞에서 만든 공격 에셋을 `Attack Data`에 드래그한다. `Approach`, `Retreat`, `Rotate`, `Wait`처럼 공격을 사용하지 않는 행동은 `Attack Data`를 비워둘 수 있다.
 

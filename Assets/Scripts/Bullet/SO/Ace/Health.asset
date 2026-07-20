@@ -13,30 +13,30 @@ MonoBehaviour:
   m_Name: Health
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
-  displayName: "\uCD5C\uB300 \uCCB4\uB825 \uD0C4"
-  description: "\uC774 \uD0C4\uC73C\uB85C \uC801\uC744 \uCC98\uCE58\uD560 \uC2DC
-    70% \uD655\uB960\uB85C\n\uCD5C\uB300 \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  displayName: "\uCCB4\uB825 \uD0C4"
+  description: "\uC801 \uCC98\uCE58 \uC2DC 50% \uD655\uB960\uB85C \uCD5C\uB300 \uCCB4\uB825\uC774
+    1 \uC99D\uAC00\uD569\uB2C8\uB2E4."
   bulletIcon: {fileID: 2208703988740019828, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   cylinderIcon: {fileID: 4385501425044414559, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
   price: 5
-  grade: 0
+  grade: 2
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
-  damage: 20
+  damage: 13
   maxRange: 3
-  criticalChance: 0
-  criticalDamageMultiplier: 1.5
+  criticalChance: 25
+  criticalDamageMultiplier: 2
   effects: []
   conditionalEvents:
   - trigger: 0
     events:
     - effectType: 7
       target: 1
-      activationChance: 70
-      stackCount: 0
+      activationChance: 50
+      stackCount: 1
       knockbackDistance: 0
       amount: 1
   penetrationChances: []
@@ -46,52 +46,86 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
   removeCost: 5
-  upgradeCost: 10
+  upgradeCost: 20
   upgradeLevels:
-  - description: "\uC870\uAE08 \uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
-      \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  - description: "\uC801 \uCC98\uCE58 \uC2DC 80% \uD655\uB960\uB85C \uCD5C\uB300
+      \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4."
+    damage: 17
+    maxRange: 3
+    criticalChance: 33
+    criticalDamageMultiplier: 2.2
+    effects: []
+    conditionalEvents:
+    - trigger: 0
+      events:
+      - effectType: 7
+        target: 1
+        activationChance: 80
+        stackCount: 0
+        knockbackDistance: 0
+        amount: 1
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 40
+  - description: "\uC801 \uCC98\uCE58 \uC2DC 100% \uD655\uB960\uB85C \uCD5C\uB300
+      \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4.\n30% \uD655\uB960\uB85C
+      \uCD5C\uB300 2\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 22
+    maxRange: 4
+    criticalChance: 41
+    criticalDamageMultiplier: 2.3
+    effects: []
+    conditionalEvents:
+    - trigger: 0
+      events:
+      - effectType: 7
+        target: 0
+        activationChance: 100
+        stackCount: 0
+        knockbackDistance: 0
+        amount: 1
+    penetrationChances:
+    - chance: 30
+    - chance: 30
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 60
+  - description: "\"\uC801 \uCC98\uCE58 \uC2DC 100% \uD655\uB960\uB85C \uCD5C\uB300
+      \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4.\n30% \uD655\uB960\uB85C
+      \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n\uC7AC\uC7A5\uC804
+      \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.\""
     damage: 30
-    maxRange: 3
-    criticalChance: 0
-    criticalDamageMultiplier: 1.8
+    maxRange: 4
+    criticalChance: 50
+    criticalDamageMultiplier: 2.5
     effects: []
-    conditionalEvents: []
-    penetrationChances: []
+    conditionalEvents:
+    - trigger: 0
+      events:
+      - effectType: 7
+        target: 1
+        activationChance: 100
+        stackCount: 0
+        knockbackDistance: 0
+        amount: 1
+    penetrationChances:
+    - chance: 45
+    - chance: 45
+    - chance: 45
+    - chance: 45
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
-    doesNotConsumeTurn: 0
-    recoilStrength: 0.1
-    removeCost: 5
-    upgradeCost: 10
-  - description: "\uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
-    damage: 35
-    maxRange: 3
-    criticalChance: 0
-    criticalDamageMultiplier: 2
-    effects: []
-    conditionalEvents: []
-    penetrationChances: []
-    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
-    doesNotConsumeTurn: 0
-    recoilStrength: 0.1
-    removeCost: 5
-    upgradeCost: 10
-  - description: "\uB354 \uB9CE\uC774 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
-      \uD0C4\uD658\uC785\uB2C8\uB2E4."
-    damage: 50
-    maxRange: 3
-    criticalChance: 0
-    criticalDamageMultiplier: 2.75
-    effects: []
-    conditionalEvents: []
-    penetrationChances: []
-    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
-    doesNotConsumeTurn: 0
+    doesNotConsumeTurn: 1
     recoilStrength: 0.35
     removeCost: 5
     upgradeCost: 10

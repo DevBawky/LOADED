@@ -29,7 +29,7 @@ public sealed class BulletInstance
         : data.GetDetailedDescription(Level);
     public Sprite BulletIcon => data == null ? null : data.BulletIcon;
     public Sprite CylinderIcon => data == null ? null : data.CylinderIcon;
-    public BulletGrade Grade => data == null ? BulletGrade.Common : data.Grade;
+    public BulletGrade Grade => data == null ? BulletGrade.Normal : data.Grade;
     public Color GradeNameColor => data == null
         ? Color.white
         : data.GradeNameColor;

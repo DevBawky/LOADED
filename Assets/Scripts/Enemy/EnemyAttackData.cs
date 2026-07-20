@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 [CreateAssetMenu(fileName = "New Enemy Attack", menuName = "Loaded/Enemy/Attack")]
 public class EnemyAttackData : ScriptableObject
@@ -21,7 +22,9 @@ public class EnemyAttackData : ScriptableObject
     [Min(0)]
     [SerializeField] private int markDurationTurns;
     [Min(0)]
-    [SerializeField] private int poisonDurationTurns;
+    [FormerlySerializedAs("poisonDurationTurns")]
+    [Tooltip("Poison stacks applied on hit. Each turn, poison deals damage equal to its current stacks and then loses 1 stack.")]
+    [SerializeField] private int poisonStackCount;
     [Min(0)]
     [SerializeField] private int weaknessDurationTurns;
     [SerializeField] private GameObject attackEffectPrefab;
@@ -34,7 +37,7 @@ public class EnemyAttackData : ScriptableObject
     public int KnockbackDistance => knockbackDistance;
     public int StunDurationTurns => stunDurationTurns;
     public int MarkDurationTurns => markDurationTurns;
-    public int PoisonDurationTurns => poisonDurationTurns;
+    public int PoisonStackCount => poisonStackCount;
     public int WeaknessDurationTurns => weaknessDurationTurns;
     public GameObject AttackEffectPrefab => attackEffectPrefab;
 }

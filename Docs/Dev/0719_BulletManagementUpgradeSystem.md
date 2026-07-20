@@ -57,7 +57,7 @@ draw deck, 장전실과 graveyard를 오가는 동일 탄환의 개별 상태를
 * 턴 비소비 여부와 반동
 * 현재 레벨의 제거 비용과 다음 레벨 강화 비용
 
-이름은 등급 색상을 TMP Text 전체 색상으로 적용하고, `(+1)`~`(+3)` 접미사는 레벨별 색상 변수를 사용하는 RichText 태그로 표시한다. 기본 등급 색상은 Common, Uncommon, Rare, Epic, Legendary별로 제공하며 탄환마다 커스텀 색상으로 덮어쓸 수 있다.
+이름은 등급 색상을 TMP Text 전체 색상으로 적용하고, `(+1)`~`(+3)` 접미사는 레벨별 색상 변수를 사용하는 RichText 태그로 표시한다. 260720 등급 개편 후 기본 등급 색상은 Normal, Rare, Ace, Legendary별로 제공하며 탄환마다 커스텀 색상으로 덮어쓸 수 있다. 기존 Uncommon과 Rare 에셋은 모두 새 Rare로 통합했다.
 
 `BulletManagementUI`는 Canvas 루트에서 Manager와 UI를 찾고 다음 흐름을 제공한다.
 

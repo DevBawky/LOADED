@@ -441,6 +441,13 @@ public class PlayerShoot : MonoBehaviour
             yield break;
         }
 
+        if (IsPlayerOnlyEffect(effect.EffectType)
+            && effect.Target != BulletEffectTarget.FiringPlayer)
+        {
+            onCompleted?.Invoke(false);
+            yield break;
+        }
+
         bool applied = false;
 
         switch (effect.EffectType)

@@ -18,8 +18,6 @@ public interface IStatusEffectTarget
 
 public class StatusEffectController : MonoBehaviour
 {
-    public const float PoisonHealthRatio = 0.05f;
-
     [Header("UI")]
     [SerializeField] private Transform statusIconParent;
     [SerializeField] private GameObject debuffIconPrefab;
@@ -147,15 +145,12 @@ public class StatusEffectController : MonoBehaviour
 
     private void ApplyPoisonDamage()
     {
-        if (target == null || target.CurrentHealth <= 0)
+        if (target == null || target.CurrentHealth <= 0 || poisonStacks <= 0)
         {
             return;
         }
 
-        int damage = Mathf.Max(
-            1,
-            Mathf.CeilToInt(target.CurrentHealth * PoisonHealthRatio));
-        target.ApplyStatusDamage(damage);
+        target.ApplyStatusDamage(poisonStacks);
     }
 
     private void SetStacks(StatusEffectType type, int stacks)

@@ -2,6 +2,8 @@
 
 > 260720 후속 변경: `PlayerShoot`의 공통 크리티컬 확률을 제거하고 현재 `BulletInstance` 레벨의 크리티컬 확률을 사용한다. 조건부 이벤트와 효과 대상 처리 규칙은 `0718_Combat_BulletEffects.md`를 따른다.
 
+> 260720 스테이지 전환 변경: 스테이지의 마지막 전투가 끝나면 실린더의 모든 장전 탄환을 graveyard로 회수하고, 탄환 이미지와 실린더 오브젝트를 즉시 비활성화하며 회전 각도를 0으로 초기화한다. 다음 스테이지 시작 직전 draw deck, loaded bullets와 graveyard의 전체 보유 탄환을 draw deck으로 합친 뒤 Fisher-Yates 방식으로 다시 셔플한다. 같은 스테이지 안의 다음 전투로 이동할 때는 이 전체 셔플을 실행하지 않는다.
+
 ### Basic Information
 
 * Date: 260717

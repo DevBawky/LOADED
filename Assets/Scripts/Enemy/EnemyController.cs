@@ -210,7 +210,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     public bool ApplyStatusDamage(int damage)
     {
         int appliedDamage = ApplyDamageInternal(damage);
-        damageNumberDisplay?.ShowPoisonDamage(appliedDamage);
+
+        // Status damage popups show the effect's full damage, even when the
+        // target has less health remaining than the requested damage.
+        if (appliedDamage > 0)
+        {
+            damageNumberDisplay?.ShowPoisonDamage(damage);
+        }
+
         return appliedDamage > 0;
     }
 
@@ -511,7 +518,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                     attackData.MarkDurationTurns);
                 playerHealth.AddStatusEffect(
                     StatusEffectType.Poison,
-                    attackData.PoisonDurationTurns);
+                    attackData.PoisonStackCount);
                 playerHealth.AddStatusEffect(
                     StatusEffectType.Stun,
                     attackData.StunDurationTurns);

@@ -52,7 +52,7 @@ StageData[]
             └─ Enemy Prefab / Count
 ```
 
-`ShopManager`는 남은 등급을 가중치로 먼저 선택한 뒤 해당 등급의 후보 하나를 균등 선택하고, 선택한 탄환은 후보에서 제거해 한 상점 내 중복을 막는다. 기본 상대 가중치는 Common 100, Uncommon 60, Rare 25, Epic 10, Legendary 3이다.
+`ShopManager`는 남은 등급을 가중치로 먼저 선택한 뒤 해당 등급의 후보 하나를 균등 선택하고, 선택한 탄환은 후보에서 제거해 한 상점 내 중복을 막는다. 260720 등급 개편으로 등급은 Normal, Rare, Ace, Legendary 네 단계이며 기존 Uncommon과 Rare는 Rare로 통합했다. 통합 전 두 등급의 확률 질량을 보존한 기본 상대 가중치는 Normal 100, Rare 85, Ace 10, Legendary 3이다.
 
 구매 흐름은 `유효성 검사 → TrySpendMoney → TryAddBullet → 구매 버튼 interactable 비활성화` 순서다. 덱 추가 실패 시 가격을 환불한다. 후속 아이템 시스템 요구를 반영해 구매한 버튼 GameObject는 숨기지 않고 화면에 유지한다.
 

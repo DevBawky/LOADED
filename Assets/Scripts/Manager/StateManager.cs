@@ -28,6 +28,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private WaveManager waveManager;
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private ShopManager shopManager;
+    [SerializeField] private DeckManager deckManager;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private GameStartUI gameStartUI;
@@ -61,7 +62,11 @@ public class StateManager : MonoBehaviour
     private void Awake()
     {
         SetPanels(false, false, false);
-        gameStartUI?.ResetAndHide();
+
+        if (gameStartUI != null)
+        {
+            gameStartUI.ResetAndHide();
+        }
 
         if (playerMove != null)
         {
@@ -187,6 +192,13 @@ public class StateManager : MonoBehaviour
                 out int nextStageIndex,
                 out int nextBattleIndex))
         {
+            bool startsNewStage = nextStageIndex != currentStageIndex;
+
+            if (startsNewStage)
+            {
+                deckManager.PrepareForNewStage();
+            }
+
             currentStageIndex = nextStageIndex;
             currentBattleIndex = nextBattleIndex;
             StartCurrentBattle();
@@ -278,6 +290,11 @@ public class StateManager : MonoBehaviour
         {
             battleClearCoroutine = null;
             yield break;
+        }
+
+        if (IsCurrentStageComplete())
+        {
+            deckManager.ClearLoadedBullets();
         }
 
         currentState = GameFlowState.BattleClear;
@@ -374,7 +391,13 @@ public class StateManager : MonoBehaviour
             battleStartCoroutine = null;
         }
 
-        gameStartUI?.ResetAndHide();
+        // UnityEngine.Object keeps a managed wrapper after native destruction.
+        // A null-conditional call only checks the wrapper and can therefore call
+        // into an already destroyed GameStartUI while the application exits.
+        if (gameStartUI != null)
+        {
+            gameStartUI.ResetAndHide();
+        }
     }
 
     private bool TryGetCurrentBattle(out BattleData battle)
@@ -430,6 +453,19 @@ public class StateManager : MonoBehaviour
 
         nextBattleIndex = 0;
         return true;
+    }
+
+    private bool IsCurrentStageComplete()
+    {
+        if (stages == null || currentStageIndex < 0
+            || currentStageIndex >= stages.Length)
+        {
+            return false;
+        }
+
+        StageData stage = stages[currentStageIndex];
+        return stage != null && stage.Battles.Count > 0
+            && currentBattleIndex == stage.Battles.Count - 1;
     }
 
     private string GetShopExitLabel()
@@ -514,7 +550,8 @@ public class StateManager : MonoBehaviour
     private bool ValidateReferences()
     {
         if (waveManager != null && boardManager != null
-            && shopManager != null && playerMove != null
+            && shopManager != null && deckManager != null
+            && playerMove != null
             && playerHealth != null
             && mainGamePanel != null && stageClearPanel != null
             && shopPanel != null && goToMaintenanceButton != null
