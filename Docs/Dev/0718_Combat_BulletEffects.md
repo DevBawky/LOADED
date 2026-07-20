@@ -1,5 +1,7 @@
 ## AI-008: Custom Bullet Effects
 
+> 260720 후속 변경: 공통 크리티컬 확률을 탄환의 레벨별 스펙으로 이동하고, 효과 대상·조건부 이벤트·최대 체력 증가·탄환 파괴·골드 획득을 추가했다. 아래 Output Summary와 Validation은 현재 구현을 기준으로 갱신했다.
+
 ### Basic Information
 
 * Date: 260718
@@ -38,7 +40,7 @@
 
 ### Output Summary
 
-`BulletData`에 `BulletEffectData` 배열과 탄환별 `Critical Damage Multiplier`를 추가했다. 효과 데이터는 타입, 발동 확률, 디버프 스택 수, 밀치기 거리를 가진다.
+`BulletData`와 각 `BulletLevelData`에 `BulletEffectData` 배열, `Conditional Events`, 탄환별 `Critical Chance`와 `Critical Damage Multiplier`를 추가했다. 효과 데이터는 타입, 대상, 발동 확률, 디버프 스택 수, 밀치기 거리와 수치형 이벤트의 `Amount`를 가진다.
 
 Enum 직렬화 값은 다음 순서로 고정했다.
 
@@ -50,9 +52,23 @@ Knockback    = 3
 PositionSwap = 4
 LifeSteal    = 5
 Weakness     = 6
+IncreaseMaxHealth = 7
+DestroyBullet     = 8
+GainGold          = 9
 ```
 
-한 발의 처리 순서는 `적중 대상 확정 → 탄환 단위 크리티컬 판정 → 직접 피해 → Effects 배열 순서대로 효과 적용`이다. 직접 피해로 처치된 대상에는 흡혈만 허용하고 다른 상태·공간 효과는 건너뛴다.
+기존 에셋의 대상 값이 없을 때 동작을 보존하기 위해 `BulletEffectTarget.HitEnemy = 0`으로 고정했다. 선택 가능한 대상은 `HitEnemy`, `FiringPlayer`, `AllEnemies`이며, 모든 적 대상은 발동 시점의 `WaveManager.ActiveEnemies`를 복사한 뒤 순서대로 적용한다.
+
+조건부 이벤트는 `BulletConditionalEventData`의 조건과 이벤트 배열로 구성한다. 이벤트 배열 항목은 일반 `Effects`와 같은 `BulletEffectData`를 사용하므로 타입, 대상, 발동 확률과 타입별 수치를 동일하게 설정할 수 있다.
+
+```text
+EnemyDefeated = 적 처치 시
+CriticalHit   = 크리티컬 발동 시
+Penetration   = 관통 시
+EffectApplied = 효과 적중 시
+```
+
+한 발의 처리 순서는 `적중 대상 확정 → 탄환 단위 크리티컬 판정 → 대상별 관통/크리티컬 조건부 이벤트 → 직접 피해 → Effects 배열 → 효과 적중 조건부 이벤트 → 처치 조건부 이벤트`다. 크리티컬 결과는 한 발의 모든 관통 대상이 공유하지만 `CriticalHit` 이벤트는 실제 피격 적마다 발생한다. `Penetration`은 관통에 성공해 두 번째 이후 적에게 도달할 때마다 발생한다. 조건부 이벤트 내부에서 실행된 이벤트는 다시 `EffectApplied`를 발생시키지 않아 재귀 발동을 막는다.
 
 주요 규칙은 다음과 같다.
 
@@ -61,6 +77,12 @@ Weakness     = 6
 * 흡혈은 크리티컬, 약화, 표식과 남은 체력을 모두 반영한 실제 감소 체력만 회복한다.
 * 밀치기와 위치 교환은 코루틴 완료를 기다려 효과 배열 순서를 보장한다.
 * 같은 효과가 여러 개면 각 항목을 독립적으로 판정하고 성공한 스택이나 회복을 누적한다.
+* `FiringPlayer` 대상의 독·기절·표식·약화는 플레이어의 기존 `StatusEffectController`에 적용한다.
+* `HitEnemy`는 현재 피격 적, `AllEnemies`는 현재 스테이지에서 생존 중인 모든 적에게 적용한다.
+* 흡혈, 최대 체력 증가, 탄환 파괴와 골드 획득은 플레이어 전용 효과다. 기존 흡혈 에셋의 직렬화 호환성을 위해 이 타입들은 대상 값과 관계없이 플레이어에게 한 번만 적용한다.
+* 최대 체력 증가는 `Amount`만큼 최대 체력과 현재 체력을 함께 올린다. 따라서 발동 시 증가량만큼 즉시 회복된다.
+* 탄환 파괴는 발사되어 무덤으로 이동한 현재 `BulletInstance`를 draw deck, loaded bullets와 graveyard 전체에서 제거한다.
+* 골드 획득은 `CurrencyManager.AddMoney(Amount)`를 사용하고 정수 최댓값을 넘지 않도록 기존 자원 규칙을 따른다.
 
 기존 에셋은 `Ghost`의 턴 비소비, `Pierce`의 관통 설정을 유지했고, `Stun`, `Venom`, `Power`에는 기존 의도에 맞는 효과 항목을 연결했다.
 
@@ -79,13 +101,20 @@ Weakness     = 6
   * 한 발의 관통 대상이 동일한 크리티컬 결과를 공유하는지 호출 흐름 확인
   * 처치 공격에서도 흡혈이 실제 감소 체력을 사용하는지 확인
   * 공간 효과 코루틴이 끝난 뒤 다음 효과가 진행되는지 확인
+  * 각 조건이 피격 적 단위의 올바른 시점에 발생하고 조건부 이벤트가 재귀 호출되지 않는지 확인
+  * 최대 체력 증가가 최대/현재 체력을 같은 값만큼 올리는지 확인
+  * 발사된 탄환 파괴가 graveyard를 포함한 전체 보유 목록에서 해당 인스턴스를 제거하는지 확인
+  * 레벨별 크리티컬 확률과 툴팁 표시 형식 확인
   * `dotnet build Assembly-CSharp.csproj --no-restore`로 C# 컴파일 확인
+  * `dotnet build Assembly-CSharp-Editor.csproj --no-restore`로 Custom Inspector 컴파일 확인
 
 * 테스트 결과:
 
   * 확률 판정은 0%에서 항상 실패하고 100%에서 항상 성공하도록 구현되어 있다.
   * 디버프 스택과 공간 효과 설정은 효과 항목별로 독립 적용된다.
-  * 현재 전체 C# 컴파일 결과는 경고 0개, 오류 0개다.
+  * 런타임 및 Editor 어셈블리 컴파일 결과는 오류 0개다.
+  * 기존 효과 항목은 새 대상 필드가 없어도 `HitEnemy = 0`으로 역직렬화되어 이전 대상을 유지한다.
+  * 기존 플레이어 프리팹의 공통 `criticalChance` 직렬화 값은 제거했으며, 기존 탄환 에셋의 신규 레벨별 확률은 사용자가 설정하기 전까지 0%다.
   * 실제 애니메이션 타이밍과 각 효과 조합의 Play Mode 확인은 수동 검증 항목으로 남겼다.
 
 * 발견한 문제:
@@ -101,9 +130,9 @@ Weakness     = 6
 
 ### Final Result
 
-탄환 하나에 여러 효과를 원하는 순서로 등록하고 각 효과의 확률, 스택과 이동 거리를 개별 설정할 수 있게 되었다.
+탄환 하나에 여러 효과를 원하는 순서로 등록하고 각 효과의 대상, 확률, 스택, 이동 거리와 이벤트 수치를 개별 설정할 수 있게 되었다. 같은 데이터 형식의 이벤트를 적 처치, 크리티컬, 관통과 효과 적중 조건에 연결할 수 있다.
 
-크리티컬, 관통, 표식, 약화, 흡혈과 공간 이동 효과가 하나의 발사 흐름에서 정의된 순서로 동작하며 기존 탄환 에셋의 직렬화 호환성도 유지했다.
+크리티컬 확률과 배율은 모두 탄환의 현재 강화 레벨에서 조회한다. 관통, 표식, 약화, 흡혈, 공간 이동, 최대 체력, 탄환 파괴와 골드 이벤트가 하나의 발사 흐름에서 정의된 순서로 동작하며 기존 효과 enum 및 대상의 직렬화 호환성도 유지했다.
 
 ### Lessons Learned
 

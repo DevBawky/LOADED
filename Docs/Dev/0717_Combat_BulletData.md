@@ -2,6 +2,8 @@
 
 > 260718 후속 변경: 상점용 `Price`, `Grade`, `Bullet Icon`, `Cylinder Icon`과 기존 `sprite` 직렬화 이전 규칙은 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.
 
+> 260720 후속 변경: 크리티컬 확률은 플레이어 공통 스탯에서 탄환의 레벨별 스펙으로 이동했다. `Effects` 대상 지정, 조건부 이벤트와 자원 계열 이벤트의 현재 구조는 `0718_Combat_BulletEffects.md`를 기준으로 한다.
+
 ### Basic Information
 
 * Date: 260717
@@ -47,7 +49,9 @@
 
 > 260718 후속 변경: 개별 `Knockback Distance`, `Stun Duration Turns`, `Mark Duration Turns`, `Poison Duration Turns`, `Mark Damage Multiplier` 필드는 `Effects` 배열로 대체했다. 이후 탄환별 `Critical Damage Multiplier`와 `LifeSteal`, `Weakness` 효과를 추가했다. 현재 구조와 적용 규칙은 `0718_Combat_BulletEffects.md`를 기준으로 한다.
 
-`Assets/Scripts/Bullet/BulletData.cs`에 `PenetrationChanceData`, `BulletEffectData`, `BulletData`를 구현했다. `BulletData`는 요청된 식별 정보, 전투 수치, 최소 1로 보정되는 크리티컬 배율, 상태 효과 배열, 관통 확률 리스트, Trail Material, Trail Color를 직렬화 필드로 보관하며 읽기 전용 프로퍼티로 제공한다.
+> 260720 후속 변경: 기본 레벨과 +1~+3의 `BulletLevelData`에 각각 `Critical Chance`와 `Conditional Events`를 추가했다. 상세 툴팁은 `크리티컬 확률: {n}%` 형식으로 현재 레벨의 값을 표시한다.
+
+`Assets/Scripts/Bullet/BulletData.cs`에 `PenetrationChanceData`, `BulletEffectData`, `BulletConditionalEventData`, `BulletData`를 구현했다. `BulletData`는 요청된 식별 정보, 전투 수치, 0~100으로 제한되는 크리티컬 확률, 최소 1로 보정되는 크리티컬 배율, 효과 및 조건부 이벤트 배열, 관통 확률 리스트, Line Material과 색상을 직렬화 필드로 보관하며 읽기 전용 프로퍼티로 제공한다.
 
 `MaxRange`에는 1~10, 각 관통 및 효과 발동 확률에는 0~100의 Inspector 범위 제한을 적용했다. `MaxHitCount`는 별도 직렬화 필드를 만들지 않고 `penetrationChances.Count + 1`로 계산한다.
 

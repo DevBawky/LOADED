@@ -122,6 +122,11 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public bool TryDestroyBullet(BulletInstance bullet)
+    {
+        return TryRemoveBullet(bullet);
+    }
+
     public bool Contains(BulletInstance bullet)
     {
         return bullet != null && (deck.Contains(bullet)

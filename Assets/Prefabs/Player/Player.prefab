@@ -200,7 +200,6 @@ MonoBehaviour:
   cylinderUI: {fileID: 6842197531604829375}
   bulletFeedbackImage: {fileID: 0}
   shotInterval: 0.2
-  criticalChance: 0
   maxRandomShotAngle: 5
   cameraRecoilScale: 1.6
   recoilFrequencyGain: 1.2
