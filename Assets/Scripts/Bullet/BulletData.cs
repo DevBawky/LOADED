@@ -35,11 +35,10 @@ public enum BulletConditionalTrigger
 
 public enum BulletGrade
 {
-    Common = 0,
-    Uncommon = 1,
-    Rare = 2,
-    Epic = 3,
-    Legendary = 4
+    Normal = 0,
+    Rare = 1,
+    Ace = 2,
+    Legendary = 3
 }
 
 [Serializable]
@@ -202,13 +201,13 @@ public class BulletEffectData
     [Range(0f, 100f)]
     [SerializeField] private float activationChance = 100f;
     [Min(1)]
-    [Tooltip("Poison, Stun, Mark, and Weakness stack count. Ignored by other effects.")]
+    [Tooltip("Poison, Stun, Mark, and Weakness stack count. Poison deals damage equal to its current stacks each turn, then loses 1 stack. Ignored by other effects.")]
     [SerializeField] private int stackCount = 1;
     [Min(1)]
-    [Tooltip("Maximum travel tiles for Knockback. Ignored by other effects.")]
+    [Tooltip("Maximum travel tiles for Knockback. Has no effect on Poison or other effect types.")]
     [SerializeField] private int knockbackDistance = 1;
     [Min(1)]
-    [Tooltip("Amount used by Increase Max Health and Gain Gold. Ignored by other effects.")]
+    [Tooltip("Amount used by Increase Max Health and Gain Gold. Has no effect on Poison or other effect types.")]
     [SerializeField] private int amount = 1;
 
     public BulletEffectType EffectType => effectType;
@@ -686,10 +685,9 @@ public class BulletData : ScriptableObject
     {
         return bulletGrade switch
         {
-            BulletGrade.Common => new Color(0.86f, 0.86f, 0.86f, 1f),
-            BulletGrade.Uncommon => new Color(0.35f, 0.9f, 0.4f, 1f),
+            BulletGrade.Normal => new Color(0.86f, 0.86f, 0.86f, 1f),
             BulletGrade.Rare => new Color(0.3f, 0.65f, 1f, 1f),
-            BulletGrade.Epic => new Color(0.75f, 0.4f, 1f, 1f),
+            BulletGrade.Ace => new Color(0.75f, 0.4f, 1f, 1f),
             BulletGrade.Legendary => new Color(1f, 0.62f, 0.16f, 1f),
             _ => Color.white
         };

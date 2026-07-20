@@ -27,7 +27,8 @@ Shader "Loaded/Bullet Smoke Flame Line"
         [Header(Color Mix)]
         [HDR] _PrimaryColor("Primary Color", Color) = (1.0, 0.2, 0.1, 1.0)
         [HDR] _SecondaryColor("Secondary Color", Color) = (1.0, 0.45, 0.08, 1.0)
-        _ColorBlend("Secondary Blend", Range(0.0, 1.0)) = 0.72
+        _ColorBlend("Secondary Blend", Range(0.0, 1.0)) = 0.88
+        _HighlightCompression("White Highlight Compression", Range(0.0, 1.0)) = 0.94
     }
 
     SubShader
@@ -88,6 +89,7 @@ Shader "Loaded/Bullet Smoke Flame Line"
                 half4 _PrimaryColor;
                 half4 _SecondaryColor;
                 float _ColorBlend;
+                float _HighlightCompression;
             CBUFFER_END
 
             float Hash(float2 value)
@@ -230,33 +232,53 @@ Shader "Loaded/Bullet Smoke Flame Line"
                     * _OverallAlpha
                     * input.color.a;
 
-                float flowingColorMix = saturate(
-                    0.16
-                    + broadNoise * 0.42
-                    + fineNoise * 0.28)
+                float colorFlow = saturate(
+                    broadNoise * 0.52
+                    + fineNoise * 0.3
+                    + domainNoise * 0.18);
+                float flowingColorMix = lerp(
+                        0.08,
+                        0.94,
+                        smoothstep(0.32, 0.68, colorFlow))
                     * _ColorBlend
                     * _SecondaryColor.a;
                 half3 smokeColor = lerp(
                     _PrimaryColor.rgb,
                     _SecondaryColor.rgb,
                     flowingColorMix);
+                float coreColorFlow = smoothstep(
+                    0.3,
+                    0.7,
+                    saturate(domainNoise * 0.58 + fineNoise * 0.42));
+                float coreSecondaryMix = lerp(
+                        0.2,
+                        0.86,
+                        coreColorFlow)
+                    * _ColorBlend
+                    * _SecondaryColor.a;
                 half3 coreColor = lerp(
-                    _SecondaryColor.rgb,
                     _PrimaryColor.rgb,
-                    0.76);
+                    _SecondaryColor.rgb,
+                    coreSecondaryMix);
                 half3 mixedColor = lerp(
                     smokeColor,
                     coreColor,
                     coreMask);
                 mixedColor = lerp(
                     mixedColor,
-                    _SecondaryColor.rgb * 1.2,
-                    saturate(sparks));
+                    _SecondaryColor.rgb,
+                    saturate(sparks * 0.82));
 
-                float brightness = _SmokeBrightness
+                float rawBrightness = _SmokeBrightness
                     * lerp(0.72, 1.12, densityNoise)
                     + coreMask * _CoreIntensity
                     + sparks * _SparkIntensity;
+                float compressedBrightness = 0.72
+                    + 1.28 * (1.0 - exp(-rawBrightness * 0.7));
+                float brightness = lerp(
+                    rawBrightness,
+                    compressedBrightness,
+                    _HighlightCompression);
 
                 return half4(mixedColor * brightness, alpha);
             }

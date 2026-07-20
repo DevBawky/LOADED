@@ -331,10 +331,9 @@ public class ShopManager : MonoBehaviour
 
         return grade switch
         {
-            BulletGrade.Common => 100f,
-            BulletGrade.Uncommon => 60f,
-            BulletGrade.Rare => 25f,
-            BulletGrade.Epic => 10f,
+            BulletGrade.Normal => 100f,
+            BulletGrade.Rare => 85f,
+            BulletGrade.Ace => 10f,
             BulletGrade.Legendary => 3f,
             _ => 0f
         };

@@ -74,6 +74,11 @@ public class PlayerCylinderUI : MonoBehaviour
         RefreshDisplay(true);
     }
 
+    private void HandleLoadedBulletsCleared()
+    {
+        RefreshDisplay(false);
+    }
+
     private void RefreshDisplay(bool animateRotation)
     {
         if (cylinderTransform == null)
@@ -244,6 +249,7 @@ public class PlayerCylinderUI : MonoBehaviour
         }
 
         deckManager.StateChanged += HandleDeckStateChanged;
+        deckManager.LoadedBulletsCleared += HandleLoadedBulletsCleared;
         isSubscribed = true;
     }
 
@@ -252,6 +258,7 @@ public class PlayerCylinderUI : MonoBehaviour
         if (deckManager != null && isSubscribed)
         {
             deckManager.StateChanged -= HandleDeckStateChanged;
+            deckManager.LoadedBulletsCleared -= HandleLoadedBulletsCleared;
         }
 
         isSubscribed = false;
