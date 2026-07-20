@@ -87,6 +87,7 @@ EffectApplied = 효과 적중 시
 * 흡혈, 최대 체력 증가, 탄환 파괴와 골드 획득은 플레이어 전용 효과이며 `Target = FiringPlayer`일 때만 한 번 적용한다. 다른 Target을 지정하면 발동 확률 판정에 성공해도 실행하지 않는다.
 * 최대 체력 증가는 `Amount`만큼 최대 체력과 현재 체력을 함께 올린다. 따라서 발동 시 증가량만큼 즉시 회복된다.
 * 탄환 파괴는 발사되어 무덤으로 이동한 현재 `BulletInstance`를 draw deck, loaded bullets와 graveyard 전체에서 제거한다.
+* 기본 `Effects`에 등록된 탄환 파괴 확률은 피격 적이나 관통 횟수가 아니라 발사한 탄환 한 발당 정확히 한 번만 판정한다. 적을 맞히지 않은 발사도 판정하며, 관통으로 여러 적을 맞혀도 추가 판정하지 않는다.
 * 골드 획득은 `CurrencyManager.AddMoney(Amount)`를 사용하고 정수 최댓값을 넘지 않도록 기존 자원 규칙을 따른다.
 
 기존 에셋은 `Ghost`의 턴 비소비, `Pierce`의 관통 설정을 유지했고, `Stun`, `Venom`, `Power`에는 기존 의도에 맞는 효과 항목을 연결했다.
@@ -111,6 +112,7 @@ EffectApplied = 효과 적중 시
   * 각 조건이 피격 적 단위의 올바른 시점에 발생하고 조건부 이벤트가 재귀 호출되지 않는지 확인
   * 최대 체력 증가가 최대/현재 체력을 같은 값만큼 올리는지 확인
   * 발사된 탄환 파괴가 graveyard를 포함한 전체 보유 목록에서 해당 인스턴스를 제거하는지 확인
+  * 기본 Effects의 탄환 파괴가 명중·관통 대상 수와 관계없이 한 발당 한 번만 확률을 판정하는지 확인
   * 레벨별 크리티컬 확률과 툴팁 표시 형식 확인
   * `dotnet build Assembly-CSharp.csproj --no-restore`로 C# 컴파일 확인
   * `dotnet build Assembly-CSharp-Editor.csproj --no-restore`로 Custom Inspector 컴파일 확인

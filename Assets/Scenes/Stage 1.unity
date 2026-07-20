@@ -336,6 +336,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
   - {fileID: 11400000, guid: 5cc1ffa2caa707043af2a6876d4cd83d, type: 2}
   - {fileID: 11400000, guid: 5cc1ffa2caa707043af2a6876d4cd83d, type: 2}
+  - {fileID: 11400000, guid: d32abd2fbde76bd489fb16a6f7fac438, type: 2}
   maxReloadAmount: 6
   deck: []
   loadedBullets: []

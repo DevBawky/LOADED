@@ -24,4 +24,13 @@ MonoBehaviour:
   waves:
   - enemies:
     - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-      count: 3
+      count: 5
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 5
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 5
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 5

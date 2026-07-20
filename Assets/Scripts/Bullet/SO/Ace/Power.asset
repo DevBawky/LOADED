@@ -32,7 +32,7 @@ MonoBehaviour:
   effects:
   - effectType: 8
     target: 1
-    activationChance: 7
+    activationChance: 5
     stackCount: 0
     knockbackDistance: 0
     amount: 0
