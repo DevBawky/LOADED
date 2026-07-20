@@ -274,6 +274,9 @@ public class PlayerShoot : MonoBehaviour
             ShowBulletFeedback(bulletData);
             GenerateRecoil(bulletData);
             bool isCritical = bulletData.RollCritical();
+            yield return ApplyShotScopedEffects(
+                bulletData,
+                horizontalDirection);
             yield return ApplyHitResults(
                 bulletData,
                 horizontalDirection,
@@ -390,6 +393,11 @@ public class PlayerShoot : MonoBehaviour
                     continue;
                 }
 
+                if (IsShotScopedEffect(effect.EffectType))
+                {
+                    continue;
+                }
+
                 if (!effect.RollActivation())
                 {
                     continue;
@@ -424,6 +432,35 @@ public class PlayerShoot : MonoBehaviour
                     horizontalDirection,
                     appliedDamage);
             }
+        }
+    }
+
+    private IEnumerator ApplyShotScopedEffects(
+        BulletInstance sourceBullet,
+        int horizontalDirection)
+    {
+        if (sourceBullet == null)
+        {
+            yield break;
+        }
+
+        IReadOnlyList<BulletEffectData> effects = sourceBullet.Effects;
+
+        foreach (BulletEffectData effect in effects)
+        {
+            if (effect == null || !IsShotScopedEffect(effect.EffectType)
+                || !effect.RollActivation())
+            {
+                continue;
+            }
+
+            yield return ApplyBulletEffect(
+                effect,
+                sourceBullet,
+                null,
+                horizontalDirection,
+                0,
+                null);
         }
     }
 
@@ -640,6 +677,11 @@ public class PlayerShoot : MonoBehaviour
             || effectType == BulletEffectType.IncreaseMaxHealth
             || effectType == BulletEffectType.DestroyBullet
             || effectType == BulletEffectType.GainGold;
+    }
+
+    private static bool IsShotScopedEffect(BulletEffectType effectType)
+    {
+        return effectType == BulletEffectType.DestroyBullet;
     }
 
     private int CalculateAttackDamage(
