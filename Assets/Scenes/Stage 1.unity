@@ -329,13 +329,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DeckManager
   startingBullets:
-  - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
-  - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
-  - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
-  - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
-  - {fileID: 11400000, guid: d32abd2fbde76bd489fb16a6f7fac438, type: 2}
-  - {fileID: 11400000, guid: d32abd2fbde76bd489fb16a6f7fac438, type: 2}
-  - {fileID: 11400000, guid: d32abd2fbde76bd489fb16a6f7fac438, type: 2}
+  - {fileID: 11400000, guid: 4496d984fedb6e844a9a551404fd8d66, type: 2}
+  - {fileID: 11400000, guid: 4496d984fedb6e844a9a551404fd8d66, type: 2}
+  - {fileID: 11400000, guid: 4496d984fedb6e844a9a551404fd8d66, type: 2}
+  - {fileID: 11400000, guid: 4496d984fedb6e844a9a551404fd8d66, type: 2}
+  - {fileID: 11400000, guid: 4496d984fedb6e844a9a551404fd8d66, type: 2}
+  - {fileID: 11400000, guid: 4496d984fedb6e844a9a551404fd8d66, type: 2}
+  - {fileID: 11400000, guid: 4496d984fedb6e844a9a551404fd8d66, type: 2}
   maxReloadAmount: 6
   deck: []
   loadedBullets: []
@@ -1588,6 +1588,10 @@ PrefabInstance:
       value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: currencyManager
+      value: 
+      objectReference: {fileID: 2400001005}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: maxRandomShotAngle
       value: 5
       objectReference: {fileID: 0}
@@ -1663,6 +1667,10 @@ PrefabInstance:
       propertyPath: boardManager
       value: 
       objectReference: {fileID: 561211666}
+    - target: {fileID: 8556440550991854019, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: pushCollisionDamageRatio
+      value: 0.2
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

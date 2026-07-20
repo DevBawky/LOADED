@@ -1,5 +1,7 @@
 ## AI-004: DeckManager & PlayerShoot
 
+> 260720 후속 변경: `PlayerShoot`의 공통 크리티컬 확률을 제거하고 현재 `BulletInstance` 레벨의 크리티컬 확률을 사용한다. 조건부 이벤트와 효과 대상 처리 규칙은 `0718_Combat_BulletEffects.md`를 따른다.
+
 ### Basic Information
 
 * Date: 260717
@@ -79,7 +81,7 @@
 
 `BulletLine`은 전달된 `BulletData`를 `Data`에 보관한다. 후속 Enemy 시스템 연결에서 `PlayerShoot`이 정면 사거리 안의 적을 가까운 순서로 찾고 공격력과 관통 확률을 적용하도록 확장했다. 260718 후속 작업에서 독, 기절, 표식, 밀치기, 위치 교환, 흡혈, 약화를 확률형 `Effects` 배열로 실행한다. 이동하는 Projectile은 제거했으며 발사선은 `Fade Duration` 동안 시작 색상과 끝 색상의 알파를 SmoothStep으로 0까지 보간한 뒤 자동 제거된다. 일시정지 중에는 페이드 시간이 진행되지 않는다.
 
-`PlayerShoot > Critical Chance`는 모든 탄환의 공통 크리티컬 확률을 0~100으로 관리한다. 실제 발사에 성공한 탄환마다 한 번 판정하고 관통 대상 전체가 그 결과를 공유하며, 성공 시 해당 `BulletData.Critical Damage Multiplier`를 기본 피해에 적용한다. Player 프리팹에는 같은 루트의 `PlayerHealth`를 직접 연결했다. 이 참조를 통해 플레이어 약화의 공격력 감소를 적용하고, `LifeSteal`이 성공하면 대상에게 실제 적용된 직접 피해만큼 최대 체력 안에서 회복한다. 상세 계산 순서는 `0718_Combat_BulletEffects.md`를 따른다.
+`PlayerShoot`은 발사한 `BulletInstance`의 현재 레벨에서 `Critical Chance`와 `Critical Damage Multiplier`를 함께 조회한다. 실제 발사에 성공한 탄환마다 한 번 판정하고 관통 대상 전체가 그 결과를 공유한다. Player 프리팹에는 같은 루트의 `PlayerHealth`를 직접 연결했으며, 골드 이벤트는 `CurrencyManager` 직렬화 참조 또는 런타임 씬 참조를 사용한다. 상세 계산 및 조건부 이벤트 순서는 `0718_Combat_BulletEffects.md`를 따른다.
 
 `WaveManager.GetEnemiesInDirection`은 플레이어 타일을 기준으로 바라보는 방향과 `MaxRange` 안의 적을 가까운 순서로 제공한다. 수집 시 각 적의 타일 거리와 타일 인덱스를 한 번만 저장하고 그 값으로 정렬해, 정렬 비교 도중 Transform 위치를 다시 조회하며 순서가 달라지는 경로를 제거했다. 첫 적은 확정 적중하고 이후 적은 `Penetration Chances`를 단계별로 판정한다. `PlayerShoot`은 확정된 관통 대상들을 가까운 순서로 각각 처리하며, 앞 대상이 이미 제거됐거나 직접 피해가 0이어도 뒤쪽 대상 처리를 계속한다. 적이 있으면 LineRenderer 길이는 마지막 적중 적까지의 X 거리로 계산한다. 적이 없으면 바라보는 방향의 최대 사거리 내 가장 먼 유효 타일까지의 X 거리를 사용하고, 보드 끝에서 바깥을 바라보는 경우에만 Fire Point에서 사거리만큼 전방을 fallback 거리로 사용한다. 실제 발사선은 Fire Point Y의 수평 기준에서 랜덤 각도를 적용한다. 빗나간 탄환도 장전 목록에서 무덤으로 이동하고 반동과 `DoesNotConsumeTurn` 규칙을 정상 적용한다.
 
@@ -168,7 +170,7 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * 정면 최대 사거리 안의 적이 거리순으로 선택되고 관통에 성공한 마지막 적까지의 X 거리가 발사선 길이로 사용된다.
   * 정면에 적이 없어도 장전 탄환이 발사되어 무덤으로 이동하고 최대 유효 타일 중앙까지 발사선이 생성된다.
   * 정렬 중 적 위치를 재조회하지 않으며 확정된 관통 대상은 앞 대상의 피해 성공 여부와 무관하게 가까운 순서로 처리한다.
-  * 크리티컬 확률은 `PlayerShoot`, 배율은 각 `BulletData`에서 관리하며 관통 대상은 탄환 단위 판정 결과를 공유한다.
+  * 크리티컬 확률과 배율은 현재 `BulletInstance` 레벨의 `BulletData`에서 관리하며 관통 대상은 탄환 단위 판정 결과를 공유한다.
   * 흡혈은 표식, 크리티컬, 약화와 남은 체력 제한을 반영한 실제 직접 피해량을 사용하므로 처치 및 초과 피해에서도 회복량이 정확하다.
   * Line Material이 null이면 프리팹 Material을 유지하며 Primary와 Secondary 모두 인스턴스 PropertyBlock에 적용된다. Primary vertex alpha는 Fade Out을 제어한다.
   * Bullet 프리팹과 테스트 Bullet은 동일한 `BulletSmokeFlameLine` Material을 사용하며 Material 자체의 색상은 런타임에 변경하지 않는다.

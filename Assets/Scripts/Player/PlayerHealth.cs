@@ -83,6 +83,21 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
+    public bool IncreaseMaxHealth(int amount)
+    {
+        if (amount <= 0 || IsDefeated || maxHealth >= int.MaxValue)
+        {
+            return false;
+        }
+
+        int increase = (int)Math.Min(amount, (long)int.MaxValue - maxHealth);
+        maxHealth += increase;
+        currentHealth += increase;
+        RefreshUI();
+        HealthChanged?.Invoke(currentHealth, maxHealth);
+        return true;
+    }
+
     private void SetCurrentHealth(int health)
     {
         int previousHealth = currentHealth;

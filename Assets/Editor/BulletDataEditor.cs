@@ -88,8 +88,10 @@ public class BulletDataEditor : Editor
             Draw("description");
             Draw("damage");
             Draw("maxRange");
+            Draw("criticalChance");
             Draw("criticalDamageMultiplier");
             Draw("effects", includeChildren: true);
+            Draw("conditionalEvents", includeChildren: true);
             Draw("penetrationChances", includeChildren: true);
             Draw("lineMaterial");
             Draw("primaryLineColor");

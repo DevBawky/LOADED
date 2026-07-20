@@ -35,12 +35,19 @@ public sealed class BulletInstance
         : data.GradeNameColor;
     public int Damage => data == null ? 0 : data.GetDamage(Level);
     public int MaxRange => data == null ? 1 : data.GetMaxRange(Level);
+    public float CriticalChance => data == null
+        ? 0f
+        : data.GetCriticalChance(Level);
     public float CriticalDamageMultiplier => data == null
         ? 1f
         : data.GetCriticalDamageMultiplier(Level);
     public IReadOnlyList<BulletEffectData> Effects => data == null
         ? Array.Empty<BulletEffectData>()
         : data.GetEffects(Level);
+    public IReadOnlyList<BulletConditionalEventData> ConditionalEvents =>
+        data == null
+            ? Array.Empty<BulletConditionalEventData>()
+            : data.GetConditionalEvents(Level);
     public IReadOnlyList<PenetrationChanceData> PenetrationChances => data == null
         ? Array.Empty<PenetrationChanceData>()
         : data.GetPenetrationChances(Level);
@@ -86,5 +93,17 @@ public sealed class BulletInstance
             hitCount,
             Level,
             UnityEngine.Random.Range(0f, 100f));
+    }
+
+    public bool RollCritical()
+    {
+        return CanTriggerCritical(UnityEngine.Random.Range(0f, 100f));
+    }
+
+    public bool CanTriggerCritical(float roll)
+    {
+        float chance = CriticalChance;
+        return chance >= 100f
+            || chance > 0f && roll >= 0f && roll < chance;
     }
 }

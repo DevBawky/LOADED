@@ -12,7 +12,25 @@ public enum BulletEffectType
     Knockback = 3,
     PositionSwap = 4,
     LifeSteal = 5,
-    Weakness = 6
+    Weakness = 6,
+    IncreaseMaxHealth = 7,
+    DestroyBullet = 8,
+    GainGold = 9
+}
+
+public enum BulletEffectTarget
+{
+    HitEnemy = 0,
+    FiringPlayer = 1,
+    AllEnemies = 2
+}
+
+public enum BulletConditionalTrigger
+{
+    EnemyDefeated = 0,
+    CriticalHit = 1,
+    Penetration = 2,
+    EffectApplied = 3
 }
 
 public enum BulletGrade
@@ -32,10 +50,14 @@ public class BulletLevelData
     [SerializeField] private int damage;
     [Range(1, 10)]
     [SerializeField] private int maxRange = 1;
+    [Range(0f, 100f)]
+    [SerializeField] private float criticalChance;
     [Min(1f)]
     [SerializeField] private float criticalDamageMultiplier = 2f;
     [SerializeField] private List<BulletEffectData> effects =
         new List<BulletEffectData>();
+    [SerializeField] private List<BulletConditionalEventData> conditionalEvents =
+        new List<BulletConditionalEventData>();
     [SerializeField] private List<PenetrationChanceData> penetrationChances =
         new List<PenetrationChanceData>();
     [SerializeField] private Material lineMaterial;
@@ -53,10 +75,14 @@ public class BulletLevelData
     public string Description => description;
     public int Damage => Mathf.Max(0, damage);
     public int MaxRange => Mathf.Clamp(maxRange, 1, 10);
+    public float CriticalChance => Mathf.Clamp(criticalChance, 0f, 100f);
     public float CriticalDamageMultiplier =>
         Mathf.Max(1f, criticalDamageMultiplier);
     public IReadOnlyList<BulletEffectData> Effects =>
         effects ?? (IReadOnlyList<BulletEffectData>)Array.Empty<BulletEffectData>();
+    public IReadOnlyList<BulletConditionalEventData> ConditionalEvents =>
+        conditionalEvents
+        ?? (IReadOnlyList<BulletConditionalEventData>)Array.Empty<BulletConditionalEventData>();
     public IReadOnlyList<PenetrationChanceData> PenetrationChances =>
         penetrationChances
         ?? (IReadOnlyList<PenetrationChanceData>)Array.Empty<PenetrationChanceData>();
@@ -76,8 +102,10 @@ public class BulletLevelData
         string description,
         int damage,
         int maxRange,
+        float criticalChance,
         float criticalDamageMultiplier,
         List<BulletEffectData> effects,
+        List<BulletConditionalEventData> conditionalEvents,
         List<PenetrationChanceData> penetrationChances,
         Material lineMaterial,
         Color primaryLineColor,
@@ -90,8 +118,10 @@ public class BulletLevelData
         this.description = description;
         this.damage = damage;
         this.maxRange = maxRange;
+        this.criticalChance = criticalChance;
         this.criticalDamageMultiplier = criticalDamageMultiplier;
         this.effects = CloneEffects(effects);
+        this.conditionalEvents = CloneConditionalEvents(conditionalEvents);
         this.penetrationChances = ClonePenetrationChances(
             penetrationChances);
         this.lineMaterial = lineMaterial;
@@ -141,12 +171,34 @@ public class BulletLevelData
 
         return copies;
     }
+
+    private static List<BulletConditionalEventData> CloneConditionalEvents(
+        List<BulletConditionalEventData> source)
+    {
+        List<BulletConditionalEventData> copies =
+            new List<BulletConditionalEventData>();
+
+        if (source == null)
+        {
+            return copies;
+        }
+
+        foreach (BulletConditionalEventData conditionalEvent in source)
+        {
+            copies.Add(conditionalEvent == null
+                ? null
+                : new BulletConditionalEventData(conditionalEvent));
+        }
+
+        return copies;
+    }
 }
 
 [Serializable]
 public class BulletEffectData
 {
     [SerializeField] private BulletEffectType effectType;
+    [SerializeField] private BulletEffectTarget target;
     [Range(0f, 100f)]
     [SerializeField] private float activationChance = 100f;
     [Min(1)]
@@ -155,11 +207,16 @@ public class BulletEffectData
     [Min(1)]
     [Tooltip("Maximum travel tiles for Knockback. Ignored by other effects.")]
     [SerializeField] private int knockbackDistance = 1;
+    [Min(1)]
+    [Tooltip("Amount used by Increase Max Health and Gain Gold. Ignored by other effects.")]
+    [SerializeField] private int amount = 1;
 
     public BulletEffectType EffectType => effectType;
+    public BulletEffectTarget Target => target;
     public float ActivationChance => activationChance;
     public int StackCount => stackCount;
     public int KnockbackDistance => knockbackDistance;
+    public int Amount => Mathf.Max(1, amount);
 
     public BulletEffectData()
     {
@@ -173,9 +230,11 @@ public class BulletEffectData
         }
 
         effectType = source.effectType;
+        target = source.target;
         activationChance = source.activationChance;
         stackCount = source.stackCount;
         knockbackDistance = source.knockbackDistance;
+        amount = source.amount;
     }
 
     public bool RollActivation()
@@ -188,6 +247,43 @@ public class BulletEffectData
         float chance = Mathf.Clamp(activationChance, 0f, 100f);
         return chance >= 100f
             || chance > 0f && roll >= 0f && roll < chance;
+    }
+}
+
+[Serializable]
+public class BulletConditionalEventData
+{
+    [SerializeField] private BulletConditionalTrigger trigger;
+    [SerializeField] private List<BulletEffectData> events =
+        new List<BulletEffectData>();
+
+    public BulletConditionalTrigger Trigger => trigger;
+    public IReadOnlyList<BulletEffectData> Events =>
+        events ?? (IReadOnlyList<BulletEffectData>)Array.Empty<BulletEffectData>();
+
+    public BulletConditionalEventData()
+    {
+    }
+
+    public BulletConditionalEventData(BulletConditionalEventData source)
+    {
+        if (source == null)
+        {
+            return;
+        }
+
+        trigger = source.trigger;
+        events = new List<BulletEffectData>();
+
+        if (source.events == null)
+        {
+            return;
+        }
+
+        foreach (BulletEffectData effect in source.events)
+        {
+            events.Add(effect == null ? null : new BulletEffectData(effect));
+        }
     }
 }
 
@@ -243,10 +339,14 @@ public class BulletData : ScriptableObject
     [SerializeField] private int damage;
     [Range(1, 10)]
     [SerializeField] private int maxRange = 1;
+    [Range(0f, 100f)]
+    [SerializeField] private float criticalChance;
     [Min(1f)]
     [SerializeField] private float criticalDamageMultiplier = 2f;
     [SerializeField] private List<BulletEffectData> effects =
         new List<BulletEffectData>();
+    [SerializeField] private List<BulletConditionalEventData> conditionalEvents =
+        new List<BulletConditionalEventData>();
     [SerializeField] private List<PenetrationChanceData> penetrationChances = new List<PenetrationChanceData>();
     [FormerlySerializedAs("trailMaterial")]
     [SerializeField] private Material lineMaterial;
@@ -278,10 +378,14 @@ public class BulletData : ScriptableObject
     public BulletGrade Grade => grade;
     public int Damage => damage;
     public int MaxRange => maxRange;
+    public float CriticalChance => Mathf.Clamp(criticalChance, 0f, 100f);
     public float CriticalDamageMultiplier =>
         Mathf.Max(1f, criticalDamageMultiplier);
     public IReadOnlyList<BulletEffectData> Effects =>
         effects ?? (IReadOnlyList<BulletEffectData>)Array.Empty<BulletEffectData>();
+    public IReadOnlyList<BulletConditionalEventData> ConditionalEvents =>
+        conditionalEvents
+        ?? (IReadOnlyList<BulletConditionalEventData>)Array.Empty<BulletConditionalEventData>();
     public IReadOnlyList<PenetrationChanceData> PenetrationChances =>
         penetrationChances
         ?? (IReadOnlyList<PenetrationChanceData>)Array.Empty<PenetrationChanceData>();
@@ -401,6 +505,9 @@ public class BulletData : ScriptableObject
         builder.Append("유효 범위: ")
             .Append(GetMaxRange(level))
             .AppendLine(" 칸");
+        builder.Append("크리티컬 확률: ")
+            .Append(GetCriticalChance(level).ToString("0.##"))
+            .AppendLine("%");
         builder.Append("크리티컬 배율: x")
             .AppendLine(GetCriticalDamageMultiplier(level).ToString("0.##"));
         return builder.ToString().Trim();
@@ -428,10 +535,27 @@ public class BulletData : ScriptableObject
             : levelData.CriticalDamageMultiplier;
     }
 
+    public float GetCriticalChance(int level)
+    {
+        BulletLevelData levelData = GetUpgradeLevelData(level);
+        return levelData == null
+            ? Mathf.Clamp(criticalChance, 0f, 100f)
+            : levelData.CriticalChance;
+    }
+
     public IReadOnlyList<BulletEffectData> GetEffects(int level)
     {
         BulletLevelData levelData = GetUpgradeLevelData(level);
         return levelData == null ? Effects : levelData.Effects;
+    }
+
+    public IReadOnlyList<BulletConditionalEventData> GetConditionalEvents(
+        int level)
+    {
+        BulletLevelData levelData = GetUpgradeLevelData(level);
+        return levelData == null
+            ? ConditionalEvents
+            : levelData.ConditionalEvents;
     }
 
     public IReadOnlyList<PenetrationChanceData> GetPenetrationChances(int level)
@@ -544,8 +668,10 @@ public class BulletData : ScriptableObject
             description,
             damage,
             maxRange,
+            criticalChance,
             criticalDamageMultiplier,
             effects,
+            conditionalEvents,
             penetrationChances,
             lineMaterial,
             primaryLineColor,
