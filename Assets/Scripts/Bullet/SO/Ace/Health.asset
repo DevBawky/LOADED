@@ -17,7 +17,7 @@ MonoBehaviour:
   description: "\uC801 \uCC98\uCE58 \uC2DC 50% \uD655\uB960\uB85C \uCD5C\uB300 \uCCB4\uB825\uC774
     1 \uC99D\uAC00\uD569\uB2C8\uB2E4."
   bulletIcon: {fileID: 2208703988740019828, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
-  cylinderIcon: {fileID: 4385501425044414559, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 0ab4c268261c43e43b56d357084e1cc3, type: 3}
   price: 5
   grade: 2
   useCustomGradeNameColor: 0
