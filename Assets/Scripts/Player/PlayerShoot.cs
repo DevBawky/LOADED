@@ -136,7 +136,9 @@ public class PlayerShoot : MonoBehaviour
 
     public void Reload()
     {
-        if (GamePauseController.IsPaused || isFiring || !TryBeginAction())
+        if (GamePauseController.IsPaused || isFiring
+            || cylinderUI != null && cylinderUI.IsDragging
+            || !TryBeginAction())
         {
             return;
         }
@@ -161,7 +163,9 @@ public class PlayerShoot : MonoBehaviour
 
     public void Shoot()
     {
-        if (GamePauseController.IsPaused || isFiring || !TryBeginAction())
+        if (GamePauseController.IsPaused || isFiring
+            || cylinderUI != null && cylinderUI.IsDragging
+            || !TryBeginAction())
         {
             return;
         }

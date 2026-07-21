@@ -80,6 +80,22 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public bool TrySwapLoadedBullets(int firstIndex, int secondIndex)
+    {
+        if (firstIndex < 0 || firstIndex >= loadedBullets.Count
+            || secondIndex < 0 || secondIndex >= loadedBullets.Count
+            || firstIndex == secondIndex)
+        {
+            return false;
+        }
+
+        BulletInstance temporary = loadedBullets[firstIndex];
+        loadedBullets[firstIndex] = loadedBullets[secondIndex];
+        loadedBullets[secondIndex] = temporary;
+        StateChanged?.Invoke();
+        return true;
+    }
+
     public bool TryAddBullet(BulletData bulletData)
     {
         if (bulletData == null)

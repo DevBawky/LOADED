@@ -32,6 +32,7 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private RectTransform[] shopBulletSlots;
     [SerializeField] private RectTransform nextChip;
     [SerializeField] private Image nextChipIcon;
+    [SerializeField] private PlayerCylinderUI cylinderUI;
 
     [Header("Bullet Tooltip")]
     [SerializeField] private RectTransform bulletTooltip;
@@ -40,6 +41,12 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI bulletNameText;
     [SerializeField] private TextMeshProUGUI bulletGradeText;
     [SerializeField] private TextMeshProUGUI bulletDescriptionText;
+
+    [Header("Cylinder Bullet Tooltip")]
+    [SerializeField] private RectTransform cylinderBulletTooltip;
+    [SerializeField] private TextMeshProUGUI cylinderBulletNameText;
+    [SerializeField] private TextMeshProUGUI cylinderBulletGradeText;
+    [SerializeField] private TextMeshProUGUI cylinderBulletDescriptionText;
 
     private readonly Vector3[] tooltipCorners = new Vector3[4];
     private Canvas rootCanvas;
@@ -58,6 +65,7 @@ public class InventoryTooltipUI : MonoBehaviour
 
         DisableRaycasts(tooltip);
         DisableRaycasts(bulletTooltip);
+        DisableRaycasts(cylinderBulletTooltip);
 
         if (deckManager != null)
         {
@@ -82,7 +90,8 @@ public class InventoryTooltipUI : MonoBehaviour
     {
         Mouse mouse = Mouse.current;
 
-        if (GamePauseController.IsPaused || mouse == null)
+        if (GamePauseController.IsPaused || mouse == null
+            || cylinderUI != null && cylinderUI.IsDragging)
         {
             HideAll();
             return;
@@ -93,6 +102,7 @@ public class InventoryTooltipUI : MonoBehaviour
         if (TryShowInventoryItem(pointerPosition)
             || TryShowShopItem(pointerPosition)
             || TryShowShopBullet(pointerPosition)
+            || TryShowLoadedBullet(pointerPosition)
             || TryShowNextBullet(pointerPosition))
         {
             return;
@@ -168,6 +178,22 @@ public class InventoryTooltipUI : MonoBehaviour
         return false;
     }
 
+    private bool TryShowLoadedBullet(Vector2 pointerPosition)
+    {
+        if (cylinderUI == null
+            || !cylinderUI.TryGetLoadedBulletAtScreenPosition(
+                pointerPosition,
+                GetCanvasCamera(),
+                out BulletInstance bullet)
+            || bullet == null)
+        {
+            return false;
+        }
+
+        ShowCylinderBullet(bullet, pointerPosition);
+        return true;
+    }
+
     private bool TryShowNextBullet(Vector2 pointerPosition)
     {
         if (deckManager == null || !IsHovered(nextChip, pointerPosition))
@@ -189,6 +215,7 @@ public class InventoryTooltipUI : MonoBehaviour
     private void ShowItem(ItemData item, Vector2 pointerPosition)
     {
         HideBulletTooltip();
+        HideCylinderBulletTooltip();
 
         if (tooltip == null || itemNameText == null
             || itemDescriptionText == null)
@@ -215,6 +242,7 @@ public class InventoryTooltipUI : MonoBehaviour
         Vector2 pointerPosition)
     {
         HideItemTooltip();
+        HideCylinderBulletTooltip();
 
         if (bullet == null || bulletTooltip == null || bulletNameText == null
             || bulletDescriptionText == null)
@@ -238,6 +266,38 @@ public class InventoryTooltipUI : MonoBehaviour
         bulletTooltip.gameObject.SetActive(true);
         bulletTooltip.SetAsLastSibling();
         PositionInsideScreen(bulletTooltip, pointerPosition);
+    }
+
+    private void ShowCylinderBullet(
+        BulletInstance bullet,
+        Vector2 pointerPosition)
+    {
+        HideItemTooltip();
+        HideBulletTooltip();
+
+        if (bullet == null || bullet.Data == null
+            || cylinderBulletTooltip == null
+            || cylinderBulletNameText == null
+            || cylinderBulletDescriptionText == null)
+        {
+            HideCylinderBulletTooltip();
+            return;
+        }
+
+        cylinderBulletNameText.richText = true;
+        cylinderBulletNameText.color = bullet.GradeNameColor;
+        cylinderBulletNameText.text = bullet.RichDisplayName;
+
+        if (cylinderBulletGradeText != null)
+        {
+            cylinderBulletGradeText.text = bullet.Grade.ToString();
+            cylinderBulletGradeText.color = bullet.GradeNameColor;
+        }
+
+        cylinderBulletDescriptionText.text = bullet.DetailedDescription;
+        cylinderBulletTooltip.gameObject.SetActive(true);
+        cylinderBulletTooltip.SetAsLastSibling();
+        PositionInsideScreen(cylinderBulletTooltip, pointerPosition);
     }
 
     private void RefreshNextChip()
@@ -391,6 +451,7 @@ public class InventoryTooltipUI : MonoBehaviour
     {
         HideItemTooltip();
         HideBulletTooltip();
+        HideCylinderBulletTooltip();
     }
 
     private void HideItemTooltip()
@@ -409,11 +470,21 @@ public class InventoryTooltipUI : MonoBehaviour
         }
     }
 
+    private void HideCylinderBulletTooltip()
+    {
+        if (cylinderBulletTooltip != null
+            && cylinderBulletTooltip.gameObject.activeSelf)
+        {
+            cylinderBulletTooltip.gameObject.SetActive(false);
+        }
+    }
+
     private void ResolveReferences()
     {
         playerInventory ??= FindSceneObject<PlayerInventory>();
         shopManager ??= FindSceneObject<ShopManager>();
         deckManager ??= FindSceneObject<DeckManager>();
+        cylinderUI ??= FindSceneObject<PlayerCylinderUI>();
 
         Canvas canvas = GetComponentInParent<Canvas>();
 
@@ -425,6 +496,8 @@ public class InventoryTooltipUI : MonoBehaviour
         inventoryPanel ??= FindRectTransform("Panel | Inventory");
         tooltip ??= FindRectTransform("Panel | Item Tooltip");
         bulletTooltip ??= FindRectTransform("Panel | Bullet Tooltip");
+        cylinderBulletTooltip ??= FindRectTransform(
+            "Panel | Cylinder Bullet Tooltip");
         nextChip ??= FindRectTransform("Next Chip", "Panel | MainGame");
 
         if (itemSlots == null || itemSlots.Length == 0)
@@ -467,6 +540,15 @@ public class InventoryTooltipUI : MonoBehaviour
             "Text | Bullet Grade");
         bulletDescriptionText ??= FindNamedChild<TextMeshProUGUI>(
             bulletTooltip,
+            "Text | Bullet Description");
+        cylinderBulletNameText ??= FindNamedChild<TextMeshProUGUI>(
+            cylinderBulletTooltip,
+            "Text | Bullet Name");
+        cylinderBulletGradeText ??= FindNamedChild<TextMeshProUGUI>(
+            cylinderBulletTooltip,
+            "Text | Bullet Grade");
+        cylinderBulletDescriptionText ??= FindNamedChild<TextMeshProUGUI>(
+            cylinderBulletTooltip,
             "Text | Bullet Description");
         nextChipIcon ??= FindNamedChild<Image>(nextChip, "Image | Next Chip");
     }
