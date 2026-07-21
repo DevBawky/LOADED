@@ -16,8 +16,8 @@ MonoBehaviour:
   displayName: "\uAC15\uD654\uD0C4"
   description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\r\n\uBC1C\uC0AC
     \uC2DC 5% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4."
-  bulletIcon: {fileID: -5722037672258507610, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
-  cylinderIcon: {fileID: -9052392895300060863, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  bulletIcon: {fileID: -2398554413340399166, guid: e68978345b8c5b448ad6bd051f69140d, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: f8bf36e1ced06d647b089f1dbfb24c2c, type: 3}
   price: 20
   grade: 2
   useCustomGradeNameColor: 0

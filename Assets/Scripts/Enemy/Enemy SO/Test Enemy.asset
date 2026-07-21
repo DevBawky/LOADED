@@ -15,9 +15,9 @@ MonoBehaviour:
   enemyId: 0
   displayName: Test Enemy
   description: 
-  sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
+  sprite: {fileID: 8208270978804853502, guid: 32b887d53eb68e8438ec8cf99113acf5, type: 3}
   prefab: {fileID: 8378092708147667353, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-  maxHealth: 100
+  maxHealth: 70
   dropChance: 100
   dropItems:
   - dropType: 0
