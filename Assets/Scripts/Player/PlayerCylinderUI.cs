@@ -8,10 +8,13 @@ public class PlayerCylinderUI : MonoBehaviour
 {
     private const string CylinderObjectName = "Image | Cylinder";
     private const string MainGamePanelName = "Panel | MainGame";
+    private static readonly int BulletInCylinderParameter =
+        Animator.StringToHash("bullet_in_cylinder");
 
     [Header("References")]
     [SerializeField] private RectTransform cylinderTransform;
     [SerializeField] private List<Image> bulletImages = new List<Image>();
+    [SerializeField] private Animator playerAnimator;
 
     [Header("Rotation")]
     [Min(0f)]
@@ -48,6 +51,8 @@ public class PlayerCylinderUI : MonoBehaviour
     private void Awake()
     {
         playerShoot = GetComponent<PlayerShoot>();
+        playerAnimator ??= GetComponent<Animator>();
+        SetAnimatorBulletCount(0);
         ResolveMovedCylinderReferences();
         PrepareBulletSlots();
 
@@ -598,14 +603,19 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void RefreshDisplay(bool animateRotation)
     {
+        int currentLoadedCount = deckManager == null
+            ? 0
+            : deckManager.LoadedBullets.Count;
+        SetAnimatorBulletCount(currentLoadedCount);
+
         if (cylinderTransform == null)
         {
             return;
         }
 
-        int loadedCount = deckManager == null
-            ? 0
-            : Mathf.Min(deckManager.LoadedBullets.Count, bulletImages.Count);
+        int loadedCount = Mathf.Min(
+            currentLoadedCount,
+            bulletImages.Count);
 
         for (int imageIndex = 0;
              imageIndex < bulletImages.Count;
@@ -676,6 +686,18 @@ public class PlayerCylinderUI : MonoBehaviour
             targetAngle,
             animateRotation,
             loadedCount == 0);
+    }
+
+    private void SetAnimatorBulletCount(int bulletCount)
+    {
+        if (playerAnimator == null)
+        {
+            return;
+        }
+
+        playerAnimator.SetInteger(
+            BulletInCylinderParameter,
+            Mathf.Max(0, bulletCount));
     }
 
     private void ApplyBulletImage(Image bulletImage, BulletInstance bulletData)

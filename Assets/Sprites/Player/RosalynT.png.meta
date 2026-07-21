@@ -1,0 +1,496 @@
+fileFormatVersion: 2
+guid: c5ba96b4f973c264bb736d05a607523b
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 3864627785303586192
+    second: RosalynT_0
+  - first:
+      213: 5997300697082701334
+    second: RosalynT_1
+  - first:
+      213: 6965649721888741755
+    second: RosalynT_2
+  - first:
+      213: -7041681921739692627
+    second: RosalynT_3
+  - first:
+      213: 6174729202710543935
+    second: RosalynT_4
+  - first:
+      213: 8469284411467710544
+    second: RosalynT_5
+  - first:
+      213: -6868504243928663828
+    second: RosalynT_6
+  - first:
+      213: 2392592855892249476
+    second: RosalynT_7
+  - first:
+      213: 4054021678916723796
+    second: RosalynT_8
+  - first:
+      213: -273447120552085692
+    second: RosalynT_9
+  - first:
+      213: 6212684260962326565
+    second: RosalynT_10
+  - first:
+      213: -4815939836215415390
+    second: RosalynT_11
+  - first:
+      213: -2627782711706943413
+    second: RosalynT_12
+  - first:
+      213: -2720213703057627202
+    second: RosalynT_13
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: 4
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WindowsStoreApps
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: RosalynT_0
+      rect:
+        serializedVersion: 2
+        x: 77
+        y: 139
+        width: 86
+        height: 81
+      alignment: 9
+      pivot: {x: 0.4350523, y: 0.29843402}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 095ff1cbe7ae1a530800000000000000
+      internalID: 3864627785303586192
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_1
+      rect:
+        serializedVersion: 2
+        x: 100
+        y: 89
+        width: 38
+        height: 50
+      alignment: 9
+      pivot: {x: 0.5, y: 0.6331928}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 61621dc7531ba3350800000000000000
+      internalID: 5997300697082701334
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_2
+      rect:
+        serializedVersion: 2
+        x: 38
+        y: 123
+        width: 14
+        height: 12
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b791af63485faa060800000000000000
+      internalID: 6965649721888741755
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_3
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 123
+        width: 11
+        height: 13
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: da56a61c99be64e90800000000000000
+      internalID: -7041681921739692627
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_4
+      rect:
+        serializedVersion: 2
+        x: 81
+        y: 125
+        width: 16
+        height: 11
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f3efac7ae7b01b550800000000000000
+      internalID: 6174729202710543935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_5
+      rect:
+        serializedVersion: 2
+        x: 147
+        y: 120
+        width: 14
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 050494fcc41f88570800000000000000
+      internalID: 8469284411467710544
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_6
+      rect:
+        serializedVersion: 2
+        x: 174
+        y: 121
+        width: 20
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: ce87e52f7cb2ea0a0800000000000000
+      internalID: -6868504243928663828
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_7
+      rect:
+        serializedVersion: 2
+        x: 206
+        y: 123
+        width: 21
+        height: 11
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48b4893a682343120800000000000000
+      internalID: 2392592855892249476
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_8
+      rect:
+        serializedVersion: 2
+        x: 91
+        y: 60
+        width: 15
+        height: 18
+      alignment: 9
+      pivot: {x: 0.50000054, y: 0.9179569}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4546093ec37c24830800000000000000
+      internalID: 4054021678916723796
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_9
+      rect:
+        serializedVersion: 2
+        x: 116
+        y: 58
+        width: 18
+        height: 20
+      alignment: 9
+      pivot: {x: 0.47117573, y: 0.86319005}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 447b3aaea45843cf0800000000000000
+      internalID: -273447120552085692
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_10
+      rect:
+        serializedVersion: 2
+        x: 90
+        y: 39
+        width: 16
+        height: 13
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 528d15c4b63e73650800000000000000
+      internalID: 6212684260962326565
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_11
+      rect:
+        serializedVersion: 2
+        x: 119
+        y: 37
+        width: 16
+        height: 13
+      alignment: 9
+      pivot: {x: 0.30825406, y: 0.519955}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2ad2ab22c385a2db0800000000000000
+      internalID: -4815939836215415390
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_12
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 23
+        width: 18
+        height: 9
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b408bc9db8d388bd0800000000000000
+      internalID: -2627782711706943413
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: RosalynT_13
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 21
+        width: 19
+        height: 11
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: eb7a914ac0cdf3ad0800000000000000
+      internalID: -2720213703057627202
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: f787d3f50beb7a242a2f4fa56937ce5e
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
+    nameFileIdTable:
+      RosalynT_0: 3864627785303586192
+      RosalynT_1: 5997300697082701334
+      RosalynT_10: 6212684260962326565
+      RosalynT_11: -4815939836215415390
+      RosalynT_12: -2627782711706943413
+      RosalynT_13: -2720213703057627202
+      RosalynT_2: 6965649721888741755
+      RosalynT_3: -7041681921739692627
+      RosalynT_4: 6174729202710543935
+      RosalynT_5: 8469284411467710544
+      RosalynT_6: -6868504243928663828
+      RosalynT_7: 2392592855892249476
+      RosalynT_8: 4054021678916723796
+      RosalynT_9: -273447120552085692
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

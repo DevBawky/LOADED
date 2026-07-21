@@ -6,9 +6,14 @@ using UnityEngine.InputSystem;
 
 public class PlayerMove : MonoBehaviour
 {
+    private const string KickAnimationStateName = "Kick";
+    private static readonly int KickAnimationStateHash =
+        Animator.StringToHash(KickAnimationStateName);
+
     [Header("References")]
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private ActorMotion actorMotion;
+    [SerializeField] private Animator playerAnimator;
     [SerializeField] private Transform pushVisualTransform;
 
     [Header("Push")]
@@ -31,6 +36,11 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private float playerPushReturnDuration = 0.12f;
     [Min(0f)]
     [SerializeField] private float playerPushImpactHeight = 0.08f;
+    [Header("Kick Timing")]
+    [Range(0f, 1f)]
+    [SerializeField] private float kickImpactNormalizedTime = 0.5f;
+    [Min(0f)]
+    [SerializeField] private float kickFallbackDuration = 0.33333334f;
     [Min(0)]
     [SerializeField] private int pushCooldownTurns = 3;
 
@@ -67,6 +77,7 @@ public class PlayerMove : MonoBehaviour
     private void Awake()
     {
         statusEffects = GetComponent<StatusEffectController>();
+        playerAnimator ??= GetComponent<Animator>();
     }
 
     public void SetWaveManager(WaveManager assignedWaveManager)
@@ -327,8 +338,18 @@ public class PlayerMove : MonoBehaviour
 
         if (playPlayerImpact)
         {
-            yield return PlayPlayerPushImpact(
-                pushPlan.PushedEnemy.transform.position);
+            PlayKickAnimation();
+            Coroutine playerImpactRoutine = StartCoroutine(
+                PlayPlayerPushImpact(
+                    pushPlan.PushedEnemy.transform.position));
+
+            yield return WaitForKickImpact();
+
+            if (playerImpactRoutine != null)
+            {
+                StopCoroutine(playerImpactRoutine);
+            }
+
             playerReturnRoutine = isPushVisualDisplaced
                 ? StartCoroutine(ReturnPlayerPushVisual())
                 : null;
@@ -368,6 +389,83 @@ public class PlayerMove : MonoBehaviour
             ApplyPushCollisionDamage(
                 pushPlan.PushedEnemy,
                 pushPlan.CollidedEnemy);
+        }
+    }
+
+    private void PlayKickAnimation()
+    {
+        if (playerAnimator == null || !playerAnimator.isActiveAndEnabled
+            || playerAnimator.runtimeAnimatorController == null)
+        {
+            return;
+        }
+
+        playerAnimator.Play(KickAnimationStateName, 0, 0f);
+        playerAnimator.Update(0f);
+    }
+
+    private IEnumerator WaitForKickImpact()
+    {
+        float targetNormalizedTime = Mathf.Clamp01(
+            kickImpactNormalizedTime);
+        float fallbackWait = Mathf.Max(0f, kickFallbackDuration)
+            * targetNormalizedTime;
+
+        if (playerAnimator == null || !playerAnimator.isActiveAndEnabled
+            || playerAnimator.runtimeAnimatorController == null)
+        {
+            yield return WaitForPushTiming(fallbackWait);
+            yield break;
+        }
+
+        AnimatorStateInfo kickState =
+            playerAnimator.GetCurrentAnimatorStateInfo(0);
+        float stateSpeed = Mathf.Abs(
+            playerAnimator.speed
+            * kickState.speed
+            * kickState.speedMultiplier);
+
+        if (kickState.shortNameHash == KickAnimationStateHash
+            && kickState.length > 0f && stateSpeed > 0.001f)
+        {
+            fallbackWait = kickState.length
+                * targetNormalizedTime / stateSpeed;
+        }
+
+        float elapsedTime = 0f;
+
+        while (elapsedTime < fallbackWait)
+        {
+            kickState = playerAnimator.GetCurrentAnimatorStateInfo(0);
+
+            if (!GamePauseController.IsPaused
+                && kickState.shortNameHash == KickAnimationStateHash
+                && kickState.normalizedTime >= targetNormalizedTime)
+            {
+                yield break;
+            }
+
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+            }
+        }
+    }
+
+    private IEnumerator WaitForPushTiming(float duration)
+    {
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+            }
         }
     }
 
