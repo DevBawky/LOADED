@@ -29,14 +29,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private StatusEffectController statusEffects;
     [SerializeField] private EnemyDamageNumberDisplay damageNumberDisplay;
 
-    [Header("Attack Queue")]
-    [Range(1, 3)]
-    [SerializeField] private int maxQueuedAttacks = 3;
-    [Min(0f)]
-    [SerializeField] private float queuedActionInterval = 0.2f;
-    [Range(0f, 1f)]
-    [SerializeField] private float meleeAdditionalAttackChance = 0.5f;
-
     [Header("Runtime State")]
     [SerializeField] private int currentHealth;
     [SerializeField] private List<EnemyActionData> queuedAttackActions =
@@ -44,6 +36,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private bool isQueueCreated;
     [SerializeField] private bool isAttackPrepared;
     [SerializeField] private bool isRetreating;
+    [SerializeField] private int preparedTargetTileIndex = -1;
+    [SerializeField] private Vector3 preparedTargetPosition;
     [SerializeField] private EnemyTurnActionType lastTurnAction;
     [SerializeField] private bool isActing;
 
@@ -52,6 +46,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private PlayerHealth playerHealth;
     private WaveManager waveManager;
     private bool isInitialized;
+    private LineRenderer attackTelegraphLine;
     private readonly List<Vector3> movePath = new List<Vector3>();
     private readonly List<EnemyController> attackTargetBuffer =
         new List<EnemyController>();
@@ -72,6 +67,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     public bool IsQueueCreated => isQueueCreated;
     public bool IsAttackPrepared => isAttackPrepared;
     public bool IsRetreating => isRetreating;
+    public int PreparedTargetTileIndex => preparedTargetTileIndex;
     public EnemyTurnActionType LastTurnAction => lastTurnAction;
     public bool IsActing => isActing;
 
@@ -90,6 +86,15 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         ResetRuntimeState();
         ApplySprite();
         ApplyCanvasOrientation();
+    }
+
+    private void LateUpdate()
+    {
+        if (isAttackPrepared && enemyData != null
+            && enemyData.BehaviorType != EnemyBehaviorType.Melee)
+        {
+            RefreshAttackTelegraph();
+        }
     }
 
     public bool Initialize(
@@ -117,6 +122,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         ApplySprite();
         ApplyCanvasOrientation();
         isInitialized = true;
+        PrimeRangedAttackOnSpawn();
         return true;
     }
 
@@ -149,6 +155,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (isAttackPrepared)
         {
+            isAttackPrepared = false;
+            HideAttackTelegraph();
             StartCoroutine(FireAttackQueue());
             return;
         }
@@ -156,6 +164,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (!TryGetTurnContext(out int directionToPlayer, out int distanceToPlayer))
         {
             CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
+        {
+            TakeThrowerTurn(distanceToPlayer);
             return;
         }
 
@@ -171,11 +185,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        TakeRangeTurn(directionToPlayer, distanceToPlayer);
+        TakeGunnerTurn(directionToPlayer, distanceToPlayer);
     }
 
     private void OnDisable()
     {
+        HideAttackTelegraph();
         isActing = false;
     }
 
@@ -334,12 +349,72 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             distanceToPlayer);
     }
 
-    private void TakeRangeTurn(int directionToPlayer, int distanceToPlayer)
+    private void TakeGunnerTurn(int directionToPlayer, int distanceToPlayer)
     {
-        HandleAttackQueue(
-            EnemyActionType.RangedAttack,
-            directionToPlayer,
-            distanceToPlayer);
+        int definedAttackCount = GetAvailableAttackCount(
+            EnemyActionType.RangedAttack);
+
+        if (definedAttackCount == 0)
+        {
+            ClearAttackQueue();
+            MoveTowardPlayer(directionToPlayer);
+            return;
+        }
+
+        EnsureAttackQueueVisible();
+
+        if (queuedAttackActions.Count == 0)
+        {
+            RegisterAttack(EnemyActionType.RangedAttack, 0);
+            return;
+        }
+
+        if (CanPrepareGunnerAttack(directionToPlayer, distanceToPlayer))
+        {
+            PrepareCurrentAttackQueue();
+            return;
+        }
+
+        int availableAttackCount = Mathf.Min(
+            definedAttackCount,
+            enemyData.MaxQueuedAttacks);
+
+        if (queuedAttackActions.Count < availableAttackCount)
+        {
+            RegisterAttack(
+                EnemyActionType.RangedAttack,
+                queuedAttackActions.Count);
+            return;
+        }
+
+        MoveTowardPlayer(directionToPlayer);
+    }
+
+    private void TakeThrowerTurn(int distanceToPlayer)
+    {
+        if (GetAvailableAttackCount(EnemyActionType.RangedAttack) == 0)
+        {
+            ClearAttackQueue();
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        EnsureAttackQueueVisible();
+
+        if (queuedAttackActions.Count == 0)
+        {
+            RegisterAttack(EnemyActionType.RangedAttack, 0);
+            return;
+        }
+
+        if (distanceToPlayer > enemyData.FiringRange
+            || !CaptureThrowerTargetTile())
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        PrepareCurrentAttackQueue();
     }
 
     private void HandleAttackQueue(
@@ -348,7 +423,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int distanceToPlayer)
     {
         int definedAttackCount = GetAvailableAttackCount(attackActionType);
-        int queueLimit = Mathf.Clamp(maxQueuedAttacks, 1, 3);
+        int queueLimit = enemyData.MaxQueuedAttacks;
 
         if (definedAttackCount == 0)
         {
@@ -424,7 +499,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (distanceToPlayer <= enemyData.PreferredDistance
             && queuedAttackActions.Count < queueLimit)
         {
-            if (UnityEngine.Random.value < meleeAdditionalAttackChance)
+            if (UnityEngine.Random.value
+                < enemyData.MeleeAdditionalAttackChance)
             {
                 int attackIndex = queuedAttackActions.Count
                     % definedAttackCount;
@@ -445,6 +521,26 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         EnemyActionType attackActionType,
         int attackIndex)
     {
+        EnsureAttackQueueVisible();
+
+        if (!TryAppendAttack(attackActionType, attackIndex))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        CompleteAction(EnemyTurnActionType.RegisterAttack);
+    }
+
+    private bool TryAppendAttack(
+        EnemyActionType attackActionType,
+        int attackIndex)
+    {
+        if (queuedAttackActions.Count >= enemyData.MaxQueuedAttacks)
+        {
+            return false;
+        }
+
         EnemyActionData attackAction = GetAvailableAttackAction(
             attackActionType,
             attackIndex);
@@ -452,12 +548,226 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (attackAction == null
             || !actionQueueUI.AddAttackIcon(attackAction))
         {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
+            return false;
         }
 
         queuedAttackActions.Add(attackAction);
-        CompleteAction(EnemyTurnActionType.RegisterAttack);
+        return true;
+    }
+
+    private void PrimeRangedAttackOnSpawn()
+    {
+        if (enemyData == null
+            || enemyData.BehaviorType == EnemyBehaviorType.Melee)
+        {
+            return;
+        }
+
+        EnsureAttackQueueVisible();
+        int availableAttackCount = GetAvailableAttackCount(
+            EnemyActionType.RangedAttack);
+        int startingAttackIndex = enemyData.RandomizeStartingActionIndex
+            && availableAttackCount > 1
+                ? UnityEngine.Random.Range(0, availableAttackCount)
+                : 0;
+
+        if (!TryAppendAttack(
+                EnemyActionType.RangedAttack,
+                startingAttackIndex))
+        {
+            ClearAttackQueue();
+        }
+    }
+
+    private void EnsureAttackQueueVisible()
+    {
+        if (isQueueCreated)
+        {
+            return;
+        }
+
+        isQueueCreated = true;
+        isAttackPrepared = false;
+        actionQueueUI.ShowQueue();
+    }
+
+    private void PrepareCurrentAttackQueue()
+    {
+        isAttackPrepared = true;
+        actionQueueUI.SetPrepared(true);
+        RefreshAttackTelegraph();
+        CompleteAction(EnemyTurnActionType.PrepareAttack);
+    }
+
+    private void RefreshAttackTelegraph()
+    {
+        if (!isAttackPrepared || enemyData == null
+            || enemyData.BehaviorType == EnemyBehaviorType.Melee)
+        {
+            HideAttackTelegraph();
+            return;
+        }
+
+        Material telegraphMaterial = enemyData.BehaviorType
+            == EnemyBehaviorType.Thrower
+                ? enemyData.ThrowerTelegraphMaterial
+                : enemyData.GunnerTelegraphMaterial;
+
+        if (telegraphMaterial == null)
+        {
+            HideAttackTelegraph();
+            return;
+        }
+
+        LineRenderer lineRenderer = GetOrCreateAttackTelegraphLine();
+        lineRenderer.sharedMaterial = telegraphMaterial;
+        lineRenderer.widthMultiplier = enemyData.TelegraphLineWidth;
+        lineRenderer.sortingOrder = enemyData.TelegraphSortingOrder;
+
+        if (spriteRenderer != null)
+        {
+            lineRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
+        }
+
+        bool positionsApplied = enemyData.BehaviorType
+            == EnemyBehaviorType.Thrower
+                ? ApplyThrowerTelegraphPositions(lineRenderer)
+                : ApplyGunnerTelegraphPositions(lineRenderer);
+        lineRenderer.enabled = positionsApplied;
+    }
+
+    private LineRenderer GetOrCreateAttackTelegraphLine()
+    {
+        if (attackTelegraphLine != null)
+        {
+            return attackTelegraphLine;
+        }
+
+        GameObject telegraphObject = new GameObject(
+            "Line | Attack Telegraph");
+        telegraphObject.transform.SetParent(transform, false);
+        attackTelegraphLine = telegraphObject.AddComponent<LineRenderer>();
+        attackTelegraphLine.useWorldSpace = true;
+        attackTelegraphLine.loop = false;
+        attackTelegraphLine.alignment = LineAlignment.View;
+        attackTelegraphLine.textureMode = LineTextureMode.Stretch;
+        attackTelegraphLine.startColor = Color.white;
+        attackTelegraphLine.endColor = Color.white;
+        attackTelegraphLine.numCapVertices = 2;
+        attackTelegraphLine.enabled = false;
+        return attackTelegraphLine;
+    }
+
+    private bool ApplyGunnerTelegraphPositions(LineRenderer lineRenderer)
+    {
+        if (boardManager == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int attackerTileIndex))
+        {
+            return false;
+        }
+
+        int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
+        int endTileIndex = Mathf.Clamp(
+            attackerTileIndex + attackDirection * enemyData.FiringRange,
+            0,
+            boardManager.BoardCount - 1);
+
+        if (endTileIndex == attackerTileIndex
+            || !boardManager.TryGetTilePosition(
+                endTileIndex,
+                out Vector3 endPosition))
+        {
+            return false;
+        }
+
+        Vector3 startPosition = transform.position;
+        float verticalOffset = enemyData.TelegraphVerticalOffset;
+        startPosition.y += verticalOffset;
+        endPosition.y = startPosition.y;
+        endPosition.z = startPosition.z;
+        lineRenderer.positionCount = 2;
+        lineRenderer.SetPosition(0, startPosition);
+        lineRenderer.SetPosition(1, endPosition);
+        return true;
+    }
+
+    private bool ApplyThrowerTelegraphPositions(LineRenderer lineRenderer)
+    {
+        if (preparedTargetTileIndex < 0)
+        {
+            return false;
+        }
+
+        int segmentCount = enemyData.ThrowerTelegraphSegments;
+        Vector3 startPosition = transform.position;
+        Vector3 targetPosition = preparedTargetPosition;
+        float verticalOffset = enemyData.TelegraphVerticalOffset;
+        startPosition.y += verticalOffset;
+        targetPosition.y += verticalOffset;
+        targetPosition.z = startPosition.z;
+        lineRenderer.positionCount = segmentCount;
+
+        for (int segmentIndex = 0;
+             segmentIndex < segmentCount;
+             segmentIndex++)
+        {
+            float progress = segmentCount <= 1
+                ? 1f
+                : (float)segmentIndex / (segmentCount - 1);
+            Vector3 position = Vector3.Lerp(
+                startPosition,
+                targetPosition,
+                progress);
+            position += Vector3.up * (Mathf.Sin(progress * Mathf.PI)
+                * enemyData.ThrownProjectileArcHeight);
+            lineRenderer.SetPosition(segmentIndex, position);
+        }
+
+        return true;
+    }
+
+    private void HideAttackTelegraph()
+    {
+        if (attackTelegraphLine != null)
+        {
+            attackTelegraphLine.enabled = false;
+        }
+    }
+
+    private bool CanPrepareGunnerAttack(
+        int directionToPlayer,
+        int distanceToPlayer)
+    {
+        if (directionToPlayer == 0 || distanceToPlayer <= 0
+            || distanceToPlayer > enemyData.FiringRange)
+        {
+            return false;
+        }
+
+        attackTargetBuffer.Clear();
+        waveManager.GetEnemiesInDirection(
+            transform.position,
+            directionToPlayer,
+            distanceToPlayer,
+            attackTargetBuffer);
+        return attackTargetBuffer.Count == 0;
+    }
+
+    private bool CaptureThrowerTargetTile()
+    {
+        if (!boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out preparedTargetTileIndex))
+        {
+            preparedTargetTileIndex = -1;
+            preparedTargetPosition = Vector3.zero;
+            return false;
+        }
+
+        preparedTargetPosition = playerMove.transform.position;
+        return true;
     }
 
     private IEnumerator FireAttackQueue()
@@ -466,7 +776,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             EnemyActionData attackAction = queuedAttackActions[0];
             queuedAttackActions.RemoveAt(0);
-            ExecuteQueuedAttack(attackAction);
+            yield return ExecuteQueuedAttack(attackAction);
             actionQueueUI.RemoveFirstIcon();
 
             if (queuedAttackActions.Count > 0)
@@ -479,15 +789,23 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             && enemyData.PreferredDistance > 0;
         isQueueCreated = false;
         isAttackPrepared = false;
+        preparedTargetTileIndex = -1;
+        preparedTargetPosition = Vector3.zero;
         actionQueueUI.ResetDisplay();
         CompleteAction(EnemyTurnActionType.Fire);
     }
 
-    private void ExecuteQueuedAttack(EnemyActionData attackAction)
+    private IEnumerator ExecuteQueuedAttack(EnemyActionData attackAction)
     {
         if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
         {
-            return;
+            yield break;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
+        {
+            yield return ExecuteThrowerAttack(attackData);
+            yield break;
         }
 
         if (!TryGetAttackTarget(
@@ -497,7 +815,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 out Vector3 targetPosition))
         {
             AttackExecuted?.Invoke(this, attackData);
-            return;
+            yield break;
         }
 
         if (attackData.AttackEffectPrefab != null)
@@ -508,6 +826,113 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 Quaternion.identity);
         }
 
+        ApplyAttackToTarget(
+            attackData,
+            enemyTarget,
+            targetsPlayer);
+        AttackExecuted?.Invoke(this, attackData);
+    }
+
+    private IEnumerator ExecuteThrowerAttack(EnemyAttackData attackData)
+    {
+        if (preparedTargetTileIndex < 0)
+        {
+            AttackExecuted?.Invoke(this, attackData);
+            yield break;
+        }
+
+        yield return PlayThrownProjectile(preparedTargetPosition);
+
+        if (attackData.AttackEffectPrefab != null)
+        {
+            Instantiate(
+                attackData.AttackEffectPrefab,
+                preparedTargetPosition,
+                Quaternion.identity);
+        }
+
+        bool targetsPlayer = boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex)
+            && playerTileIndex == preparedTargetTileIndex;
+        EnemyController enemyTarget = null;
+
+        if (!targetsPlayer)
+        {
+            waveManager.TryGetEnemyAtTile(
+                preparedTargetTileIndex,
+                out enemyTarget,
+                this);
+        }
+
+        ApplyAttackToTarget(
+            attackData,
+            enemyTarget,
+            targetsPlayer);
+        AttackExecuted?.Invoke(this, attackData);
+    }
+
+    private IEnumerator PlayThrownProjectile(Vector3 targetPosition)
+    {
+        Vector3 startPosition = transform.position;
+        float duration = enemyData.ThrownProjectileDuration;
+        float arcHeight = enemyData.ThrownProjectileArcHeight;
+        GameObject projectile = enemyData.ThrownProjectilePrefab == null
+            ? null
+            : Instantiate(
+                enemyData.ThrownProjectilePrefab,
+                startPosition,
+                Quaternion.identity);
+
+        if (duration <= 0f)
+        {
+            if (projectile != null)
+            {
+                projectile.transform.position = targetPosition;
+                Destroy(projectile);
+            }
+
+            yield break;
+        }
+
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / duration);
+            Vector3 position = Vector3.Lerp(
+                startPosition,
+                targetPosition,
+                progress);
+            position += Vector3.up
+                * (Mathf.Sin(progress * Mathf.PI) * arcHeight);
+
+            if (projectile != null)
+            {
+                projectile.transform.position = position;
+            }
+        }
+
+        if (projectile != null)
+        {
+            projectile.transform.position = targetPosition;
+            Destroy(projectile);
+        }
+    }
+
+    private void ApplyAttackToTarget(
+        EnemyAttackData attackData,
+        EnemyController enemyTarget,
+        bool targetsPlayer)
+    {
         int attackDamage = statusEffects == null
             ? attackData.Damage
             : statusEffects.ModifyOutgoingAttackDamage(
@@ -531,8 +956,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 ApplyAttackStatusEffects(enemyTarget, attackData);
             }
         }
-
-        AttackExecuted?.Invoke(this, attackData);
     }
 
     private bool TryGetAttackTarget(
@@ -558,16 +981,19 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
+        int attackRange = enemyData.BehaviorType == EnemyBehaviorType.Melee
+            ? attackData.Range
+            : enemyData.FiringRange;
         int playerOffset = playerIndex - attackerIndex;
         int distanceToPlayer = Mathf.Abs(playerOffset);
         bool playerInAttackLine = playerOffset * attackDirection > 0
-            && distanceToPlayer <= attackData.Range;
+            && distanceToPlayer <= attackRange;
 
         attackTargetBuffer.Clear();
         waveManager.GetEnemiesInDirection(
             transform.position,
             attackDirection,
-            attackData.Range,
+            attackRange,
             attackTargetBuffer);
 
         EnemyController closestEnemy = attackTargetBuffer.Count == 0
@@ -643,7 +1069,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     {
         float elapsedTime = 0f;
 
-        while (elapsedTime < queuedActionInterval)
+        while (elapsedTime < enemyData.QueuedActionInterval)
         {
             yield return null;
 
@@ -719,6 +1145,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         queuedAttackActions.Clear();
         isQueueCreated = false;
         isAttackPrepared = false;
+        preparedTargetTileIndex = -1;
+        preparedTargetPosition = Vector3.zero;
+        HideAttackTelegraph();
 
         if (actionQueueUI != null)
         {
@@ -892,11 +1321,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void ResetRuntimeState()
     {
+        HideAttackTelegraph();
         currentHealth = enemyData == null ? 0 : enemyData.MaxHealth;
         queuedAttackActions.Clear();
         isQueueCreated = false;
         isAttackPrepared = false;
         isRetreating = false;
+        preparedTargetTileIndex = -1;
+        preparedTargetPosition = Vector3.zero;
         lastTurnAction = EnemyTurnActionType.None;
         isActing = false;
 
