@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class BulletManagementUI : MonoBehaviour
@@ -33,6 +34,10 @@ public class BulletManagementUI : MonoBehaviour
     [SerializeField] private Button upgradeButton;
     [SerializeField] private TextMeshProUGUI upgradeButtonText;
 
+    [Header("Upgrade Tooltip")]
+    [SerializeField] private RectTransform upgradeTooltip;
+    [SerializeField] private TextMeshProUGUI upgradeTooltipDescriptionText;
+
     private readonly List<BulletInstance> ownedBullets =
         new List<BulletInstance>();
     private readonly List<Button> spawnedButtons = new List<Button>();
@@ -45,6 +50,8 @@ public class BulletManagementUI : MonoBehaviour
     {
         ResolveReferences();
         BindEvents();
+        DisableRaycasts(upgradeTooltip);
+        HideUpgradeTooltip();
         SetManagementView(false);
 
         wasShopActive = shopPanel != null
@@ -69,6 +76,7 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         wasShopActive = isShopActive;
+        RefreshUpgradeTooltip();
     }
 
     public void Open()
@@ -85,6 +93,7 @@ public class BulletManagementUI : MonoBehaviour
     public void Close()
     {
         SetManagementView(false);
+        HideUpgradeTooltip();
         ClearSpawnedButtons();
         ClearSelection();
     }
@@ -297,6 +306,7 @@ public class BulletManagementUI : MonoBehaviour
     private void ClearSelection()
     {
         selectedBullet = null;
+        HideUpgradeTooltip();
         ApplyIcon(bulletIcon, null);
         ApplyIcon(cylinderIcon, null);
 
@@ -437,6 +447,9 @@ public class BulletManagementUI : MonoBehaviour
         closeButton ??= FindButton("Button | Close", manageBulletsPanel);
         removeButton ??= FindButton("Button | Remove", manageBulletsPanel);
         upgradeButton ??= FindButton("Button | Upgrade", manageBulletsPanel);
+        upgradeTooltip ??= FindRectTransform(
+            "Panel | Upgrade Tooltip",
+            null);
 
         RectTransform currentBullets = FindRectTransform(
             "Layout | Current Bullets",
@@ -472,6 +485,80 @@ public class BulletManagementUI : MonoBehaviour
         upgradeButtonText ??= upgradeButton == null
             ? null
             : upgradeButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        upgradeTooltipDescriptionText ??= FindNamedChild<TextMeshProUGUI>(
+            upgradeTooltip,
+            "Text | Bullet Description");
+    }
+
+    private void RefreshUpgradeTooltip()
+    {
+        Mouse mouse = Mouse.current;
+        RectTransform upgradeButtonRect = upgradeButton == null
+            ? null
+            : upgradeButton.transform as RectTransform;
+
+        if (mouse == null || upgradeButtonRect == null
+            || upgradeTooltip == null
+            || upgradeTooltipDescriptionText == null
+            || manageBulletsPanel == null
+            || !manageBulletsPanel.activeInHierarchy
+            || selectedBullet == null
+            || selectedBullet.Data == null
+            || !selectedBullet.CanUpgrade
+            || !RectTransformUtility.RectangleContainsScreenPoint(
+                upgradeButtonRect,
+                mouse.position.ReadValue(),
+                GetCanvasCamera(upgradeButtonRect)))
+        {
+            HideUpgradeTooltip();
+            return;
+        }
+
+        int nextLevel = selectedBullet.Level + 1;
+        upgradeTooltipDescriptionText.text =
+            selectedBullet.Data.GetDetailedDescription(nextLevel);
+        upgradeTooltip.gameObject.SetActive(true);
+        upgradeTooltip.SetAsLastSibling();
+    }
+
+    private void HideUpgradeTooltip()
+    {
+        if (upgradeTooltip != null && upgradeTooltip.gameObject.activeSelf)
+        {
+            upgradeTooltip.gameObject.SetActive(false);
+        }
+    }
+
+    private static Camera GetCanvasCamera(RectTransform target)
+    {
+        Canvas canvas = target == null
+            ? null
+            : target.GetComponentInParent<Canvas>();
+
+        if (canvas == null)
+        {
+            return null;
+        }
+
+        Canvas rootCanvas = canvas.rootCanvas;
+        return rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : rootCanvas.worldCamera;
+    }
+
+    private static void DisableRaycasts(RectTransform root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        Graphic[] graphics = root.GetComponentsInChildren<Graphic>(true);
+
+        foreach (Graphic graphic in graphics)
+        {
+            graphic.raycastTarget = false;
+        }
     }
 
     private static T FindSceneObject<T>() where T : Object

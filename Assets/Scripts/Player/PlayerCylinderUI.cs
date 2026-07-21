@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class PlayerCylinderUI : MonoBehaviour
@@ -18,17 +19,37 @@ public class PlayerCylinderUI : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float rotationDuration = 0.15f;
 
+    [Header("Bullet Reordering")]
+    [Range(0.1f, 0.9f)]
+    [SerializeField] private float requiredOverlap = 0.35f;
+    [Min(0f)]
+    [SerializeField] private float slotMoveDuration = 0.15f;
+
     private DeckManager deckManager;
+    private PlayerShoot playerShoot;
     private Coroutine rotationCoroutine;
+    private readonly List<Vector2> chamberPositions = new List<Vector2>();
+    private readonly Dictionary<RectTransform, Coroutine> slotMoveCoroutines =
+        new Dictionary<RectTransform, Coroutine>();
     private int displayedBulletCount;
     private bool isInitialized;
     private bool isSubscribed;
+    private bool isDraggingBullet;
+    private Image draggedBulletImage;
+    private int draggedBulletIndex = -1;
+    private int previewTargetIndex = -1;
+    private int draggedOriginalSiblingIndex;
+    private int dragLoadedCount;
+    private Vector2 dragPointerOffset;
 
     public int DisplayedBulletCount => displayedBulletCount;
+    public bool IsDragging => isDraggingBullet;
 
     private void Awake()
     {
+        playerShoot = GetComponent<PlayerShoot>();
         ResolveMovedCylinderReferences();
+        PrepareBulletSlots();
 
         foreach (Image bulletImage in bulletImages)
         {
@@ -54,8 +75,18 @@ public class PlayerCylinderUI : MonoBehaviour
         }
     }
 
+    private void LateUpdate()
+    {
+        if (cylinderTransform != null
+            && cylinderTransform.gameObject.activeInHierarchy)
+        {
+            KeepBulletImagesUpright();
+        }
+    }
+
     private void OnDisable()
     {
+        CancelBulletDragImmediately();
         UnsubscribeFromDeck();
 
         if (rotationCoroutine != null)
@@ -68,6 +99,7 @@ public class PlayerCylinderUI : MonoBehaviour
     public void Initialize(DeckManager assignedDeckManager)
     {
         ResolveMovedCylinderReferences();
+        PrepareBulletSlots();
         UnsubscribeFromDeck();
         deckManager = assignedDeckManager;
         SubscribeToDeck();
@@ -144,6 +176,376 @@ public class PlayerCylinderUI : MonoBehaviour
         return Mathf.Repeat(angle - 90f, 360f);
     }
 
+    private void PrepareBulletSlots()
+    {
+        chamberPositions.Clear();
+
+        foreach (Image bulletImage in bulletImages)
+        {
+            if (bulletImage == null)
+            {
+                chamberPositions.Add(Vector2.zero);
+                continue;
+            }
+
+            chamberPositions.Add(bulletImage.rectTransform.anchoredPosition);
+            bulletImage.raycastTarget = true;
+            CylinderBulletDragHandler dragHandler =
+                bulletImage.GetComponent<CylinderBulletDragHandler>();
+
+            if (dragHandler == null)
+            {
+                dragHandler = bulletImage.gameObject.AddComponent<
+                    CylinderBulletDragHandler>();
+            }
+
+            dragHandler.Initialize(this, bulletImage);
+        }
+    }
+
+    public bool TryGetLoadedBulletAtScreenPosition(
+        Vector2 screenPosition,
+        Camera eventCamera,
+        out BulletInstance bullet)
+    {
+        bullet = null;
+
+        if (isDraggingBullet || deckManager == null)
+        {
+            return false;
+        }
+
+        int loadedCount = Mathf.Min(
+            deckManager.LoadedBullets.Count,
+            bulletImages.Count);
+
+        for (int index = loadedCount - 1; index >= 0; index--)
+        {
+            Image bulletImage = bulletImages[index];
+
+            if (bulletImage != null
+                && bulletImage.gameObject.activeInHierarchy
+                && RectTransformUtility.RectangleContainsScreenPoint(
+                    bulletImage.rectTransform,
+                    screenPosition,
+                    eventCamera))
+            {
+                bullet = deckManager.LoadedBullets[index];
+                return bullet != null;
+            }
+        }
+
+        return false;
+    }
+
+    internal void BeginBulletDrag(
+        Image bulletImage,
+        PointerEventData eventData)
+    {
+        if (isDraggingBullet || bulletImage == null || deckManager == null
+            || GamePauseController.IsPaused || rotationCoroutine != null
+            || playerShoot != null && playerShoot.IsFiring
+            || deckManager.LoadedBullets.Count < 2)
+        {
+            return;
+        }
+
+        int bulletIndex = bulletImages.IndexOf(bulletImage);
+
+        if (bulletIndex < 0
+            || bulletIndex >= deckManager.LoadedBullets.Count
+            || bulletIndex >= chamberPositions.Count)
+        {
+            return;
+        }
+
+        StopAllSlotMoves();
+        isDraggingBullet = true;
+        draggedBulletImage = bulletImage;
+        draggedBulletIndex = bulletIndex;
+        previewTargetIndex = -1;
+        dragLoadedCount = Mathf.Min(
+            deckManager.LoadedBullets.Count,
+            bulletImages.Count);
+        RectTransform draggedRect = bulletImage.rectTransform;
+        draggedOriginalSiblingIndex = draggedRect.GetSiblingIndex();
+
+        if (TryGetLocalPointerPosition(eventData, out Vector2 localPointer))
+        {
+            dragPointerOffset = draggedRect.anchoredPosition - localPointer;
+        }
+        else
+        {
+            dragPointerOffset = Vector2.zero;
+        }
+
+        draggedRect.SetAsLastSibling();
+    }
+
+    internal void DragBullet(
+        Image bulletImage,
+        PointerEventData eventData)
+    {
+        if (!isDraggingBullet || bulletImage != draggedBulletImage
+            || !TryGetLocalPointerPosition(eventData, out Vector2 localPointer))
+        {
+            return;
+        }
+
+        RectTransform draggedRect = draggedBulletImage.rectTransform;
+        draggedRect.anchoredPosition = localPointer + dragPointerOffset;
+        SetPreviewTarget(FindOverlappingLoadedSlot(
+            draggedRect.anchoredPosition));
+    }
+
+    internal void EndBulletDrag(
+        Image bulletImage,
+        PointerEventData eventData)
+    {
+        if (!isDraggingBullet || bulletImage != draggedBulletImage)
+        {
+            return;
+        }
+
+        DragBullet(bulletImage, eventData);
+        int targetIndex = FindOverlappingLoadedSlot(
+            draggedBulletImage.rectTransform.anchoredPosition);
+        bool committed = targetIndex >= 0
+            && targetIndex == previewTargetIndex
+            && deckManager != null
+            && deckManager.TrySwapLoadedBullets(
+                draggedBulletIndex,
+                targetIndex);
+
+        if (committed)
+        {
+            Image displacedImage = bulletImages[targetIndex];
+            bulletImages[draggedBulletIndex] = displacedImage;
+            bulletImages[targetIndex] = draggedBulletImage;
+            StartSlotMove(
+                displacedImage.rectTransform,
+                chamberPositions[draggedBulletIndex]);
+            StartSlotMove(
+                draggedBulletImage.rectTransform,
+                chamberPositions[targetIndex]);
+        }
+        else
+        {
+            RestorePreviewTarget();
+            StartSlotMove(
+                draggedBulletImage.rectTransform,
+                chamberPositions[draggedBulletIndex]);
+        }
+
+        draggedBulletImage.rectTransform.SetSiblingIndex(
+            draggedOriginalSiblingIndex);
+        isDraggingBullet = false;
+        draggedBulletImage = null;
+        draggedBulletIndex = -1;
+        previewTargetIndex = -1;
+        dragLoadedCount = 0;
+
+        if (committed)
+        {
+            RefreshDisplay(false);
+        }
+    }
+
+    private bool TryGetLocalPointerPosition(
+        PointerEventData eventData,
+        out Vector2 localPointer)
+    {
+        localPointer = Vector2.zero;
+
+        return cylinderTransform != null
+            && RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                cylinderTransform,
+                eventData.position,
+                eventData.pressEventCamera,
+                out localPointer);
+    }
+
+    private int FindOverlappingLoadedSlot(Vector2 draggedPosition)
+    {
+        if (draggedBulletImage == null)
+        {
+            return -1;
+        }
+
+        float closestDistance = float.MaxValue;
+        int closestIndex = -1;
+        float draggedRadius = GetImageRadius(draggedBulletImage);
+
+        for (int index = 0; index < dragLoadedCount; index++)
+        {
+            if (index == draggedBulletIndex || index >= chamberPositions.Count)
+            {
+                continue;
+            }
+
+            Image targetImage = bulletImages[index];
+
+            if (targetImage == null)
+            {
+                continue;
+            }
+
+            float distance = Vector2.Distance(
+                draggedPosition,
+                chamberPositions[index]);
+            float overlapDistance = (draggedRadius
+                + GetImageRadius(targetImage)) * (1f - requiredOverlap);
+
+            if (distance <= overlapDistance && distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestIndex = index;
+            }
+        }
+
+        return closestIndex;
+    }
+
+    private static float GetImageRadius(Image image)
+    {
+        RectTransform rect = image.rectTransform;
+        float width = rect.rect.width * Mathf.Abs(rect.localScale.x);
+        float height = rect.rect.height * Mathf.Abs(rect.localScale.y);
+        return Mathf.Min(width, height) * 0.5f;
+    }
+
+    private void SetPreviewTarget(int targetIndex)
+    {
+        if (targetIndex == previewTargetIndex)
+        {
+            return;
+        }
+
+        RestorePreviewTarget();
+        previewTargetIndex = targetIndex;
+
+        if (previewTargetIndex >= 0)
+        {
+            StartSlotMove(
+                bulletImages[previewTargetIndex].rectTransform,
+                chamberPositions[draggedBulletIndex]);
+        }
+    }
+
+    private void RestorePreviewTarget()
+    {
+        if (previewTargetIndex < 0
+            || previewTargetIndex >= bulletImages.Count
+            || previewTargetIndex >= chamberPositions.Count)
+        {
+            previewTargetIndex = -1;
+            return;
+        }
+
+        Image previewImage = bulletImages[previewTargetIndex];
+
+        if (previewImage != null)
+        {
+            StartSlotMove(
+                previewImage.rectTransform,
+                chamberPositions[previewTargetIndex]);
+        }
+
+        previewTargetIndex = -1;
+    }
+
+    private void StartSlotMove(RectTransform target, Vector2 destination)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        StopSlotMove(target);
+
+        if (slotMoveDuration <= 0f)
+        {
+            target.anchoredPosition = destination;
+            return;
+        }
+
+        slotMoveCoroutines[target] = StartCoroutine(
+            MoveSlot(target, destination));
+    }
+
+    private IEnumerator MoveSlot(RectTransform target, Vector2 destination)
+    {
+        Vector2 start = target.anchoredPosition;
+        float elapsed = 0f;
+
+        while (elapsed < slotMoveDuration)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / slotMoveDuration);
+            target.anchoredPosition = Vector2.LerpUnclamped(
+                start,
+                destination,
+                Mathf.SmoothStep(0f, 1f, progress));
+        }
+
+        target.anchoredPosition = destination;
+        slotMoveCoroutines.Remove(target);
+    }
+
+    private void StopSlotMove(RectTransform target)
+    {
+        if (target != null
+            && slotMoveCoroutines.TryGetValue(target, out Coroutine coroutine))
+        {
+            StopCoroutine(coroutine);
+            slotMoveCoroutines.Remove(target);
+        }
+    }
+
+    private void StopAllSlotMoves()
+    {
+        foreach (Coroutine coroutine in slotMoveCoroutines.Values)
+        {
+            if (coroutine != null)
+            {
+                StopCoroutine(coroutine);
+            }
+        }
+
+        slotMoveCoroutines.Clear();
+    }
+
+    private void CancelBulletDragImmediately()
+    {
+        StopAllSlotMoves();
+
+        if (draggedBulletImage != null
+            && draggedBulletIndex >= 0
+            && draggedBulletIndex < chamberPositions.Count)
+        {
+            draggedBulletImage.rectTransform.anchoredPosition =
+                chamberPositions[draggedBulletIndex];
+            draggedBulletImage.rectTransform.SetSiblingIndex(
+                draggedOriginalSiblingIndex);
+        }
+
+        if (previewTargetIndex >= 0
+            && previewTargetIndex < bulletImages.Count
+            && previewTargetIndex < chamberPositions.Count
+            && bulletImages[previewTargetIndex] != null)
+        {
+            bulletImages[previewTargetIndex].rectTransform.anchoredPosition =
+                chamberPositions[previewTargetIndex];
+        }
+
+        isDraggingBullet = false;
+        draggedBulletImage = null;
+        draggedBulletIndex = -1;
+        previewTargetIndex = -1;
+        dragLoadedCount = 0;
+    }
+
     private bool HasUsableBulletReferences()
     {
         if (bulletImages == null || bulletImages.Count == 0)
@@ -181,6 +583,11 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void HandleDeckStateChanged()
     {
+        if (isDraggingBullet)
+        {
+            return;
+        }
+
         RefreshDisplay(true);
     }
 
@@ -349,6 +756,18 @@ public class PlayerCylinderUI : MonoBehaviour
         Vector3 localEulerAngles = cylinderTransform.localEulerAngles;
         localEulerAngles.z = angle;
         cylinderTransform.localEulerAngles = localEulerAngles;
+        KeepBulletImagesUpright();
+    }
+
+    private void KeepBulletImagesUpright()
+    {
+        foreach (Image bulletImage in bulletImages)
+        {
+            if (bulletImage != null)
+            {
+                bulletImage.rectTransform.rotation = Quaternion.identity;
+            }
+        }
     }
 
     private void SubscribeToDeck()
@@ -372,5 +791,35 @@ public class PlayerCylinderUI : MonoBehaviour
         }
 
         isSubscribed = false;
+    }
+}
+
+public sealed class CylinderBulletDragHandler : MonoBehaviour,
+    IBeginDragHandler,
+    IDragHandler,
+    IEndDragHandler
+{
+    private PlayerCylinderUI cylinderUI;
+    private Image bulletImage;
+
+    public void Initialize(PlayerCylinderUI owner, Image image)
+    {
+        cylinderUI = owner;
+        bulletImage = image;
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        cylinderUI?.BeginBulletDrag(bulletImage, eventData);
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        cylinderUI?.DragBullet(bulletImage, eventData);
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        cylinderUI?.EndBulletDrag(bulletImage, eventData);
     }
 }

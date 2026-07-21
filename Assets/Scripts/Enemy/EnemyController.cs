@@ -53,6 +53,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private WaveManager waveManager;
     private bool isInitialized;
     private readonly List<Vector3> movePath = new List<Vector3>();
+    private readonly List<EnemyController> attackTargetBuffer =
+        new List<EnemyController>();
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
@@ -388,7 +390,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         int preparationRange = GetPreparationRange();
 
-        if (distanceToPlayer > preparationRange)
+        if (distanceToPlayer > preparationRange
+            && !HasEnemyTargetInRange(
+                directionToPlayer,
+                preparationRange))
         {
             MoveTowardPlayer(directionToPlayer);
             return;
@@ -411,7 +416,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        if (distanceToPlayer <= 1)
+        int preparationRange = GetPreparationRange();
+
+        if (distanceToPlayer <= preparationRange
+            || HasEnemyTargetInRange(
+                directionToPlayer,
+                preparationRange))
         {
             isAttackPrepared = true;
             actionQueueUI.SetPrepared(true);
@@ -488,47 +498,146 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        bool canHitPlayer = TryGetTurnContext(
-                out int directionToPlayer,
-                out int distanceToPlayer)
-            && directionToPlayer != 0
-            && IsFacing(directionToPlayer)
-            && distanceToPlayer <= attackData.Range;
-
-        if (canHitPlayer)
+        if (!TryGetAttackTarget(
+                attackData,
+                out EnemyController enemyTarget,
+                out bool targetsPlayer,
+                out Vector3 targetPosition))
         {
-            if (attackData.AttackEffectPrefab != null)
-            {
-                Instantiate(
-                    attackData.AttackEffectPrefab,
-                    playerMove.transform.position,
-                    Quaternion.identity);
-            }
+            AttackExecuted?.Invoke(this, attackData);
+            return;
+        }
 
-            int attackDamage = statusEffects == null
-                ? attackData.Damage
-                : statusEffects.ModifyOutgoingAttackDamage(
-                    attackData.Damage);
+        if (attackData.AttackEffectPrefab != null)
+        {
+            Instantiate(
+                attackData.AttackEffectPrefab,
+                targetPosition,
+                Quaternion.identity);
+        }
+
+        int attackDamage = statusEffects == null
+            ? attackData.Damage
+            : statusEffects.ModifyOutgoingAttackDamage(
+                attackData.Damage);
+
+        if (targetsPlayer)
+        {
             playerHealth.ApplyDamage(attackDamage);
 
             if (!playerHealth.IsDefeated)
             {
-                playerHealth.AddStatusEffect(
-                    StatusEffectType.Mark,
-                    attackData.MarkDurationTurns);
-                playerHealth.AddStatusEffect(
-                    StatusEffectType.Poison,
-                    attackData.PoisonStackCount);
-                playerHealth.AddStatusEffect(
-                    StatusEffectType.Stun,
-                    attackData.StunDurationTurns);
-                playerHealth.AddStatusEffect(
-                    StatusEffectType.Weakness,
-                    attackData.WeaknessDurationTurns);
+                ApplyAttackStatusEffects(playerHealth, attackData);
+            }
+        }
+        else if (enemyTarget != null)
+        {
+            enemyTarget.ApplyAttackDamage(attackDamage);
+
+            if (enemyTarget != null && enemyTarget.CurrentHealth > 0)
+            {
+                ApplyAttackStatusEffects(enemyTarget, attackData);
             }
         }
 
         AttackExecuted?.Invoke(this, attackData);
+    }
+
+    private bool TryGetAttackTarget(
+        EnemyAttackData attackData,
+        out EnemyController enemyTarget,
+        out bool targetsPlayer,
+        out Vector3 targetPosition)
+    {
+        enemyTarget = null;
+        targetsPlayer = false;
+        targetPosition = Vector3.zero;
+
+        if (attackData == null
+            || !TryGetTurnContext(
+                out int directionToPlayer,
+                out int distanceToPlayer)
+            || directionToPlayer == 0
+            || !IsFacing(directionToPlayer))
+        {
+            return false;
+        }
+
+        attackTargetBuffer.Clear();
+        waveManager.GetEnemiesInDirection(
+            transform.position,
+            directionToPlayer,
+            attackData.Range,
+            attackTargetBuffer);
+
+        EnemyController closestEnemy = attackTargetBuffer.Count == 0
+            ? null
+            : attackTargetBuffer[0];
+        int closestEnemyDistance = int.MaxValue;
+
+        if (closestEnemy != null
+            && boardManager.TryGetTileDistance(
+                transform.position,
+                closestEnemy.transform.position,
+                out int measuredEnemyDistance))
+        {
+            closestEnemyDistance = measuredEnemyDistance;
+        }
+
+        bool playerInRange = distanceToPlayer <= attackData.Range;
+
+        if (closestEnemy != null
+            && (!playerInRange || closestEnemyDistance < distanceToPlayer))
+        {
+            enemyTarget = closestEnemy;
+            targetPosition = closestEnemy.transform.position;
+            return true;
+        }
+
+        if (!playerInRange)
+        {
+            return false;
+        }
+
+        targetsPlayer = true;
+        targetPosition = playerMove.transform.position;
+        return true;
+    }
+
+    private static void ApplyAttackStatusEffects(
+        PlayerHealth target,
+        EnemyAttackData attackData)
+    {
+        target.AddStatusEffect(
+            StatusEffectType.Mark,
+            attackData.MarkDurationTurns);
+        target.AddStatusEffect(
+            StatusEffectType.Poison,
+            attackData.PoisonStackCount);
+        target.AddStatusEffect(
+            StatusEffectType.Stun,
+            attackData.StunDurationTurns);
+        target.AddStatusEffect(
+            StatusEffectType.Weakness,
+            attackData.WeaknessDurationTurns);
+    }
+
+    private static void ApplyAttackStatusEffects(
+        EnemyController target,
+        EnemyAttackData attackData)
+    {
+        target.AddStatusEffect(
+            StatusEffectType.Mark,
+            attackData.MarkDurationTurns);
+        target.AddStatusEffect(
+            StatusEffectType.Poison,
+            attackData.PoisonStackCount);
+        target.AddStatusEffect(
+            StatusEffectType.Stun,
+            attackData.StunDurationTurns);
+        target.AddStatusEffect(
+            StatusEffectType.Weakness,
+            attackData.WeaknessDurationTurns);
     }
 
     private IEnumerator WaitForQueuedActionInterval()
@@ -604,6 +713,22 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         return preparationRange == int.MaxValue ? 0 : preparationRange;
+    }
+
+    private bool HasEnemyTargetInRange(int direction, int range)
+    {
+        if (waveManager == null || direction == 0 || range <= 0)
+        {
+            return false;
+        }
+
+        attackTargetBuffer.Clear();
+        waveManager.GetEnemiesInDirection(
+            transform.position,
+            direction,
+            range,
+            attackTargetBuffer);
+        return attackTargetBuffer.Count > 0;
     }
 
     private void ClearAttackQueue()
