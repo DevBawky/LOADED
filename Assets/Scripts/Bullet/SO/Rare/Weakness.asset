@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_weakness
   displayName: Weakness
   description: "\uC57D\uD654\uB97C 3 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
-  bulletIcon: {fileID: 3029603797402824116, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  bulletIcon: {fileID: -1019154925492222630, guid: 4e4231e03b1667e4cbbdf07d9af0dbbd, type: 3}
   cylinderIcon: {fileID: 21300000, guid: a16ebab303ff4064eb40d38facb2016c, type: 3}
   price: 12
   grade: 1

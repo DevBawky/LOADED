@@ -15,8 +15,8 @@ MonoBehaviour:
   bulletId: bullet_stun
   displayName: Stun
   description: "\uAE30\uC808\uC744 1 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
-  bulletIcon: {fileID: 1595849069685491311, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: 221949c029d7b6e47876c56ac35ee7e9, type: 3}
+  bulletIcon: {fileID: -2060985406962347327, guid: 70f901775ffc01d4388f0da137b7f6e6, type: 3}
+  cylinderIcon: {fileID: 1695419753724365386, guid: bd164800039f5324c993c7fcbe95c0ce, type: 3}
   price: 10
   grade: 1
   useCustomGradeNameColor: 0

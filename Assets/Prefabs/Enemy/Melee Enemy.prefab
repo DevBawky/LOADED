@@ -32,10 +32,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2012758511208510004}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.1, y: 0.82}
-  m_AnchorMax: {x: 0.9, y: 0.93}
+  m_AnchorMin: {x: 0.1, y: 0.85}
+  m_AnchorMax: {x: 0.9, y: 0.9}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 0, y: 0.000000014901161}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &7853135595307134449
 CanvasRenderer:
@@ -212,7 +212,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
   m_AnchoredPosition: {x: 0, y: 0.045}
-  m_SizeDelta: {x: 2, y: 3}
+  m_SizeDelta: {x: 12, y: 18}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!223 &578811118326034179
 Canvas:
@@ -234,7 +234,7 @@ Canvas:
   m_VertexColorAlwaysGammaSpace: 0
   m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
-  m_SortingLayerID: 0
+  m_SortingLayerID: -724167709
   m_SortingOrder: 0
   m_TargetDisplay: 0
 --- !u!114 &6220621252550272382
@@ -385,8 +385,8 @@ RectTransform:
   - {fileID: 7474040644808607979}
   m_Father: {fileID: 2012758511208510004}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.2, y: 0.75}
-  m_AnchorMax: {x: 0.8, y: 0.8}
+  m_AnchorMin: {x: 0.1, y: 0.9}
+  m_AnchorMax: {x: 0.9, y: 0.98}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
@@ -459,8 +459,8 @@ Transform:
   m_GameObject: {fileID: 8378092708147667353}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalPosition: {x: 0, y: 0.3, z: 0}
+  m_LocalScale: {x: 0.2, y: 0.2, z: 0.2}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 2012758511208510004}
@@ -515,7 +515,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
+  m_Sprite: {fileID: 8208270978804853502, guid: 32b887d53eb68e8438ec8cf99113acf5, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -545,14 +545,13 @@ MonoBehaviour:
   actionQueueUI: {fileID: 4925572819471286301}
   statusEffects: {fileID: 700000000000000001}
   damageNumberDisplay: {fileID: 700000000000000002}
-  maxQueuedAttacks: 3
-  queuedActionInterval: 0.2
-  meleeAdditionalAttackChance: 0.5
   currentHealth: 0
   queuedAttackActions: []
   isQueueCreated: 0
   isAttackPrepared: 0
   isRetreating: 0
+  preparedTargetTileIndex: -1
+  preparedTargetPosition: {x: 0, y: 0, z: 0}
   lastTurnAction: 0
   isActing: 0
 --- !u!114 &1235869742036814597
@@ -604,10 +603,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StatusEffectController
   statusIconParent: {fileID: 4018369371245492536}
   debuffIconPrefab: {fileID: 2146537680677166396, guid: 6e3ec2102ac0b974e8fc878109463ca1, type: 3}
-  markSprite: {fileID: 905750167250926724, guid: 38d8e94fbdd1fb748b93f786e06bb8b1, type: 3}
-  poisonSprite: {fileID: 4572096609698180999, guid: 92c773c3dfea45f4793e3f6e1903d566, type: 3}
-  stunSprite: {fileID: 5947414366408575533, guid: 57e5db4bece8e5743a459aad7888248b, type: 3}
-  weaknessSprite: {fileID: 0}
+  markSprite: {fileID: 21300000, guid: ea7180161ea299c469f3ed6595dfa177, type: 3}
+  poisonSprite: {fileID: 21300000, guid: 17d546df5d530844cafa77fb15c602bb, type: 3}
+  stunSprite: {fileID: 21300000, guid: 221949c029d7b6e47876c56ac35ee7e9, type: 3}
+  weaknessSprite: {fileID: 21300000, guid: a16ebab303ff4064eb40d38facb2016c, type: 3}
   markStacks: 0
   poisonStacks: 0
   stunStacks: 0

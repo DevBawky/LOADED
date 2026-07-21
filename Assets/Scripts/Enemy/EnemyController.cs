@@ -19,6 +19,8 @@ public enum EnemyTurnActionType
 
 public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
+    private const int InitialFacingDirection = -1;
+
     [Header("Data")]
     [SerializeField] private EnemyData enemyData;
     [SerializeField] private SpriteRenderer spriteRenderer;
@@ -118,6 +120,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         playerMove = assignedPlayerMove;
         playerHealth = assignedPlayerHealth;
         waveManager = assignedWaveManager;
+        ApplyInitialFacingDirection();
         ResetRuntimeState();
         ApplySprite();
         ApplyCanvasOrientation();
@@ -553,6 +556,20 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         queuedAttackActions.Add(attackAction);
         return true;
+    }
+
+    private void ApplyInitialFacingDirection()
+    {
+        Vector3 localScale = transform.localScale;
+        float scaleMagnitude = Mathf.Abs(localScale.x);
+
+        if (scaleMagnitude <= Mathf.Epsilon)
+        {
+            scaleMagnitude = 1f;
+        }
+
+        localScale.x = scaleMagnitude * InitialFacingDirection;
+        transform.localScale = localScale;
     }
 
     private void PrimeRangedAttackOnSpawn()

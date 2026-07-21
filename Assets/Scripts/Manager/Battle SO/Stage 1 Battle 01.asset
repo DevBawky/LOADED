@@ -25,16 +25,14 @@ MonoBehaviour:
   - enemies:
     - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
       count: 2
-    - enemyPrefab: {fileID: 7796848737825960580, guid: 9e76e4cfaea6cc44eb5fcb3f7db52fda, type: 3}
-      count: 1
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 2
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 2
   - enemies:
     - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
       count: 2
     - enemyPrefab: {fileID: 7796848737825960580, guid: ec6663799f6803b43920f75685b1d3f7, type: 3}
-      count: 2
-  - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-      count: 2
-  - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-      count: 2
+      count: 1
