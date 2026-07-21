@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 92c773c3dfea45f4793e3f6e1903d566
+guid: 0eb1b539167d57e48aed3fe49912a95f
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4572096609698180999
-    second: Clover_VenomClover_0
+      213: -417160762183536762
+    second: Bullet_Jackpot_Store_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Clover_VenomClover_0
+      name: Bullet_Jackpot_Store_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 295
-        height: 295
+        x: 4
+        y: 2
+        width: 56
+        height: 58
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 78fe3db74a9537f30800000000000000
-      internalID: 4572096609698180999
+      spriteID: 68fa1db3f72f53af0800000000000000
+      internalID: -417160762183536762
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Clover_VenomClover_0: 4572096609698180999
+      Bullet_Jackpot_Store_0: -417160762183536762
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
