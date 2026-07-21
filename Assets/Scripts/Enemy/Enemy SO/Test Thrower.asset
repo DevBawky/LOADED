@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 69e667af92ed4e86b5d259be5262b93c, type: 3}
-  m_Name: Test Enemy
+  m_Name: Test Thrower
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
-  enemyId: 0
-  displayName: Test Enemy
+  enemyId: 1
+  displayName: "\uD22C\uCC99\uBCD1"
   description: 
   sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
-  prefab: {fileID: 8378092708147667353, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-  maxHealth: 100
+  prefab: {fileID: 8378092708147667353, guid: 9e76e4cfaea6cc44eb5fcb3f7db52fda, type: 3}
+  maxHealth: 20
   dropChance: 100
   dropItems:
   - dropType: 0
@@ -25,22 +25,22 @@ MonoBehaviour:
     selectionWeight: 1
     itemData: {fileID: 0}
     bulletData: {fileID: 0}
-  behaviorType: 0
+  behaviorType: 2
   preferredDistance: 2
-  maxQueuedAttacks: 2
+  maxQueuedAttacks: 1
   queuedActionInterval: 0.2
   meleeAdditionalAttackChance: 0.5
-  firingRange: 5
+  firingRange: 4
   thrownProjectilePrefab: {fileID: 0}
   thrownProjectileDuration: 0.5
   thrownProjectileArcHeight: 2
-  gunnerTelegraphMaterial: {fileID: 0}
-  throwerTelegraphMaterial: {fileID: 0}
+  gunnerTelegraphMaterial: {fileID: 2100000, guid: bd6175fa699fcd4418120cc1b7431df4, type: 2}
+  throwerTelegraphMaterial: {fileID: 2100000, guid: bd6175fa699fcd4418120cc1b7431df4, type: 2}
   telegraphLineWidth: 0.08
   telegraphVerticalOffset: 0.15
-  throwerTelegraphSegments: 20
+  throwerTelegraphSegments: 40
   telegraphSortingOrder: 20
   actions:
   - {fileID: 11400000, guid: 7e1cbe3d707bdae4dbd479728766a343, type: 2}
-  - {fileID: 11400000, guid: e86794259aec7ab48aa8a538ccb82888, type: 2}
+  - {fileID: 11400000, guid: 5f9dab475b2e6b44f9cc4577790de03c, type: 2}
   randomizeStartingActionIndex: 0

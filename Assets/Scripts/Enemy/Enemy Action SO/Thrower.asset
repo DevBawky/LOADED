@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 57ee2ab9487741fa84ee7612fa65163e, type: 3}
-  m_Name: Melee Attack
+  m_Name: Thrower
   m_EditorClassIdentifier: Assembly-CSharp::EnemyActionData
-  actionType: 3
+  actionType: 4
   movementDistance: 0
-  attackData: {fileID: 11400000, guid: d6098802f1fc9c045a48ec725992d8b2, type: 2}
-  icon: {fileID: 2072815117913168267, guid: f504cd7b02f67a6438dc5c9ca2f14589, type: 3}
+  attackData: {fileID: 11400000, guid: b04cb7eaffca66342a036dc5f2707d57, type: 2}
+  icon: {fileID: 8527754251079785262, guid: 343b683ab11d1c04cbf97f9a8692e61a, type: 3}
   description: 

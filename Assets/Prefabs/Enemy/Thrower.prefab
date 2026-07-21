@@ -444,7 +444,7 @@ GameObject:
   - component: {fileID: 700000000000000001}
   - component: {fileID: 700000000000000002}
   m_Layer: 0
-  m_Name: Test Enemy
+  m_Name: Thrower
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -537,7 +537,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e7e2decd760a4f7fac0dc00a6e62c54f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
-  enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  enemyData: {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
   spriteRenderer: {fileID: 3144865413975228650}
   healthFillImage: {fileID: 2830886066907440819}
   canvasTransform: {fileID: 2012758511208510004}
@@ -545,14 +545,13 @@ MonoBehaviour:
   actionQueueUI: {fileID: 4925572819471286301}
   statusEffects: {fileID: 700000000000000001}
   damageNumberDisplay: {fileID: 700000000000000002}
-  maxQueuedAttacks: 3
-  queuedActionInterval: 0.2
-  meleeAdditionalAttackChance: 0.5
   currentHealth: 0
   queuedAttackActions: []
   isQueueCreated: 0
   isAttackPrepared: 0
   isRetreating: 0
+  preparedTargetTileIndex: -1
+  preparedTargetPosition: {x: 0, y: 0, z: 0}
   lastTurnAction: 0
   isActing: 0
 --- !u!114 &1235869742036814597
