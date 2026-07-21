@@ -322,6 +322,9 @@ MonoBehaviour:
   highQualityFiltering:
     m_OverrideState: 1
     m_Value: 0
+  filter:
+    m_OverrideState: 1
+    m_Value: 0
   downscale:
     m_OverrideState: 1
     m_Value: 0
@@ -506,6 +509,7 @@ MonoBehaviour:
   - {fileID: -8186968272690591729}
   - {fileID: -3978695733392391637}
   - {fileID: -1083910812058648046}
+  - {fileID: 6768466358133397891}
 --- !u!114 &156332030701414761
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -718,6 +722,49 @@ MonoBehaviour:
   chromaticAbberationIntensity:
     m_OverrideState: 1
     m_Value: 0.5
+--- !u!114 &6768466358133397891
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb28ea5c871044b4c90a10169555151b, type: 3}
+  m_Name: OldMovieVol
+  m_EditorClassIdentifier: OldMovieFx.Runtime::VolFx.OldMovieVol
+  active: 1
+  m_Grain:
+    m_OverrideState: 1
+    m_Value: 0
+  m_Noise:
+    m_OverrideState: 1
+    m_Value: 0
+  m_NoiseAlpha:
+    m_OverrideState: 1
+    m_Value: 0
+  m_Jolt:
+    m_OverrideState: 1
+    m_Value: 0
+  m_Fps:
+    m_OverrideState: 1
+    m_Value: 16
+  m_Vignette:
+    m_OverrideState: 1
+    m_Value: {r: 0, g: 0, b: 0, a: 0}
+  m_GrainTex:
+    m_OverrideState: 1
+    m_Value: 8
+  m_Audio:
+    m_OverrideState: 1
+    m_Value: 0
+  m_Volume:
+    m_OverrideState: 1
+    m_Value: 0
+  m_Pich:
+    m_OverrideState: 1
+    m_Value: 0
 --- !u!114 &7933203426823181213
 MonoBehaviour:
   m_ObjectHideFlags: 3
