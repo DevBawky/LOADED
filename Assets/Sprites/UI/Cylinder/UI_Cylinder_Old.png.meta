@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: d04e55b358f92c242a051de4c04d754d
+guid: a05850dd5d0a1034dac3388b2d6ae831
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -4765587972305855757
-    second: UI_Cylinder 1_0
+      213: 688073975008667781
+    second: UI_Cylinder_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: UI_Cylinder 1_0
+      name: UI_Cylinder_0
       rect:
         serializedVersion: 2
-        x: 9
-        y: 5
-        width: 110
-        height: 114
+        x: 0
+        y: 0
+        width: 558
+        height: 558
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 3fad5d40dfa3dddb0800000000000000
-      internalID: -4765587972305855757
+      spriteID: 588259b72a78c8900800000000000000
+      internalID: 688073975008667781
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      UI_Cylinder 1_0: -4765587972305855757
+      UI_Cylinder_0: 688073975008667781
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
