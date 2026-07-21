@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 38d8e94fbdd1fb748b93f786e06bb8b1
+guid: 70f901775ffc01d4388f0da137b7f6e6
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 905750167250926724
-    second: Spade_BloodMarker_0
+      213: -2060985406962347327
+    second: Bullet_Stun_Store_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Spade_BloodMarker_0
+      name: Bullet_Stun_Store_0
       rect:
         serializedVersion: 2
-        x: 0
+        x: 2
         y: 0
-        width: 296
-        height: 295
+        width: 60
+        height: 62
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 48cfd3e6afed19c00800000000000000
-      internalID: 905750167250926724
+      spriteID: 1c2deb221b8e563e0800000000000000
+      internalID: -2060985406962347327
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Spade_BloodMarker_0: 905750167250926724
+      Bullet_Stun_Store_0: -2060985406962347327
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
