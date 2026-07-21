@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: "\uC720\uB839\uD0C4"
   description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD569\uB2C8\uB2E4."
   bulletIcon: {fileID: -6138938593977612690, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
-  cylinderIcon: {fileID: -321094208572080090, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: b43edd6bdc25126428beb37e419723ef, type: 3}
   price: 14
   grade: 2
   useCustomGradeNameColor: 0

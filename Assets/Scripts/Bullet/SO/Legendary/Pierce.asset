@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Pierce
   description: "2\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
   bulletIcon: {fileID: 8191024754275108436, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
-  cylinderIcon: {fileID: 6088543973832532824, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 3e463a5945279e941837b1fdc8aaf5f1, type: 3}
   price: 20
   grade: 3
   useCustomGradeNameColor: 0

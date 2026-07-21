@@ -5,6 +5,9 @@ using UnityEngine.UI;
 
 public class PlayerCylinderUI : MonoBehaviour
 {
+    private const string CylinderObjectName = "Image | Cylinder";
+    private const string MainGamePanelName = "Panel | MainGame";
+
     [Header("References")]
     [SerializeField] private RectTransform cylinderTransform;
     [SerializeField] private List<Image> bulletImages = new List<Image>();
@@ -25,6 +28,8 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void Awake()
     {
+        ResolveMovedCylinderReferences();
+
         foreach (Image bulletImage in bulletImages)
         {
             if (bulletImage != null)
@@ -62,11 +67,116 @@ public class PlayerCylinderUI : MonoBehaviour
 
     public void Initialize(DeckManager assignedDeckManager)
     {
+        ResolveMovedCylinderReferences();
         UnsubscribeFromDeck();
         deckManager = assignedDeckManager;
         SubscribeToDeck();
         isInitialized = false;
         RefreshDisplay(false);
+    }
+
+    private void ResolveMovedCylinderReferences()
+    {
+        if (cylinderTransform != null
+            && HasUsableBulletReferences())
+        {
+            return;
+        }
+
+        RectTransform[] rectTransforms = FindObjectsByType<RectTransform>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        RectTransform movedCylinder = null;
+
+        foreach (RectTransform candidate in rectTransforms)
+        {
+            if (candidate.name != CylinderObjectName
+                || !HasAncestorNamed(candidate, MainGamePanelName))
+            {
+                continue;
+            }
+
+            // An added scene object is appended after prefab children. If a
+            // prefab apply and the scene save temporarily leave both copies,
+            // prefer the object the user most recently moved into MainGame.
+            if (movedCylinder == null
+                || candidate.GetSiblingIndex() > movedCylinder.GetSiblingIndex())
+            {
+                movedCylinder = candidate;
+            }
+        }
+
+        if (movedCylinder == null)
+        {
+            Debug.LogError(
+                $"Could not find '{MainGamePanelName}/{CylinderObjectName}'.",
+                this);
+            return;
+        }
+
+        cylinderTransform = movedCylinder;
+        bulletImages.Clear();
+
+        for (int childIndex = 0;
+             childIndex < movedCylinder.childCount;
+             childIndex++)
+        {
+            Transform child = movedCylinder.GetChild(childIndex);
+
+            if (child.TryGetComponent(out Image bulletImage))
+            {
+                bulletImages.Add(bulletImage);
+            }
+        }
+
+        // The original Player prefab stored the chambers from the top slot
+        // counter-clockwise. Transform child order is not guaranteed to use
+        // that order after moving the cylinder under the Canvas.
+        bulletImages.Sort((left, right) =>
+            GetChamberOrder(left.rectTransform)
+                .CompareTo(GetChamberOrder(right.rectTransform)));
+    }
+
+    private static float GetChamberOrder(RectTransform chamber)
+    {
+        Vector2 position = chamber.anchoredPosition;
+        float angle = Mathf.Atan2(position.y, position.x) * Mathf.Rad2Deg;
+        return Mathf.Repeat(angle - 90f, 360f);
+    }
+
+    private bool HasUsableBulletReferences()
+    {
+        if (bulletImages == null || bulletImages.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (Image bulletImage in bulletImages)
+        {
+            if (bulletImage == null)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool HasAncestorNamed(Transform child, string ancestorName)
+    {
+        Transform current = child.parent;
+
+        while (current != null)
+        {
+            if (current.name == ancestorName)
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private void HandleDeckStateChanged()
