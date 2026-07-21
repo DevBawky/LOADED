@@ -1,0 +1,10 @@
+fileFormatVersion: 2
+guid: 9a0f6c759553c3f46a4abcb77741ecdc
+timeCreated: 1697618098
+AssetOrigin:
+  serializedVersion: 1
+  productId: 270021
+  packageName: Old Movie - Old Film Screen Effect
+  packageVersion: 1.4.1
+  assetPath: Assets/OldMovie/Runtime/Common/RenderTarget.cs
+  uploadId: 719437

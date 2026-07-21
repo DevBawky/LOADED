@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: b8feb521dcedd714fb553f36d8ce58b0
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Scripts/Settings/DistanceScalingSettings.cs
+  uploadId: 953944

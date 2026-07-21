@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 77d5f6b1db46fcb4da2523655a77c9ef
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo/Scripts/DNP_SineFadeText.cs
+  uploadId: 953944

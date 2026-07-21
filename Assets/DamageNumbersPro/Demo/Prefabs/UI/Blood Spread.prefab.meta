@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 265c7288dd07eab4889a382e2e711a23
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo/Prefabs/UI/Blood Spread.prefab
+  uploadId: 953944

@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 38cacb3bd25a34a43acebb2bee542ce5
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Shaders/Sprite Overlay.shader
+  uploadId: 953944

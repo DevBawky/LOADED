@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 39c0e5c321c3aac45b180c328fe74933
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo/Scripts/DNP_GUI.cs
+  uploadId: 953944

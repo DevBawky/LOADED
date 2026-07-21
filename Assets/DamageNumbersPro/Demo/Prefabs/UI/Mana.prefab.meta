@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e09bd46c495edc04197f1e1ea64f4243
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo/Prefabs/UI/Mana.prefab
+  uploadId: 953944

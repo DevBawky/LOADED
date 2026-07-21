@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 9217cb8c2ffa2074c96640e9ed7fdd10
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo/Materials/HDRP/DNP_1x10_HDRP.mat
+  uploadId: 953944

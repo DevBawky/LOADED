@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f8a11d19cd1b46158a0908ee4d20e96d, type: 3}
+  m_Name: Stage 1 Battle 01
+  m_EditorClassIdentifier: Assembly-CSharp::BattleData
+  battleId: stage_1_battle_01
+  displayName: "\uC2A4\uD14C\uC774\uC9C0 1-1"
+  noticeDescription: "\uC801\uB4E4\uC744 \uBAA8\uB450 \uC18C\uD0D5\uD558\uC2ED\uC2DC\uC624."
+  clearNoticeTitle: "\uD074\uB9AC\uC5B4"
+  clearNoticeDescription: "\uBAA8\uB4E0 \uC801\uC744 \uC18C\uD0D5\uD588\uC2B5\uB2C8\uB2E4!"
+  battleType: 0
+  boardCount: 7
+  tilePrefab: {fileID: 6102437938462105721, guid: a8a92d97c094e1b42bdbf5fbb08aa209, type: 3}
+  spawnTerm: 2
+  waves:
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 2
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 2
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 2
+  - enemies:
+    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+      count: 2

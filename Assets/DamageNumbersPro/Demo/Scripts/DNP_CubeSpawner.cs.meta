@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 665e15db3ef8c1c42a20aa835e671939
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo/Scripts/DNP_CubeSpawner.cs
+  uploadId: 953944

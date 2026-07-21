@@ -1,0 +1,123 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Power
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_power
+  displayName: "\uAC15\uD654\uD0C4"
+  description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\r\n\uBC1C\uC0AC
+    \uC2DC 5% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4."
+  bulletIcon: {fileID: -5722037672258507610, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: -9052392895300060863, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  price: 20
+  grade: 2
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 60
+  maxRange: 3
+  criticalChance: 40
+  criticalDamageMultiplier: 1.6
+  effects:
+  - effectType: 8
+    target: 1
+    activationChance: 5
+    stackCount: 0
+    knockbackDistance: 0
+    amount: 0
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
+  secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.1
+  removeCost: 5
+  upgradeCost: 30
+  upgradeLevels:
+  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
+      \uC2DC 5% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4.\n20%
+      \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 85
+    maxRange: 3
+    criticalChance: 60
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 8
+      target: 1
+      activationChance: 5
+      stackCount: 0
+      knockbackDistance: 0
+      amount: 0
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 20
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
+    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 55
+  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
+      \uC2DC 3% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4.\n40%
+      \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 120
+    maxRange: 4
+    criticalChance: 70
+    criticalDamageMultiplier: 2.5
+    effects:
+    - effectType: 8
+      target: 1
+      activationChance: 3
+      stackCount: 5
+      knockbackDistance: 1
+      amount: 1
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 40
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
+    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 90
+  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
+      \uC2DC 1% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4.\n40%
+      \uD655\uB960\uB85C \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 150
+    maxRange: 4
+    criticalChance: 85
+    criticalDamageMultiplier: 3
+    effects:
+    - effectType: 8
+      target: 1
+      activationChance: 1
+      stackCount: 0
+      knockbackDistance: 0
+      amount: 0
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 40
+    - chance: 40
+    - chance: 40
+    - chance: 40
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
+    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10

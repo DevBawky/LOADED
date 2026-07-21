@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Pierce
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_pierce
+  displayName: Pierce
+  description: "2\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+  bulletIcon: {fileID: 8191024754275108436, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 3e463a5945279e941837b1fdc8aaf5f1, type: 3}
+  price: 20
+  grade: 3
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 30
+  maxRange: 3
+  criticalChance: 50
+  criticalDamageMultiplier: 2
+  effects: []
+  conditionalEvents: []
+  penetrationChances:
+  - chance: 100
+  - chance: 100
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0, g: 0, b: 0, a: 1}
+  secondaryLineColor: {r: 0.7264151, g: 0.7264151, b: 0.7264151, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.1
+  removeCost: 5
+  upgradeCost: 50
+  upgradeLevels:
+  - description: "3\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 35
+    maxRange: 3
+    criticalChance: 50
+    criticalDamageMultiplier: 2.1
+    effects: []
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 100
+    - chance: 100
+    - chance: 100
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0, b: 0, a: 1}
+    secondaryLineColor: {r: 0.7264151, g: 0.7264151, b: 0.7264151, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 100
+  - description: "4\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n\uC7AC\uC7A5\uC804 \uC2DC
+      \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    damage: 40
+    maxRange: 4
+    criticalChance: 50
+    criticalDamageMultiplier: 2.2
+    effects: []
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 100
+    - chance: 100
+    - chance: 100
+    - chance: 100
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0, b: 0, a: 1}
+    secondaryLineColor: {r: 0.7264151, g: 0.7264151, b: 0.7264151, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 180
+  - description: "5\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n\uCE58\uBA85\uD0C0 \uBC1C\uC0DD\uB9C8\uB2E4
+      $1\uC744 \uD68D\uB4DD\uD569\uB2C8\uB2E4.\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    damage: 50
+    maxRange: 5
+    criticalChance: 50
+    criticalDamageMultiplier: 2.4
+    effects: []
+    conditionalEvents:
+    - trigger: 1
+      events:
+      - effectType: 9
+        target: 1
+        activationChance: 100
+        stackCount: 0
+        knockbackDistance: 0
+        amount: 1
+    penetrationChances:
+    - chance: 100
+    - chance: 100
+    - chance: 100
+    - chance: 100
+    - chance: 100
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0, b: 0, a: 1}
+    secondaryLineColor: {r: 0.7264151, g: 0.7264151, b: 0.7264151, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.1
+    removeCost: 5
+    upgradeCost: 10

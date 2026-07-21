@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 00c9eb4a8faae194ba981aa0fba4821d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Demo C#/DNP_ExampleMesh.cs
+  uploadId: 953944

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3102ce02052693f4180b452a92b76938
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 186447
+  packageName: Damage Numbers Pro
+  packageVersion: 4.55
+  assetPath: Assets/DamageNumbersPro/Editor/Resources/DNP/Behaviour/Replace.asset
+  uploadId: 953944
