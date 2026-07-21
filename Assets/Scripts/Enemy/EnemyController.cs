@@ -390,10 +390,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         int preparationRange = GetPreparationRange();
 
-        if (distanceToPlayer > preparationRange
-            && !HasEnemyTargetInRange(
-                directionToPlayer,
-                preparationRange))
+        if (distanceToPlayer > preparationRange)
         {
             MoveTowardPlayer(directionToPlayer);
             return;
@@ -416,12 +413,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        int preparationRange = GetPreparationRange();
-
-        if (distanceToPlayer <= preparationRange
-            || HasEnemyTargetInRange(
-                directionToPlayer,
-                preparationRange))
+        if (distanceToPlayer <= 1)
         {
             isAttackPrepared = true;
             actionQueueUI.SetPrepared(true);
@@ -553,20 +545,28 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         targetsPlayer = false;
         targetPosition = Vector3.zero;
 
-        if (attackData == null
-            || !TryGetTurnContext(
-                out int directionToPlayer,
-                out int distanceToPlayer)
-            || directionToPlayer == 0
-            || !IsFacing(directionToPlayer))
+        if (attackData == null || boardManager == null
+            || playerMove == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int attackerIndex)
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerIndex))
         {
             return false;
         }
 
+        int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
+        int playerOffset = playerIndex - attackerIndex;
+        int distanceToPlayer = Mathf.Abs(playerOffset);
+        bool playerInAttackLine = playerOffset * attackDirection > 0
+            && distanceToPlayer <= attackData.Range;
+
         attackTargetBuffer.Clear();
         waveManager.GetEnemiesInDirection(
             transform.position,
-            directionToPlayer,
+            attackDirection,
             attackData.Range,
             attackTargetBuffer);
 
@@ -584,17 +584,16 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             closestEnemyDistance = measuredEnemyDistance;
         }
 
-        bool playerInRange = distanceToPlayer <= attackData.Range;
-
         if (closestEnemy != null
-            && (!playerInRange || closestEnemyDistance < distanceToPlayer))
+            && (!playerInAttackLine
+                || closestEnemyDistance < distanceToPlayer))
         {
             enemyTarget = closestEnemy;
             targetPosition = closestEnemy.transform.position;
             return true;
         }
 
-        if (!playerInRange)
+        if (!playerInAttackLine)
         {
             return false;
         }
@@ -713,22 +712,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         return preparationRange == int.MaxValue ? 0 : preparationRange;
-    }
-
-    private bool HasEnemyTargetInRange(int direction, int range)
-    {
-        if (waveManager == null || direction == 0 || range <= 0)
-        {
-            return false;
-        }
-
-        attackTargetBuffer.Clear();
-        waveManager.GetEnemiesInDirection(
-            transform.position,
-            direction,
-            range,
-            attackTargetBuffer);
-        return attackTargetBuffer.Count > 0;
     }
 
     private void ClearAttackQueue()
