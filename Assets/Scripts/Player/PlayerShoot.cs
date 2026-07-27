@@ -26,6 +26,7 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private EventSystem eventSystem;
     [SerializeField] private PlayerCylinderUI cylinderUI;
     [SerializeField] private Image bulletFeedbackImage;
+    [SerializeField] private CombatPresentation combatPresentation;
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.2f;
 
@@ -58,6 +59,12 @@ public class PlayerShoot : MonoBehaviour
     private void Awake()
     {
         currencyManager ??= FindFirstObjectByType<CurrencyManager>();
+        combatPresentation ??= GetComponent<CombatPresentation>();
+
+        if (combatPresentation == null)
+        {
+            combatPresentation = gameObject.AddComponent<CombatPresentation>();
+        }
 
         if (playerMove != null)
         {
@@ -154,10 +161,14 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
-        if (deckManager.TryReload(out BulletInstance loadedBullet)
-            && (loadedBullet == null || !loadedBullet.DoesNotConsumeTurn))
+        if (deckManager.TryReload(out BulletInstance loadedBullet))
         {
-            playerMove.CompleteTurn();
+            combatPresentation?.PlayReload(loadedBullet, cylinderUI);
+
+            if (loadedBullet == null || !loadedBullet.DoesNotConsumeTurn)
+            {
+                playerMove.CompleteTurn();
+            }
         }
     }
 
@@ -275,9 +286,14 @@ public class PlayerShoot : MonoBehaviour
             firedAnyBullet = true;
             consumesTurn |= !bulletData.DoesNotConsumeTurn;
 
+            bool isCritical = bulletData.RollCritical();
             ShowBulletFeedback(bulletData);
             GenerateRecoil(bulletData);
-            bool isCritical = bulletData.RollCritical();
+            combatPresentation?.PlayShot(
+                firePoint,
+                bulletData,
+                isCritical,
+                horizontalDirection);
             yield return ApplyShotScopedEffects(
                 bulletData,
                 horizontalDirection);
@@ -349,6 +365,13 @@ public class PlayerShoot : MonoBehaviour
                 continue;
             }
 
+            CombatPresentation.EnemySnapshot enemySnapshot =
+                combatPresentation == null
+                    ? default
+                    : combatPresentation.CaptureEnemy(enemy);
+            int healthBeforeHit = enemy.CurrentHealth;
+            bool defeatPresented = false;
+
             if (hitIndex > 0)
             {
                 yield return ApplyConditionalEvents(
@@ -371,6 +394,12 @@ public class PlayerShoot : MonoBehaviour
 
             if (enemy == null || enemy.CurrentHealth <= 0)
             {
+                combatPresentation?.PlayImpact(
+                    enemySnapshot,
+                    horizontalDirection,
+                    bulletData,
+                    isCritical,
+                    true);
                 yield return ApplyConditionalEvents(
                     bulletData,
                     BulletConditionalTrigger.EnemyDefeated,
@@ -383,6 +412,14 @@ public class PlayerShoot : MonoBehaviour
             int appliedDamage = enemy.ApplyAttackDamage(
                 attackDamage,
                 isCritical);
+            bool defeatedByAttack = appliedDamage >= healthBeforeHit;
+            combatPresentation?.PlayImpact(
+                enemySnapshot,
+                horizontalDirection,
+                bulletData,
+                isCritical,
+                defeatedByAttack);
+            defeatPresented = defeatedByAttack;
 
             IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
 
@@ -429,6 +466,16 @@ public class PlayerShoot : MonoBehaviour
 
             if (enemy == null || enemy.CurrentHealth <= 0)
             {
+                if (!defeatPresented)
+                {
+                    combatPresentation?.PlayImpact(
+                        enemySnapshot,
+                        horizontalDirection,
+                        bulletData,
+                        isCritical,
+                        true);
+                }
+
                 yield return ApplyConditionalEvents(
                     bulletData,
                     BulletConditionalTrigger.EnemyDefeated,

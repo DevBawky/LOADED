@@ -6,7 +6,8 @@ public enum EnemyBehaviorType
 {
     Melee = 0,
     Gunner = 1,
-    Thrower = 2
+    Thrower = 2,
+    Porter = 3
 }
 
 public enum EnemyDropType
@@ -94,6 +95,23 @@ public class EnemyData : ScriptableObject
     [Min(1)]
     [Tooltip("원거리 적이 플레이어를 공격 준비할 수 있는 최대 타일 거리입니다.")]
     [SerializeField] private int firingRange = 5;
+    [Min(0)]
+    [Tooltip("A ranged enemy spends this many turns recovering after an attack.")]
+    [SerializeField] private int recoveryTurns = 1;
+
+    [Header("Porter Support")]
+    [Min(0)]
+    [Tooltip("Number of heal or shield actions the porter can perform.")]
+    [SerializeField] private int maxSupportCharges = 2;
+    [Min(1)]
+    [Tooltip("Health restored by one porter support action.")]
+    [SerializeField] private int supportHealAmount = 10;
+    [Min(1)]
+    [Tooltip("Shield granted by one porter support action.")]
+    [SerializeField] private int supportShieldAmount = 10;
+    [Range(0f, 1f)]
+    [Tooltip("Allies at or below this health ratio are healed before shielding.")]
+    [SerializeField] private float supportHealThreshold = 0.5f;
 
     [Header("Thrower Projectile")]
     [Tooltip("투척병이 포물선으로 던질 투사체 프리팹입니다. 비어 있으면 투사체 없이 타이밍만 적용됩니다.")]
@@ -110,6 +128,14 @@ public class EnemyData : ScriptableObject
     [SerializeField] private Material gunnerTelegraphMaterial;
     [Tooltip("투척병의 포물선 궤적을 표시할 LineRenderer 머티리얼입니다.")]
     [SerializeField] private Material throwerTelegraphMaterial;
+    [Tooltip("Line material used while a porter is preparing support.")]
+    [SerializeField] private Material supportTelegraphMaterial;
+    [Tooltip("Telegraph color for a prepared heal.")]
+    [SerializeField] private Color supportHealColor =
+        new Color(0.25f, 1f, 0.35f, 1f);
+    [Tooltip("Telegraph color for a prepared shield.")]
+    [SerializeField] private Color supportShieldColor =
+        new Color(0.2f, 0.8f, 1f, 1f);
     [Min(0.001f)]
     [Tooltip("직선 및 포물선 공격 예고선의 굵기입니다.")]
     [SerializeField] private float telegraphLineWidth = 0.08f;
@@ -142,7 +168,14 @@ public class EnemyData : ScriptableObject
     public float QueuedActionInterval => Mathf.Max(0f, queuedActionInterval);
     public float MeleeAdditionalAttackChance =>
         Mathf.Clamp01(meleeAdditionalAttackChance);
-    public int FiringRange => Mathf.Max(1, firingRange);
+    // Kept for older callers and serialized assets. Ranged enemies always use
+    // the full board, so this value is intentionally infinite.
+    public int FiringRange => int.MaxValue;
+    public int RecoveryTurns => Mathf.Max(0, recoveryTurns);
+    public int MaxSupportCharges => Mathf.Max(0, maxSupportCharges);
+    public int SupportHealAmount => Mathf.Max(1, supportHealAmount);
+    public int SupportShieldAmount => Mathf.Max(1, supportShieldAmount);
+    public float SupportHealThreshold => Mathf.Clamp01(supportHealThreshold);
     public GameObject ThrownProjectilePrefab => thrownProjectilePrefab;
     public float ThrownProjectileDuration =>
         Mathf.Max(0f, thrownProjectileDuration);
@@ -150,6 +183,9 @@ public class EnemyData : ScriptableObject
         Mathf.Max(0f, thrownProjectileArcHeight);
     public Material GunnerTelegraphMaterial => gunnerTelegraphMaterial;
     public Material ThrowerTelegraphMaterial => throwerTelegraphMaterial;
+    public Material SupportTelegraphMaterial => supportTelegraphMaterial;
+    public Color SupportHealColor => supportHealColor;
+    public Color SupportShieldColor => supportShieldColor;
     public float TelegraphLineWidth => Mathf.Max(0.001f, telegraphLineWidth);
     public float TelegraphVerticalOffset => telegraphVerticalOffset;
     public int ThrowerTelegraphSegments => Mathf.Clamp(
@@ -220,6 +256,11 @@ public class EnemyData : ScriptableObject
         meleeAdditionalAttackChance = Mathf.Clamp01(
             meleeAdditionalAttackChance);
         firingRange = Mathf.Max(1, firingRange);
+        recoveryTurns = Mathf.Max(0, recoveryTurns);
+        maxSupportCharges = Mathf.Max(0, maxSupportCharges);
+        supportHealAmount = Mathf.Max(1, supportHealAmount);
+        supportShieldAmount = Mathf.Max(1, supportShieldAmount);
+        supportHealThreshold = Mathf.Clamp01(supportHealThreshold);
         thrownProjectileDuration = Mathf.Max(0f, thrownProjectileDuration);
         thrownProjectileArcHeight = Mathf.Max(
             0f,

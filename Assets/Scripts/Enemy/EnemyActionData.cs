@@ -7,7 +7,8 @@ public enum EnemyActionType
     Rotate,
     MeleeAttack,
     RangedAttack,
-    Wait
+    Wait,
+    Support
 }
 
 [CreateAssetMenu(fileName = "New Enemy Action", menuName = "Loaded/Enemy/Action")]

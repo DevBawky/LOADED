@@ -31,6 +31,7 @@ MonoBehaviour:
   queuedActionInterval: 0.2
   meleeAdditionalAttackChance: 0.5
   firingRange: 4
+  recoveryTurns: 1
   thrownProjectilePrefab: {fileID: 0}
   thrownProjectileDuration: 0.5
   thrownProjectileArcHeight: 2
