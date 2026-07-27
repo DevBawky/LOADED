@@ -14,12 +14,26 @@ public enum EnemyTurnActionType
     Fire,
     CreateQueue,
     RegisterAttack,
-    PrepareAttack
+    PrepareAttack,
+    Support
+}
+
+public enum EnemySupportType
+{
+    None,
+    Heal,
+    Shield
 }
 
 public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
     private const int InitialFacingDirection = -1;
+    private static readonly int BaseColorId =
+        Shader.PropertyToID("_BaseColor");
+    private static readonly int BeamColorId =
+        Shader.PropertyToID("_BeamColor");
+    private static readonly int GridColorId =
+        Shader.PropertyToID("_GridColor");
 
     [Header("Data")]
     [SerializeField] private EnemyData enemyData;
@@ -33,6 +47,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     [Header("Runtime State")]
     [SerializeField] private int currentHealth;
+    [SerializeField] private int currentShield;
+    [SerializeField] private int remainingSupportCharges;
+    [SerializeField] private int recoveryTurnsRemaining;
     [SerializeField] private List<EnemyActionData> queuedAttackActions =
         new List<EnemyActionData>();
     [SerializeField] private bool isQueueCreated;
@@ -40,6 +57,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private bool isRetreating;
     [SerializeField] private int preparedTargetTileIndex = -1;
     [SerializeField] private Vector3 preparedTargetPosition;
+    [SerializeField] private EnemyController preparedSupportTarget;
+    [SerializeField] private EnemySupportType preparedSupportType;
     [SerializeField] private EnemyTurnActionType lastTurnAction;
     [SerializeField] private bool isActing;
 
@@ -49,17 +68,22 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private WaveManager waveManager;
     private bool isInitialized;
     private LineRenderer attackTelegraphLine;
+    private LineRenderer shieldIndicatorLine;
     private readonly List<Vector3> movePath = new List<Vector3>();
     private readonly List<EnemyController> attackTargetBuffer =
         new List<EnemyController>();
+    private MaterialPropertyBlock lineColorProperties;
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
     public event Action<EnemyController, int, int> HealthChanged;
+    public event Action<EnemyController, int> ShieldChanged;
     public event Action<EnemyController> Defeated;
 
     public EnemyData Data => enemyData;
     public int CurrentHealth => currentHealth;
+    public int CurrentShield => currentShield;
+    public int RemainingSupportCharges => remainingSupportCharges;
     public int MaxHealth => enemyData == null ? 0 : enemyData.MaxHealth;
     public EnemyActionData LoadedAttackAction => queuedAttackActions.Count > 0
         ? queuedAttackActions[0]
@@ -75,6 +99,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void Awake()
     {
+        lineColorProperties = new MaterialPropertyBlock();
+
         if (statusEffects == null)
         {
             statusEffects = GetComponent<StatusEffectController>();
@@ -125,7 +151,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         ApplySprite();
         ApplyCanvasOrientation();
         isInitialized = true;
-        PrimeRangedAttackOnSpawn();
         return true;
     }
 
@@ -151,6 +176,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
+        if (!CanTakeFrontlineTurn())
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
         if (isAttackPrepared && queuedAttackActions.Count == 0)
         {
             ClearAttackQueue();
@@ -164,6 +195,13 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
+        if (recoveryTurnsRemaining > 0)
+        {
+            recoveryTurnsRemaining--;
+            CompleteAction(EnemyTurnActionType.Reload);
+            return;
+        }
+
         if (!TryGetTurnContext(out int directionToPlayer, out int distanceToPlayer))
         {
             CompleteAction(EnemyTurnActionType.Wait);
@@ -172,7 +210,13 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
-            TakeThrowerTurn(distanceToPlayer);
+            TakeThrowerTurn();
+            return;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.Porter)
+        {
+            TakePorterTurn(directionToPlayer, distanceToPlayer);
             return;
         }
 
@@ -194,6 +238,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private void OnDisable()
     {
         HideAttackTelegraph();
+
+        if (shieldIndicatorLine != null)
+        {
+            shieldIndicatorLine.enabled = false;
+        }
+
         isActing = false;
     }
 
@@ -305,11 +355,25 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return 0;
         }
 
+        int absorbedDamage = Mathf.Min(currentShield, damage);
+
+        if (absorbedDamage > 0)
+        {
+            currentShield -= absorbedDamage;
+            RefreshShieldIndicator();
+            ShieldChanged?.Invoke(this, currentShield);
+        }
+
+        int healthDamage = damage - absorbedDamage;
         int previousHealth = currentHealth;
-        currentHealth = Mathf.Max(0, currentHealth - damage);
-        int appliedDamage = previousHealth - currentHealth;
-        RefreshHealthUI();
-        HealthChanged?.Invoke(this, currentHealth, enemyData.MaxHealth);
+        currentHealth = Mathf.Max(0, currentHealth - healthDamage);
+        int appliedDamage = absorbedDamage + previousHealth - currentHealth;
+
+        if (currentHealth != previousHealth)
+        {
+            RefreshHealthUI();
+            HealthChanged?.Invoke(this, currentHealth, enemyData.MaxHealth);
+        }
 
         if (currentHealth == 0)
         {
@@ -323,6 +387,40 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         return appliedDamage;
+    }
+
+    public bool Heal(int amount)
+    {
+        if (amount <= 0 || currentHealth <= 0 || currentHealth >= MaxHealth)
+        {
+            return false;
+        }
+
+        currentHealth = Mathf.Min(MaxHealth, currentHealth + amount);
+        RefreshHealthUI();
+        HealthChanged?.Invoke(this, currentHealth, MaxHealth);
+        return true;
+    }
+
+    public bool AddShield(int amount)
+    {
+        return AddShield(amount, null, new Color(0.2f, 0.8f, 1f, 1f));
+    }
+
+    public bool AddShield(
+        int amount,
+        Material indicatorMaterial,
+        Color indicatorColor)
+    {
+        if (amount <= 0 || currentHealth <= 0)
+        {
+            return false;
+        }
+
+        currentShield += amount;
+        RefreshShieldIndicator(indicatorMaterial, indicatorColor);
+        ShieldChanged?.Invoke(this, currentShield);
+        return true;
     }
 
     private void TakeMeleeTurn(int directionToPlayer, int distanceToPlayer)
@@ -346,10 +444,32 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             }
         }
 
-        HandleAttackQueue(
-            EnemyActionType.MeleeAttack,
-            directionToPlayer,
-            distanceToPlayer);
+        if (GetAvailableAttackCount(EnemyActionType.MeleeAttack) == 0)
+        {
+            ClearAttackQueue();
+            MoveTowardPlayer(directionToPlayer);
+            return;
+        }
+
+        if (!isQueueCreated)
+        {
+            CreateAttackQueue();
+            return;
+        }
+
+        if (queuedAttackActions.Count == 0)
+        {
+            RegisterAction(EnemyActionType.MeleeAttack, 0);
+            return;
+        }
+
+        if (distanceToPlayer > 1)
+        {
+            MoveTowardPlayer(directionToPlayer);
+            return;
+        }
+
+        PrepareCurrentAttackQueue();
     }
 
     private void TakeGunnerTurn(int directionToPlayer, int distanceToPlayer)
@@ -364,11 +484,15 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        EnsureAttackQueueVisible();
+        if (!isQueueCreated)
+        {
+            CreateAttackQueue();
+            return;
+        }
 
         if (queuedAttackActions.Count == 0)
         {
-            RegisterAttack(EnemyActionType.RangedAttack, 0);
+            RegisterAction(EnemyActionType.RangedAttack, 0);
             return;
         }
 
@@ -378,22 +502,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        int availableAttackCount = Mathf.Min(
-            definedAttackCount,
-            enemyData.MaxQueuedAttacks);
-
-        if (queuedAttackActions.Count < availableAttackCount)
-        {
-            RegisterAttack(
-                EnemyActionType.RangedAttack,
-                queuedAttackActions.Count);
-            return;
-        }
-
-        MoveTowardPlayer(directionToPlayer);
+        CompleteAction(EnemyTurnActionType.Wait);
     }
 
-    private void TakeThrowerTurn(int distanceToPlayer)
+    private void TakeThrowerTurn()
     {
         if (GetAvailableAttackCount(EnemyActionType.RangedAttack) == 0)
         {
@@ -402,16 +514,19 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        EnsureAttackQueueVisible();
-
-        if (queuedAttackActions.Count == 0)
+        if (!isQueueCreated)
         {
-            RegisterAttack(EnemyActionType.RangedAttack, 0);
+            CreateAttackQueue();
             return;
         }
 
-        if (distanceToPlayer > enemyData.FiringRange
-            || !CaptureThrowerTargetTile())
+        if (queuedAttackActions.Count == 0)
+        {
+            RegisterAction(EnemyActionType.RangedAttack, 0);
+            return;
+        }
+
+        if (!CaptureThrowerTargetTile())
         {
             CompleteAction(EnemyTurnActionType.Wait);
             return;
@@ -420,133 +535,63 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         PrepareCurrentAttackQueue();
     }
 
-    private void HandleAttackQueue(
-        EnemyActionType attackActionType,
+    private void TakePorterTurn(
         int directionToPlayer,
         int distanceToPlayer)
     {
-        int definedAttackCount = GetAvailableAttackCount(attackActionType);
-        int queueLimit = enemyData.MaxQueuedAttacks;
-
-        if (definedAttackCount == 0)
+        if (remainingSupportCharges <= 0)
         {
-            ClearAttackQueue();
-            MoveTowardPlayer(directionToPlayer);
+            if (!TryMoveAwayFromPlayer(directionToPlayer, distanceToPlayer))
+            {
+                CompleteAction(EnemyTurnActionType.Wait);
+            }
+
+            return;
+        }
+
+        if (!TrySelectSupportTarget(
+                out EnemyController supportTarget,
+                out EnemySupportType supportType))
+        {
+            if (!TryMoveAwayFromPlayer(directionToPlayer, distanceToPlayer))
+            {
+                CompleteAction(EnemyTurnActionType.Wait);
+            }
+
             return;
         }
 
         if (!isQueueCreated)
         {
-            isQueueCreated = true;
-            isAttackPrepared = false;
-            actionQueueUI.ShowQueue();
-            CompleteAction(EnemyTurnActionType.CreateQueue);
+            CreateAttackQueue();
             return;
         }
 
-        if (attackActionType == EnemyActionType.MeleeAttack)
-        {
-            HandleMeleeAttackQueue(
-                definedAttackCount,
-                queueLimit,
-                directionToPlayer,
-                distanceToPlayer);
-            return;
-        }
-
-        int availableAttackCount = Mathf.Min(
-            definedAttackCount,
-            queueLimit);
-
-        if (queuedAttackActions.Count < availableAttackCount)
-        {
-            RegisterAttack(
-                attackActionType,
-                queuedAttackActions.Count);
-            return;
-        }
-
-        int preparationRange = GetPreparationRange();
-
-        if (distanceToPlayer > preparationRange)
-        {
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
-
-        isAttackPrepared = true;
-        actionQueueUI.SetPrepared(true);
-        CompleteAction(EnemyTurnActionType.PrepareAttack);
-    }
-
-    private void HandleMeleeAttackQueue(
-        int definedAttackCount,
-        int queueLimit,
-        int directionToPlayer,
-        int distanceToPlayer)
-    {
         if (queuedAttackActions.Count == 0)
         {
-            RegisterAttack(EnemyActionType.MeleeAttack, 0);
+            RegisterAction(EnemyActionType.Support, 0);
             return;
         }
 
-        if (distanceToPlayer <= 1)
-        {
-            isAttackPrepared = true;
-            actionQueueUI.SetPrepared(true);
-            CompleteAction(EnemyTurnActionType.PrepareAttack);
-            return;
-        }
-
-        if (distanceToPlayer <= enemyData.PreferredDistance
-            && queuedAttackActions.Count < queueLimit)
-        {
-            if (UnityEngine.Random.value
-                < enemyData.MeleeAdditionalAttackChance)
-            {
-                int attackIndex = queuedAttackActions.Count
-                    % definedAttackCount;
-                RegisterAttack(EnemyActionType.MeleeAttack, attackIndex);
-            }
-            else
-            {
-                MoveTowardPlayer(directionToPlayer);
-            }
-
-            return;
-        }
-
-        MoveTowardPlayer(directionToPlayer);
+        preparedSupportTarget = supportTarget;
+        preparedSupportType = supportType;
+        preparedTargetPosition = supportTarget.transform.position;
+        PrepareCurrentAttackQueue();
     }
 
-    private void RegisterAttack(
-        EnemyActionType attackActionType,
-        int attackIndex)
-    {
-        EnsureAttackQueueVisible();
-
-        if (!TryAppendAttack(attackActionType, attackIndex))
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        CompleteAction(EnemyTurnActionType.RegisterAttack);
-    }
-
-    private bool TryAppendAttack(
-        EnemyActionType attackActionType,
-        int attackIndex)
+    private bool TryAppendAction(
+        EnemyActionType actionType,
+        int actionIndex)
     {
         if (queuedAttackActions.Count >= enemyData.MaxQueuedAttacks)
         {
             return false;
         }
 
-        EnemyActionData attackAction = GetAvailableAttackAction(
-            attackActionType,
-            attackIndex);
+        EnemyActionData attackAction = GetAvailableAction(
+            actionType,
+            actionIndex,
+            actionType != EnemyActionType.Support);
 
         if (attackAction == null
             || !actionQueueUI.AddAttackIcon(attackAction))
@@ -556,6 +601,27 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         queuedAttackActions.Add(attackAction);
         return true;
+    }
+
+    private void CreateAttackQueue()
+    {
+        EnsureAttackQueueVisible();
+        CompleteAction(EnemyTurnActionType.CreateQueue);
+    }
+
+    private void RegisterAction(
+        EnemyActionType actionType,
+        int actionIndex)
+    {
+        if (!isQueueCreated
+            || !TryAppendAction(actionType, actionIndex))
+        {
+            ClearAttackQueue();
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        CompleteAction(EnemyTurnActionType.RegisterAttack);
     }
 
     private void ApplyInitialFacingDirection()
@@ -570,30 +636,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         localScale.x = scaleMagnitude * InitialFacingDirection;
         transform.localScale = localScale;
-    }
-
-    private void PrimeRangedAttackOnSpawn()
-    {
-        if (enemyData == null
-            || enemyData.BehaviorType == EnemyBehaviorType.Melee)
-        {
-            return;
-        }
-
-        EnsureAttackQueueVisible();
-        int availableAttackCount = GetAvailableAttackCount(
-            EnemyActionType.RangedAttack);
-        int startingAttackIndex = enemyData.RandomizeStartingActionIndex
-            && availableAttackCount > 1
-                ? UnityEngine.Random.Range(0, availableAttackCount)
-                : 0;
-
-        if (!TryAppendAttack(
-                EnemyActionType.RangedAttack,
-                startingAttackIndex))
-        {
-            ClearAttackQueue();
-        }
     }
 
     private void EnsureAttackQueueVisible()
@@ -625,10 +667,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        Material telegraphMaterial = enemyData.BehaviorType
-            == EnemyBehaviorType.Thrower
-                ? enemyData.ThrowerTelegraphMaterial
-                : enemyData.GunnerTelegraphMaterial;
+        Material telegraphMaterial = enemyData.BehaviorType switch
+        {
+            EnemyBehaviorType.Thrower =>
+                enemyData.ThrowerTelegraphMaterial,
+            EnemyBehaviorType.Porter =>
+                enemyData.SupportTelegraphMaterial,
+            _ => enemyData.GunnerTelegraphMaterial
+        };
 
         if (telegraphMaterial == null)
         {
@@ -640,16 +686,33 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         lineRenderer.sharedMaterial = telegraphMaterial;
         lineRenderer.widthMultiplier = enemyData.TelegraphLineWidth;
         lineRenderer.sortingOrder = enemyData.TelegraphSortingOrder;
+        Color telegraphColor = enemyData.BehaviorType
+            == EnemyBehaviorType.Porter
+                ? preparedSupportType == EnemySupportType.Heal
+                    ? enemyData.SupportHealColor
+                    : enemyData.SupportShieldColor
+                : Color.white;
+        lineRenderer.startColor = telegraphColor;
+        lineRenderer.endColor = telegraphColor;
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.Porter)
+        {
+            ApplyLineShaderColor(lineRenderer, telegraphColor);
+        }
 
         if (spriteRenderer != null)
         {
             lineRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
         }
 
-        bool positionsApplied = enemyData.BehaviorType
-            == EnemyBehaviorType.Thrower
-                ? ApplyThrowerTelegraphPositions(lineRenderer)
-                : ApplyGunnerTelegraphPositions(lineRenderer);
+        bool positionsApplied = enemyData.BehaviorType switch
+        {
+            EnemyBehaviorType.Thrower =>
+                ApplyThrowerTelegraphPositions(lineRenderer),
+            EnemyBehaviorType.Porter =>
+                ApplySupportTelegraphPositions(lineRenderer),
+            _ => ApplyGunnerTelegraphPositions(lineRenderer)
+        };
         lineRenderer.enabled = positionsApplied;
     }
 
@@ -686,10 +749,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
-        int endTileIndex = Mathf.Clamp(
-            attackerTileIndex + attackDirection * enemyData.FiringRange,
-            0,
-            boardManager.BoardCount - 1);
+        int endTileIndex = attackDirection > 0
+            ? boardManager.BoardCount - 1
+            : 0;
 
         if (endTileIndex == attackerTileIndex
             || !boardManager.TryGetTilePosition(
@@ -745,6 +807,26 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
+    private bool ApplySupportTelegraphPositions(LineRenderer lineRenderer)
+    {
+        if (preparedSupportTarget == null
+            || preparedSupportTarget.CurrentHealth <= 0)
+        {
+            return false;
+        }
+
+        Vector3 startPosition = transform.position;
+        Vector3 endPosition = preparedSupportTarget.transform.position;
+        float verticalOffset = enemyData.TelegraphVerticalOffset;
+        startPosition.y += verticalOffset;
+        endPosition.y += verticalOffset;
+        endPosition.z = startPosition.z;
+        lineRenderer.positionCount = 2;
+        lineRenderer.SetPosition(0, startPosition);
+        lineRenderer.SetPosition(1, endPosition);
+        return true;
+    }
+
     private void HideAttackTelegraph()
     {
         if (attackTelegraphLine != null)
@@ -753,12 +835,103 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
     }
 
+    private void RefreshShieldIndicator(
+        Material indicatorMaterial = null,
+        Color? indicatorColor = null)
+    {
+        if (currentShield <= 0)
+        {
+            if (shieldIndicatorLine != null)
+            {
+                shieldIndicatorLine.enabled = false;
+            }
+
+            return;
+        }
+
+        if (shieldIndicatorLine == null)
+        {
+            GameObject indicatorObject = new GameObject(
+                "Line | Shield Indicator");
+            indicatorObject.transform.SetParent(transform, false);
+            shieldIndicatorLine =
+                indicatorObject.AddComponent<LineRenderer>();
+            shieldIndicatorLine.useWorldSpace = false;
+            shieldIndicatorLine.loop = true;
+            shieldIndicatorLine.alignment = LineAlignment.View;
+            shieldIndicatorLine.textureMode = LineTextureMode.Stretch;
+            shieldIndicatorLine.numCapVertices = 2;
+            shieldIndicatorLine.positionCount = 24;
+            shieldIndicatorLine.widthMultiplier = 0.06f;
+            shieldIndicatorLine.sortingOrder = enemyData == null
+                ? 19
+                : enemyData.TelegraphSortingOrder - 1;
+
+            if (spriteRenderer != null)
+            {
+                shieldIndicatorLine.sortingLayerID =
+                    spriteRenderer.sortingLayerID;
+            }
+
+            for (int pointIndex = 0;
+                 pointIndex < shieldIndicatorLine.positionCount;
+                 pointIndex++)
+            {
+                float radians = pointIndex
+                    / (float)shieldIndicatorLine.positionCount
+                    * Mathf.PI
+                    * 2f;
+                shieldIndicatorLine.SetPosition(
+                    pointIndex,
+                    new Vector3(
+                        Mathf.Cos(radians) * 0.58f,
+                        Mathf.Sin(radians) * 0.82f + 0.1f,
+                        -0.05f));
+            }
+        }
+
+        if (indicatorMaterial != null)
+        {
+            shieldIndicatorLine.sharedMaterial = indicatorMaterial;
+        }
+
+        Color color = indicatorColor
+            ?? new Color(0.2f, 0.8f, 1f, 1f);
+        shieldIndicatorLine.startColor = color;
+        shieldIndicatorLine.endColor = color;
+        ApplyLineShaderColor(shieldIndicatorLine, color);
+        shieldIndicatorLine.enabled =
+            shieldIndicatorLine.sharedMaterial != null;
+    }
+
+    private void ApplyLineShaderColor(
+        LineRenderer lineRenderer,
+        Color color)
+    {
+        if (lineRenderer == null)
+        {
+            return;
+        }
+
+        lineColorProperties ??= new MaterialPropertyBlock();
+        lineColorProperties.Clear();
+        Color baseColor = color;
+        baseColor.a *= 0.55f;
+        Color beamColor = color * 1.35f;
+        beamColor.a = color.a;
+        Color gridColor = color;
+        gridColor.a *= 0.9f;
+        lineColorProperties.SetColor(BaseColorId, baseColor);
+        lineColorProperties.SetColor(BeamColorId, beamColor);
+        lineColorProperties.SetColor(GridColorId, gridColor);
+        lineRenderer.SetPropertyBlock(lineColorProperties);
+    }
+
     private bool CanPrepareGunnerAttack(
         int directionToPlayer,
         int distanceToPlayer)
     {
-        if (directionToPlayer == 0 || distanceToPlayer <= 0
-            || distanceToPlayer > enemyData.FiringRange)
+        if (directionToPlayer == 0 || distanceToPlayer <= 0)
         {
             return false;
         }
@@ -804,16 +977,33 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         isRetreating = enemyData.BehaviorType == EnemyBehaviorType.Melee
             && enemyData.PreferredDistance > 0;
+        recoveryTurnsRemaining = enemyData.BehaviorType
+            == EnemyBehaviorType.Gunner
+            || enemyData.BehaviorType == EnemyBehaviorType.Thrower
+                ? enemyData.RecoveryTurns
+                : 0;
         isQueueCreated = false;
         isAttackPrepared = false;
         preparedTargetTileIndex = -1;
         preparedTargetPosition = Vector3.zero;
+        preparedSupportTarget = null;
+        preparedSupportType = EnemySupportType.None;
         actionQueueUI.ResetDisplay();
-        CompleteAction(EnemyTurnActionType.Fire);
+        CompleteAction(enemyData.BehaviorType == EnemyBehaviorType.Porter
+            ? EnemyTurnActionType.Support
+            : EnemyTurnActionType.Fire);
     }
 
     private IEnumerator ExecuteQueuedAttack(EnemyActionData attackAction)
     {
+        if (enemyData.BehaviorType == EnemyBehaviorType.Porter
+            && attackAction != null
+            && attackAction.ActionType == EnemyActionType.Support)
+        {
+            ExecutePreparedSupport();
+            yield break;
+        }
+
         if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
         {
             yield break;
@@ -848,6 +1038,162 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             enemyTarget,
             targetsPlayer);
         AttackExecuted?.Invoke(this, attackData);
+    }
+
+    private bool TrySelectSupportTarget(
+        out EnemyController selectedTarget,
+        out EnemySupportType supportType)
+    {
+        selectedTarget = null;
+        supportType = EnemySupportType.None;
+
+        if (waveManager == null || playerMove == null)
+        {
+            return false;
+        }
+
+        float lowestHealthRatio = float.MaxValue;
+        int bestHealPlayerDistance = int.MaxValue;
+        int bestHealTileIndex = int.MaxValue;
+
+        foreach (EnemyController candidate in waveManager.ActiveEnemies)
+        {
+            if (!IsValidSupportTarget(candidate)
+                || candidate.CurrentHealth >= candidate.MaxHealth)
+            {
+                continue;
+            }
+
+            float healthRatio = candidate.MaxHealth <= 0
+                ? 1f
+                : (float)candidate.CurrentHealth / candidate.MaxHealth;
+
+            if (healthRatio > enemyData.SupportHealThreshold)
+            {
+                continue;
+            }
+
+            GetSupportSortValues(
+                candidate,
+                out int playerDistance,
+                out int tileIndex);
+
+            if (healthRatio < lowestHealthRatio
+                || Mathf.Approximately(healthRatio, lowestHealthRatio)
+                && (playerDistance < bestHealPlayerDistance
+                    || playerDistance == bestHealPlayerDistance
+                    && tileIndex < bestHealTileIndex))
+            {
+                selectedTarget = candidate;
+                lowestHealthRatio = healthRatio;
+                bestHealPlayerDistance = playerDistance;
+                bestHealTileIndex = tileIndex;
+            }
+        }
+
+        if (selectedTarget != null)
+        {
+            supportType = EnemySupportType.Heal;
+            return true;
+        }
+
+        int bestShieldPlayerDistance = int.MaxValue;
+        int bestShieldTileIndex = int.MaxValue;
+
+        foreach (EnemyController candidate in waveManager.ActiveEnemies)
+        {
+            if (!IsValidSupportTarget(candidate)
+                || candidate.CurrentShield > 0)
+            {
+                continue;
+            }
+
+            GetSupportSortValues(
+                candidate,
+                out int playerDistance,
+                out int tileIndex);
+
+            if (playerDistance < bestShieldPlayerDistance
+                || playerDistance == bestShieldPlayerDistance
+                && tileIndex < bestShieldTileIndex)
+            {
+                selectedTarget = candidate;
+                bestShieldPlayerDistance = playerDistance;
+                bestShieldTileIndex = tileIndex;
+            }
+        }
+
+        if (selectedTarget == null)
+        {
+            return false;
+        }
+
+        supportType = EnemySupportType.Shield;
+        return true;
+    }
+
+    private bool IsValidSupportTarget(EnemyController candidate)
+    {
+        return candidate != null
+            && candidate != this
+            && candidate.CurrentHealth > 0;
+    }
+
+    private void GetSupportSortValues(
+        EnemyController candidate,
+        out int playerDistance,
+        out int tileIndex)
+    {
+        playerDistance = int.MaxValue;
+        tileIndex = int.MaxValue;
+
+        if (boardManager == null || candidate == null)
+        {
+            return;
+        }
+
+        if (boardManager.TryGetTileDistance(
+                candidate.transform.position,
+                playerMove.transform.position,
+                out int measuredPlayerDistance))
+        {
+            playerDistance = measuredPlayerDistance;
+        }
+
+        if (boardManager.TryGetTileIndex(
+                candidate.transform.position,
+                out int measuredTileIndex))
+        {
+            tileIndex = measuredTileIndex;
+        }
+    }
+
+    private void ExecutePreparedSupport()
+    {
+        if (remainingSupportCharges <= 0
+            || preparedSupportTarget == null
+            || preparedSupportTarget.CurrentHealth <= 0)
+        {
+            return;
+        }
+
+        bool applied = preparedSupportType switch
+        {
+            EnemySupportType.Heal =>
+                preparedSupportTarget.Heal(enemyData.SupportHealAmount),
+            EnemySupportType.Shield =>
+                preparedSupportTarget.CurrentShield <= 0
+                && preparedSupportTarget.AddShield(
+                    enemyData.SupportShieldAmount,
+                    enemyData.SupportTelegraphMaterial,
+                    enemyData.SupportShieldColor),
+            _ => false
+        };
+
+        if (applied)
+        {
+            remainingSupportCharges--;
+        }
     }
 
     private IEnumerator ExecuteThrowerAttack(EnemyAttackData attackData)
@@ -1000,7 +1346,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
         int attackRange = enemyData.BehaviorType == EnemyBehaviorType.Melee
             ? attackData.Range
-            : enemyData.FiringRange;
+            : boardManager.BoardCount;
         int playerOffset = playerIndex - attackerIndex;
         int distanceToPlayer = Mathf.Abs(playerOffset);
         bool playerInAttackLine = playerOffset * attackDirection > 0
@@ -1031,6 +1377,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             && (!playerInAttackLine
                 || closestEnemyDistance < distanceToPlayer))
         {
+            if (enemyData.BehaviorType == EnemyBehaviorType.Gunner)
+            {
+                return false;
+            }
+
             enemyTarget = closestEnemy;
             targetPosition = closestEnemy.transform.position;
             return true;
@@ -1114,22 +1465,24 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         return count;
     }
 
-    private EnemyActionData GetAvailableAttackAction(
-        EnemyActionType attackActionType,
-        int attackIndex)
+    private EnemyActionData GetAvailableAction(
+        EnemyActionType actionType,
+        int actionIndex,
+        bool requiresAttackData)
     {
         int currentIndex = 0;
 
         foreach (EnemyActionData actionData in enemyData.Actions)
         {
             if (actionData == null
-                || actionData.ActionType != attackActionType
-                || !TryGetAttackData(actionData, out _))
+                || actionData.ActionType != actionType
+                || requiresAttackData
+                && !TryGetAttackData(actionData, out _))
             {
                 continue;
             }
 
-            if (currentIndex == attackIndex)
+            if (currentIndex == actionIndex)
             {
                 return actionData;
             }
@@ -1140,23 +1493,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         return null;
     }
 
-    private int GetPreparationRange()
-    {
-        int preparationRange = int.MaxValue;
-
-        foreach (EnemyActionData actionData in queuedAttackActions)
-        {
-            if (TryGetAttackData(actionData, out EnemyAttackData attackData))
-            {
-                preparationRange = Mathf.Min(
-                    preparationRange,
-                    attackData.Range);
-            }
-        }
-
-        return preparationRange == int.MaxValue ? 0 : preparationRange;
-    }
-
     private void ClearAttackQueue()
     {
         queuedAttackActions.Clear();
@@ -1164,6 +1500,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         isAttackPrepared = false;
         preparedTargetTileIndex = -1;
         preparedTargetPosition = Vector3.zero;
+        preparedSupportTarget = null;
+        preparedSupportType = EnemySupportType.None;
         HideAttackTelegraph();
 
         if (actionQueueUI != null)
@@ -1309,6 +1647,58 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
+    private bool CanTakeFrontlineTurn()
+    {
+        if (enemyData == null
+            || enemyData.BehaviorType != EnemyBehaviorType.Melee
+            && enemyData.BehaviorType != EnemyBehaviorType.Gunner)
+        {
+            return true;
+        }
+
+        if (boardManager == null || playerMove == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int selfTileIndex)
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex))
+        {
+            return false;
+        }
+
+        int selfOffset = selfTileIndex - playerTileIndex;
+
+        if (selfOffset == 0)
+        {
+            return true;
+        }
+
+        foreach (EnemyController otherEnemy in waveManager.ActiveEnemies)
+        {
+            if (otherEnemy == null || otherEnemy == this
+                || otherEnemy.CurrentHealth <= 0
+                || !boardManager.TryGetTileIndex(
+                    otherEnemy.transform.position,
+                    out int otherTileIndex))
+            {
+                continue;
+            }
+
+            int otherOffset = otherTileIndex - playerTileIndex;
+            bool isOnSameSide = selfOffset * otherOffset > 0;
+            bool isCloserToPlayer =
+                Mathf.Abs(otherOffset) < Mathf.Abs(selfOffset);
+
+            if (isOnSameSide && isCloserToPlayer)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private bool IsFacing(int direction)
     {
         int facingDirection = transform.localScale.x >= 0f ? 1 : -1;
@@ -1340,12 +1730,20 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     {
         HideAttackTelegraph();
         currentHealth = enemyData == null ? 0 : enemyData.MaxHealth;
+        currentShield = 0;
+        RefreshShieldIndicator();
+        remainingSupportCharges = enemyData == null
+            ? 0
+            : enemyData.MaxSupportCharges;
+        recoveryTurnsRemaining = 0;
         queuedAttackActions.Clear();
         isQueueCreated = false;
         isAttackPrepared = false;
         isRetreating = false;
         preparedTargetTileIndex = -1;
         preparedTargetPosition = Vector3.zero;
+        preparedSupportTarget = null;
+        preparedSupportType = EnemySupportType.None;
         lastTurnAction = EnemyTurnActionType.None;
         isActing = false;
 

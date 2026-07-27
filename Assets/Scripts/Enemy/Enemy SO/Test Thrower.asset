@@ -31,6 +31,7 @@ MonoBehaviour:
   queuedActionInterval: 0.2
   meleeAdditionalAttackChance: 0.5
   firingRange: 4
+  recoveryTurns: 1
   thrownProjectilePrefab: {fileID: 0}
   thrownProjectileDuration: 0.5
   thrownProjectileArcHeight: 2
@@ -42,5 +43,5 @@ MonoBehaviour:
   telegraphSortingOrder: 20
   actions:
   - {fileID: 11400000, guid: 7e1cbe3d707bdae4dbd479728766a343, type: 2}
-  - {fileID: 11400000, guid: 5f9dab475b2e6b44f9cc4577790de03c, type: 2}
+  - {fileID: 11400000, guid: 3b0441c81f467f343aa547b66d03e376, type: 2}
   randomizeStartingActionIndex: 0
