@@ -1773,6 +1773,14 @@ PrefabInstance:
       propertyPath: stateManager
       value: 
       objectReference: {fileID: 2400001003}
+    - target: {fileID: 900000000000000001, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: bossBattleSprite
+      value: 
+      objectReference: {fileID: -7606975601340764827, guid: 19f28133d5738074091361511af1de07, type: 3}
+    - target: {fileID: 900000000000000001, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: normalBattleSprite
+      value: 
+      objectReference: {fileID: -8946948085223878041, guid: 445dfe322d452914b9e731df34abedba, type: 3}
     - target: {fileID: 910020260719000001, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: deckManager
       value: 
