@@ -176,6 +176,22 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
+        if (isAttackPrepared && queuedAttackActions.Count == 0)
+        {
+            ClearAttackQueue();
+        }
+
+        if (isAttackPrepared)
+        {
+            isAttackPrepared = false;
+            HideAttackTelegraph();
+            StartCoroutine(FireAttackQueue());
+            return;
+        }
+
+        // A prepared attack is already committed. Frontline priority is only
+        // used while choosing a new action; it must never delay a telegraphed
+        // attack when the player changes position before the enemy turn.
         if (!CanTakeFrontlineTurn())
         {
             if (TryGetTurnContext(
@@ -191,19 +207,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 CompleteAction(EnemyTurnActionType.Wait);
             }
 
-            return;
-        }
-
-        if (isAttackPrepared && queuedAttackActions.Count == 0)
-        {
-            ClearAttackQueue();
-        }
-
-        if (isAttackPrepared)
-        {
-            isAttackPrepared = false;
-            HideAttackTelegraph();
-            StartCoroutine(FireAttackQueue());
             return;
         }
 

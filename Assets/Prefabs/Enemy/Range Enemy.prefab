@@ -601,7 +601,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1f9aa7ff31a4e728dcfb51ce6f4c03d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StatusEffectController
-  statusIconParent: {fileID: 4018369371245492536, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+  statusIconParent: {fileID: 6549210758448731405}
   debuffIconPrefab: {fileID: 2146537680677166396, guid: 6e3ec2102ac0b974e8fc878109463ca1, type: 3}
   markSprite: {fileID: 21300000, guid: ea7180161ea299c469f3ed6595dfa177, type: 3}
   poisonSprite: {fileID: 21300000, guid: 17d546df5d530844cafa77fb15c602bb, type: 3}

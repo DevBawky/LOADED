@@ -58,6 +58,12 @@ public class StateManager : MonoBehaviour
     public int CurrentStageIndex => currentStageIndex;
     public int CurrentBattleIndex => currentBattleIndex;
     public GameFlowState CurrentState => currentState;
+    public StageData CurrentStage =>
+        stages != null
+        && currentStageIndex >= 0
+        && currentStageIndex < stages.Length
+            ? stages[currentStageIndex]
+            : null;
 
     private void Awake()
     {
