@@ -178,7 +178,19 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!CanTakeFrontlineTurn())
         {
-            CompleteAction(EnemyTurnActionType.Wait);
+            if (TryGetTurnContext(
+                    out int waitingDirectionToPlayer,
+                    out _)
+                && waitingDirectionToPlayer != 0
+                && !IsFacing(waitingDirectionToPlayer))
+            {
+                RotateToward(waitingDirectionToPlayer);
+            }
+            else
+            {
+                CompleteAction(EnemyTurnActionType.Wait);
+            }
+
             return;
         }
 
