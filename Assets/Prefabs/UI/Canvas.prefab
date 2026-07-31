@@ -9828,8 +9828,8 @@ MonoBehaviour:
   stateManager: {fileID: 0}
   battleContainer: {fileID: 1336073236779644326}
   battleIconPrefab: {fileID: 6106142887157099525, guid: e3d9886647748c8478dffac558070be8, type: 3}
-  normalBattleSprite: {fileID: 21300000, guid: 445dfe322d452914b9e731df34abedba, type: 3}
-  bossBattleSprite: {fileID: 21300000, guid: 19f28133d5738074091361511af1de07, type: 3}
+  normalBattleSprite: {fileID: -8946948085223878041, guid: 445dfe322d452914b9e731df34abedba, type: 3}
+  bossBattleSprite: {fileID: -7606975601340764827, guid: 19f28133d5738074091361511af1de07, type: 3}
   currentStageIndicator: {fileID: 1415182158540846084}
   connectorWidth: 48
   connectorDotSize: 6
