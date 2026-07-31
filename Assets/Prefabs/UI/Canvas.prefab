@@ -2564,7 +2564,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 5546142063150255101, guid: efb1f829c0acb3f4482e5783cc5eea9b, type: 3}
+  m_Sprite: {fileID: -5113469029405553909, guid: 387497f4a5cad4343a8b6b8f777690e9, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -9823,7 +9823,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c52cc75b7a2240bdad3684c98dfb2ec1, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::StageProgressUI
   stateManager: {fileID: 0}
   battleContainer: {fileID: 1336073236779644326}
