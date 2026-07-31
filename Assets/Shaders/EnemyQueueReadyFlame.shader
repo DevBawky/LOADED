@@ -12,7 +12,6 @@ Shader "Loaded/UI/Enemy Queue Ready Flame"
         _Softness("Edge Softness", Range(0.001, 0.15)) = 0.022
         _Speed("Flame Speed", Range(0.0, 8.0)) = 2.2
         _Scale("Flame Scale", Range(1.0, 40.0)) = 14.0
-        _Aspect("Image Aspect", Range(0.25, 8.0)) = 3.0
         _PulseAmount("Pulse Amount", Range(0.0, 1.0)) = 0.20
 
         [HideInInspector] _StencilComp("Stencil Comparison", Float) = 8
@@ -88,7 +87,6 @@ Shader "Loaded/UI/Enemy Queue Ready Flame"
                 float _Softness;
                 float _Speed;
                 float _Scale;
-                float _Aspect;
                 float _PulseAmount;
             CBUFFER_END
 
@@ -137,12 +135,20 @@ Shader "Loaded/UI/Enemy Queue Ready Flame"
             half4 Fragment(Varyings input) : SV_Target
             {
                 float time = _Time.y * _Speed;
+                float uvXGradient = length(float2(
+                    ddx(input.uv.x),
+                    ddy(input.uv.x)));
+                float uvYGradient = length(float2(
+                    ddx(input.uv.y),
+                    ddy(input.uv.y)));
+                float aspect = uvYGradient
+                    / max(uvXGradient, 0.00001);
                 float2 edge = min(input.uv, 1.0 - input.uv);
-                float edgeDistance = min(edge.x * _Aspect, edge.y);
+                float edgeDistance = min(edge.x * aspect, edge.y);
 
                 float2 flameCoordinate = float2(
                     input.uv.x * _Scale,
-                    input.uv.y * _Scale / max(_Aspect, 0.001));
+                    input.uv.y * _Scale / max(aspect, 0.001));
                 float movingNoise = FractalNoise(
                     flameCoordinate + float2(time * 0.37, -time));
                 float detailNoise = Noise(
