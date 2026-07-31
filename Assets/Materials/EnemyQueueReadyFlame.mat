@@ -19,7 +19,7 @@ Material:
   m_CustomRenderQueue: -1
   stringTagMap: {}
   disabledShaderPasses: []
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
@@ -29,11 +29,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Aspect: 3
     - _BorderWidth: 0.052
     - _ColorMask: 15
     - _FlameReach: 0.085
-    - _Intensity: 2.8
+    - _Intensity: 1
     - _PulseAmount: 0.2
     - _Scale: 14
     - _Softness: 0.018

@@ -42,6 +42,7 @@ public class EnemyActionQueueUI : MonoBehaviour
         ApplyQueueSprite(normalQueueSprite);
         queueImage.gameObject.SetActive(true);
         SetReadyImageActive(false);
+        RefreshQueueWidth();
     }
 
     public bool AddAttackIcon(EnemyActionData actionData)
@@ -60,6 +61,7 @@ public class EnemyActionQueueUI : MonoBehaviour
             : Color.white;
         attackIcon.preserveAspect = true;
         spawnedIcons.Add(attackIcon);
+        RefreshQueueWidth();
         return true;
     }
 
@@ -70,6 +72,7 @@ public class EnemyActionQueueUI : MonoBehaviour
             : normalQueueSprite);
         SetReadyImageActive(prepared && queueImage != null
             && queueImage.gameObject.activeSelf);
+        RefreshQueueWidth();
     }
 
     public void RemoveFirstIcon()
@@ -87,6 +90,8 @@ public class EnemyActionQueueUI : MonoBehaviour
             icon.gameObject.SetActive(false);
             Destroy(icon.gameObject);
         }
+
+        RefreshQueueWidth();
     }
 
     public void ResetDisplay()
@@ -109,6 +114,7 @@ public class EnemyActionQueueUI : MonoBehaviour
         }
 
         SetReadyImageActive(false);
+        RefreshQueueWidth();
     }
 
     private void ApplyQueueSprite(Sprite stateSprite)
@@ -169,6 +175,7 @@ public class EnemyActionQueueUI : MonoBehaviour
         queueReadyImage.color = Color.white;
         queueReadyImage.raycastTarget = false;
         queueReadyImage.material = queueReadyMaterial;
+        SyncReadyImageRect();
     }
 
     private void SetReadyImageActive(bool active)
@@ -179,5 +186,80 @@ public class EnemyActionQueueUI : MonoBehaviour
             queueReadyImage.gameObject.SetActive(
                 active && queueReadyMaterial != null);
         }
+    }
+
+    private void RefreshQueueWidth()
+    {
+        if (queueImage == null || iconParent == null)
+        {
+            return;
+        }
+
+        HorizontalLayoutGroup layoutGroup =
+            iconParent.GetComponent<HorizontalLayoutGroup>();
+        float spacing = layoutGroup != null
+            ? layoutGroup.spacing
+            : 0f;
+        float width = layoutGroup != null
+            ? layoutGroup.padding.left + layoutGroup.padding.right
+            : 0f;
+        int activeChildCount = 0;
+
+        for (int i = 0; i < iconParent.childCount; i++)
+        {
+            RectTransform child =
+                iconParent.GetChild(i) as RectTransform;
+            if (child == null || !child.gameObject.activeSelf)
+            {
+                continue;
+            }
+
+            if (activeChildCount > 0)
+            {
+                width += spacing;
+            }
+
+            width += child.rect.width;
+            activeChildCount++;
+        }
+
+        if (activeChildCount == 0)
+        {
+            width += GetEmptyQueueWidth();
+        }
+
+        queueImage.rectTransform.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Horizontal,
+            width);
+        SyncReadyImageRect();
+    }
+
+    private float GetEmptyQueueWidth()
+    {
+        if (attackIconPrefab == null)
+        {
+            return queueImage.rectTransform.rect.height;
+        }
+
+        float prefabWidth = attackIconPrefab.rectTransform.rect.width;
+        return prefabWidth > 0f
+            ? prefabWidth
+            : queueImage.rectTransform.rect.height;
+    }
+
+    private void SyncReadyImageRect()
+    {
+        if (queueImage == null || queueReadyImage == null)
+        {
+            return;
+        }
+
+        RectTransform queueRect = queueImage.rectTransform;
+        RectTransform readyRect = queueReadyImage.rectTransform;
+        readyRect.anchorMin = queueRect.anchorMin;
+        readyRect.anchorMax = queueRect.anchorMax;
+        readyRect.anchoredPosition = queueRect.anchoredPosition;
+        readyRect.sizeDelta = queueRect.sizeDelta;
+        readyRect.pivot = queueRect.pivot;
     }
 }
