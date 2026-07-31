@@ -4,15 +4,22 @@ using UnityEngine.UI;
 
 public class EnemyActionQueueUI : MonoBehaviour
 {
+    private const string ReadyImageName = "Image | Queue Ready";
+
     [Header("References")]
     [SerializeField] private Image queueImage;
     [SerializeField] private RectTransform iconParent;
     [SerializeField] private Image attackIconPrefab;
+    [SerializeField] private Image queueReadyImage;
 
-    [Header("Colors")]
-    [SerializeField] private Color normalQueueColor = Color.white;
-    [SerializeField] private Color preparedQueueColor =
-        new Color(1f, 0.5f, 0f, 1f);
+    [Header("Queue State Sprites")]
+    [SerializeField] private Sprite normalQueueSprite;
+    [SerializeField] private Sprite preparedQueueSprite;
+
+    [Header("Ready Emphasis")]
+    [SerializeField] private Material queueReadyMaterial;
+
+    [Header("Fallback")]
     [SerializeField] private Color missingIconColor = Color.red;
 
     private readonly List<Image> spawnedIcons = new List<Image>();
@@ -21,6 +28,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     private void Awake()
     {
+        EnsureReadyImage();
         ResetDisplay();
     }
 
@@ -31,8 +39,9 @@ public class EnemyActionQueueUI : MonoBehaviour
             return;
         }
 
-        queueImage.color = normalQueueColor;
+        ApplyQueueSprite(normalQueueSprite);
         queueImage.gameObject.SetActive(true);
+        SetReadyImageActive(false);
     }
 
     public bool AddAttackIcon(EnemyActionData actionData)
@@ -56,14 +65,11 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     public void SetPrepared(bool prepared)
     {
-        if (queueImage == null)
-        {
-            return;
-        }
-
-        queueImage.color = prepared
-            ? preparedQueueColor
-            : normalQueueColor;
+        ApplyQueueSprite(prepared
+            ? preparedQueueSprite
+            : normalQueueSprite);
+        SetReadyImageActive(prepared && queueImage != null
+            && queueImage.gameObject.activeSelf);
     }
 
     public void RemoveFirstIcon()
@@ -98,8 +104,80 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         if (queueImage != null)
         {
-            queueImage.color = normalQueueColor;
+            ApplyQueueSprite(normalQueueSprite);
             queueImage.gameObject.SetActive(false);
+        }
+
+        SetReadyImageActive(false);
+    }
+
+    private void ApplyQueueSprite(Sprite stateSprite)
+    {
+        if (queueImage == null)
+        {
+            return;
+        }
+
+        if (stateSprite != null)
+        {
+            queueImage.sprite = stateSprite;
+        }
+
+        queueImage.color = Color.white;
+    }
+
+    private void EnsureReadyImage()
+    {
+        if (queueReadyImage == null)
+        {
+            Transform readyTransform = transform.Find(ReadyImageName);
+            if (readyTransform != null)
+            {
+                queueReadyImage = readyTransform.GetComponent<Image>();
+            }
+        }
+
+        if (queueReadyImage == null && queueImage != null)
+        {
+            GameObject readyObject = new GameObject(
+                ReadyImageName,
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image));
+            readyObject.layer = queueImage.gameObject.layer;
+
+            RectTransform readyRect =
+                readyObject.GetComponent<RectTransform>();
+            RectTransform queueRect = queueImage.rectTransform;
+            readyRect.SetParent(queueRect.parent, false);
+            readyRect.anchorMin = queueRect.anchorMin;
+            readyRect.anchorMax = queueRect.anchorMax;
+            readyRect.anchoredPosition = queueRect.anchoredPosition;
+            readyRect.sizeDelta = queueRect.sizeDelta;
+            readyRect.pivot = queueRect.pivot;
+            readyRect.SetSiblingIndex(queueRect.GetSiblingIndex() + 1);
+
+            queueReadyImage = readyObject.GetComponent<Image>();
+        }
+
+        if (queueReadyImage == null)
+        {
+            return;
+        }
+
+        queueReadyImage.sprite = null;
+        queueReadyImage.color = Color.white;
+        queueReadyImage.raycastTarget = false;
+        queueReadyImage.material = queueReadyMaterial;
+    }
+
+    private void SetReadyImageActive(bool active)
+    {
+        EnsureReadyImage();
+        if (queueReadyImage != null)
+        {
+            queueReadyImage.gameObject.SetActive(
+                active && queueReadyMaterial != null);
         }
     }
 }
