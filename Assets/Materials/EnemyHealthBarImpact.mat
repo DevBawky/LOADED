@@ -38,7 +38,7 @@ Material:
     - _FlowSpeed: 0.2
     - _GhostMode: 0
     - _HealthRatio: 0.9142857
-    - _HitIntensity: 1
+    - _HitIntensity: 0.5
     - _HitPosition: 0.9142857
     - _HitStrength: 0
     - _Stencil: 0
