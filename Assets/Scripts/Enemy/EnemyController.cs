@@ -73,6 +73,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private readonly List<EnemyController> attackTargetBuffer =
         new List<EnemyController>();
     private MaterialPropertyBlock lineColorProperties;
+    private EnemyHealthBarFeedback healthBarFeedback;
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
@@ -111,6 +112,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             damageNumberDisplay = GetComponent<EnemyDamageNumberDisplay>();
         }
 
+        healthBarFeedback = GetComponent<EnemyHealthBarFeedback>();
+        if (healthBarFeedback == null && healthFillImage != null)
+        {
+            healthBarFeedback =
+                gameObject.AddComponent<EnemyHealthBarFeedback>();
+        }
+
+        healthBarFeedback?.Initialize(healthFillImage);
         ResetRuntimeState();
         ApplySprite();
         ApplyCanvasOrientation();
@@ -282,7 +291,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int modifiedDamage = statusEffects == null
             ? damage
             : statusEffects.ModifyIncomingAttackDamage(damage);
-        int appliedDamage = ApplyDamageInternal(modifiedDamage);
+        int appliedDamage = ApplyDamageInternal(
+            modifiedDamage,
+            isCritical,
+            isCritical ? 1.45f : 1f);
         int markBonusDamage = Mathf.Max(0, modifiedDamage - damage);
 
         // Damage popups communicate the attack's full power, not the amount
@@ -294,7 +306,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyStatusDamage(int damage)
     {
-        int appliedDamage = ApplyDamageInternal(damage);
+        int appliedDamage = ApplyDamageInternal(damage, false, 0.45f);
 
         // Status damage popups show the effect's full damage, even when the
         // target has less health remaining than the requested damage.
@@ -308,7 +320,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyCollisionDamage(int damage)
     {
-        int appliedDamage = ApplyDamageInternal(damage);
+        int appliedDamage = ApplyDamageInternal(damage, false, 1.2f);
         damageNumberDisplay?.ShowAttackDamage(appliedDamage, false);
         return appliedDamage > 0;
     }
@@ -363,7 +375,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         damageNumberDisplay?.ShowLifeStealStatus();
     }
 
-    private int ApplyDamageInternal(int damage)
+    private int ApplyDamageInternal(
+        int damage,
+        bool isCritical,
+        float impactStrength)
     {
         if (damage <= 0 || currentHealth <= 0)
         {
@@ -386,7 +401,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (currentHealth != previousHealth)
         {
-            RefreshHealthUI();
+            RefreshHealthUI(true, isCritical, impactStrength);
             HealthChanged?.Invoke(this, currentHealth, enemyData.MaxHealth);
         }
 
@@ -1783,7 +1798,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
     }
 
-    private void RefreshHealthUI()
+    private void RefreshHealthUI(
+        bool playDamageFeedback = false,
+        bool isCritical = false,
+        float impactStrength = 1f)
     {
         if (healthFillImage == null)
         {
@@ -1791,9 +1809,26 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         int maxHealth = enemyData == null ? 0 : enemyData.MaxHealth;
-        healthFillImage.fillAmount = maxHealth <= 0
+        float normalizedHealth = maxHealth <= 0
             ? 0f
             : (float)currentHealth / maxHealth;
+
+        if (healthBarFeedback == null)
+        {
+            healthFillImage.fillAmount = normalizedHealth;
+            return;
+        }
+
+        if (playDamageFeedback)
+        {
+            healthBarFeedback.PlayDamage(
+                normalizedHealth,
+                isCritical,
+                impactStrength);
+            return;
+        }
+
+        healthBarFeedback.SetValueImmediate(normalizedHealth);
     }
 
     private void ApplyCanvasOrientation()
