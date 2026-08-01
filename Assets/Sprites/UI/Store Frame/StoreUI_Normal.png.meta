@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 2c3eddfc062bbc648a75b48b4fef4be7
+guid: cdfcdde134c90e94eb0496a39d0a6312
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8251906663272932844
-    second: StoreUI_Bullet_Normal_0
+      213: -1459042441576085391
+    second: StoreUI_Item_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -46,7 +46,7 @@ TextureImporter:
   nPOTScale: 0
   lightmap: 0
   compressionQuality: 50
-  spriteMode: 2
+  spriteMode: 1
   spriteExtrude: 1
   spriteMeshType: 1
   alignment: 0
@@ -74,7 +74,7 @@ TextureImporter:
     buildTarget: DefaultTexturePlatform
     maxTextureSize: 2048
     resizeAlgorithm: 0
-    textureFormat: -1
+    textureFormat: 4
     textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
@@ -113,7 +113,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: StoreUI_Bullet_Normal_0
+      name: StoreUI_Item_0
       rect:
         serializedVersion: 2
         x: 0
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 41a10f73c965b7d80800000000000000
-      internalID: -8251906663272932844
+      spriteID: 17883a531a070cbe0800000000000000
+      internalID: -1459042441576085391
       vertices: []
       indices: 
       edges: []
@@ -138,7 +138,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5e97eb03825dee720800000000000000
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      StoreUI_Bullet_Normal_0: -8251906663272932844
+      StoreUI_Item_0: -1459042441576085391
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
