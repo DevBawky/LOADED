@@ -15,7 +15,13 @@ public enum BulletEffectType
     Weakness = 6,
     IncreaseMaxHealth = 7,
     DestroyBullet = 8,
-    GainGold = 9
+    GainGold = 9,
+    Jackpot = 10,
+    PowderPouch = 11,
+    StackNextShot = 12,
+    ClonePreviousShot = 13,
+    ChainFire = 14,
+    Resonance = 15
 }
 
 public enum BulletEffectTarget
@@ -207,7 +213,7 @@ public class BulletEffectData
     [Tooltip("Maximum travel tiles for Knockback. Has no effect on Poison or other effect types.")]
     [SerializeField] private int knockbackDistance = 1;
     [Min(1)]
-    [Tooltip("Amount used by Increase Max Health and Gain Gold. Has no effect on Poison or other effect types.")]
+    [Tooltip("Numeric value used by effects. Special bullets use this as a multiplier or percentage depending on their effect type.")]
     [SerializeField] private int amount = 1;
 
     public BulletEffectType EffectType => effectType;

@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Resonance
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_resonance
+  displayName: 공명탄
+  description: 실린더에 남아 있는 다른 공명탄 하나당 최종 대미지가 25% 증가합니다.
+  bulletIcon: {fileID: 6765700697151959687, guid: 60b4f5719946c9740b22d46877404c80, type: 3}
+  cylinderIcon: {fileID: -7185434700578658702, guid: f2f34068e9bbe2248a5746f96fcaff0a, type: 3}
+  price: 16
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 14
+  maxRange: 3
+  criticalChance: 15
+  criticalDamageMultiplier: 1.5
+  effects:
+  - effectType: 15
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 25
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.75, g: 0.25, b: 1, a: 1}
+  secondaryLineColor: {r: 0.2, g: 0.1, b: 0.55, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  removeCost: 8
+  upgradeCost: 20
+  upgradeLevels: []

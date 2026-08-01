@@ -325,6 +325,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b07d0d3b652285d478af7fd54c6ac530, type: 2}
   - {fileID: 11400000, guid: 5cc1ffa2caa707043af2a6876d4cd83d, type: 2}
   - {fileID: 11400000, guid: d32abd2fbde76bd489fb16a6f7fac438, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000002, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000004, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000005, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000001, type: 2}
   maxReloadAmount: 6
   deck: []
   loadedBullets: []
@@ -1553,6 +1557,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 5b1cc3f10fc87664185df1b66d740e6d, type: 2}
   - {fileID: 11400000, guid: 310b3e790ca558641b654f60fc863234, type: 2}
   - {fileID: 11400000, guid: 2c8721611477a5a498b670f1e06250bb, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000001, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000002, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000003, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000004, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000005, type: 2}
+  - {fileID: 11400000, guid: b1010000000000000000000000000006, type: 2}
   gradeWeights:
   - grade: 0
     appearanceWeight: 100

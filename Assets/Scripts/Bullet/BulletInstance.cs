@@ -9,6 +9,7 @@ public sealed class BulletInstance
     [Range(0, BulletData.MaximumUpgradeLevel)]
     [SerializeField] private int level;
     [SerializeField] private int acquisitionOrder;
+    [NonSerialized] private float temporaryCriticalChanceBonus;
 
     public BulletData Data => data;
     public int Level => Mathf.Clamp(level, 0, BulletData.MaximumUpgradeLevel);
@@ -97,13 +98,46 @@ public sealed class BulletInstance
 
     public bool RollCritical()
     {
-        return CanTriggerCritical(UnityEngine.Random.Range(0f, 100f));
+        return RollCritical(0f);
+    }
+
+    public bool RollCritical(float additionalChanceBonus)
+    {
+        float chanceBonus = temporaryCriticalChanceBonus
+            + Mathf.Max(0f, additionalChanceBonus);
+        temporaryCriticalChanceBonus = 0f;
+        return CanTriggerCritical(
+            UnityEngine.Random.Range(0f, 100f),
+            chanceBonus);
     }
 
     public bool CanTriggerCritical(float roll)
     {
-        float chance = CriticalChance;
+        return CanTriggerCritical(roll, 0f);
+    }
+
+    public bool CanTriggerCritical(float roll, float chanceBonus)
+    {
+        float chance = Mathf.Clamp(
+            CriticalChance + Mathf.Max(0f, chanceBonus),
+            0f,
+            100f);
         return chance >= 100f
             || chance > 0f && roll >= 0f && roll < chance;
+    }
+
+    public void AddTemporaryCriticalChance(float chanceBonus)
+    {
+        temporaryCriticalChanceBonus = Mathf.Clamp(
+            temporaryCriticalChanceBonus + Mathf.Max(0f, chanceBonus),
+            0f,
+            100f);
+    }
+
+    public float ConsumeTemporaryCriticalChanceBonus()
+    {
+        float chanceBonus = temporaryCriticalChanceBonus;
+        temporaryCriticalChanceBonus = 0f;
+        return chanceBonus;
     }
 }
