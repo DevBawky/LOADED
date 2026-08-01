@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_normal
   displayName: Normal
   description: "\uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
-  bulletIcon: {fileID: 2208703988740019828, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  bulletIcon: {fileID: 1749605940074572079, guid: ab8bf7764ae65e0428325c8eea1e6c74, type: 3}
   cylinderIcon: {fileID: 21300000, guid: ff771df025c71e04c9c634cbc6ec431b, type: 3}
   price: 5
   grade: 0

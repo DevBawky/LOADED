@@ -15,9 +15,9 @@ MonoBehaviour:
   enemyId: 0
   displayName: Test Enemy
   description: 
-  sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
+  sprite: {fileID: 8208270978804853502, guid: 32b887d53eb68e8438ec8cf99113acf5, type: 3}
   prefab: {fileID: 8378092708147667353, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-  maxHealth: 100
+  maxHealth: 70
   dropChance: 100
   dropItems:
   - dropType: 0
@@ -27,6 +27,19 @@ MonoBehaviour:
     bulletData: {fileID: 0}
   behaviorType: 0
   preferredDistance: 2
+  maxQueuedAttacks: 2
+  queuedActionInterval: 0.2
+  meleeAdditionalAttackChance: 0.5
+  firingRange: 5
+  thrownProjectilePrefab: {fileID: 0}
+  thrownProjectileDuration: 0.5
+  thrownProjectileArcHeight: 2
+  gunnerTelegraphMaterial: {fileID: 0}
+  throwerTelegraphMaterial: {fileID: 0}
+  telegraphLineWidth: 0.08
+  telegraphVerticalOffset: 0.15
+  throwerTelegraphSegments: 20
+  telegraphSortingOrder: 20
   actions:
   - {fileID: 11400000, guid: 7e1cbe3d707bdae4dbd479728766a343, type: 2}
   - {fileID: 11400000, guid: e86794259aec7ab48aa8a538ccb82888, type: 2}
