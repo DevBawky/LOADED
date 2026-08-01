@@ -163,6 +163,7 @@ public class PlayerShoot : MonoBehaviour
 
         if (deckManager.TryReload(out BulletInstance loadedBullet))
         {
+            SoundManager.PlayReload();
             combatPresentation?.PlayReload(loadedBullet, cylinderUI);
 
             if (loadedBullet == null || !loadedBullet.DoesNotConsumeTurn)
@@ -287,6 +288,7 @@ public class PlayerShoot : MonoBehaviour
             consumesTurn |= !bulletData.DoesNotConsumeTurn;
 
             bool isCritical = bulletData.RollCritical();
+            SoundManager.PlayFire();
             ShowBulletFeedback(bulletData);
             GenerateRecoil(bulletData);
             combatPresentation?.PlayShot(
