@@ -34,7 +34,7 @@ MonoBehaviour:
     activationChance: 100
     stackCount: 1
     knockbackDistance: 1
-    amount: 1
+    amount: 100
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -44,4 +44,68 @@ MonoBehaviour:
   recoilStrength: 0.12
   removeCost: 12
   upgradeCost: 30
-  upgradeLevels: []
+  upgradeLevels:
+  - description: "직전에 발사된 탄환을 복제하고 복제된 최종 대미지가 15% 증가합니다."
+    damage: 14
+    maxRange: 3
+    criticalChance: 22
+    criticalDamageMultiplier: 1.7
+    effects:
+    - effectType: 13
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 115
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.75, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 60
+  - description: "직전에 발사된 탄환을 복제하고 복제된 최종 대미지가 30% 증가합니다."
+    damage: 19
+    maxRange: 4
+    criticalChance: 32
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 13
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 130
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.75, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.15
+    removeCost: 12
+    upgradeCost: 100
+  - description: "직전에 발사된 탄환을 복제하고 복제된 최종 대미지가 50% 증가합니다."
+    damage: 26
+    maxRange: 5
+    criticalChance: 45
+    criticalDamageMultiplier: 2.4
+    effects:
+    - effectType: 13
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 150
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 50
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.75, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.18
+    removeCost: 12
+    upgradeCost: 0

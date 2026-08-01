@@ -44,4 +44,67 @@ MonoBehaviour:
   recoilStrength: 0
   removeCost: 8
   upgradeCost: 18
-  upgradeLevels: []
+  upgradeLevels:
+  - description: "실린더에 남은 탄환들의 치명타 확률을 35%p 증가시킵니다."
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 35
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+    secondaryLineColor: {r: 0.55, g: 0.2, b: 0.05, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    removeCost: 8
+    upgradeCost: 32
+  - description: "실린더에 남은 탄환들의 치명타 확률을 40%p 증가시킵니다."
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 40
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+    secondaryLineColor: {r: 0.55, g: 0.2, b: 0.05, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    removeCost: 8
+    upgradeCost: 55
+  - description: "실린더에 남은 탄환들의 치명타 확률을 50%p 증가시킵니다."
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 50
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+    secondaryLineColor: {r: 0.55, g: 0.2, b: 0.05, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    removeCost: 8
+    upgradeCost: 0
