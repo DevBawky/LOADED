@@ -265,6 +265,7 @@ public class PlayerShoot : MonoBehaviour
             else
             {
                 float damageMultiplier = GetSpecialDamageMultiplier(
+                    firedBullet,
                     resolvedBullet);
                 bool isStackingShot = FindSpecialEffect(
                     resolvedBullet,
@@ -448,20 +449,22 @@ public class PlayerShoot : MonoBehaviour
         deckManager.TryDestroyBullet(powderPouch);
     }
 
-    private float GetSpecialDamageMultiplier(BulletInstance bullet)
+    private float GetSpecialDamageMultiplier(
+        BulletInstance firedBullet,
+        BulletInstance resolvedBullet)
     {
         float multiplier = 1f;
         BulletEffectData jackpotEffect = FindSpecialEffect(
-            bullet,
+            resolvedBullet,
             BulletEffectType.Jackpot);
 
         if (jackpotEffect != null && deckManager.LoadedBullets.Count == 0)
         {
-            multiplier *= Mathf.Max(1f, jackpotEffect.Amount);
+            multiplier *= Mathf.Max(1f, jackpotEffect.Amount / 100f);
         }
 
         BulletEffectData resonanceEffect = FindSpecialEffect(
-            bullet,
+            resolvedBullet,
             BulletEffectType.Resonance);
 
         if (resonanceEffect != null)
@@ -480,6 +483,15 @@ public class PlayerShoot : MonoBehaviour
 
             multiplier *= 1f
                 + otherResonanceCount * resonanceEffect.Amount / 100f;
+        }
+
+        BulletEffectData cloneEffect = FindSpecialEffect(
+            firedBullet,
+            BulletEffectType.ClonePreviousShot);
+
+        if (cloneEffect != null && resolvedBullet != firedBullet)
+        {
+            multiplier *= Mathf.Max(1f, cloneEffect.Amount / 100f);
         }
 
         return multiplier;
