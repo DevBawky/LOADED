@@ -15,8 +15,8 @@ MonoBehaviour:
   bulletId: bullet_normal
   displayName: "\uC704\uCE58 \uBCC0\uACBD \uD0C4"
   description: "\uC801\uACFC \uC704\uCE58\uB97C \uBCC0\uACBD\uD569\uB2C8\uB2E4."
-  bulletIcon: {fileID: 2208703988740019828, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
-  cylinderIcon: {fileID: 4385501425044414559, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  bulletIcon: {fileID: -3074122253905808569, guid: 316c6ae07d228f64dae21108cca50ea3, type: 3}
+  cylinderIcon: {fileID: -1611615653400164907, guid: c2ab68a690e531f4bbbeb10bb951d17a, type: 3}
   price: 5
   grade: 1
   useCustomGradeNameColor: 0

@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_venom
   displayName: "\uBCA0\uB188"
   description: "\uB3C5\uC744 3 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
-  bulletIcon: {fileID: -7715894896725399453, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  bulletIcon: {fileID: -2161083405499952055, guid: b67da11b4e4b5774791c1f5837decbcb, type: 3}
   cylinderIcon: {fileID: 21300000, guid: 17d546df5d530844cafa77fb15c602bb, type: 3}
   price: 10
   grade: 1

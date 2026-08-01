@@ -53,7 +53,32 @@ public class StatusEffectController : MonoBehaviour
     private void Awake()
     {
         target = GetComponent<IStatusEffectTarget>();
+        ResolveStatusIconParent();
         RefreshAllIcons();
+    }
+
+    private void ResolveStatusIconParent()
+    {
+        if (statusIconParent != null && statusIconParent.IsChildOf(transform))
+        {
+            return;
+        }
+
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+
+        foreach (Transform child in children)
+        {
+            if (child != transform && child.name == "Image | Status")
+            {
+                statusIconParent = child;
+                return;
+            }
+        }
+
+        statusIconParent = null;
+        Debug.LogError(
+            $"{nameof(StatusEffectController)} requires a child named 'Image | Status'.",
+            this);
     }
 
     public int GetStacks(StatusEffectType type)
