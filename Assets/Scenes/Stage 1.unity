@@ -1572,6 +1572,10 @@ MonoBehaviour:
   - button: {fileID: 273098503}
     bulletIcon: {fileID: 1791891727}
     costText: {fileID: 664113471}
+  normalBulletFrame: {fileID: 21300000, guid: cdfcdde134c90e94eb0496a39d0a6312, type: 3}
+  rareBulletFrame: {fileID: 21300000, guid: 512f1cd4cd177c047bbd994a77c79e2d, type: 3}
+  aceBulletFrame: {fileID: 21300000, guid: 8a13e206a494c184294825def34af74b, type: 3}
+  legendaryBulletFrame: {fileID: 21300000, guid: 2c3eddfc062bbc648a75b48b4fef4be7, type: 3}
   itemPool:
   - {fileID: 11400000, guid: 63f9ffcefb944fc8bbeb16e419249663, type: 2}
   - {fileID: 11400000, guid: 593c3c05f9ee62842a3f0279f6b5a844, type: 2}
@@ -1780,7 +1784,7 @@ PrefabInstance:
     - target: {fileID: 114175309574063743, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 2dce321f07525bf459b2f8bb79912a70, type: 3}
+      objectReference: {fileID: 21300000, guid: cdfcdde134c90e94eb0496a39d0a6312, type: 3}
     - target: {fileID: 279672971277409706, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_sharedMaterial
       value: 
@@ -1920,7 +1924,7 @@ PrefabInstance:
     - target: {fileID: 1510995569842900841, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 2dce321f07525bf459b2f8bb79912a70, type: 3}
+      objectReference: {fileID: 21300000, guid: cdfcdde134c90e94eb0496a39d0a6312, type: 3}
     - target: {fileID: 1584526605786344787, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_IsActive
       value: 0
@@ -1952,7 +1956,7 @@ PrefabInstance:
     - target: {fileID: 1812022221537164040, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 21300000, guid: 2dce321f07525bf459b2f8bb79912a70, type: 3}
+      objectReference: {fileID: 21300000, guid: cdfcdde134c90e94eb0496a39d0a6312, type: 3}
     - target: {fileID: 1838034037266000816, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_Type
       value: 0
@@ -2413,6 +2417,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3866025126709216017, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 910cef29609db624487ffbbc6f002082, type: 3}
     - target: {fileID: 3942886695006446911, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_sharedMaterial
       value: 
