@@ -36,6 +36,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         Shader.PropertyToID("_GridColor");
 
     [Header("Data")]
+    [Tooltip("런타임에 WaveManager가 주입하는 적 데이터입니다.")]
     [SerializeField] private EnemyData enemyData;
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Image healthFillImage;
@@ -135,12 +136,13 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     }
 
     public bool Initialize(
+        EnemyData assignedEnemyData,
         BoardManager assignedBoardManager,
         PlayerMove assignedPlayerMove,
         PlayerHealth assignedPlayerHealth,
         WaveManager assignedWaveManager)
     {
-        if (enemyData == null || assignedBoardManager == null
+        if (assignedEnemyData == null || assignedBoardManager == null
             || assignedPlayerMove == null || assignedPlayerHealth == null
             || assignedWaveManager == null || actorMotion == null
             || actionQueueUI == null)
@@ -151,6 +153,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return false;
         }
 
+        enemyData = assignedEnemyData;
         boardManager = assignedBoardManager;
         playerMove = assignedPlayerMove;
         playerHealth = assignedPlayerHealth;
@@ -159,6 +162,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         ResetRuntimeState();
         ApplySprite();
         ApplyCanvasOrientation();
+        gameObject.name = string.IsNullOrWhiteSpace(enemyData.DisplayName)
+            ? enemyData.name
+            : enemyData.DisplayName;
         isInitialized = true;
         return true;
     }
@@ -1812,7 +1818,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void ApplySprite()
     {
-        if (spriteRenderer != null && enemyData != null && enemyData.Sprite != null)
+        if (spriteRenderer != null && enemyData != null)
         {
             spriteRenderer.sprite = enemyData.Sprite;
         }

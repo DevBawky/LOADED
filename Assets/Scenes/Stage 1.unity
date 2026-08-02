@@ -1131,6 +1131,7 @@ MonoBehaviour:
   spawnPositionOffset: {x: 0, y: 1.3, z: 0}
   enemyTurnDelay: 0.2
   enemyActionInterval: 0.1
+  enemyPrefabTemplate: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
   boardManager: {fileID: 561211666}
   playerMove: {fileID: 2023230408}
   playerHealth: {fileID: 2023230410}
