@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_coagulation
   displayName: 응고탄
-  description: 잃은 체력 2%당 치명타 확률이 1%p 증가합니다.
+  description: "잃은 체력 2%당 치명타 확률이 1%p 증가합니다."
   bulletIcon: {fileID: -1940218674652858746, guid: d070a037b58048a4589e036dc85abd39, type: 3}
   cylinderIcon: {fileID: 21300000, guid: de7770955ab5a3940a0c00259e4c5b21, type: 3}
   price: 15
@@ -32,8 +32,8 @@ MonoBehaviour:
   - effectType: 17
     target: 1
     activationChance: 100
-    stackCount: 1
-    knockbackDistance: 2
+    stackCount: 2
+    knockbackDistance: 1
     amount: 1
   conditionalEvents: []
   penetrationChances: []
@@ -43,5 +43,75 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
   removeCost: 8
-  upgradeCost: 18
-  upgradeLevels: []
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "잃은 체력 2%당 치명타 확률이 1%p 증가합니다."
+    damage: 15
+    maxRange: 4
+    criticalChance: 14
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 17
+      target: 1
+      activationChance: 100
+      stackCount: 2
+      knockbackDistance: 1
+      amount: 1
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 35
+  - description: "잃은 체력 1%당 치명타 확률이 1%p 증가합니다."
+    damage: 19
+    maxRange: 5
+    criticalChance: 18
+    criticalDamageMultiplier: 2.2
+    effects:
+    - effectType: 17
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 60
+  - description: "잃은 체력 1%당 치명타 확률이 1%p 증가하며, 50% 확률로 피해만큼 흡혈합니다."
+    damage: 24
+    maxRange: 5
+    criticalChance: 22
+    criticalDamageMultiplier: 2.5
+    effects:
+    - effectType: 17
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+    - effectType: 5
+      target: 1
+      activationChance: 50
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 30
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 0

@@ -43,7 +43,7 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0.08
   removeCost: 12
-  upgradeCost: 32
+  upgradeCost: 30
   upgradeLevels:
   - description: "발사 후 100%, 82%, 64%, 46%, 28% 확률로 연속 사격합니다. 탄환은 추가로 소모하지 않습니다."
     damage: 10
@@ -65,7 +65,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.08
     removeCost: 12
-    upgradeCost: 60
+    upgradeCost: 55
   - description: "발사 후 100%, 85%, 70%, 55%, 40%, 25% 확률로 연속 사격합니다. 탄환은 추가로 소모하지 않습니다."
     damage: 12
     maxRange: 4
@@ -86,7 +86,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 12
-    upgradeCost: 100
+    upgradeCost: 90
   - description: "발사 후 100%, 90%, 80%, 70%, 60%, 50%, 40% 확률로 연속 사격합니다. 탄환은 추가로 소모하지 않습니다."
     damage: 15
     maxRange: 5

@@ -66,7 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 20
   - description: "\uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
     damage: 35
     maxRange: 3
@@ -81,7 +81,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 35
   - description: "\uB354 \uB9CE\uC774 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
       \uD0C4\uD658\uC785\uB2C8\uB2E4."
     damage: 50
@@ -97,4 +97,4 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.35
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 0

@@ -46,7 +46,7 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
   removeCost: 5
-  upgradeCost: 20
+  upgradeCost: 30
   upgradeLevels:
   - description: "\uC801 \uCC98\uCE58 \uC2DC 80% \uD655\uB960\uB85C \uCD5C\uB300
       \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4."
@@ -71,7 +71,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 40
+    upgradeCost: 55
   - description: "\uC801 \uCC98\uCE58 \uC2DC 100% \uD655\uB960\uB85C \uCD5C\uB300
       \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4.\n30% \uD655\uB960\uB85C
       \uCD5C\uB300 2\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
@@ -98,7 +98,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 60
+    upgradeCost: 90
   - description: "\"\uC801 \uCC98\uCE58 \uC2DC 100% \uD655\uB960\uB85C \uCD5C\uB300
       \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4.\n30% \uD655\uB960\uB85C
       \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n\uC7AC\uC7A5\uC804
@@ -128,4 +128,4 @@ MonoBehaviour:
     doesNotConsumeTurn: 1
     recoilStrength: 0.35
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 0
