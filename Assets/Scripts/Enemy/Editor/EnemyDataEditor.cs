@@ -15,12 +15,16 @@ public class EnemyDataEditor : Editor
     private SerializedProperty preferredDistance;
     private SerializedProperty maxQueuedAttacks;
     private SerializedProperty queuedActionInterval;
+    private SerializedProperty queueElementRevealDuration;
     private SerializedProperty recoveryTurns;
     private SerializedProperty maxSupportCharges;
     private SerializedProperty supportHealAmount;
     private SerializedProperty supportShieldAmount;
     private SerializedProperty supportHealThreshold;
     private SerializedProperty thrownProjectilePrefab;
+    private SerializedProperty thrownProjectileSprite;
+    private SerializedProperty thrownProjectileColor;
+    private SerializedProperty thrownProjectileSize;
     private SerializedProperty thrownProjectileDuration;
     private SerializedProperty thrownProjectileArcHeight;
     private SerializedProperty gunnerTelegraphMaterial;
@@ -47,12 +51,16 @@ public class EnemyDataEditor : Editor
         preferredDistance = Find("preferredDistance");
         maxQueuedAttacks = Find("maxQueuedAttacks");
         queuedActionInterval = Find("queuedActionInterval");
+        queueElementRevealDuration = Find("queueElementRevealDuration");
         recoveryTurns = Find("recoveryTurns");
         maxSupportCharges = Find("maxSupportCharges");
         supportHealAmount = Find("supportHealAmount");
         supportShieldAmount = Find("supportShieldAmount");
         supportHealThreshold = Find("supportHealThreshold");
         thrownProjectilePrefab = Find("thrownProjectilePrefab");
+        thrownProjectileSprite = Find("thrownProjectileSprite");
+        thrownProjectileColor = Find("thrownProjectileColor");
+        thrownProjectileSize = Find("thrownProjectileSize");
         thrownProjectileDuration = Find("thrownProjectileDuration");
         thrownProjectileArcHeight = Find("thrownProjectileArcHeight");
         gunnerTelegraphMaterial = Find("gunnerTelegraphMaterial");
@@ -81,7 +89,8 @@ public class EnemyDataEditor : Editor
             "전투 능력치",
             maxHealth,
             maxQueuedAttacks,
-            queuedActionInterval);
+            queuedActionInterval,
+            queueElementRevealDuration);
 
         EditorGUILayout.Space(6f);
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
@@ -115,6 +124,9 @@ public class EnemyDataEditor : Editor
                     MessageType.Info);
                 EditorGUILayout.PropertyField(recoveryTurns);
                 EditorGUILayout.PropertyField(thrownProjectilePrefab);
+                EditorGUILayout.PropertyField(thrownProjectileSprite);
+                EditorGUILayout.PropertyField(thrownProjectileColor);
+                EditorGUILayout.PropertyField(thrownProjectileSize);
                 EditorGUILayout.PropertyField(thrownProjectileDuration);
                 EditorGUILayout.PropertyField(thrownProjectileArcHeight);
                 EditorGUILayout.PropertyField(throwerTelegraphMaterial);

@@ -34,6 +34,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         Shader.PropertyToID("_BeamColor");
     private static readonly int GridColorId =
         Shader.PropertyToID("_GridColor");
+    private const int DefaultProjectileResolution = 32;
+    private static Sprite defaultThrownProjectileSprite;
 
     [Header("Data")]
     [Tooltip("런타임에 WaveManager가 주입하는 적 데이터입니다.")]
@@ -637,8 +639,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private bool TryAppendAction(
         EnemyActionType actionType,
-        int actionIndex)
+        int actionIndex,
+        out Image attackIcon)
     {
+        attackIcon = null;
+
         if (queuedAttackActions.Count >= enemyData.MaxQueuedAttacks)
         {
             return false;
@@ -650,7 +655,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             actionType != EnemyActionType.Support);
 
         if (attackAction == null
-            || !actionQueueUI.AddAttackIcon(attackAction))
+            || !actionQueueUI.AddAttackIcon(attackAction, out attackIcon))
         {
             return false;
         }
@@ -661,8 +666,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void CreateAttackQueue()
     {
-        EnsureAttackQueueVisible();
-        CompleteAction(EnemyTurnActionType.CreateQueue);
+        isQueueCreated = true;
+        isAttackPrepared = false;
+        StartCoroutine(RevealAttackQueue());
     }
 
     private void RegisterAction(
@@ -670,14 +676,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int actionIndex)
     {
         if (!isQueueCreated
-            || !TryAppendAction(actionType, actionIndex))
+            || !TryAppendAction(actionType, actionIndex, out Image attackIcon))
         {
             ClearAttackQueue();
             CompleteAction(EnemyTurnActionType.Wait);
             return;
         }
 
-        CompleteAction(EnemyTurnActionType.RegisterAttack);
+        StartCoroutine(RevealRegisteredAction(attackIcon));
     }
 
     private void ApplyInitialFacingDirection()
@@ -694,16 +700,19 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         transform.localScale = localScale;
     }
 
-    private void EnsureAttackQueueVisible()
+    private IEnumerator RevealAttackQueue()
     {
-        if (isQueueCreated)
-        {
-            return;
-        }
+        yield return actionQueueUI.RevealQueue(
+            enemyData.QueueElementRevealDuration);
+        CompleteAction(EnemyTurnActionType.CreateQueue);
+    }
 
-        isQueueCreated = true;
-        isAttackPrepared = false;
-        actionQueueUI.ShowQueue();
+    private IEnumerator RevealRegisteredAction(Image attackIcon)
+    {
+        yield return actionQueueUI.RevealIcon(
+            attackIcon,
+            enemyData.QueueElementRevealDuration);
+        CompleteAction(EnemyTurnActionType.RegisterAttack);
     }
 
     private void PrepareCurrentAttackQueue()
@@ -1297,7 +1306,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         float duration = enemyData.ThrownProjectileDuration;
         float arcHeight = enemyData.ThrownProjectileArcHeight;
         GameObject projectile = enemyData.ThrownProjectilePrefab == null
-            ? null
+            ? CreateDefaultThrownProjectile(startPosition)
             : Instantiate(
                 enemyData.ThrownProjectilePrefab,
                 startPosition,
@@ -1345,6 +1354,76 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             projectile.transform.position = targetPosition;
             Destroy(projectile);
         }
+    }
+
+    private GameObject CreateDefaultThrownProjectile(Vector3 position)
+    {
+        GameObject projectile = new GameObject("Sprite | Thrown Projectile");
+        projectile.transform.position = position;
+        projectile.transform.localScale = Vector3.one
+            * enemyData.ThrownProjectileSize;
+        SpriteRenderer projectileRenderer =
+            projectile.AddComponent<SpriteRenderer>();
+        projectileRenderer.sprite = enemyData.ThrownProjectileSprite != null
+            ? enemyData.ThrownProjectileSprite
+            : GetDefaultThrownProjectileSprite();
+        projectileRenderer.color = enemyData.ThrownProjectileColor;
+
+        if (spriteRenderer != null)
+        {
+            projectileRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
+            projectileRenderer.sortingOrder = spriteRenderer.sortingOrder + 1;
+        }
+
+        return projectile;
+    }
+
+    private static Sprite GetDefaultThrownProjectileSprite()
+    {
+        if (defaultThrownProjectileSprite != null)
+        {
+            return defaultThrownProjectileSprite;
+        }
+
+        int resolution = DefaultProjectileResolution;
+        Texture2D texture = new Texture2D(
+            resolution,
+            resolution,
+            TextureFormat.RGBA32,
+            false);
+        texture.name = "Runtime Default Thrown Projectile";
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.filterMode = FilterMode.Bilinear;
+        texture.hideFlags = HideFlags.HideAndDontSave;
+        Color[] pixels = new Color[resolution * resolution];
+        Vector2 center = Vector2.one * ((resolution - 1) * 0.5f);
+        float radius = resolution * 0.46f;
+        float edgeWidth = 1.5f;
+
+        for (int y = 0; y < resolution; y++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                float distance = Vector2.Distance(new Vector2(x, y), center);
+                float alpha = 1f - Mathf.SmoothStep(
+                    radius - edgeWidth,
+                    radius,
+                    distance);
+                pixels[y * resolution + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply(false, true);
+        defaultThrownProjectileSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, resolution, resolution),
+            new Vector2(0.5f, 0.5f),
+            resolution);
+        defaultThrownProjectileSprite.name =
+            "Runtime Default Thrown Projectile";
+        defaultThrownProjectileSprite.hideFlags = HideFlags.HideAndDontSave;
+        return defaultThrownProjectileSprite;
     }
 
     private void ApplyAttackToTarget(

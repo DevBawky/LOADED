@@ -1,5 +1,7 @@
 ## AI-005: EnemyData
 
+> 260802 후속 변경: `EnemyData`의 프리팹 참조는 제거되었으며 새 적은 SO만 추가한다. 최신 단일 템플릿 구조와 행동 연출 설정은 [`0802_EnemyData_Template_and_ActionPresentation.md`](0802_EnemyData_Template_and_ActionPresentation.md)를 기준으로 한다.
+
 > 260718 후속 변경: 기존 `Defeat Reward`는 공용 `Drop Chance`와 가중치형 `Drop Items` 표로 교체되었다. 골드/아이템/탄환 보상 설정은 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.
 
 ### Basic Information
