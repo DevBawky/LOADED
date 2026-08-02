@@ -164,6 +164,12 @@ public class DeckManager : MonoBehaviour
         deck.AddRange(graveyard);
         loadedBullets.Clear();
         graveyard.Clear();
+
+        foreach (BulletInstance bullet in deck)
+        {
+            bullet?.ResetStageState();
+        }
+
         ShuffleDeck();
         StateChanged?.Invoke();
     }
