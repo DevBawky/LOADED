@@ -4,6 +4,10 @@
 
 > 260720 스테이지 전환 변경: 스테이지의 마지막 전투가 끝나면 실린더의 모든 장전 탄환을 graveyard로 회수하고, 탄환 이미지와 실린더 오브젝트를 즉시 비활성화하며 회전 각도를 0으로 초기화한다. 다음 스테이지 시작 직전 draw deck, loaded bullets와 graveyard의 전체 보유 탄환을 draw deck으로 합친 뒤 Fisher-Yates 방식으로 다시 셔플한다. 같은 스테이지 안의 다음 전투로 이동할 때는 이 전체 셔플을 실행하지 않는다.
 
+> 260802 과잉 사격 방지 변경: 적을 대상으로 시작한 전탄 발사에서는 매 발을 소비하기 직전에 현재 사거리 안의 생존 적을 다시 조회한다. 예약 피해까지 고려한 유효 표적이 없으면 발사를 즉시 종료하고 아직 발사하지 않은 탄환은 실린더에 보존한다. 연쇄 및 탄피 추가 사격도 같은 검사를 사용하며, 이미 발사된 탄환만 기존 피해·턴·무덤 이동 규칙을 적용한다.
+
+> 260802 허공 전탄 발사 변경: 발사 시작 시 첫 실제 사격 탄환의 사거리 안에 유효 표적이 없으면 의도적인 `허공 전탄 발사 모드`로 고정한다. 이 모드에서는 중간에 표적이 없어도 실린더의 모든 탄환을 발사하며 기존 miss LineRenderer, 반동, 피드백과 턴 규칙을 적용한다. 적을 대상으로 시작했다가 마지막 적을 처치한 경우에는 허공 모드로 전환하지 않고 과잉 사격 방지 규칙을 유지한다.
+
 ### Basic Information
 
 * Date: 260717
@@ -49,8 +53,9 @@
 * 이동하는 Projectile 대신 LineRenderer를 즉시 표시합니다.
 * LineRenderer 시작점은 Fire Point, 길이는 바라보는 방향과 최대 사거리 안에서 관통 판정까지 통과한 마지막 적의 X 거리로 설정합니다.
 * 발사선의 기준 높이는 Fire Point의 Y로 고정하고 탄환마다 설정 가능한 `-N° ~ +N°` 랜덤 각도 편차를 적용합니다.
-* 유효 사거리 안에 적이 없어도 발사를 실행하고 탄환 및 턴 규칙을 정상 처리합니다.
-* 최대 사거리가 보드 경계를 넘으면 마지막 유효 타일의 정중앙을 끝점으로 사용합니다.
+* 발사 시작 시 첫 실제 사격 탄환에 유효 표적이 없으면 허공 사격으로 판정하고 실린더의 탄환을 전부 발사합니다.
+* 적을 대상으로 시작한 발사는 마지막 적 처치 후 중단하고 남은 탄환을 보존합니다.
+* 허공 사격의 miss 연출은 보드 경계 안의 마지막 유효 타일을 끝점으로 사용합니다.
 * Line Material이 비어 있으면 프리팹의 Material을 유지하고 Primary/Secondary Line Color를 적용합니다.
 * Primary와 Secondary 색을 밝은 중심부와 불규칙한 외곽 연기층에 함께 사용하고, 사각형처럼 보이지 않는 노이즈 기반 실루엣을 만듭니다.
 * 어두운 배경과 밝은 배경 모두에서 식별할 수 있도록 연기 불투명도, 코어 밝기와 LineRenderer 폭을 보강합니다.
@@ -65,7 +70,54 @@
 
 ### Output Summary
 
-실제로 수정한 파일은 `BulletData.cs`, `BulletLine.cs`, `DeckManager.cs`, `BoardManager.cs`, `WaveManager.cs`, `PlayerMove.cs`, `PlayerShoot.cs`, `PlayerCylinderUI.cs`, `ActorMotion.cs`, `Bullet.prefab`, `Player.prefab`, `Test Enemy.prefab`, `SampleScene.unity`, `Test Bullet.asset`, `BulletSmokeFlameLine.shader`, `BulletSmokeFlameLine.mat`, `0717_Combat_DeckManager_PlayerShoot.md`이며 기존 `BulletProjectile.cs`는 `BulletLine.cs`로 대체했다.
+#### 260802 과잉 사격 방지 시스템
+
+기존 전탄 발사는 장전 탄환을 먼저 `LoadedBullets`에서 제거해 graveyard로 옮긴 다음 표적을 조회했다. 따라서 앞선 탄환이 마지막 적을 처치해도 다음 탄환은 이미 소비된 뒤 허공을 향한 LineRenderer, 반동과 발사 연출을 실행했다. 전탄 발사에서 이 과정이 장전 수만큼 반복되어 탄약 낭비와 불필요한 연출이 자주 발생했다.
+
+현재는 다음 순서로 처리한다.
+
+1. 실린더의 다음 `BulletInstance`와 `ClonePreviousShot` 결과를 결정한다.
+2. 해당 탄환의 `MaxRange`와 플레이어가 바라보는 방향을 기준으로 적 목록을 다시 조회한다.
+3. 각 적의 `현재 체력 + 현재 보호막 - 예약 피해`를 계산한다.
+4. 예상 내구도가 1 이상인 적만 유효 표적으로 유지한다.
+5. 발사 시작 시 유효 표적 유무로 `표적 발사 모드`와 `허공 전탄 발사 모드`를 한 번 결정한다.
+6. 표적 발사 모드에서는 유효 표적이 있을 때만 `DeckManager.TryFireLoadedBullet`을 호출한다. 허공 전탄 발사 모드에서는 표적이 없어도 호출해 모든 탄환을 graveyard로 이동한다.
+7. 관통 판정으로 확정된 각 대상에 크리티컬, 플레이어 공격력 보정, 거리·상태·벽 조건 보정과 표식의 받는 피해 증가를 반영한 예상 피해를 예약한다.
+8. 실제 피해와 부가 효과 처리가 끝나면 해당 발사의 예약 피해를 해제한다.
+9. 다음 탄환은 갱신된 실제 체력과 남아 있는 예약 피해를 기준으로 처음부터 표적을 다시 선택한다.
+
+예약 피해는 다음 식을 사용한다.
+
+`예상 내구도 = CurrentHealth + CurrentShield - ReservedDamage`
+
+보호막을 체력과 함께 포함하므로 보호막이 남은 적을 이미 처치 예정인 대상으로 잘못 제외하지 않는다. `EnemyController.PredictAttackDamage`는 실제 `ApplyAttackDamage`와 같은 표식 피해 배율을 사용하되 상태를 변경하지 않는다. 독 폭발처럼 발사 처리 중 실제로 추가 피해를 주는 효과는 다음 발사의 실시간 표적 재조회에서 반영된다.
+
+현재 `PlayerShoot`은 한 발의 실제 피해 처리가 끝난 후 다음 발로 넘어가는 직렬 구조다. 따라서 일반적인 경우 다음 발은 이미 감소한 실제 체력을 읽으며, 예약 피해 저장소는 조건부 이벤트나 연출 Coroutine이 진행 중인 구간의 중복 배정을 방지하고 이후 발사 처리의 병렬화에도 같은 규칙을 유지할 수 있게 한다.
+
+#### 표적 발사와 허공 전탄 발사 판정
+
+발사 모드는 Shoot Coroutine 시작 시 한 번만 결정하며 도중에 전환하지 않는다.
+
+- 첫 탄환이 일반 사격 탄환이면 해당 탄환의 현재 `MaxRange` 안에 예상 내구도가 남은 적이 있는지 확인한다.
+- 첫 탄환이 `PowderPouch`라면 뒤쪽 장전 목록에서 처음으로 실제 사격 가능한 탄환을 찾아 유효 표적 여부를 확인한다.
+- 유효 표적이 있으면 표적 발사 모드다. 매 발 재타겟팅하고 마지막 적 처치 후 남은 탄환을 보존한다.
+- 유효 표적이 없으면 허공 전탄 발사 모드다. 모든 일반 탄환은 최대 사거리 방향으로 miss LineRenderer를 만들며 실린더가 빌 때까지 계속 발사한다.
+- 허공 전탄 발사 도중 적이 새로 유효 범위에 들어오면 해당 시점의 탄환은 정상 적중할 수 있지만, 모드는 바뀌지 않으므로 이후 다시 표적이 없어져도 끝까지 발사한다.
+- 적을 대상으로 시작한 뒤 적이 모두 사망해도 허공 모드로 전환하지 않는다. 이것이 의도적인 허공 사격과 과잉 사격을 구분하는 기준이다.
+
+유효 표적은 현재 바라보는 방향과 해당 탄환의 최대 사거리 안에 있어야 한다. 반대 방향의 적에게 자동으로 회전하지 않는다. 표적 발사 모드에서 현재 탄환에 표적이 없으면 더 아래에 장전된 장거리 탄환을 임의로 건너뛰지 않고 발사를 종료하며, 실린더의 LIFO 순서를 보존한다.
+
+특수 발사 규칙도 다음과 같이 정리했다.
+
+- `ChainFire`: 추가 발사 직전에 다시 표적을 조회한다. 앞선 연쇄 발사가 마지막 적을 처치하면 남은 연쇄 횟수는 연출 없이 종료된다.
+- `ShellCollector`: 탄피 스택으로 발생하는 추가 사격도 매번 재조회하며 유효 표적이 사라지면 남은 추가 사격을 종료한다.
+- `PowderPouch`: 표적 발사 모드에서는 뒤에 장전된 실제 발사 탄환 중 유효 표적을 가진 탄환이 있을 때만 소비한다. 허공 전탄 발사 모드에서는 다른 탄환과 함께 모두 소비한다.
+- `StackNextShot`: 마지막 적 처치로 전탄 발사가 중단되면 누적 피해 보너스를 실린더의 다음 탄환에 임시 피해 보너스로 이전한다. 탄환은 보존됐는데 보너스만 사라지는 문제를 방지한다.
+- 관통: 예약 피해를 기준으로 이미 처치 예정인 적은 후보에서 제외하며, 남은 후보를 가까운 순서로 기존 관통 확률에 따라 확정한다.
+
+표적 발사 모드에서 한 발도 소비하지 못하고 종료된 Shoot은 턴을 소비하지 않는다. 일부 탄환을 정상 발사한 뒤 표적이 없어 중단됐다면 발사된 탄환만 graveyard에 남고, 그중 턴 소비 탄환이 하나라도 있을 때 기존과 동일하게 전체 행동의 턴을 한 번 소비한다. 허공 전탄 발사 모드에서는 모든 장전 탄환이 기존 규칙대로 소비되며, 그중 턴 소비 탄환이 하나라도 있으면 턴을 한 번 소비한다.
+
+실제로 수정한 파일은 `BulletData.cs`, `BulletLine.cs`, `DeckManager.cs`, `BoardManager.cs`, `WaveManager.cs`, `PlayerMove.cs`, `PlayerShoot.cs`, `PlayerCylinderUI.cs`, `ActorMotion.cs`, `EnemyController.cs`, `Bullet.prefab`, `Player.prefab`, `Test Enemy.prefab`, `SampleScene.unity`, `Test Bullet.asset`, `BulletSmokeFlameLine.shader`, `BulletSmokeFlameLine.mat`, `0717_Combat_DeckManager_PlayerShoot.md`이며 기존 `BulletProjectile.cs`는 `BulletLine.cs`로 대체했다. 260802 과잉 사격 방지 변경에서 직접 수정한 런타임 코드는 `PlayerShoot.cs`와 피해 예측 API를 추가한 `EnemyController.cs`다.
 
 `BulletData`에 `doesNotConsumeTurn`과 `[Min(0f)]`가 적용된 `recoilStrength`를 추가했다. 두 필드는 기존 필드 뒤에 추가했으며, 후속 LineRenderer 변경에서 기존 `lineColor`를 `primaryLineColor`로 확장하고 `FormerlySerializedAs`를 사용해 기존 탄환 에셋 값을 유지했다. `secondaryLineColor`를 별도로 추가해 두 색을 탄환 SO마다 설정할 수 있다.
 
@@ -85,7 +137,7 @@
 
 `PlayerShoot`은 발사한 `BulletInstance`의 현재 레벨에서 `Critical Chance`와 `Critical Damage Multiplier`를 함께 조회한다. 실제 발사에 성공한 탄환마다 한 번 판정하고 관통 대상 전체가 그 결과를 공유한다. Player 프리팹에는 같은 루트의 `PlayerHealth`를 직접 연결했으며, 골드 이벤트는 `CurrencyManager` 직렬화 참조 또는 런타임 씬 참조를 사용한다. 상세 계산 및 조건부 이벤트 순서는 `0718_Combat_BulletEffects.md`를 따른다.
 
-`WaveManager.GetEnemiesInDirection`은 플레이어 타일을 기준으로 바라보는 방향과 `MaxRange` 안의 적을 가까운 순서로 제공한다. 수집 시 각 적의 타일 거리와 타일 인덱스를 한 번만 저장하고 그 값으로 정렬해, 정렬 비교 도중 Transform 위치를 다시 조회하며 순서가 달라지는 경로를 제거했다. 첫 적은 확정 적중하고 이후 적은 `Penetration Chances`를 단계별로 판정한다. `PlayerShoot`은 확정된 관통 대상들을 가까운 순서로 각각 처리하며, 앞 대상이 이미 제거됐거나 직접 피해가 0이어도 뒤쪽 대상 처리를 계속한다. 적이 있으면 LineRenderer 길이는 마지막 적중 적까지의 X 거리로 계산한다. 적이 없으면 바라보는 방향의 최대 사거리 내 가장 먼 유효 타일까지의 X 거리를 사용하고, 보드 끝에서 바깥을 바라보는 경우에만 Fire Point에서 사거리만큼 전방을 fallback 거리로 사용한다. 실제 발사선은 Fire Point Y의 수평 기준에서 랜덤 각도를 적용한다. 빗나간 탄환도 장전 목록에서 무덤으로 이동하고 반동과 `DoesNotConsumeTurn` 규칙을 정상 적용한다.
+`WaveManager.GetEnemiesInDirection`은 플레이어 타일을 기준으로 바라보는 방향과 `MaxRange` 안의 적을 가까운 순서로 제공한다. 수집 시 각 적의 타일 거리와 타일 인덱스를 한 번만 저장하고 그 값으로 정렬해, 정렬 비교 도중 Transform 위치를 다시 조회하며 순서가 달라지는 경로를 제거했다. 첫 적은 확정 적중하고 이후 적은 `Penetration Chances`를 단계별로 판정한다. `PlayerShoot`은 확정된 관통 대상들을 가까운 순서로 각각 처리하며, 앞 대상이 이미 제거됐거나 직접 피해가 0이어도 뒤쪽 대상 처리를 계속한다. 적이 있으면 LineRenderer 길이는 마지막 적중 적까지의 X 거리로 계산한다. 실제 발사선은 Fire Point Y의 수평 기준에서 랜덤 각도를 적용한다. 허공 전탄 발사 모드에서는 유효 적이 없을 때 최대 유효 사거리 타일까지 miss LineRenderer와 발사 연출을 실행한다.
 
 발사 초기화 시 LineRenderer의 위치 개수를 2로 설정하고 시작점과 끝점을 즉시 적용한다. Line Material이 null이 아닐 때만 `sharedMaterial` 참조를 교체하므로 null이면 프리팹 Material이 유지된다. Primary Line Color는 시작·끝 vertex color와 `_PrimaryColor`에, Secondary Line Color는 `_SecondaryColor`에 적용한다. 두 셰이더 색은 하나의 `MaterialPropertyBlock`으로 해당 LineRenderer 인스턴스에만 전달하므로 공유 Material 속성이나 `BulletData` 원본을 수정하지 않는다. vertex alpha는 기존 Fade Out에 계속 사용한다. 기존 `trailMaterial`, `trailColor`, `lineColor` 필드는 `FormerlySerializedAs`를 사용해 기존 에셋 값을 유지한다. `lineDuration`은 `FormerlySerializedAs`를 적용한 `fadeDuration`으로 변경해 기존 프리팹 값을 유지한다. Bullet 프리팹에는 `Line Renderer`와 `Fade Duration`이 직렬화되어 있다.
 
@@ -132,10 +184,17 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * BulletLine의 시작/끝 알파 SmoothStep 보간과 종료 후 제거 확인
   * 장전 및 발사의 성공·실패별 `CompleteTurn` 호출 조건 확인
   * R, Space, 마우스 왼쪽 버튼과 한 프레임 중복 방어 코드 확인
-  * 현재 타일, 바라보는 X축 방향, `MaxRange`, 보드 경계를 이용한 끝점 타일 인덱스 계산 확인
+  * 현재 타일, 바라보는 X축 방향과 `MaxRange`를 이용한 유효 표적 조회 확인
   * LineRenderer 시작점, 마지막 적중 Enemy까지의 X 거리와 Fire Point Y 수평 기준 적용 확인
   * 각 발사선의 시작점과 수평 기준 Y가 Fire Point Y를 사용하고, 설정 범위 안의 개별 랜덤 각도가 적용되는지 확인
-  * 유효 적이 없을 때 최대 유효 사거리 타일 끝점, 탄환 소비, 반동 및 턴 조건 확인
+  * 발사 시작 시 첫 실제 탄환에 유효 적이 없으면 허공 전탄 발사 모드로 고정되는지 확인
+  * 허공 모드에서 모든 장전 탄환의 LineRenderer, 반동, 피드백과 턴 처리가 실행되는지 확인
+  * 표적 발사 모드에서는 마지막 적 처치 후 허공 모드로 전환하지 않는지 확인
+  * 마지막 적 처치 후 남은 탄환이 LoadedBullets와 Cylinder UI에 유지되는지 확인
+  * 체력과 보호막에서 예약 피해를 뺀 예상 내구도를 기준으로 표적 후보를 필터링하는지 확인
+  * ChainFire와 ShellCollector 추가 사격이 매 발 표적을 재검증하고 표적 소진 시 종료되는지 확인
+  * PowderPouch 뒤에 유효한 실제 발사 탄환이 없으면 파우치를 소비하지 않는지 확인
+  * 중단 직전 StackNextShot 보너스가 다음 장전 탄환에 이전되는지 확인
   * 적의 타일 거리를 수집 시 캐시해 가까운 순서로 정렬하고 첫 적의 피해를 관통 대상보다 먼저 처리하는지 확인
   * 탄환당 크리티컬 판정이 한 번만 실행되고 모든 관통 대상이 같은 결과를 공유하는지 확인
   * 플레이어 약화가 직접 공격 피해에 적용되고 흡혈이 실제 적용 피해만 회복하는지 확인
@@ -170,7 +229,9 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * 반동은 0.1초 Attack과 0.45초 Recovery 및 5차 SmootherStep으로 처리된다.
   * Recovery 동안 Camera 위치도 원위치로 보간되고, 완료 후 두 Gain은 0이 되며 Camera 위치는 정확히 `(0, 0, -10)`으로 설정된다.
   * 정면 최대 사거리 안의 적이 거리순으로 선택되고 관통에 성공한 마지막 적까지의 X 거리가 발사선 길이로 사용된다.
-  * 정면에 적이 없어도 장전 탄환이 발사되어 무덤으로 이동하고 최대 유효 타일 중앙까지 발사선이 생성된다.
+  * 발사 시작부터 정면 사거리 안에 적이 없으면 장전 탄환이 모두 graveyard로 이동하고 각 탄환의 miss 발사선·반동·피드백이 실행된다.
+  * 앞선 탄환이 마지막 적을 처치하면 이후 탄환은 LoadedBullets에 남으며 이미 발사된 탄환만 graveyard로 이동한다.
+  * 일부 탄환 발사 후 중단된 경우에는 실제 발사된 탄환의 턴 소비 설정만 반영해 턴을 최대 한 번 소비한다.
   * 정렬 중 적 위치를 재조회하지 않으며 확정된 관통 대상은 앞 대상의 피해 성공 여부와 무관하게 가까운 순서로 처리한다.
   * 크리티컬 확률과 배율은 현재 `BulletInstance` 레벨의 `BulletData`에서 관리하며 관통 대상은 탄환 단위 판정 결과를 공유한다.
   * 흡혈은 표식, 크리티컬, 약화와 남은 체력 제한을 반영한 실제 직접 피해량을 사용하므로 처치 및 초과 피해에서도 회복량이 정확하다.
@@ -204,7 +265,7 @@ Player 프리팹의 `PlayerCylinderUI`는 `Cylinder Transform`, 위쪽부터 순
 
 각 BulletLine은 프리팹의 `Fade Duration` 동안 RGB를 유지한 채 알파만 부드럽게 0으로 줄어든 뒤 제거된다. SampleScene에서 사용하는 Bullet 프리팹의 기본 Fade Duration은 0.2초다.
 
-발사 시 Fire Point에서 관통 판정을 통과한 마지막 적의 X 거리까지 LineRenderer가 즉시 표시된다. 발사선은 Fire Point Y를 수평 기준으로 삼고 탄환마다 `Max Random Shot Angle` 범위의 시각적 각도 편차를 적용한다. 적중한 적은 각도 연출과 관계없이 `BulletData.Damage`만큼 체력이 감소한다. 유효한 적이 없어도 최대 유효 사거리 타일의 X 거리까지 발사선이 표시되고 장전 탄환은 무덤으로 이동하며, 탄환 데이터에 따라 턴을 소비한다.
+발사 시 Fire Point에서 관통 판정을 통과한 마지막 적의 X 거리까지 LineRenderer가 즉시 표시된다. 발사선은 Fire Point Y를 수평 기준으로 삼고 탄환마다 `Max Random Shot Angle` 범위의 시각적 각도 편차를 적용한다. 적중한 적은 각도 연출과 관계없이 `BulletData.Damage`만큼 체력이 감소한다. 적을 대상으로 시작하면 매 발 직전에 유효 표적을 다시 선택하고, 예상 피해상 이미 처치될 적에게 다음 탄환을 중복 배정하지 않는다. 반면 발사 시작 시 표적이 없으면 허공 전탄 발사로 판정해 모든 장전 탄환을 최대 사거리 방향으로 발사한다.
 
 Cinemachine Basic Multi Channel Perlin의 Gain은 탄환의 `RecoilStrength`와 `Camera Recoil Scale`에 비례해 5차 SmootherStep으로 부드럽게 상승·감소한다. 낮은 Frequency Gain과 긴 Recovery를 사용하며 Camera 위치도 Recovery 동안 함께 원위치로 보간한다. 반동이 끝나면 Gain을 모두 0으로 만들고 Main Camera를 정확히 `(0, 0, -10)`으로 복구한다. C# 빌드에서 경고와 오류가 발생하지 않았다. Unity Play Mode 최종 검증은 별도로 필요하다.
 

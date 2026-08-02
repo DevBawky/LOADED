@@ -12,6 +12,18 @@ public class PlayerShoot : MonoBehaviour
 {
     private const float BulletFeedbackStartAlpha = 0.2f;
 
+    private readonly struct DamageReservation
+    {
+        public DamageReservation(EnemyController enemy, int damage)
+        {
+            Enemy = enemy;
+            Damage = Mathf.Max(0, damage);
+        }
+
+        public EnemyController Enemy { get; }
+        public int Damage { get; }
+    }
+
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private CurrencyManager currencyManager;
     [SerializeField] private PlayerMove playerMove;
@@ -57,6 +69,8 @@ public class PlayerShoot : MonoBehaviour
         new List<BulletInstance>();
     private readonly HashSet<BulletData> ownedBulletTypeBuffer =
         new HashSet<BulletData>();
+    private readonly Dictionary<EnemyController, int> reservedDamageByEnemy =
+        new Dictionary<EnemyController, int>();
     private readonly int[] ownedGradeCountBuffer = new int[4];
     private BulletInstance currentConsumedBullet;
     private int initialLoadedBulletCount;
@@ -93,6 +107,7 @@ public class PlayerShoot : MonoBehaviour
 
         ResetBulletFeedback();
         ResetCameraRecoil();
+        reservedDamageByEnemy.Clear();
         currentConsumedBullet = null;
     }
 
@@ -127,6 +142,7 @@ public class PlayerShoot : MonoBehaviour
 
         ResetBulletFeedback();
         ResetCameraRecoil();
+        reservedDamageByEnemy.Clear();
     }
 
     private void Update()
@@ -237,6 +253,7 @@ public class PlayerShoot : MonoBehaviour
 
     private IEnumerator ShootLoadedBullets(int horizontalDirection)
     {
+        reservedDamageByEnemy.Clear();
         isFiring = true;
         playerMove.SetShooting(true);
         bool firedAnyBullet = false;
@@ -253,6 +270,21 @@ public class PlayerShoot : MonoBehaviour
             BulletEffectType.QuickDraw);
         bool quickDrawActive = quickDrawThreshold > 0
             && initialLoadedBulletCount <= quickDrawThreshold;
+        int initialBulletIndex = deckManager.LoadedBullets.Count - 1;
+        BulletInstance initialResolvedBullet = ResolveShotBullet(
+            deckManager.LoadedBullets[initialBulletIndex],
+            null);
+        bool initialBulletIsPowderPouch = FindSpecialEffect(
+            initialResolvedBullet,
+            BulletEffectType.PowderPouch) != null;
+        bool fireIntoAir = initialBulletIsPowderPouch
+            ? !HasViableFutureShot(
+                initialBulletIndex - 1,
+                initialResolvedBullet,
+                horizontalDirection)
+            : !RefreshViableTargets(
+                initialResolvedBullet,
+                horizontalDirection);
 
         while (deckManager.LoadedBullets.Count > 0)
         {
@@ -269,6 +301,27 @@ public class PlayerShoot : MonoBehaviour
                 break;
             }
 
+            BulletInstance resolvedBullet = ResolveShotBullet(
+                bulletData,
+                previousResolvedBullet);
+            BulletEffectData powderEffect = FindSpecialEffect(
+                resolvedBullet,
+                BulletEffectType.PowderPouch);
+            bool hasViableTarget = fireIntoAir
+                || (powderEffect == null
+                    ? RefreshViableTargets(
+                        resolvedBullet,
+                        horizontalDirection)
+                    : HasViableFutureShot(
+                        bulletIndex - 1,
+                        resolvedBullet,
+                        horizontalDirection));
+
+            if (!hasViableTarget)
+            {
+                break;
+            }
+
             if (!deckManager.TryFireLoadedBullet(out BulletInstance firedBullet)
                 || firedBullet != bulletData)
             {
@@ -277,15 +330,8 @@ public class PlayerShoot : MonoBehaviour
 
             firedAnyBullet = true;
             currentConsumedBullet = firedBullet;
-
-            BulletInstance resolvedBullet = ResolveShotBullet(
-                bulletData,
-                previousResolvedBullet);
             consumesTurn |= !quickDrawActive
                 && !resolvedBullet.DoesNotConsumeTurn;
-            BulletEffectData powderEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.PowderPouch);
 
             if (powderEffect != null)
             {
@@ -354,6 +400,7 @@ public class PlayerShoot : MonoBehaviour
                         damageMultiplier,
                         criticalChanceBonus,
                         true,
+                        fireIntoAir,
                         completed => shotCompleted = completed);
 
                     if (!shotCompleted)
@@ -387,6 +434,7 @@ public class PlayerShoot : MonoBehaviour
                         damageMultiplier * shellEffect.Amount / 100f,
                         criticalChanceBonus,
                         false,
+                        fireIntoAir,
                         completed => shotCompleted = completed);
 
                     if (!shotCompleted)
@@ -442,6 +490,14 @@ public class PlayerShoot : MonoBehaviour
             currencyManager?.AddMoney(pendingSaverGold);
         }
 
+        if (stackedDamageBonus > 0f
+            && deckManager.LoadedBullets.Count > 0)
+        {
+            int nextBulletIndex = deckManager.LoadedBullets.Count - 1;
+            deckManager.LoadedBullets[nextBulletIndex]
+                ?.AddTemporaryDamageBonus(stackedDamageBonus);
+        }
+
         if (!bulletDestroyedThisCylinder && saverRefundsTurn)
         {
             consumesTurn = false;
@@ -455,6 +511,7 @@ public class PlayerShoot : MonoBehaviour
         isFiring = false;
         playerMove.SetShooting(false);
         currentConsumedBullet = null;
+        reservedDamageByEnemy.Clear();
     }
 
     private IEnumerator FireSingleShot(
@@ -463,6 +520,7 @@ public class PlayerShoot : MonoBehaviour
         float damageMultiplier,
         float criticalChanceBonus,
         bool generatesShells,
+        bool allowEmptyShot,
         Action<bool> onCompleted)
     {
         if (bulletData == null)
@@ -471,15 +529,19 @@ public class PlayerShoot : MonoBehaviour
             yield break;
         }
 
-        waveManager.GetEnemiesInDirection(
-            transform.position,
-            horizontalDirection,
-            bulletData.MaxRange,
-            targetBuffer);
+        bool hasViableTarget = RefreshViableTargets(
+            bulletData,
+            horizontalDirection);
+
+        if (!hasViableTarget && !allowEmptyShot)
+        {
+            onCompleted?.Invoke(false);
+            yield break;
+        }
 
         Vector3 endPoint;
 
-        if (targetBuffer.Count > 0)
+        if (hasViableTarget)
         {
             BuildHitTargets(bulletData);
             endPoint = hitBuffer[hitBuffer.Count - 1].transform.position;
@@ -487,8 +549,21 @@ public class PlayerShoot : MonoBehaviour
         else
         {
             hitBuffer.Clear();
-            endPoint = GetMissEndPoint(horizontalDirection, bulletData.MaxRange);
+            endPoint = GetMissEndPoint(
+                horizontalDirection,
+                bulletData.MaxRange);
         }
+
+        bool isCritical = bulletData.CanTriggerCritical(
+            UnityEngine.Random.Range(0f, 100f),
+            criticalChanceBonus);
+        List<DamageReservation> shotReservations = hasViableTarget
+            ? ReserveProjectedHitDamage(
+                bulletData,
+                horizontalDirection,
+                isCritical,
+                damageMultiplier)
+            : null;
 
         Vector3 shotStartPoint = firePoint.position;
         Vector3 shotEndPoint = GetShotLineEndPoint(shotStartPoint, endPoint);
@@ -502,14 +577,12 @@ public class PlayerShoot : MonoBehaviour
                 shotStartPoint,
                 shotEndPoint))
         {
+            ReleaseProjectedDamage(shotReservations);
             Destroy(bulletLine.gameObject);
             onCompleted?.Invoke(false);
             yield break;
         }
 
-        bool isCritical = bulletData.CanTriggerCritical(
-            UnityEngine.Random.Range(0f, 100f),
-            criticalChanceBonus);
         ShowBulletFeedback(bulletData);
         GenerateRecoil(bulletData);
         combatPresentation?.PlayShot(
@@ -523,8 +596,167 @@ public class PlayerShoot : MonoBehaviour
             horizontalDirection,
             isCritical,
             damageMultiplier);
+        ReleaseProjectedDamage(shotReservations);
         HandleShotResult(bulletData, isCritical, generatesShells);
         onCompleted?.Invoke(true);
+    }
+
+    private bool RefreshViableTargets(
+        BulletInstance bullet,
+        int horizontalDirection)
+    {
+        targetBuffer.Clear();
+
+        if (bullet == null || waveManager == null)
+        {
+            return false;
+        }
+
+        waveManager.GetEnemiesInDirection(
+            transform.position,
+            horizontalDirection,
+            bullet.MaxRange,
+            targetBuffer);
+
+        for (int targetIndex = targetBuffer.Count - 1;
+             targetIndex >= 0;
+             targetIndex--)
+        {
+            if (!HasProjectedDurability(targetBuffer[targetIndex]))
+            {
+                targetBuffer.RemoveAt(targetIndex);
+            }
+        }
+
+        return targetBuffer.Count > 0;
+    }
+
+    private bool HasViableFutureShot(
+        int loadedBulletIndex,
+        BulletInstance previousResolvedBullet,
+        int horizontalDirection)
+    {
+        for (int bulletIndex = loadedBulletIndex;
+             bulletIndex >= 0;
+             bulletIndex--)
+        {
+            BulletInstance loadedBullet = deckManager.LoadedBullets[bulletIndex];
+            BulletInstance resolvedBullet = ResolveShotBullet(
+                loadedBullet,
+                previousResolvedBullet);
+
+            if (resolvedBullet == null)
+            {
+                continue;
+            }
+
+            if (FindSpecialEffect(
+                    resolvedBullet,
+                    BulletEffectType.PowderPouch) == null
+                && RefreshViableTargets(
+                    resolvedBullet,
+                    horizontalDirection))
+            {
+                return true;
+            }
+
+            previousResolvedBullet = resolvedBullet;
+        }
+
+        return false;
+    }
+
+    private bool HasProjectedDurability(EnemyController enemy)
+    {
+        if (enemy == null || enemy.CurrentHealth <= 0)
+        {
+            return false;
+        }
+
+        reservedDamageByEnemy.TryGetValue(enemy, out int reservedDamage);
+        long projectedDurability = (long)enemy.CurrentHealth
+            + enemy.CurrentShield
+            - reservedDamage;
+        return projectedDurability > 0;
+    }
+
+    private List<DamageReservation> ReserveProjectedHitDamage(
+        BulletInstance bullet,
+        int horizontalDirection,
+        bool isCritical,
+        float damageMultiplier)
+    {
+        List<DamageReservation> reservations =
+            new List<DamageReservation>(hitBuffer.Count);
+
+        foreach (EnemyController enemy in hitBuffer)
+        {
+            if (!HasProjectedDurability(enemy))
+            {
+                continue;
+            }
+
+            float targetDamageMultiplier = GetTargetDamageMultiplier(
+                bullet,
+                enemy,
+                horizontalDirection);
+            int attackDamage = CalculateAttackDamage(
+                bullet,
+                isCritical,
+                damageMultiplier * targetDamageMultiplier);
+            int predictedDamage = enemy.PredictAttackDamage(attackDamage);
+
+            if (predictedDamage <= 0)
+            {
+                continue;
+            }
+
+            reservedDamageByEnemy.TryGetValue(
+                enemy,
+                out int existingReservation);
+            long combinedReservation =
+                (long)existingReservation + predictedDamage;
+            reservedDamageByEnemy[enemy] = combinedReservation >= int.MaxValue
+                ? int.MaxValue
+                : (int)combinedReservation;
+            reservations.Add(new DamageReservation(enemy, predictedDamage));
+        }
+
+        return reservations;
+    }
+
+    private void ReleaseProjectedDamage(
+        IReadOnlyList<DamageReservation> reservations)
+    {
+        if (reservations == null)
+        {
+            return;
+        }
+
+        foreach (DamageReservation reservation in reservations)
+        {
+            EnemyController enemy = reservation.Enemy;
+
+            if (ReferenceEquals(enemy, null)
+                || !reservedDamageByEnemy.TryGetValue(
+                    enemy,
+                    out int reservedDamage))
+            {
+                continue;
+            }
+
+            int remainingReservation =
+                Mathf.Max(0, reservedDamage - reservation.Damage);
+
+            if (remainingReservation == 0)
+            {
+                reservedDamageByEnemy.Remove(enemy);
+            }
+            else
+            {
+                reservedDamageByEnemy[enemy] = remainingReservation;
+            }
+        }
     }
 
     private BulletInstance ResolveShotBullet(
