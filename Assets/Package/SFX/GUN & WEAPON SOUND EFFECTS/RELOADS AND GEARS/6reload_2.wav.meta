@@ -1,0 +1,29 @@
+fileFormatVersion: 2
+guid: e3636ed2db7ebec4ca548584e6b062e4
+AudioImporter:
+  externalObjects: {}
+  serializedVersion: 6
+  defaultSettings:
+    loadType: 0
+    sampleRateSetting: 0
+    sampleRateOverride: 44100
+    compressionFormat: 1
+    quality: 1
+    conversionMode: 0
+  platformSettingOverrides: {}
+  forceToMono: 0
+  normalize: 1
+  preloadAudioData: 1
+  loadInBackground: 0
+  ambisonic: 0
+  3D: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225044
+  packageName: WEAPON & GUN SOUND EFFECTS
+  packageVersion: 1.0
+  assetPath: Assets/GUN & WEAPON SOUND EFFECTS/RELOADS AND GEARS/6reload_2.wav
+  uploadId: 506966
