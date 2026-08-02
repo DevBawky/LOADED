@@ -7,7 +7,7 @@ public class EnemyDataEditor : Editor
     private SerializedProperty enemyId;
     private SerializedProperty displayName;
     private SerializedProperty description;
-    private SerializedProperty sprite;
+    private SerializedProperty avatar;
     private SerializedProperty maxHealth;
     private SerializedProperty dropChance;
     private SerializedProperty dropItems;
@@ -43,7 +43,7 @@ public class EnemyDataEditor : Editor
         enemyId = Find("enemyId");
         displayName = Find("displayName");
         description = Find("description");
-        sprite = Find("sprite");
+        avatar = Find("avatar");
         maxHealth = Find("maxHealth");
         dropChance = Find("dropChance");
         dropItems = Find("dropItems");
@@ -84,7 +84,7 @@ public class EnemyDataEditor : Editor
             EditorGUILayout.PropertyField(Find("m_Script"));
         }
 
-        DrawSection("기본 정보", enemyId, displayName, description, sprite);
+        DrawSection("기본 정보", enemyId, displayName, description, avatar);
         DrawSection(
             "전투 능력치",
             maxHealth,
@@ -195,6 +195,31 @@ public class EnemyDataEditor : Editor
             EditorGUILayout.HelpBox(
                 "Enemy ID를 입력하세요.",
                 MessageType.Warning);
+        }
+
+        if (data.Avatar == null)
+        {
+            EditorGUILayout.HelpBox(
+                "적 Avatar 프리팹이 연결되지 않았습니다.",
+                MessageType.Warning);
+        }
+        else
+        {
+            Animator animator =
+                data.Avatar.GetComponentInChildren<Animator>(true);
+
+            if (animator == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Avatar 프리팹에 Animator가 필요합니다.",
+                    MessageType.Error);
+            }
+            else if (animator.runtimeAnimatorController == null)
+            {
+                EditorGUILayout.HelpBox(
+                    "Avatar의 Animator Controller가 연결되지 않았습니다.",
+                    MessageType.Error);
+            }
         }
 
         EnemyActionType requiredAction = data.BehaviorType switch

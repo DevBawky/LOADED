@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyId: 1
   displayName: "\uD22C\uCC99\uBCD1"
   description: 
-  sprite: {fileID: 3185191770978063329, guid: e30bbb53636eb4a45bde0c70bbd86137, type: 3}
+  avatar: {fileID: 0}
   maxHealth: 10
   dropChance: 100
   dropItems:
