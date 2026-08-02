@@ -8,6 +8,10 @@
 
 > 260802 허공 전탄 발사 변경: 발사 시작 시 첫 실제 사격 탄환의 사거리 안에 유효 표적이 없으면 의도적인 `허공 전탄 발사 모드`로 고정한다. 이 모드에서는 중간에 표적이 없어도 실린더의 모든 탄환을 발사하며 기존 miss LineRenderer, 반동, 피드백과 턴 규칙을 적용한다. 적을 대상으로 시작했다가 마지막 적을 처치한 경우에는 허공 모드로 전환하지 않고 과잉 사격 방지 규칙을 유지한다.
 
+> 260802 플레이어 사격 효과음 변경: `PlayerShoot`이 성공한 장전과 실제 개별 사격 시점에 각각 등록된 AudioClip 목록에서 하나를 무작위로 재생한다. 발사음은 일반 공격과 크리티컬 공격 목록으로 분리한다. 세 효과음 묶음은 독립적인 볼륨 및 최소·최대 피치를 사용하고, 빠른 연속 사격에서도 이전 소리의 피치가 바뀌지 않도록 AudioSource 풀을 사용한다.
+
+> 260802 실린더 회전 동기화 수정: 빠른 전탄 발사 중 이전 회전이 끝나기 전에 다음 탄환이 제거되면 현재 중간 각도에서 목표를 다시 더해 회전 오차가 누적되던 문제를 수정했다. 목표 각도는 장전 수에 따른 절대 각도로 계산하고, 장전 수가 변하지 않은 Deck 상태 이벤트는 진행 중인 회전을 중단하지 않는다.
+
 ### Basic Information
 
 * Date: 260717
@@ -107,6 +111,63 @@
 
 유효 표적은 현재 바라보는 방향과 해당 탄환의 최대 사거리 안에 있어야 한다. 반대 방향의 적에게 자동으로 회전하지 않는다. 표적 발사 모드에서 현재 탄환에 표적이 없으면 더 아래에 장전된 장거리 탄환을 임의로 건너뛰지 않고 발사를 종료하며, 실린더의 LIFO 순서를 보존한다.
 
+#### 무작위 장전음 및 발사음
+
+`PlayerShoot > Audio`에는 다음 항목이 있다.
+
+| 필드 | 역할 |
+|---|---|
+| `Sfx Audio Source` | 출력 Mixer, 2D/3D 공간감과 거리 설정의 기준이 되는 선택적 AudioSource |
+| `Reload Sfx > Clips` | 장전 성공 시 무작위로 선택할 AudioClip 목록 |
+| `Reload Sfx > Volume` | 장전음 볼륨, 0~1 |
+| `Reload Sfx > Min Pitch / Max Pitch` | 장전음마다 새로 선택할 피치 범위, 0.01~3 |
+| `Normal Shot Sfx > Clips` | 일반 공격 발사 시 무작위로 선택할 AudioClip 목록 |
+| `Normal Shot Sfx > Volume` | 일반 발사음 볼륨, 0~1 |
+| `Normal Shot Sfx > Min Pitch / Max Pitch` | 일반 발사음마다 새로 선택할 피치 범위, 0.01~3 |
+| `Critical Shot Sfx > Clips` | 크리티컬 공격 발사 시 무작위로 선택할 AudioClip 목록 |
+| `Critical Shot Sfx > Volume` | 크리티컬 발사음 볼륨, 0~1 |
+| `Critical Shot Sfx > Min Pitch / Max Pitch` | 크리티컬 발사음마다 새로 선택할 피치 범위, 0.01~3 |
+
+장전음은 `DeckManager.TryReload`가 성공해 탄환이 실제로 실린더에 들어간 경우에만 한 번 재생한다. 빈 덱, 최대 장전 수량 도달 또는 입력 차단으로 장전에 실패하면 재생하지 않는다.
+
+발사음은 `FireSingleShot`이 유효한 BulletLine을 만든 직후 한 번 재생한다. 같은 발사에서 이미 확정한 `isCritical` 값이 true면 `Critical Shot Sfx`, false면 `Normal Shot Sfx`를 사용하므로 소리와 실제 피해 판정이 어긋나지 않는다. 전탄 발사의 각 탄환, 허공 전탄 발사, `ChainFire`와 `ShellCollector` 추가 사격에도 개별적으로 적용된다. `PowderPouch`는 총구에서 발사되는 탄환이 아니므로 발사음을 재생하지 않는다. 과잉 사격 방지로 취소된 발사도 소리가 나지 않는다.
+
+기존 `Shot Sfx` 직렬화 필드는 `FormerlySerializedAs`를 통해 `Critical Shot Sfx`로 마이그레이션했다. Player 프리팹에 이미 등록되어 있던 10개 사격 클립과 볼륨 1, 피치 0.9~1.1 설정은 모두 크리티컬 목록에 유지되며, 새 `Normal Shot Sfx`는 빈 목록과 볼륨 1, 피치 0.95~1.05 기본값으로 추가했다.
+
+목록의 null 항목은 자동으로 제외하며 유효한 클립 중 하나를 동일 확률로 선택한다. 최소 피치가 최대 피치보다 크게 입력되어도 런타임에서 작은 값을 최소, 큰 값을 최대로 정규화한다. 두 값이 같으면 고정 피치로 재생한다.
+
+빠른 전탄 발사에서 하나의 AudioSource에 계속 피치를 덮어쓰면 이미 재생 중인 발사음의 피치까지 바뀔 수 있다. 이를 방지하기 위해 현재 Source가 재생 중이면 같은 설정을 복사한 AudioSource를 Player에 추가하고, 재생이 끝난 Source를 다음 효과음에서 재사용한다. 각 발사음은 자신의 클립·볼륨·피치를 끝까지 유지한다.
+
+##### Inspector 적용 방법
+
+1. 장전음과 발사음으로 사용할 파일을 Project 창에 가져온다. 짧은 효과음은 일반적으로 `Load Type = Decompress On Load`, `Preload Audio Data = On`이 즉각적인 재생에 적합하다.
+2. `Assets/Prefabs/Player/Player.prefab` 또는 씬의 Player 오브젝트를 선택하고 `PlayerShoot > Audio`를 펼친다.
+3. `Reload Sfx > Clips`의 Size를 원하는 변형 수로 늘리고 장전 AudioClip을 각 Element에 드래그한다.
+4. 기존 사격 클립은 `Critical Shot Sfx > Clips`로 이동되어 있으므로 그대로 사용하거나 강한 총성 계열로 교체한다.
+5. `Normal Shot Sfx > Clips`의 Size를 늘리고 일반 발사 AudioClip을 등록한다. 크리티컬과 같은 총기 계열에서 상대적으로 짧고 약한 변형을 고르면 판정 차이가 자연스럽다.
+6. 자연스러운 미세 변화가 목적이면 일반 피치를 `0.95~1.05`, 크리티컬을 `0.9~1.1` 정도에서 시작한다. 지나치게 넓은 범위는 같은 무기가 다른 무기처럼 들릴 수 있다.
+7. 각 묶음의 `Volume`을 개별 조절한다. 크리티컬은 일반 발사보다 약간 크게 설정할 수 있지만, 여러 발이 겹치므로 클리핑 여부를 확인한다.
+8. 별도 Audio Mixer를 사용하지 않는다면 `Sfx Audio Source`는 비워도 된다. 런타임에 `Spatial Blend = 0`, `Play On Awake = Off`, `Loop = Off`인 기본 2D AudioSource가 자동 생성된다.
+9. Audio Mixer 또는 3D 거리 설정이 필요하면 Player에 AudioSource를 하나 추가한다. `Output`, `Spatial Blend`, `Rolloff`, `Min/Max Distance`를 설정하고 이를 `Sfx Audio Source`에 연결한다. 풀에서 추가되는 Source도 이 설정을 복사한다.
+10. Play Mode에서 크리티컬 확률이 0인 탄환은 Normal 목록만, 100인 탄환은 Critical 목록만 재생하는지 확인한다. 목록이 비어 있어도 오류 없이 해당 소리만 생략한다.
+
+#### 실린더 회전 동기화
+
+기존 `PlayerCylinderUI.RefreshDisplay`는 Deck 상태가 바뀔 때마다 `cylinderTransform.localEulerAngles.z`를 읽고, 장전 수 변화량에 `Rotation Step`을 곱해 현재 각도에 더했다. 빠른 전탄 발사에서 다음 `StateChanged`가 `Rotation Duration`보다 먼저 도착하면 이전 회전을 중단한 뒤 아직 덜 회전한 중간 각도에 다음 60도를 더했다. 이 과정이 반복되면서 논리적인 탄환 위치와 실린더 각도가 달라져 실린더가 비스듬한 상태로 남았다.
+
+또한 `DeckManager.StateChanged`는 장전 탄환 수 변화에만 사용되지 않는다. `PowderPouch`의 탄환 파괴나 런타임 탄환 상태 변경처럼 LoadedBullets 수가 그대로인 이벤트도 발생한다. 기존 코드는 이런 이벤트에서도 회전 코루틴을 중단하고 현재 각도를 목표로 하는 새 코루틴을 시작해, 정상적인 한 칸 회전을 도중에 취소할 수 있었다.
+
+현재 회전 규칙은 다음과 같다.
+
+- 장전 수가 1 이상일 때 안정 목표 각도는 `-(LoadedCount - 1) × RotationStep`이다.
+- 다음 탄환 제거가 회전 도중 발생해도 현재 시각 각도에서 새 장전 수의 절대 목표 각도까지 보간한다.
+- 이전 논리 목표 각도를 기준으로 현재 0~360도 Euler 각도를 연속 각도로 복원하므로, 여러 칸이 밀려도 `Mathf.LerpAngle`의 최단 경로 때문에 반대 방향으로 회전하지 않는다.
+- 장전 수가 같은 `StateChanged`는 이미지 데이터만 갱신하고 진행 중인 회전을 유지한다.
+- 초기화, 재활성화 및 강제 동기화처럼 `animateRotation = false`인 갱신은 현재 장전 수의 안정 각도로 즉시 보정한다.
+- 마지막 탄환 제거는 기존처럼 마지막 한 칸을 회전한 뒤 Cylinder를 숨기고 각도를 0으로 초기화한다.
+
+이 방식은 `Shot Interval`이 `Rotation Duration`보다 짧거나, 허공 전탄 발사 및 추가 사격으로 상태 이벤트가 연속 발생해도 최종 각도가 장전 수와 항상 일치하게 한다.
+
 특수 발사 규칙도 다음과 같이 정리했다.
 
 - `ChainFire`: 추가 발사 직전에 다시 표적을 조회한다. 앞선 연쇄 발사가 마지막 적을 처치하면 남은 연쇄 횟수는 연출 없이 종료된다.
@@ -195,6 +256,13 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * ChainFire와 ShellCollector 추가 사격이 매 발 표적을 재검증하고 표적 소진 시 종료되는지 확인
   * PowderPouch 뒤에 유효한 실제 발사 탄환이 없으면 파우치를 소비하지 않는지 확인
   * 중단 직전 StackNextShot 보너스가 다음 장전 탄환에 이전되는지 확인
+  * 성공한 장전에서만 Reload Sfx가 한 번 재생되는지 확인
+  * 일반·허공·연쇄·탄피 추가 사격의 실제 각 발마다 크리티컬 판정과 일치하는 Normal/Critical Shot Sfx가 재생되는지 확인
+  * 비어 있거나 null만 있는 Clips 목록에서 오류 없이 소리를 생략하는지 확인
+  * 연속 발사 중 AudioSource 풀이 재생 중 Source를 덮어쓰지 않고 개별 피치를 유지하는지 확인
+  * `Shot Interval < Rotation Duration` 조건에서 연속 제거 이벤트가 와도 최종 실린더 각도가 장전 수의 절대 목표와 일치하는지 확인
+  * LoadedBullets 수가 동일한 `StateChanged`가 진행 중인 실린더 회전 코루틴을 중단하지 않는지 확인
+  * 회전 도중 UI가 비활성화됐다가 다시 활성화되면 현재 장전 수의 안정 각도로 즉시 보정되는지 확인
   * 적의 타일 거리를 수집 시 캐시해 가까운 순서로 정렬하고 첫 적의 피해를 관통 대상보다 먼저 처리하는지 확인
   * 탄환당 크리티컬 판정이 한 번만 실행되고 모든 관통 대상이 같은 결과를 공유하는지 확인
   * 플레이어 약화가 직접 공격 피해에 적용되고 흡혈이 실제 적용 피해만 회복하는지 확인

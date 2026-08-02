@@ -1660,10 +1660,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 700000000000000020, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
-      propertyPath: shotScreenPulseDuration
-      value: 0.1
-      objectReference: {fileID: 0}
     - target: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_Name
       value: Player
@@ -1693,9 +1689,69 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2400001005}
     - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: reloadSfx.volume
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: normalShotSfx.volume
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: recoilCameraTransform
       value: 
       objectReference: {fileID: 519420032}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: normalShotSfx.clips.Array.size
+      value: 12
+      objectReference: {fileID: 0}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[0]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 40f57dc878925584d8ce7c956635ad89, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[1]'
+      value: 
+      objectReference: {fileID: 8300000, guid: fcc11fcc64d373845be6d7ce4425780d, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[2]'
+      value: 
+      objectReference: {fileID: 8300000, guid: bef3ccb1362a5a3458444fec84834645, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[3]'
+      value: 
+      objectReference: {fileID: 8300000, guid: e8f854a9e369b884eb956f6e83173315, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[4]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 1587b9e45a27b9f4dbc088210c682380, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[5]'
+      value: 
+      objectReference: {fileID: 8300000, guid: b078ff5e8addae04889dcd242ab0f8d6, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[6]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 49a39abfcbf65ef41bad5d4a945bc133, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[7]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 25ff7ffb9bd8fcd49b289fd763db9e31, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[8]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 04b8835898a21024c8b8f9af345403fb, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[9]'
+      value: 
+      objectReference: {fileID: 8300000, guid: dbedb61043f11014fb740014ba315c06, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[10]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 3ca4a84376db246488b6eae04a1291cc, type: 3}
+    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: 'normalShotSfx.clips.Array.data[11]'
+      value: 
+      objectReference: {fileID: 8300000, guid: 86dc8b50cb6b0cc42b795c3bdd959522, type: 3}
     - target: {fileID: 4654777449252698111, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -1744,6 +1800,10 @@ PrefabInstance:
       propertyPath: healthFillImage
       value: 
       objectReference: {fileID: 2123456032}
+    - target: {fileID: 6605989869902350061, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: OutputAudioMixerGroup
+      value: 
+      objectReference: {fileID: 24300002, guid: 0eda697c166e70e448ff8e9d4a322fb6, type: 2}
     - target: {fileID: 6842197531604829375, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: cylinderTransform
       value: 

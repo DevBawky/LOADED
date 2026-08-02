@@ -52,6 +52,7 @@ public class PlayerCylinderUI : MonoBehaviour
     private int draggedOriginalSiblingIndex;
     private int dragLoadedCount;
     private Vector2 dragPointerOffset;
+    private float cylinderTargetAngle;
 
     public int DisplayedBulletCount => displayedBulletCount;
     public bool IsDragging => isDraggingBullet;
@@ -680,9 +681,8 @@ public class PlayerCylinderUI : MonoBehaviour
         if (!isInitialized)
         {
             displayedBulletCount = loadedCount;
-            SetCylinderAngle(loadedCount > 0
-                ? -(loadedCount - 1) * rotationStep
-                : 0f);
+            cylinderTargetAngle = GetStableCylinderAngle(loadedCount);
+            SetCylinderAngle(cylinderTargetAngle);
             cylinderTransform.gameObject.SetActive(loadedCount > 0);
             isInitialized = true;
             return;
@@ -701,29 +701,35 @@ public class PlayerCylinderUI : MonoBehaviour
             }
         }
 
-        float currentAngle = cylinderTransform.localEulerAngles.z;
-        float targetAngle = currentAngle;
-
-        if (loadedCount > previousCount)
+        if (loadedCount == previousCount)
         {
-            int addedBulletCount = loadedCount - previousCount;
-
-            if (previousCount == 0)
+            if (!animateRotation)
             {
-                addedBulletCount--;
+                StartCylinderRotation(
+                    GetStableCylinderAngle(loadedCount),
+                    false,
+                    loadedCount == 0);
             }
 
-            targetAngle -= Mathf.Max(0, addedBulletCount) * rotationStep;
+            return;
         }
-        else if (loadedCount < previousCount)
-        {
-            targetAngle += (previousCount - loadedCount) * rotationStep;
-        }
+
+        float targetAngle = loadedCount > 0
+            ? GetStableCylinderAngle(loadedCount)
+            : GetStableCylinderAngle(previousCount)
+                + previousCount * rotationStep;
 
         StartCylinderRotation(
             targetAngle,
             animateRotation,
             loadedCount == 0);
+    }
+
+    private float GetStableCylinderAngle(int loadedCount)
+    {
+        return loadedCount > 0
+            ? -(loadedCount - 1) * rotationStep
+            : 0f;
     }
 
     private void SetAnimatorBulletCount(int bulletCount)
@@ -754,11 +760,15 @@ public class PlayerCylinderUI : MonoBehaviour
         bool animateRotation,
         bool hideWhenComplete)
     {
+        float previousTargetAngle = cylinderTargetAngle;
+
         if (rotationCoroutine != null)
         {
             StopCoroutine(rotationCoroutine);
             rotationCoroutine = null;
         }
+
+        cylinderTargetAngle = targetAngle;
 
         if (!animateRotation || rotationDuration <= 0f)
         {
@@ -768,18 +778,27 @@ public class PlayerCylinderUI : MonoBehaviour
             {
                 cylinderTransform.gameObject.SetActive(false);
                 SetCylinderAngle(0f);
+                cylinderTargetAngle = 0f;
             }
 
             return;
         }
 
         rotationCoroutine = StartCoroutine(
-            RotateCylinder(targetAngle, hideWhenComplete));
+            RotateCylinder(
+                previousTargetAngle,
+                targetAngle,
+                hideWhenComplete));
     }
 
-    private IEnumerator RotateCylinder(float targetAngle, bool hideWhenComplete)
+    private IEnumerator RotateCylinder(
+        float previousTargetAngle,
+        float targetAngle,
+        bool hideWhenComplete)
     {
-        float startAngle = cylinderTransform.localEulerAngles.z;
+        float startAngle = previousTargetAngle + Mathf.DeltaAngle(
+            previousTargetAngle,
+            cylinderTransform.localEulerAngles.z);
         float elapsedTime = 0f;
 
         while (elapsedTime < rotationDuration)
@@ -794,7 +813,7 @@ public class PlayerCylinderUI : MonoBehaviour
             elapsedTime += Time.deltaTime;
             float progress = Mathf.Clamp01(elapsedTime / rotationDuration);
             float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
-            SetCylinderAngle(Mathf.LerpAngle(
+            SetCylinderAngle(Mathf.LerpUnclamped(
                 startAngle,
                 targetAngle,
                 smoothProgress));
@@ -806,6 +825,7 @@ public class PlayerCylinderUI : MonoBehaviour
         {
             cylinderTransform.gameObject.SetActive(false);
             SetCylinderAngle(0f);
+            cylinderTargetAngle = 0f;
         }
 
         rotationCoroutine = null;
