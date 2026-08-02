@@ -302,9 +302,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return 0;
         }
 
-        int modifiedDamage = statusEffects == null
-            ? damage
-            : statusEffects.ModifyIncomingAttackDamage(damage);
+        int modifiedDamage = PredictAttackDamage(damage);
         int appliedDamage = ApplyDamageInternal(
             modifiedDamage,
             isCritical,
@@ -316,6 +314,18 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         damageNumberDisplay?.ShowAttackDamage(damage, isCritical);
         damageNumberDisplay?.ShowMarkBonusDamage(markBonusDamage);
         return appliedDamage;
+    }
+
+    public int PredictAttackDamage(int damage)
+    {
+        if (damage <= 0 || currentHealth <= 0)
+        {
+            return 0;
+        }
+
+        return statusEffects == null
+            ? damage
+            : statusEffects.ModifyIncomingAttackDamage(damage);
     }
 
     public bool ApplyStatusDamage(int damage)
