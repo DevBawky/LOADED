@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_crescendo
   displayName: 고조탄
-  description: 이번 실린더에서 앞서 발생한 치명타 하나당 최종 대미지가 15% 증가합니다.
+  description: "이번 실린더에서 앞서 발생한 치명타 하나당 최종 대미지가 15% 증가합니다."
   bulletIcon: {fileID: -9188724726990822325, guid: 1a0fdd87f0b7ac6428966d6afac5a701, type: 3}
   cylinderIcon: {fileID: 21300000, guid: ea7180161ea299c469f3ed6595dfa177, type: 3}
   price: 17
@@ -43,5 +43,70 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
   removeCost: 8
-  upgradeCost: 18
-  upgradeLevels: []
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "이번 실린더에서 앞서 발생한 치명타 하나당 최종 대미지가 20% 증가합니다."
+    damage: 15
+    maxRange: 4
+    criticalChance: 28
+    criticalDamageMultiplier: 1.9
+    effects:
+    - effectType: 27
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 20
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 35
+  - description: "이번 실린더에서 앞서 발생한 치명타 하나당 최종 대미지가 25% 증가합니다."
+    damage: 19
+    maxRange: 5
+    criticalChance: 32
+    criticalDamageMultiplier: 2.1
+    effects:
+    - effectType: 27
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 25
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 30
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 60
+  - description: "이번 실린더에서 앞서 발생한 치명타 하나당 최종 대미지가 35% 증가합니다."
+    damage: 24
+    maxRange: 5
+    criticalChance: 38
+    criticalDamageMultiplier: 2.3
+    effects:
+    - effectType: 27
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 35
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 50
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 0

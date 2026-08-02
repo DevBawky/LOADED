@@ -41,7 +41,12 @@ public enum BulletEffectType
     Accumulator = 32,
     ShellCollector = 33,
     Devourer = 34,
-    Legacy = 35
+    Legacy = 35,
+    Collection = 36,
+    MixedGrade = 37,
+    Masterpiece = 38,
+    MassProduced = 39,
+    Monopoly = 40
 }
 
 public enum BulletEffectTarget

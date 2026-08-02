@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_loader
   displayName: 장전수탄
-  description: 빈 약실 하나당 최종 대미지가 20% 증가합니다.
+  description: "빈 약실 하나당 최종 대미지가 20% 증가합니다."
   bulletIcon: {fileID: 1749605940074572079, guid: ab8bf7764ae65e0428325c8eea1e6c74, type: 3}
   cylinderIcon: {fileID: 21300000, guid: ff771df025c71e04c9c634cbc6ec431b, type: 3}
   price: 16
@@ -43,5 +43,69 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
   removeCost: 8
-  upgradeCost: 18
-  upgradeLevels: []
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "빈 약실 하나당 최종 대미지가 25% 증가합니다."
+    damage: 16
+    maxRange: 4
+    criticalChance: 18
+    criticalDamageMultiplier: 1.7
+    effects:
+    - effectType: 21
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 25
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 35
+  - description: "빈 약실 하나당 최종 대미지가 30% 증가합니다."
+    damage: 20
+    maxRange: 5
+    criticalChance: 22
+    criticalDamageMultiplier: 1.9
+    effects:
+    - effectType: 21
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 30
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 60
+  - description: "빈 약실 하나당 최종 대미지가 40% 증가합니다."
+    damage: 26
+    maxRange: 5
+    criticalChance: 28
+    criticalDamageMultiplier: 2.1
+    effects:
+    - effectType: 21
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 40
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 50
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 0

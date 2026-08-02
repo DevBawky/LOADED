@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_heart
   displayName: 심장탄
-  description: 최대 체력 10당 최종 대미지가 1% 증가합니다.
+  description: "최대 체력 10당 최종 대미지가 1% 증가합니다."
   bulletIcon: {fileID: 6765700697151959687, guid: 60b4f5719946c9740b22d46877404c80, type: 3}
   cylinderIcon: {fileID: 21300000, guid: 0ab4c268261c43e43b56d357084e1cc3, type: 3}
   price: 26
@@ -32,8 +32,8 @@ MonoBehaviour:
   - effectType: 18
     target: 1
     activationChance: 100
-    stackCount: 1
-    knockbackDistance: 10
+    stackCount: 10
+    knockbackDistance: 1
     amount: 1
   conditionalEvents: []
   penetrationChances: []
@@ -44,4 +44,68 @@ MonoBehaviour:
   recoilStrength: 0.12
   removeCost: 12
   upgradeCost: 30
-  upgradeLevels: []
+  upgradeLevels:
+  - description: "최대 체력 10당 최종 대미지가 2% 증가합니다."
+    damage: 22
+    maxRange: 4
+    criticalChance: 23
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 18
+      target: 1
+      activationChance: 100
+      stackCount: 10
+      knockbackDistance: 1
+      amount: 2
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 55
+  - description: "최대 체력 10당 최종 대미지가 3% 증가합니다."
+    damage: 28
+    maxRange: 5
+    criticalChance: 27
+    criticalDamageMultiplier: 2.2
+    effects:
+    - effectType: 18
+      target: 1
+      activationChance: 100
+      stackCount: 10
+      knockbackDistance: 1
+      amount: 3
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 90
+  - description: "최대 체력 10당 최종 대미지가 4% 증가합니다."
+    damage: 36
+    maxRange: 5
+    criticalChance: 34
+    criticalDamageMultiplier: 2.5
+    effects:
+    - effectType: 18
+      target: 1
+      activationChance: 100
+      stackCount: 10
+      knockbackDistance: 1
+      amount: 4
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 40
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 0

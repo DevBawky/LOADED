@@ -65,7 +65,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     removeCost: 12
-    upgradeCost: 60
+    upgradeCost: 55
   - description: "직전에 발사된 탄환을 복제하고 복제된 최종 대미지가 30% 증가합니다."
     damage: 19
     maxRange: 4
@@ -86,7 +86,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.15
     removeCost: 12
-    upgradeCost: 100
+    upgradeCost: 90
   - description: "직전에 발사된 탄환을 복제하고 복제된 최종 대미지가 50% 증가합니다."
     damage: 26
     maxRange: 5

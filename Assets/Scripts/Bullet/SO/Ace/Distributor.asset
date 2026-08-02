@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_distributor
   displayName: 분배탄
-  description: 누적된 대미지 보너스를 영구 저장하고 남은 탄환 전체에 분배합니다.
+  description: "누적된 대미지 보너스를 100% 효율로 영구 저장하고 남은 탄환 전체에 분배합니다."
   bulletIcon: {fileID: 8684330195986053092, guid: cabf15510b152ba44a0688f4c44e5571, type: 3}
   cylinderIcon: {fileID: 8307402940977883288, guid: d6e6a27bc19b5754492994a4628c969a, type: 3}
   price: 30
@@ -44,4 +44,80 @@ MonoBehaviour:
   recoilStrength: 0.12
   removeCost: 12
   upgradeCost: 30
-  upgradeLevels: []
+  upgradeLevels:
+  - description: "누적된 대미지 보너스를 110% 효율로 영구 저장하고 남은 탄환 전체에 분배합니다."
+    damage: 14
+    maxRange: 4
+    criticalChance: 18
+    criticalDamageMultiplier: 1.8
+    effects:
+    - effectType: 29
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 110
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 55
+  - description: "누적된 대미지 보너스를 125% 효율로 저장·분배하고 다음 탄환의 대미지를 추가로 10% 증가시킵니다."
+    damage: 18
+    maxRange: 5
+    criticalChance: 22
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 29
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 125
+    - effectType: 12
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 10
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 90
+  - description: "누적된 대미지 보너스를 150% 효율로 저장·분배하고 다음 탄환의 대미지를 추가로 20% 증가시킵니다. 턴을 소비하지 않습니다."
+    damage: 24
+    maxRange: 5
+    criticalChance: 28
+    criticalDamageMultiplier: 2.2
+    effects:
+    - effectType: 29
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 150
+    - effectType: 12
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 20
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 30
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 0

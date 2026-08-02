@@ -12,7 +12,9 @@ public readonly struct BulletTooltipContext
         int maxChambers,
         int bulletsFired,
         int criticalShots,
-        IReadOnlyList<BulletInstance> loadedBullets)
+        IReadOnlyList<BulletInstance> deckBullets,
+        IReadOnlyList<BulletInstance> loadedBullets,
+        IReadOnlyList<BulletInstance> graveyardBullets)
     {
         CurrentGold = Mathf.Max(0, currentGold);
         CurrentHealth = Mathf.Max(0, currentHealth);
@@ -21,7 +23,9 @@ public readonly struct BulletTooltipContext
         MaxChambers = Mathf.Max(0, maxChambers);
         BulletsFired = Mathf.Max(0, bulletsFired);
         CriticalShots = Mathf.Max(0, criticalShots);
+        DeckBullets = deckBullets ?? Array.Empty<BulletInstance>();
         LoadedBullets = loadedBullets ?? Array.Empty<BulletInstance>();
+        GraveyardBullets = graveyardBullets ?? Array.Empty<BulletInstance>();
     }
 
     public int CurrentGold { get; }
@@ -31,7 +35,9 @@ public readonly struct BulletTooltipContext
     public int MaxChambers { get; }
     public int BulletsFired { get; }
     public int CriticalShots { get; }
+    public IReadOnlyList<BulletInstance> DeckBullets { get; }
     public IReadOnlyList<BulletInstance> LoadedBullets { get; }
+    public IReadOnlyList<BulletInstance> GraveyardBullets { get; }
 
     public static BulletTooltipContext Create(
         DeckManager deckManager,
@@ -54,7 +60,13 @@ public readonly struct BulletTooltipContext
             deckManager == null ? 0 : deckManager.MaxReloadAmount,
             playerShoot == null ? 0 : playerShoot.BulletsFiredThisCylinder,
             playerShoot == null ? 0 : playerShoot.CriticalShotsThisCylinder,
-            loadedBullets);
+            deckManager == null
+                ? Array.Empty<BulletInstance>()
+                : deckManager.Deck,
+            loadedBullets,
+            deckManager == null
+                ? Array.Empty<BulletInstance>()
+                : deckManager.Graveyard);
     }
 }
 
@@ -324,6 +336,63 @@ public sealed class BulletInstance
                         + $"(대미지 +{bonus * 100f:0.##}%)");
                     break;
                 }
+                case BulletEffectType.Collection:
+                {
+                    int count = CountDistinctOwnedBulletTypes(context);
+                    float bonus = count * effect.Amount / 100f;
+                    damageMultiplier *= 1f + bonus;
+                    stateLines.Add(
+                        $"보유 탄환 종류: {count} "
+                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                    break;
+                }
+                case BulletEffectType.MixedGrade:
+                {
+                    int count = CountOtherLoadedGrades(
+                        context.LoadedBullets);
+                    float bonus = count * effect.Amount / 100f;
+                    damageMultiplier *= 1f + bonus;
+                    stateLines.Add(
+                        $"실린더의 다른 등급 탄환: {count} "
+                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                    break;
+                }
+                case BulletEffectType.Masterpiece:
+                {
+                    int count = CountOwnedGrades(
+                        context,
+                        BulletGrade.Ace,
+                        BulletGrade.Legendary);
+                    float bonus = count * effect.Amount / 100f;
+                    damageMultiplier *= 1f + bonus;
+                    stateLines.Add(
+                        $"에이스 이상 탄환: {count} "
+                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                    break;
+                }
+                case BulletEffectType.MassProduced:
+                {
+                    int count = CountOwnedGrades(
+                        context,
+                        BulletGrade.Normal,
+                        BulletGrade.Rare);
+                    float bonus = count * effect.Amount / 100f;
+                    damageMultiplier *= 1f + bonus;
+                    stateLines.Add(
+                        $"노멀·레어 탄환: {count} "
+                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                    break;
+                }
+                case BulletEffectType.Monopoly:
+                {
+                    int count = GetMostCommonOwnedGradeCount(context);
+                    float bonus = count * effect.Amount / 100f;
+                    damageMultiplier *= 1f + bonus;
+                    stateLines.Add(
+                        $"최다 보유 등급 탄환: {count} "
+                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                    break;
+                }
             }
         }
 
@@ -362,6 +431,99 @@ public sealed class BulletInstance
         }
 
         return false;
+    }
+
+    private int CountOtherLoadedGrades(
+        IReadOnlyList<BulletInstance> bullets)
+    {
+        int count = 0;
+
+        foreach (BulletInstance bullet in bullets)
+        {
+            if (bullet != null && !ReferenceEquals(bullet, this)
+                && bullet.Grade != Grade)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static int CountDistinctOwnedBulletTypes(
+        BulletTooltipContext context)
+    {
+        HashSet<BulletData> types = new HashSet<BulletData>();
+        AddOwnedTypes(types, context.DeckBullets);
+        AddOwnedTypes(types, context.LoadedBullets);
+        AddOwnedTypes(types, context.GraveyardBullets);
+        return types.Count;
+    }
+
+    private static void AddOwnedTypes(
+        HashSet<BulletData> types,
+        IReadOnlyList<BulletInstance> bullets)
+    {
+        foreach (BulletInstance bullet in bullets)
+        {
+            if (bullet?.Data != null)
+            {
+                types.Add(bullet.Data);
+            }
+        }
+    }
+
+    private static int CountOwnedGrades(
+        BulletTooltipContext context,
+        BulletGrade first,
+        BulletGrade second)
+    {
+        return CountGrades(context.DeckBullets, first, second)
+            + CountGrades(context.LoadedBullets, first, second)
+            + CountGrades(context.GraveyardBullets, first, second);
+    }
+
+    private static int CountGrades(
+        IReadOnlyList<BulletInstance> bullets,
+        BulletGrade first,
+        BulletGrade second)
+    {
+        int count = 0;
+
+        foreach (BulletInstance bullet in bullets)
+        {
+            if (bullet != null
+                && (bullet.Grade == first || bullet.Grade == second))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static int GetMostCommonOwnedGradeCount(
+        BulletTooltipContext context)
+    {
+        int[] counts = new int[4];
+        CountOwnedGradeInstances(counts, context.DeckBullets);
+        CountOwnedGradeInstances(counts, context.LoadedBullets);
+        CountOwnedGradeInstances(counts, context.GraveyardBullets);
+        return Mathf.Max(counts[0], counts[1], counts[2], counts[3]);
+    }
+
+    private static void CountOwnedGradeInstances(
+        int[] counts,
+        IReadOnlyList<BulletInstance> bullets)
+    {
+        foreach (BulletInstance bullet in bullets)
+        {
+            if (bullet != null)
+            {
+                int index = Mathf.Clamp((int)bullet.Grade, 0, 3);
+                counts[index]++;
+            }
+        }
     }
 
     private int CountOtherLoadedEffects(

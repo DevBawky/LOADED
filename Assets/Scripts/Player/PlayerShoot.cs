@@ -55,6 +55,9 @@ public class PlayerShoot : MonoBehaviour
         new List<EnemyController>();
     private readonly List<BulletInstance> ownedBulletBuffer =
         new List<BulletInstance>();
+    private readonly HashSet<BulletData> ownedBulletTypeBuffer =
+        new HashSet<BulletData>();
+    private readonly int[] ownedGradeCountBuffer = new int[4];
     private BulletInstance currentConsumedBullet;
     private int initialLoadedBulletCount;
     private int bulletsFiredThisCylinder;
@@ -245,8 +248,11 @@ public class PlayerShoot : MonoBehaviour
         criticalShotsThisCylinder = 0;
         bulletDestroyedThisCylinder = false;
         pendingSaverGold = 0;
-        bool quickDrawActive = initialLoadedBulletCount <= 3
-            && ContainsLoadedEffect(BulletEffectType.QuickDraw);
+        bool saverRefundsTurn = false;
+        int quickDrawThreshold = GetLoadedEffectMaximumStackCount(
+            BulletEffectType.QuickDraw);
+        bool quickDrawActive = quickDrawThreshold > 0
+            && initialLoadedBulletCount <= quickDrawThreshold;
 
         while (deckManager.LoadedBullets.Count > 0)
         {
@@ -300,7 +306,11 @@ public class PlayerShoot : MonoBehaviour
 
                 if (distributorEffect != null)
                 {
-                    firedBullet.AddStoredDamageBonus(stackedDamageBonus);
+                    float storageEfficiency = Mathf.Max(
+                        0f,
+                        distributorEffect.Amount / 100f);
+                    firedBullet.AddStoredDamageBonus(
+                        stackedDamageBonus * storageEfficiency);
                     stackedDamageBonus = 0f;
 
                     foreach (BulletInstance loadedBullet
@@ -409,6 +419,7 @@ public class PlayerShoot : MonoBehaviour
             if (saverEffect != null)
             {
                 pendingSaverGold += saverEffect.Amount;
+                saverRefundsTurn |= saverEffect.StackCount >= 2;
             }
 
             bulletsFiredThisCylinder++;
@@ -429,6 +440,11 @@ public class PlayerShoot : MonoBehaviour
         {
             currencyManager ??= FindFirstObjectByType<CurrencyManager>();
             currencyManager?.AddMoney(pendingSaverGold);
+        }
+
+        if (!bulletDestroyedThisCylinder && saverRefundsTurn)
+        {
+            consumesTurn = false;
         }
 
         if (firedAnyBullet && consumesTurn)
@@ -682,7 +698,128 @@ public class PlayerShoot : MonoBehaviour
                 * legacyEffect.Amount / 100f;
         }
 
+        BulletEffectData collectionEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Collection);
+
+        if (collectionEffect != null)
+        {
+            multiplier *= 1f + CountDistinctOwnedBulletTypes()
+                * collectionEffect.Amount / 100f;
+        }
+
+        BulletEffectData mixedGradeEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.MixedGrade);
+
+        if (mixedGradeEffect != null)
+        {
+            int otherGradeCount = 0;
+
+            foreach (BulletInstance loadedBullet in deckManager.LoadedBullets)
+            {
+                if (loadedBullet != null
+                    && loadedBullet.Grade != firedBullet.Grade)
+                {
+                    otherGradeCount++;
+                }
+            }
+
+            multiplier *= 1f + otherGradeCount
+                * mixedGradeEffect.Amount / 100f;
+        }
+
+        BulletEffectData masterpieceEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Masterpiece);
+
+        if (masterpieceEffect != null)
+        {
+            multiplier *= 1f + CountOwnedBulletsByGrade(
+                    BulletGrade.Ace,
+                    BulletGrade.Legendary)
+                * masterpieceEffect.Amount / 100f;
+        }
+
+        BulletEffectData massProducedEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.MassProduced);
+
+        if (massProducedEffect != null)
+        {
+            multiplier *= 1f + CountOwnedBulletsByGrade(
+                    BulletGrade.Normal,
+                    BulletGrade.Rare)
+                * massProducedEffect.Amount / 100f;
+        }
+
+        BulletEffectData monopolyEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Monopoly);
+
+        if (monopolyEffect != null)
+        {
+            multiplier *= 1f + GetMostCommonOwnedGradeCount()
+                * monopolyEffect.Amount / 100f;
+        }
+
         return multiplier;
+    }
+
+    private int CountDistinctOwnedBulletTypes()
+    {
+        deckManager.GetOwnedBullets(ownedBulletBuffer);
+        ownedBulletTypeBuffer.Clear();
+
+        foreach (BulletInstance bullet in ownedBulletBuffer)
+        {
+            if (bullet?.Data != null)
+            {
+                ownedBulletTypeBuffer.Add(bullet.Data);
+            }
+        }
+
+        return ownedBulletTypeBuffer.Count;
+    }
+
+    private int CountOwnedBulletsByGrade(
+        BulletGrade first,
+        BulletGrade second)
+    {
+        deckManager.GetOwnedBullets(ownedBulletBuffer);
+        int count = 0;
+
+        foreach (BulletInstance bullet in ownedBulletBuffer)
+        {
+            if (bullet != null
+                && (bullet.Grade == first || bullet.Grade == second))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private int GetMostCommonOwnedGradeCount()
+    {
+        deckManager.GetOwnedBullets(ownedBulletBuffer);
+        Array.Clear(ownedGradeCountBuffer, 0, ownedGradeCountBuffer.Length);
+
+        foreach (BulletInstance bullet in ownedBulletBuffer)
+        {
+            if (bullet != null)
+            {
+                int index = Mathf.Clamp((int)bullet.Grade, 0, 3);
+                ownedGradeCountBuffer[index]++;
+            }
+        }
+
+        return Mathf.Max(
+            ownedGradeCountBuffer[0],
+            ownedGradeCountBuffer[1],
+            ownedGradeCountBuffer[2],
+            ownedGradeCountBuffer[3]);
     }
 
     private float GetSpecialCriticalChanceBonus(
@@ -746,8 +883,13 @@ public class PlayerShoot : MonoBehaviour
 
         if (accumulatorEffect != null)
         {
+            float retentionRatio = Mathf.Clamp(
+                accumulatorEffect.KnockbackDistance,
+                0,
+                100) / 100f;
             firedBullet.SetAbilityStacks(
-                Mathf.CeilToInt(firedBullet.AbilityStacks * 0.5f));
+                Mathf.CeilToInt(
+                    firedBullet.AbilityStacks * retentionRatio));
         }
     }
 
@@ -769,7 +911,8 @@ public class PlayerShoot : MonoBehaviour
             }
             else
             {
-                stateOwner.AddAbilityStacks(1);
+                stateOwner.AddAbilityStacks(
+                    Mathf.Max(1, focusEffect.StackCount));
             }
         }
 
@@ -823,17 +966,26 @@ public class PlayerShoot : MonoBehaviour
         }
     }
 
-    private bool ContainsLoadedEffect(BulletEffectType effectType)
+    private int GetLoadedEffectMaximumStackCount(
+        BulletEffectType effectType)
     {
+        int maximumStackCount = 0;
+
         foreach (BulletInstance loadedBullet in deckManager.LoadedBullets)
         {
-            if (FindSpecialEffect(loadedBullet, effectType) != null)
+            BulletEffectData effect = FindSpecialEffect(
+                loadedBullet,
+                effectType);
+
+            if (effect != null)
             {
-                return true;
+                maximumStackCount = Mathf.Max(
+                    maximumStackCount,
+                    effect.StackCount);
             }
         }
 
-        return false;
+        return maximumStackCount;
     }
 
     private static bool RollChainFire(
@@ -1154,13 +1306,26 @@ public class PlayerShoot : MonoBehaviour
             if (poisonStacks > 0)
             {
                 long remainingPoisonDamage =
-                    (long)poisonStacks * (poisonStacks + 1) / 2;
-                int poisonDamage = (int)Math.Min(
-                    int.MaxValue,
-                    remainingPoisonDamage);
+                    (long)poisonStacks * ((long)poisonStacks + 1) / 2;
+                long scaledPoisonDamage = remainingPoisonDamage
+                    >= int.MaxValue
+                    ? int.MaxValue
+                    : Math.Min(
+                        int.MaxValue,
+                        (remainingPoisonDamage * venomBurstEffect.Amount + 99)
+                        / 100);
+                int poisonDamage = (int)scaledPoisonDamage;
                 int healthBeforePoison = enemy.CurrentHealth;
                 enemy.ApplyStatusDamage(poisonDamage);
                 defeated = poisonDamage >= healthBeforePoison;
+            }
+
+            if (!defeated && enemy != null && enemy.CurrentHealth > 0
+                && venomBurstEffect.KnockbackDistance > 0)
+            {
+                enemy.AddStatusEffect(
+                    StatusEffectType.Poison,
+                    venomBurstEffect.KnockbackDistance);
             }
         }
 
@@ -1170,11 +1335,14 @@ public class PlayerShoot : MonoBehaviour
 
     private void GrantDevourerStack(BulletInstance resolvedBullet)
     {
-        if (FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Devourer) != null)
+        BulletEffectData devourerEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Devourer);
+
+        if (devourerEffect != null)
         {
-            (currentConsumedBullet ?? resolvedBullet)?.AddPermanentStacks(1);
+            (currentConsumedBullet ?? resolvedBullet)?.AddPermanentStacks(
+                Mathf.Max(1, devourerEffect.StackCount));
         }
     }
 
@@ -1461,7 +1629,12 @@ public class PlayerShoot : MonoBehaviour
             || effectType == BulletEffectType.Accumulator
             || effectType == BulletEffectType.ShellCollector
             || effectType == BulletEffectType.Devourer
-            || effectType == BulletEffectType.Legacy;
+            || effectType == BulletEffectType.Legacy
+            || effectType == BulletEffectType.Collection
+            || effectType == BulletEffectType.MixedGrade
+            || effectType == BulletEffectType.Masterpiece
+            || effectType == BulletEffectType.MassProduced
+            || effectType == BulletEffectType.Monopoly;
     }
 
     private void HandleBulletDestroyed(BulletInstance destroyedBullet)
@@ -1477,12 +1650,19 @@ public class PlayerShoot : MonoBehaviour
 
         foreach (BulletInstance ownedBullet in ownedBulletBuffer)
         {
-            if (ownedBullet != null && ownedBullet != destroyedBullet
-                && FindSpecialEffect(
-                    ownedBullet,
-                    BulletEffectType.Legacy) != null)
+            if (ownedBullet == null || ownedBullet == destroyedBullet)
             {
-                ownedBullet.AddPermanentStacks(1);
+                continue;
+            }
+
+            BulletEffectData legacyEffect = FindSpecialEffect(
+                ownedBullet,
+                BulletEffectType.Legacy);
+
+            if (legacyEffect != null)
+            {
+                ownedBullet.AddPermanentStacks(
+                    Mathf.Max(1, legacyEffect.StackCount));
             }
         }
     }

@@ -43,7 +43,7 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
   removeCost: 8
-  upgradeCost: 18
+  upgradeCost: 20
   upgradeLevels:
   - description: "다음 일반 탄환의 최종 대미지가 25% 증가합니다. 중첩탄끼리는 효과가 누적됩니다."
     damage: 11
@@ -65,7 +65,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 8
-    upgradeCost: 32
+    upgradeCost: 35
   - description: "다음 일반 탄환의 최종 대미지가 30% 증가합니다. 중첩탄끼리는 효과가 누적됩니다."
     damage: 15
     maxRange: 4
@@ -86,7 +86,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     removeCost: 8
-    upgradeCost: 55
+    upgradeCost: 60
   - description: "다음 일반 탄환의 최종 대미지가 40% 증가합니다. 중첩탄끼리는 효과가 누적됩니다."
     damage: 20
     maxRange: 4

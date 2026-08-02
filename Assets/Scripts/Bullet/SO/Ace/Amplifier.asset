@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_amplifier
   displayName: 증폭탄
-  description: 50% 확률로 대상이 가진 모든 상태이상 스택을 2배로 만듭니다.
+  description: "50% 확률로 대상이 가진 모든 상태이상 스택을 2배로 만듭니다."
   bulletIcon: {fileID: -1019154925492222630, guid: 4e4231e03b1667e4cbbdf07d9af0dbbd, type: 3}
   cylinderIcon: {fileID: 21300000, guid: a16ebab303ff4064eb40d38facb2016c, type: 3}
   price: 30
@@ -44,4 +44,86 @@ MonoBehaviour:
   recoilStrength: 0.12
   removeCost: 12
   upgradeCost: 30
-  upgradeLevels: []
+  upgradeLevels:
+  - description: "65% 확률로 대상이 가진 모든 상태이상 스택을 2배로 만듭니다."
+    damage: 14
+    maxRange: 4
+    criticalChance: 24
+    criticalDamageMultiplier: 1.8
+    effects:
+    - effectType: 25
+      target: 1
+      activationChance: 65
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 2
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 55
+  - description: "80% 확률로 상태이상 스택을 3배로 만들고 표식 2를 부여합니다."
+    damage: 18
+    maxRange: 5
+    criticalChance: 28
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 25
+      target: 1
+      activationChance: 80
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 3
+    - effectType: 2
+      target: 0
+      activationChance: 100
+      stackCount: 2
+      knockbackDistance: 1
+      amount: 1
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 90
+  - description: "반드시 상태이상 스택을 3배로 만들고 표식 3과 약화 2를 부여합니다. 턴을 소비하지 않습니다."
+    damage: 24
+    maxRange: 5
+    criticalChance: 35
+    criticalDamageMultiplier: 2.3
+    effects:
+    - effectType: 25
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 3
+    - effectType: 2
+      target: 0
+      activationChance: 100
+      stackCount: 3
+      knockbackDistance: 1
+      amount: 1
+    - effectType: 6
+      target: 0
+      activationChance: 100
+      stackCount: 2
+      knockbackDistance: 1
+      amount: 1
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 30
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.12
+    removeCost: 12
+    upgradeCost: 0
