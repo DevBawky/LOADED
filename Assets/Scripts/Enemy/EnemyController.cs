@@ -370,6 +370,26 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         return applied;
     }
 
+    public int ActiveStatusTypeCount => statusEffects == null
+        ? 0
+        : statusEffects.ActiveStatusTypeCount;
+
+    public int GetStatusStacks(StatusEffectType type)
+    {
+        return statusEffects == null ? 0 : statusEffects.GetStacks(type);
+    }
+
+    public int ConsumeStatusStacks(StatusEffectType type)
+    {
+        return statusEffects == null ? 0 : statusEffects.Consume(type);
+    }
+
+    public bool MultiplyActiveStatusStacks(int multiplier)
+    {
+        return currentHealth > 0 && statusEffects != null
+            && statusEffects.MultiplyActiveStacks(multiplier);
+    }
+
     public void ShowLifeStealStatus()
     {
         damageNumberDisplay?.ShowLifeStealStatus();

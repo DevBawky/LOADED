@@ -53,9 +53,25 @@ public class PlayerShoot : MonoBehaviour
         new List<EnemyController>();
     private readonly List<EnemyController> hitBuffer =
         new List<EnemyController>();
+    private readonly List<BulletInstance> ownedBulletBuffer =
+        new List<BulletInstance>();
     private BulletInstance currentConsumedBullet;
+    private int initialLoadedBulletCount;
+    private int bulletsFiredThisCylinder;
+    private int criticalShotsThisCylinder;
+    private bool bulletDestroyedThisCylinder;
+    private int pendingSaverGold;
 
     public bool IsFiring => isFiring;
+    public int InitialLoadedBulletCount => isFiring
+        ? Mathf.Max(0, initialLoadedBulletCount)
+        : deckManager == null ? 0 : deckManager.LoadedBullets.Count;
+    public int BulletsFiredThisCylinder => isFiring
+        ? Mathf.Max(0, bulletsFiredThisCylinder)
+        : 0;
+    public int CriticalShotsThisCylinder => isFiring
+        ? Mathf.Max(0, criticalShotsThisCylinder)
+        : 0;
 
     private void Awake()
     {
@@ -224,6 +240,13 @@ public class PlayerShoot : MonoBehaviour
         bool consumesTurn = false;
         BulletInstance previousResolvedBullet = null;
         float stackedDamageBonus = 0f;
+        initialLoadedBulletCount = deckManager.LoadedBullets.Count;
+        bulletsFiredThisCylinder = 0;
+        criticalShotsThisCylinder = 0;
+        bulletDestroyedThisCylinder = false;
+        pendingSaverGold = 0;
+        bool quickDrawActive = initialLoadedBulletCount <= 3
+            && ContainsLoadedEffect(BulletEffectType.QuickDraw);
 
         while (deckManager.LoadedBullets.Count > 0)
         {
@@ -252,7 +275,8 @@ public class PlayerShoot : MonoBehaviour
             BulletInstance resolvedBullet = ResolveShotBullet(
                 bulletData,
                 previousResolvedBullet);
-            consumesTurn |= !resolvedBullet.DoesNotConsumeTurn;
+            consumesTurn |= !quickDrawActive
+                && !resolvedBullet.DoesNotConsumeTurn;
             BulletEffectData powderEffect = FindSpecialEffect(
                 resolvedBullet,
                 BulletEffectType.PowderPouch);
@@ -270,8 +294,25 @@ public class PlayerShoot : MonoBehaviour
                 bool isStackingShot = FindSpecialEffect(
                     resolvedBullet,
                     BulletEffectType.StackNextShot) != null;
+                BulletEffectData distributorEffect = FindSpecialEffect(
+                    resolvedBullet,
+                    BulletEffectType.Distributor);
 
-                if (!isStackingShot && stackedDamageBonus > 0f)
+                if (distributorEffect != null)
+                {
+                    firedBullet.AddStoredDamageBonus(stackedDamageBonus);
+                    stackedDamageBonus = 0f;
+
+                    foreach (BulletInstance loadedBullet
+                             in deckManager.LoadedBullets)
+                    {
+                        loadedBullet?.AddTemporaryDamageBonus(
+                            firedBullet.StoredDamageBonus);
+                    }
+                }
+
+                if (!isStackingShot && distributorEffect == null
+                    && stackedDamageBonus > 0f)
                 {
                     damageMultiplier *= 1f + stackedDamageBonus;
                     stackedDamageBonus = 0f;
@@ -282,6 +323,15 @@ public class PlayerShoot : MonoBehaviour
                     BulletEffectType.ChainFire);
                 float criticalChanceBonus =
                     firedBullet.ConsumeTemporaryCriticalChanceBonus();
+                criticalChanceBonus += GetSpecialCriticalChanceBonus(
+                    firedBullet,
+                    resolvedBullet);
+                BulletEffectData shellEffect = FindSpecialEffect(
+                    resolvedBullet,
+                    BulletEffectType.ShellCollector);
+                int shellExtraShots = GetAndConsumeShellExtraShots(
+                    firedBullet,
+                    shellEffect);
                 int additionalShotCount = 0;
                 bool keepFiring;
 
@@ -293,6 +343,7 @@ public class PlayerShoot : MonoBehaviour
                         horizontalDirection,
                         damageMultiplier,
                         criticalChanceBonus,
+                        true,
                         completed => shotCompleted = completed);
 
                     if (!shotCompleted)
@@ -315,6 +366,30 @@ public class PlayerShoot : MonoBehaviour
                 }
                 while (keepFiring);
 
+                for (int shellShotIndex = 0;
+                     shellShotIndex < shellExtraShots;
+                     shellShotIndex++)
+                {
+                    bool shotCompleted = false;
+                    yield return FireSingleShot(
+                        resolvedBullet,
+                        horizontalDirection,
+                        damageMultiplier * shellEffect.Amount / 100f,
+                        criticalChanceBonus,
+                        false,
+                        completed => shotCompleted = completed);
+
+                    if (!shotCompleted)
+                    {
+                        break;
+                    }
+
+                    if (shotInterval > 0f)
+                    {
+                        yield return WaitForShotInterval();
+                    }
+                }
+
                 BulletEffectData stackEffect = FindSpecialEffect(
                     resolvedBullet,
                     BulletEffectType.StackNextShot);
@@ -323,8 +398,20 @@ public class PlayerShoot : MonoBehaviour
                 {
                     stackedDamageBonus += stackEffect.Amount / 100f;
                 }
+
+                HandlePostBulletAbility(firedBullet, resolvedBullet);
             }
 
+            BulletEffectData saverEffect = FindSpecialEffect(
+                resolvedBullet,
+                BulletEffectType.Saver);
+
+            if (saverEffect != null)
+            {
+                pendingSaverGold += saverEffect.Amount;
+            }
+
+            bulletsFiredThisCylinder++;
             previousResolvedBullet = resolvedBullet;
             currentConsumedBullet = null;
 
@@ -336,6 +423,12 @@ public class PlayerShoot : MonoBehaviour
             {
                 yield return null;
             }
+        }
+
+        if (!bulletDestroyedThisCylinder && pendingSaverGold > 0)
+        {
+            currencyManager ??= FindFirstObjectByType<CurrencyManager>();
+            currencyManager?.AddMoney(pendingSaverGold);
         }
 
         if (firedAnyBullet && consumesTurn)
@@ -353,6 +446,7 @@ public class PlayerShoot : MonoBehaviour
         int horizontalDirection,
         float damageMultiplier,
         float criticalChanceBonus,
+        bool generatesShells,
         Action<bool> onCompleted)
     {
         if (bulletData == null)
@@ -413,6 +507,7 @@ public class PlayerShoot : MonoBehaviour
             horizontalDirection,
             isCritical,
             damageMultiplier);
+        HandleShotResult(bulletData, isCritical, generatesShells);
         onCompleted?.Invoke(true);
     }
 
@@ -446,7 +541,10 @@ public class PlayerShoot : MonoBehaviour
             loadedBullet?.AddTemporaryCriticalChance(criticalChanceBonus);
         }
 
-        deckManager.TryDestroyBullet(powderPouch);
+        if (deckManager.TryDestroyBullet(powderPouch))
+        {
+            HandleBulletDestroyed(powderPouch);
+        }
     }
 
     private float GetSpecialDamageMultiplier(
@@ -494,7 +592,248 @@ public class PlayerShoot : MonoBehaviour
             multiplier *= Mathf.Max(1f, cloneEffect.Amount / 100f);
         }
 
+        multiplier *= 1f + firedBullet.ConsumeTemporaryDamageBonus();
+
+        BulletEffectData gildedEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Gilded);
+
+        if (gildedEffect != null && currencyManager != null)
+        {
+            int goldUnit = Mathf.Max(1, gildedEffect.StackCount);
+            multiplier *= 1f + currencyManager.CurrentMoney / goldUnit
+                * gildedEffect.Amount / 100f;
+        }
+
+        BulletEffectData heartEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Heart);
+
+        if (heartEffect != null && playerHealth != null)
+        {
+            int healthUnit = Mathf.Max(1, heartEffect.StackCount);
+            multiplier *= 1f + playerHealth.MaxHealth / healthUnit
+                * heartEffect.Amount / 100f;
+        }
+
+        BulletEffectData loaderEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Loader);
+
+        if (loaderEffect != null)
+        {
+            int emptyChambers = Mathf.Max(
+                0,
+                deckManager.MaxReloadAmount - initialLoadedBulletCount);
+            multiplier *= 1f
+                + emptyChambers * loaderEffect.Amount / 100f;
+        }
+
+        BulletEffectData crescendoEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Crescendo);
+
+        if (crescendoEffect != null)
+        {
+            multiplier *= 1f
+                + criticalShotsThisCylinder
+                * crescendoEffect.Amount / 100f;
+        }
+
+        BulletEffectData chargeEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Charge);
+
+        if (chargeEffect != null)
+        {
+            int charges = Mathf.Min(
+                bulletsFiredThisCylinder,
+                chargeEffect.StackCount);
+            multiplier *= 1f + charges * chargeEffect.Amount / 100f;
+        }
+
+        BulletEffectData accumulatorEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Accumulator);
+
+        if (accumulatorEffect != null)
+        {
+            multiplier *= 1f + firedBullet.AbilityStacks
+                * accumulatorEffect.Amount / 100f;
+        }
+
+        BulletEffectData devourerEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Devourer);
+
+        if (devourerEffect != null)
+        {
+            multiplier *= 1f + firedBullet.PermanentStacks
+                * devourerEffect.Amount / 100f;
+        }
+
+        BulletEffectData legacyEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Legacy);
+
+        if (legacyEffect != null)
+        {
+            multiplier *= 1f + firedBullet.PermanentStacks
+                * legacyEffect.Amount / 100f;
+        }
+
         return multiplier;
+    }
+
+    private float GetSpecialCriticalChanceBonus(
+        BulletInstance firedBullet,
+        BulletInstance resolvedBullet)
+    {
+        float bonus = 0f;
+        BulletEffectData coagulationEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Coagulation);
+
+        if (coagulationEffect != null && playerHealth != null
+            && playerHealth.MaxHealth > 0)
+        {
+            float missingPercent = 100f
+                * (playerHealth.MaxHealth - playerHealth.CurrentHealth)
+                / playerHealth.MaxHealth;
+            bonus += Mathf.Floor(
+                    missingPercent
+                    / Mathf.Max(1, coagulationEffect.StackCount))
+                * coagulationEffect.Amount;
+        }
+
+        BulletEffectData focusEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Focus);
+
+        if (focusEffect != null)
+        {
+            bonus += firedBullet.AbilityStacks * focusEffect.Amount;
+        }
+
+        return bonus;
+    }
+
+    private int GetAndConsumeShellExtraShots(
+        BulletInstance firedBullet,
+        BulletEffectData shellEffect)
+    {
+        if (firedBullet == null || shellEffect == null)
+        {
+            return 0;
+        }
+
+        int shellCost = Mathf.Max(1, shellEffect.StackCount);
+        int maxExtraShots = Mathf.Max(1, shellEffect.KnockbackDistance);
+        int extraShots = Mathf.Min(
+            firedBullet.AbilityStacks / shellCost,
+            maxExtraShots);
+        firedBullet.ConsumeAbilityStacks(extraShots * shellCost);
+        return extraShots;
+    }
+
+    private void HandlePostBulletAbility(
+        BulletInstance firedBullet,
+        BulletInstance resolvedBullet)
+    {
+        BulletEffectData accumulatorEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Accumulator);
+
+        if (accumulatorEffect != null)
+        {
+            firedBullet.SetAbilityStacks(
+                Mathf.CeilToInt(firedBullet.AbilityStacks * 0.5f));
+        }
+    }
+
+    private void HandleShotResult(
+        BulletInstance resolvedBullet,
+        bool isCritical,
+        bool generatesShells)
+    {
+        BulletInstance stateOwner = currentConsumedBullet ?? resolvedBullet;
+        BulletEffectData focusEffect = FindSpecialEffect(
+            resolvedBullet,
+            BulletEffectType.Focus);
+
+        if (focusEffect != null)
+        {
+            if (isCritical)
+            {
+                stateOwner.SetAbilityStacks(0);
+            }
+            else
+            {
+                stateOwner.AddAbilityStacks(1);
+            }
+        }
+
+        if (isCritical)
+        {
+            criticalShotsThisCylinder++;
+            GrantAbilityStacksToOwned(
+                BulletEffectType.Accumulator,
+                1,
+                stateOwner);
+
+            BulletEffectData rebateEffect = FindSpecialEffect(
+                resolvedBullet,
+                BulletEffectType.Rebate);
+
+            if (rebateEffect != null && rebateEffect.RollActivation())
+            {
+                currencyManager ??= FindFirstObjectByType<CurrencyManager>();
+                currencyManager?.AddMoney(rebateEffect.Amount);
+            }
+        }
+
+        if (generatesShells)
+        {
+            GrantAbilityStacksToOwned(
+                BulletEffectType.ShellCollector,
+                1,
+                stateOwner);
+        }
+    }
+
+    private void GrantAbilityStacksToOwned(
+        BulletEffectType effectType,
+        int amount,
+        BulletInstance excludedBullet)
+    {
+        if (deckManager == null || amount <= 0)
+        {
+            return;
+        }
+
+        deckManager.GetOwnedBullets(ownedBulletBuffer);
+
+        foreach (BulletInstance ownedBullet in ownedBulletBuffer)
+        {
+            if (ownedBullet != null && ownedBullet != excludedBullet
+                && FindSpecialEffect(ownedBullet, effectType) != null)
+            {
+                ownedBullet.AddAbilityStacks(amount);
+            }
+        }
+    }
+
+    private bool ContainsLoadedEffect(BulletEffectType effectType)
+    {
+        foreach (BulletInstance loadedBullet in deckManager.LoadedBullets)
+        {
+            if (FindSpecialEffect(loadedBullet, effectType) != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool RollChainFire(
@@ -569,11 +908,6 @@ public class PlayerShoot : MonoBehaviour
             yield break;
         }
 
-        int attackDamage = CalculateAttackDamage(
-            bulletData,
-            isCritical,
-            damageMultiplier);
-
         for (int hitIndex = 0; hitIndex < hitBuffer.Count; hitIndex++)
         {
             EnemyController enemy = hitBuffer[hitIndex];
@@ -589,6 +923,14 @@ public class PlayerShoot : MonoBehaviour
                     : combatPresentation.CaptureEnemy(enemy);
             int healthBeforeHit = enemy.CurrentHealth;
             bool defeatPresented = false;
+            float targetDamageMultiplier = GetTargetDamageMultiplier(
+                bulletData,
+                enemy,
+                horizontalDirection);
+            int attackDamage = CalculateAttackDamage(
+                bulletData,
+                isCritical,
+                damageMultiplier * targetDamageMultiplier);
 
             if (hitIndex > 0)
             {
@@ -624,6 +966,7 @@ public class PlayerShoot : MonoBehaviour
                     enemy,
                     horizontalDirection,
                     0);
+                GrantDevourerStack(bulletData);
                 continue;
             }
 
@@ -638,6 +981,7 @@ public class PlayerShoot : MonoBehaviour
                 isCritical,
                 defeatedByAttack);
             defeatPresented = defeatedByAttack;
+            bool defeatedByManagedEffect = false;
 
             IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
 
@@ -683,6 +1027,11 @@ public class PlayerShoot : MonoBehaviour
                 }
             }
 
+            yield return ApplyManagedTargetEffects(
+                bulletData,
+                enemy,
+                result => defeatedByManagedEffect = result);
+
             if (enemy == null || enemy.CurrentHealth <= 0)
             {
                 if (!defeatPresented)
@@ -701,7 +1050,131 @@ public class PlayerShoot : MonoBehaviour
                     enemy,
                     horizontalDirection,
                     appliedDamage);
+
+                if (defeatedByAttack || defeatedByManagedEffect)
+                {
+                    GrantDevourerStack(bulletData);
+                }
             }
+        }
+    }
+
+    private float GetTargetDamageMultiplier(
+        BulletInstance bullet,
+        EnemyController enemy,
+        int horizontalDirection)
+    {
+        float multiplier = 1f;
+        BulletEffectData rangefinderEffect = FindSpecialEffect(
+            bullet,
+            BulletEffectType.Rangefinder);
+
+        if (rangefinderEffect != null && boardManager.TryGetTileDistance(
+                transform.position,
+                enemy.transform.position,
+                out int tileDistance))
+        {
+            multiplier *= 1f
+                + tileDistance * rangefinderEffect.Amount / 100f;
+        }
+
+        BulletEffectData judgmentEffect = FindSpecialEffect(
+            bullet,
+            BulletEffectType.Judgment);
+
+        if (judgmentEffect != null)
+        {
+            multiplier *= 1f + enemy.ActiveStatusTypeCount
+                * judgmentEffect.Amount / 100f;
+        }
+
+        BulletEffectData wallImpactEffect = FindSpecialEffect(
+            bullet,
+            BulletEffectType.WallImpact);
+
+        if (wallImpactEffect != null
+            && IsEnemyBlocked(enemy, horizontalDirection))
+        {
+            multiplier *= 1f + wallImpactEffect.Amount / 100f;
+        }
+
+        return multiplier;
+    }
+
+    private bool IsEnemyBlocked(
+        EnemyController enemy,
+        int horizontalDirection)
+    {
+        if (enemy == null || boardManager == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                enemy.transform.position,
+                out int enemyTileIndex))
+        {
+            return false;
+        }
+
+        int nextTileIndex = enemyTileIndex
+            + (horizontalDirection >= 0 ? 1 : -1);
+        return nextTileIndex < 0
+            || nextTileIndex >= boardManager.BoardCount
+            || waveManager.IsTileOccupied(nextTileIndex, enemy);
+    }
+
+    private IEnumerator ApplyManagedTargetEffects(
+        BulletInstance bullet,
+        EnemyController enemy,
+        Action<bool> onCompleted)
+    {
+        if (bullet == null || enemy == null || enemy.CurrentHealth <= 0)
+        {
+            onCompleted?.Invoke(false);
+            yield break;
+        }
+
+        BulletEffectData amplifierEffect = FindSpecialEffect(
+            bullet,
+            BulletEffectType.StatusAmplifier);
+
+        if (amplifierEffect != null && amplifierEffect.RollActivation())
+        {
+            enemy.MultiplyActiveStatusStacks(
+                Mathf.Max(2, amplifierEffect.Amount));
+        }
+
+        bool defeated = false;
+        BulletEffectData venomBurstEffect = FindSpecialEffect(
+            bullet,
+            BulletEffectType.VenomBurst);
+
+        if (venomBurstEffect != null && venomBurstEffect.RollActivation())
+        {
+            int poisonStacks = enemy.ConsumeStatusStacks(
+                StatusEffectType.Poison);
+
+            if (poisonStacks > 0)
+            {
+                long remainingPoisonDamage =
+                    (long)poisonStacks * (poisonStacks + 1) / 2;
+                int poisonDamage = (int)Math.Min(
+                    int.MaxValue,
+                    remainingPoisonDamage);
+                int healthBeforePoison = enemy.CurrentHealth;
+                enemy.ApplyStatusDamage(poisonDamage);
+                defeated = poisonDamage >= healthBeforePoison;
+            }
+        }
+
+        onCompleted?.Invoke(defeated);
+        yield break;
+    }
+
+    private void GrantDevourerStack(BulletInstance resolvedBullet)
+    {
+        if (FindSpecialEffect(
+                resolvedBullet,
+                BulletEffectType.Devourer) != null)
+        {
+            (currentConsumedBullet ?? resolvedBullet)?.AddPermanentStacks(1);
         }
     }
 
@@ -771,9 +1244,15 @@ public class PlayerShoot : MonoBehaviour
                 applied = playerHealth.IncreaseMaxHealth(effect.Amount);
                 break;
             case BulletEffectType.DestroyBullet:
+                BulletInstance destroyedBullet =
+                    currentConsumedBullet ?? sourceBullet;
                 applied = deckManager != null
-                    && deckManager.TryDestroyBullet(
-                        currentConsumedBullet ?? sourceBullet);
+                    && deckManager.TryDestroyBullet(destroyedBullet);
+
+                if (applied)
+                {
+                    HandleBulletDestroyed(destroyedBullet);
+                }
                 break;
             case BulletEffectType.GainGold:
                 currencyManager ??= FindFirstObjectByType<CurrencyManager>();
@@ -962,7 +1441,50 @@ public class PlayerShoot : MonoBehaviour
             || effectType == BulletEffectType.StackNextShot
             || effectType == BulletEffectType.ClonePreviousShot
             || effectType == BulletEffectType.ChainFire
-            || effectType == BulletEffectType.Resonance;
+            || effectType == BulletEffectType.Resonance
+            || effectType == BulletEffectType.Gilded
+            || effectType == BulletEffectType.Coagulation
+            || effectType == BulletEffectType.Heart
+            || effectType == BulletEffectType.Saver
+            || effectType == BulletEffectType.QuickDraw
+            || effectType == BulletEffectType.Loader
+            || effectType == BulletEffectType.Rangefinder
+            || effectType == BulletEffectType.WallImpact
+            || effectType == BulletEffectType.Judgment
+            || effectType == BulletEffectType.StatusAmplifier
+            || effectType == BulletEffectType.VenomBurst
+            || effectType == BulletEffectType.Crescendo
+            || effectType == BulletEffectType.Rebate
+            || effectType == BulletEffectType.Distributor
+            || effectType == BulletEffectType.Focus
+            || effectType == BulletEffectType.Charge
+            || effectType == BulletEffectType.Accumulator
+            || effectType == BulletEffectType.ShellCollector
+            || effectType == BulletEffectType.Devourer
+            || effectType == BulletEffectType.Legacy;
+    }
+
+    private void HandleBulletDestroyed(BulletInstance destroyedBullet)
+    {
+        bulletDestroyedThisCylinder = true;
+
+        if (deckManager == null)
+        {
+            return;
+        }
+
+        deckManager.GetOwnedBullets(ownedBulletBuffer);
+
+        foreach (BulletInstance ownedBullet in ownedBulletBuffer)
+        {
+            if (ownedBullet != null && ownedBullet != destroyedBullet
+                && FindSpecialEffect(
+                    ownedBullet,
+                    BulletEffectType.Legacy) != null)
+            {
+                ownedBullet.AddPermanentStacks(1);
+            }
+        }
     }
 
     private int CalculateAttackDamage(

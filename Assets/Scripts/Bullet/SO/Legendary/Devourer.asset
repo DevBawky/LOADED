@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Devourer
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_devourer
+  displayName: 포식탄
+  description: 이 탄환으로 적을 처치할 때마다 영구 포식 1을 얻습니다. 포식 하나당 최종 대미지 +5%, 제한은 없습니다.
+  bulletIcon: {fileID: -1940218674652858746, guid: d070a037b58048a4589e036dc85abd39, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: de7770955ab5a3940a0c00259e4c5b21, type: 3}
+  price: 45
+  grade: 3
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 8
+  maxRange: 4
+  criticalChance: 30
+  criticalDamageMultiplier: 2
+  effects:
+  - effectType: 34
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 5
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+  secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  removeCost: 20
+  upgradeCost: 60
+  upgradeLevels: []

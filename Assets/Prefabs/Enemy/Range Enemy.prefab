@@ -693,7 +693,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyController
   enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
   spriteRenderer: {fileID: 3144865413975228650}
-  healthFillImage: {fileID: 0}
+  healthFillImage: {fileID: 6292521877812420227}
   canvasTransform: {fileID: 7563125434488136386}
   actorMotion: {fileID: 1235869742036814597}
   actionQueueUI: {fileID: 4925572819471286301}

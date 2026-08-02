@@ -21,7 +21,27 @@ public enum BulletEffectType
     StackNextShot = 12,
     ClonePreviousShot = 13,
     ChainFire = 14,
-    Resonance = 15
+    Resonance = 15,
+    Gilded = 16,
+    Coagulation = 17,
+    Heart = 18,
+    Saver = 19,
+    QuickDraw = 20,
+    Loader = 21,
+    Rangefinder = 22,
+    WallImpact = 23,
+    Judgment = 24,
+    StatusAmplifier = 25,
+    VenomBurst = 26,
+    Crescendo = 27,
+    Rebate = 28,
+    Distributor = 29,
+    Focus = 30,
+    Charge = 31,
+    Accumulator = 32,
+    ShellCollector = 33,
+    Devourer = 34,
+    Legacy = 35
 }
 
 public enum BulletEffectTarget
@@ -45,6 +65,23 @@ public enum BulletGrade
     Rare = 1,
     Ace = 2,
     Legendary = 3
+}
+
+public readonly struct BulletRuntimeTooltipStats
+{
+    public BulletRuntimeTooltipStats(
+        float damageMultiplier,
+        float criticalChanceBonus,
+        IReadOnlyList<string> stateLines)
+    {
+        DamageMultiplier = Mathf.Max(0f, damageMultiplier);
+        CriticalChanceBonus = Mathf.Max(0f, criticalChanceBonus);
+        StateLines = stateLines ?? Array.Empty<string>();
+    }
+
+    public float DamageMultiplier { get; }
+    public float CriticalChanceBonus { get; }
+    public IReadOnlyList<string> StateLines { get; }
 }
 
 [Serializable]
@@ -496,6 +533,15 @@ public class BulletData : ScriptableObject
 
     public string GetDetailedDescription(int level)
     {
+        return GetDetailedDescription(
+            level,
+            new BulletRuntimeTooltipStats(1f, 0f, Array.Empty<string>()));
+    }
+
+    public string GetDetailedDescription(
+        int level,
+        BulletRuntimeTooltipStats runtimeStats)
+    {
         StringBuilder builder = new StringBuilder();
         string levelDescription = GetDescription(level);
 
@@ -505,17 +551,70 @@ public class BulletData : ScriptableObject
             builder.AppendLine();
         }
 
+        int baseDamage = GetDamage(level);
+        int currentDamage = Mathf.Max(
+            0,
+            Mathf.RoundToInt(baseDamage * runtimeStats.DamageMultiplier));
+        int bonusDamage = Mathf.Max(0, currentDamage - baseDamage);
+
         builder.Append("대미지: ")
-            .AppendLine(GetDamage(level).ToString());
+            .Append(baseDamage);
+
+        if (bonusDamage > 0)
+        {
+            builder.Append(" <color=#67E480>(+ ")
+                .Append(bonusDamage)
+                .Append(")</color> = ")
+                .Append(currentDamage);
+        }
+
+        builder.AppendLine();
+
+        if (runtimeStats.DamageMultiplier > 1.0001f)
+        {
+            builder.Append("현재 대미지 배율: x")
+                .AppendLine(runtimeStats.DamageMultiplier.ToString("0.##"));
+        }
+
         builder.Append("유효 범위: ")
             .Append(GetMaxRange(level))
             .AppendLine(" 칸");
+        float baseCriticalChance = GetCriticalChance(level);
+        float currentCriticalChance = Mathf.Clamp(
+            baseCriticalChance + runtimeStats.CriticalChanceBonus,
+            0f,
+            100f);
         builder.Append("크리티컬 확률: ")
-            .Append(GetCriticalChance(level).ToString("0.##"))
-            .AppendLine("%");
+            .Append(baseCriticalChance.ToString("0.##"));
+
+        if (currentCriticalChance > baseCriticalChance + 0.001f)
+        {
+            builder.Append("% <color=#67E480>(+ ")
+                .Append((currentCriticalChance - baseCriticalChance)
+                    .ToString("0.##"))
+                .Append("%p)</color> = ")
+                .Append(currentCriticalChance.ToString("0.##"));
+        }
+
+        builder.AppendLine("%");
         builder.Append("크리티컬 배율: x")
             .AppendLine(GetCriticalDamageMultiplier(level).ToString("0.##"));
-        return builder.ToString().Trim();
+
+        if (runtimeStats.StateLines.Count > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("<color=#B8C6D9>현재 누적 정보</color>");
+
+            foreach (string stateLine in runtimeStats.StateLines)
+            {
+                if (!string.IsNullOrWhiteSpace(stateLine))
+                {
+                    builder.Append("• ").AppendLine(stateLine);
+                }
+            }
+        }
+
+        return TooltipTextFormatter.Format(builder.ToString().Trim());
     }
 
     public int GetDamage(int level)

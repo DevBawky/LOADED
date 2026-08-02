@@ -12,6 +12,8 @@ public class BulletManagementUI : MonoBehaviour
     [Header("Managers")]
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private CurrencyManager currencyManager;
+    [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private PlayerShoot playerShoot;
 
     [Header("Panel")]
     [SerializeField] private GameObject shopPanel;
@@ -267,7 +269,9 @@ public class BulletManagementUI : MonoBehaviour
 
         if (bulletDescriptionText != null)
         {
-            bulletDescriptionText.text = selectedBullet.DetailedDescription;
+            bulletDescriptionText.richText = true;
+            bulletDescriptionText.text = selectedBullet.GetDetailedDescription(
+                CreateBulletTooltipContext());
         }
 
         int currentMoney = currencyManager == null
@@ -440,6 +444,8 @@ public class BulletManagementUI : MonoBehaviour
     {
         deckManager ??= FindSceneObject<DeckManager>();
         currencyManager ??= FindSceneObject<CurrencyManager>();
+        playerHealth ??= FindSceneObject<PlayerHealth>();
+        playerShoot ??= FindSceneObject<PlayerShoot>();
         shopPanel ??= FindGameObject("Panel | Shop");
         shopItemsLayout ??= FindGameObject("Layout | Shop Items");
         manageBulletsPanel ??= FindGameObject("Panel | Manage Bullets");
@@ -490,6 +496,15 @@ public class BulletManagementUI : MonoBehaviour
             "Text | Bullet Description");
     }
 
+    private BulletTooltipContext CreateBulletTooltipContext()
+    {
+        return BulletTooltipContext.Create(
+            deckManager,
+            currencyManager,
+            playerHealth,
+            playerShoot);
+    }
+
     private void RefreshUpgradeTooltip()
     {
         Mouse mouse = Mouse.current;
@@ -515,6 +530,7 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         int nextLevel = selectedBullet.Level + 1;
+        upgradeTooltipDescriptionText.richText = true;
         upgradeTooltipDescriptionText.text =
             selectedBullet.Data.GetDetailedDescription(nextLevel);
         upgradeTooltip.gameObject.SetActive(true);

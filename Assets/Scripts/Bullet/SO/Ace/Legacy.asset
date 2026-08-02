@@ -1,0 +1,47 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Legacy
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_legacy
+  displayName: 유산탄
+  description: 다른 탄환이 영구 파괴될 때마다 영구 유산 1을 얻습니다. 유산 하나당 최종 대미지 +15%입니다.
+  bulletIcon: {fileID: 6341267608059338579, guid: 406843d572897ad4b8c689a7d872fa1e, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: b43edd6bdc25126428beb37e419723ef, type: 3}
+  price: 30
+  grade: 2
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 12
+  maxRange: 4
+  criticalChance: 20
+  criticalDamageMultiplier: 1.8
+  effects:
+  - effectType: 35
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 15
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+  secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  removeCost: 12
+  upgradeCost: 30
+  upgradeLevels: []

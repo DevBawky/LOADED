@@ -10,6 +10,9 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private PlayerInventory playerInventory;
     [SerializeField] private ShopManager shopManager;
     [SerializeField] private DeckManager deckManager;
+    [SerializeField] private CurrencyManager currencyManager;
+    [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private PlayerShoot playerShoot;
 
     [Header("Canvas")]
     [SerializeField] private RectTransform canvasRect;
@@ -208,7 +211,7 @@ public class InventoryTooltipUI : MonoBehaviour
             return false;
         }
 
-        ShowBullet(bullet.Data, bullet.Level, pointerPosition);
+        ShowBullet(bullet, pointerPosition);
         return true;
     }
 
@@ -224,7 +227,9 @@ public class InventoryTooltipUI : MonoBehaviour
         }
 
         itemNameText.text = GetDisplayName(item.DisplayName, item.name);
-        itemDescriptionText.text = item.Description;
+        itemDescriptionText.richText = true;
+        itemDescriptionText.text = TooltipTextFormatter.Format(
+            item.Description);
         ApplyIcon(itemIcon, item.Icon);
         tooltip.gameObject.SetActive(true);
         tooltip.SetAsLastSibling();
@@ -234,6 +239,21 @@ public class InventoryTooltipUI : MonoBehaviour
     private void ShowBullet(BulletData bullet, Vector2 pointerPosition)
     {
         ShowBullet(bullet, 0, pointerPosition);
+    }
+
+    private void ShowBullet(
+        BulletInstance bullet,
+        Vector2 pointerPosition)
+    {
+        if (bullet == null || bullet.Data == null)
+        {
+            return;
+        }
+
+        ShowBullet(bullet.Data, bullet.Level, pointerPosition);
+        bulletDescriptionText.text = bullet.GetDetailedDescription(
+            CreateBulletTooltipContext());
+        PositionInsideScreen(bulletTooltip, pointerPosition);
     }
 
     private void ShowBullet(
@@ -260,6 +280,7 @@ public class InventoryTooltipUI : MonoBehaviour
             bulletGradeText.color = bullet.GradeNameColor;
         }
 
+        bulletDescriptionText.richText = true;
         bulletDescriptionText.text = bullet.GetDetailedDescription(level);
         ApplyIcon(bulletIcon, bullet.BulletIcon);
         ApplyIcon(bulletCylinderIcon, bullet.CylinderIcon);
@@ -294,7 +315,9 @@ public class InventoryTooltipUI : MonoBehaviour
             cylinderBulletGradeText.color = bullet.GradeNameColor;
         }
 
-        cylinderBulletDescriptionText.text = bullet.DetailedDescription;
+        cylinderBulletDescriptionText.richText = true;
+        cylinderBulletDescriptionText.text = bullet.GetDetailedDescription(
+            CreateBulletTooltipContext());
         cylinderBulletTooltip.gameObject.SetActive(true);
         cylinderBulletTooltip.SetAsLastSibling();
         PositionInsideScreen(cylinderBulletTooltip, pointerPosition);
@@ -484,6 +507,9 @@ public class InventoryTooltipUI : MonoBehaviour
         playerInventory ??= FindSceneObject<PlayerInventory>();
         shopManager ??= FindSceneObject<ShopManager>();
         deckManager ??= FindSceneObject<DeckManager>();
+        currencyManager ??= FindSceneObject<CurrencyManager>();
+        playerHealth ??= FindSceneObject<PlayerHealth>();
+        playerShoot ??= FindSceneObject<PlayerShoot>();
         cylinderUI ??= FindSceneObject<PlayerCylinderUI>();
 
         Canvas canvas = GetComponentInParent<Canvas>();
@@ -551,6 +577,15 @@ public class InventoryTooltipUI : MonoBehaviour
             cylinderBulletTooltip,
             "Text | Bullet Description");
         nextChipIcon ??= FindNamedChild<Image>(nextChip, "Image | Next Chip");
+    }
+
+    private BulletTooltipContext CreateBulletTooltipContext()
+    {
+        return BulletTooltipContext.Create(
+            deckManager,
+            currencyManager,
+            playerHealth,
+            playerShoot);
     }
 
     private static T FindSceneObject<T>() where T : UnityEngine.Object
