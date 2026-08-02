@@ -26,8 +26,8 @@
 | 웨이브 항목 | `EnemyController` 프리팹 | `EnemyData` SO |
 | EnemyData의 프리팹 참조 | 보유 | 제거 |
 | EnemyController의 데이터 | 프리팹에 고정 직렬화 | 생성 시 런타임 주입 |
-| 외형 적용 | 프리팹 SpriteRenderer 값에 의존 | `EnemyData.Sprite` 자동 적용 |
-| 새 적 추가 | SO와 전용 프리팹 모두 필요 | `EnemyData` SO만 추가 |
+| 외형 적용 | 적 프리팹의 SpriteRenderer 값에 의존 | `EnemyData.Avatar`를 적 루트에 자동 생성 |
+| 새 적 추가 | SO와 완성형 적 프리팹 모두 필요 | 공용 적 템플릿은 유지하고 `EnemyData`에 Avatar 연결 |
 
 ## 적 생성 흐름
 
@@ -43,28 +43,52 @@
    - `WaveManager`
 
 5. `EnemyController`는 전달받은 데이터로 체력, 지원 충전 수, AI 타입, 행동 목록, 투척물, 공격 예고선과 처치 보상을 초기화한다.
-6. `EnemyData.Sprite`를 공용 프리팹의 `SpriteRenderer`에 적용한다. Sprite가 비어 있으면 기존 적의 스프라이트를 재사용하지 않고 빈 Sprite를 적용한다.
-7. 런타임 GameObject 이름은 `EnemyData.DisplayName`을 사용하고, 이름이 비어 있으면 SO 에셋 이름을 사용한다.
+6. `EnemyData.Avatar` 프리팹을 생성해 적 루트 오브젝트의 직접 자식으로 배치한다. 위치와 회전은 루트 기준 0으로 초기화하며 Avatar 프리팹의 로컬 스케일은 유지한다.
+7. Avatar에서 `Animator`와 `SpriteRenderer`를 자동 탐색한다. Avatar가 없거나 Animator가 없으면 경고를 남기며, 공용 적의 체력·AI·행동 처리는 계속 동작한다.
+8. 런타임 GameObject 이름은 `EnemyData.DisplayName`을 사용하고, 이름이 비어 있으면 SO 에셋 이름을 사용한다.
 
 ## 에셋 마이그레이션
 
 - `Melee Enemy.prefab`, `Range Enemy.prefab`, `Thrower.prefab`, `Porter.prefab`을 제거했다.
 - `Melee Enemy.prefab`의 공용 UI와 컴포넌트 구성을 `Enemy.prefab` 템플릿으로 이관했다.
-- `EnemyData.prefab` 필드와 Inspector 프리팹 검증을 제거했다.
+- `EnemyData.prefab` 필드와 Inspector 완성형 적 프리팹 검증을 제거했다.
+- `EnemyData.Sprite`를 `EnemyData.Avatar` GameObject 참조로 교체했다.
+- Gunner에는 `Avatar_Gunner.prefab`, 근접 적(Thief)에는 `Avatar_Thief.prefab`을 연결했다.
 - Stage 1 Battle 01~05의 웨이브 항목 42개를 기존 적 프리팹에서 대응하는 `EnemyData` SO로 변경했다.
 - `Assets/Scenes/Stage 1.unity`의 `WaveManager`에 공용 `Enemy.prefab`을 `Enemy Prefab Template`로 연결했다.
 
 ## 새 적 추가 방법
 
 1. `Assets > Create > Loaded > Enemy > Enemy`로 `EnemyData`를 만든다.
-2. ID, 표시 이름, 설명과 Sprite를 입력한다.
+2. ID, 표시 이름, 설명과 Avatar 프리팹을 입력한다.
 3. 최대 체력과 처치 보상을 설정한다.
 4. `Behavior Type`을 `Melee`, `Gunner`, `Thrower`, `Porter` 중 하나로 지정한다.
 5. 해당 타입에 필요한 `EnemyActionData`를 `Actions`에 연결한다.
 6. 원거리 또는 지원 적은 필요한 Telegraph Material을 연결한다.
 7. `BattleData > Waves > Enemies > Enemy Data`에 새 SO와 수량을 등록한다.
 
-별도 적 프리팹 생성이나 `EnemyController.enemyData` 수동 연결은 필요하지 않다.
+Avatar 프리팹에는 `Animator`가 있어야 하며 Base Layer에 이름이 정확히 `Idle`, `Attack`인 상태를 둔다. 별도 완성형 적 프리팹 생성이나 `EnemyController.enemyData` 수동 연결은 필요하지 않다.
+
+## Avatar 생성 및 애니메이션
+
+공용 `Enemy.prefab`에는 캐릭터별 SpriteRenderer가 없다. `EnemyController.Initialize`가 호출될 때 연결된 Avatar를 적 루트 바로 아래에 생성하고, 이후 모든 외형 및 애니메이션 처리는 생성된 Avatar를 기준으로 수행한다.
+
+### 현재 Avatar 연결
+
+| EnemyData | Behavior | Avatar |
+|---|---|---|
+| `Test Gunner` | `Gunner` | `Avatar_Gunner.prefab` |
+| `Test Enemy` (Thief) | `Melee` | `Avatar_Thief.prefab` |
+
+Thrower와 Porter는 전용 Avatar가 준비될 때까지 참조가 비어 있으며, Inspector에 경고가 표시된다.
+
+### 재생 규칙
+
+- 적 생성 직후: `Base Layer.Idle`을 0초부터 재생한다.
+- 근접 적: 큐에 공격 타일을 등록할 때는 Idle을 유지하고, 실제 피해를 적용하기 직전에 `Attack`을 한 번 재생한다.
+- 원거리 적: `RangedAttack` 타일이 행동 슬롯에 추가되는 순간 `Attack`을 재생한다.
+- Attack 상태의 클립 길이만큼 기다린 뒤 `Idle`을 0초부터 다시 재생한다. Attack 클립이 Loop여도 코드가 Idle로 복귀시킨다.
+- 공격 애니메이션이 겹쳐 요청되면 마지막 요청만 Idle 복귀 권한을 가져, 먼저 시작한 코루틴이 새 Attack을 중간에 덮어쓰지 않는다.
 
 ## 행동 타일 툴팁
 
@@ -149,6 +173,11 @@
 - `Assets/Scripts/Manager/WaveManager.cs`
 - `Assets/Scripts/Manager/StateManager.cs`
 - `Assets/Prefabs/Enemy/Enemy.prefab`
+- `Assets/Prefabs/Enemy/Enemy_Avatar/Gunner/Avatar_Gunner.prefab`
+- `Assets/Prefabs/Enemy/Enemy_Avatar/Gunner/Animation/Avatar_Gunner.controller`
+- `Assets/Prefabs/Enemy/Enemy_Avatar/Thief/Avatar_Thief.prefab`
+- `Assets/Scripts/Enemy/Enemy SO/Test Gunner.asset`
+- `Assets/Scripts/Enemy/Enemy SO/Test Enemy.asset`
 - `Assets/Scenes/Stage 1.unity`
 - `Assets/Scripts/Manager/Battle SO/Stage 1 Battle 01.asset`~`05.asset`
 
@@ -164,7 +193,7 @@
 ## Play Mode 확인 항목
 
 1. BattleData 웨이브에서 서로 다른 EnemyData가 모두 공용 프리팹으로 생성되는지 확인한다.
-2. 생성된 적마다 Sprite, 체력, 행동 타입과 이름이 EnemyData에 맞게 적용되는지 확인한다.
+2. 생성된 적 루트의 직접 자식으로 EnemyData에 연결된 Avatar가 하나만 생성되고, 체력·행동 타입·이름도 데이터에 맞게 적용되는지 확인한다.
 3. Queue 생성 턴에 Queue 배경이 설정 시간 동안 서서히 나타나는지 확인한다.
 4. 행동 등록 턴에 새 행동 타일만 설정 시간 동안 서서히 나타나는지 확인한다.
 5. 행동 타일에 마우스를 올렸을 때 이름과 설명이 표시되고 포인터 이동과 화면 경계에 맞춰 위치가 갱신되는지 확인한다.
@@ -172,6 +201,8 @@
 7. 투척병 데이터에 투사체 프리팹과 Sprite가 모두 없을 때 원형 투사체가 궤적을 따라 이동하는지 확인한다.
 8. 투척병에 커스텀 Sprite 또는 프리팹을 지정했을 때 기본 원형 대신 지정 외형이 사용되는지 확인한다.
 9. 일시정지 중 Queue 연출과 투사체 이동이 멈추고 재개 후 이어지는지 확인한다.
+10. Gunner가 공격 타일을 슬롯에 추가하는 순간 Attack을 재생하고, 클립 종료 후 Idle로 돌아가는지 확인한다.
+11. Thief가 공격 타일을 등록할 때는 Idle을 유지하고, 실제 공격 시 Attack을 재생한 뒤 Idle로 돌아가는지 확인한다.
 
 ## 기존 문서와의 관계
 

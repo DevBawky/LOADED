@@ -28,6 +28,10 @@ public enum EnemySupportType
 public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
     private const int InitialFacingDirection = -1;
+    private static readonly int IdleAnimationStateHash =
+        Animator.StringToHash("Base Layer.Idle");
+    private static readonly int AttackAnimationStateHash =
+        Animator.StringToHash("Base Layer.Attack");
     private static readonly int BaseColorId =
         Shader.PropertyToID("_BaseColor");
     private static readonly int BeamColorId =
@@ -40,7 +44,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [Header("Data")]
     [Tooltip("런타임에 WaveManager가 주입하는 적 데이터입니다.")]
     [SerializeField] private EnemyData enemyData;
-    [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Image healthFillImage;
     [SerializeField] private Transform canvasTransform;
     [SerializeField] private ActorMotion actorMotion;
@@ -49,6 +52,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private EnemyDamageNumberDisplay damageNumberDisplay;
 
     [Header("Runtime State")]
+    [SerializeField] private GameObject avatarInstance;
     [SerializeField] private int currentHealth;
     [SerializeField] private int currentShield;
     [SerializeField] private int remainingSupportCharges;
@@ -77,6 +81,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         new List<EnemyController>();
     private MaterialPropertyBlock lineColorProperties;
     private EnemyHealthBarFeedback healthBarFeedback;
+    private Animator avatarAnimator;
+    private SpriteRenderer avatarSortingRenderer;
+    private int avatarAnimationSequence;
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
@@ -124,7 +131,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         healthBarFeedback?.Initialize(healthFillImage);
         ResetRuntimeState();
-        ApplySprite();
         ApplyCanvasOrientation();
     }
 
@@ -161,8 +167,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         playerHealth = assignedPlayerHealth;
         waveManager = assignedWaveManager;
         ApplyInitialFacingDirection();
+        SpawnAvatar();
         ResetRuntimeState();
-        ApplySprite();
         ApplyCanvasOrientation();
         gameObject.name = string.IsNullOrWhiteSpace(enemyData.DisplayName)
             ? enemyData.name
@@ -640,9 +646,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private bool TryAppendAction(
         EnemyActionType actionType,
         int actionIndex,
-        out Image attackIcon)
+        out Image attackIcon,
+        out EnemyActionData appendedAction)
     {
         attackIcon = null;
+        appendedAction = null;
 
         if (queuedAttackActions.Count >= enemyData.MaxQueuedAttacks)
         {
@@ -661,6 +669,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         queuedAttackActions.Add(attackAction);
+        appendedAction = attackAction;
         return true;
     }
 
@@ -676,11 +685,21 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int actionIndex)
     {
         if (!isQueueCreated
-            || !TryAppendAction(actionType, actionIndex, out Image attackIcon))
+            || !TryAppendAction(
+                actionType,
+                actionIndex,
+                out Image attackIcon,
+                out EnemyActionData appendedAction))
         {
             ClearAttackQueue();
             CompleteAction(EnemyTurnActionType.Wait);
             return;
+        }
+
+        if (enemyData.BehaviorType != EnemyBehaviorType.Melee
+            && appendedAction.ActionType == EnemyActionType.RangedAttack)
+        {
+            StartCoroutine(PlayAvatarAttackAnimation());
         }
 
         StartCoroutine(RevealRegisteredAction(attackIcon));
@@ -765,9 +784,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             ApplyLineShaderColor(lineRenderer, telegraphColor);
         }
 
-        if (spriteRenderer != null)
+        if (avatarSortingRenderer != null)
         {
-            lineRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
+            lineRenderer.sortingLayerID =
+                avatarSortingRenderer.sortingLayerID;
         }
 
         bool positionsApplied = enemyData.BehaviorType switch
@@ -932,10 +952,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 ? 19
                 : enemyData.TelegraphSortingOrder - 1;
 
-            if (spriteRenderer != null)
+            if (avatarSortingRenderer != null)
             {
                 shieldIndicatorLine.sortingLayerID =
-                    spriteRenderer.sortingLayerID;
+                    avatarSortingRenderer.sortingLayerID;
             }
 
             for (int pointIndex = 0;
@@ -1072,6 +1092,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
         {
             yield break;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.Melee)
+        {
+            yield return PlayAvatarAttackAnimation();
         }
 
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
@@ -1369,10 +1394,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             : GetDefaultThrownProjectileSprite();
         projectileRenderer.color = enemyData.ThrownProjectileColor;
 
-        if (spriteRenderer != null)
+        if (avatarSortingRenderer != null)
         {
-            projectileRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
-            projectileRenderer.sortingOrder = spriteRenderer.sortingOrder + 1;
+            projectileRenderer.sortingLayerID =
+                avatarSortingRenderer.sortingLayerID;
+            projectileRenderer.sortingOrder =
+                GetHighestAvatarSortingOrder() + 1;
         }
 
         return projectile;
@@ -1895,12 +1922,137 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         RefreshHealthUI();
     }
 
-    private void ApplySprite()
+    private void SpawnAvatar()
     {
-        if (spriteRenderer != null && enemyData != null)
+        avatarAnimationSequence++;
+
+        if (avatarInstance != null)
         {
-            spriteRenderer.sprite = enemyData.Sprite;
+            Destroy(avatarInstance);
         }
+
+        avatarInstance = null;
+        avatarAnimator = null;
+        avatarSortingRenderer = null;
+
+        if (enemyData == null || enemyData.Avatar == null)
+        {
+            Debug.LogWarning(
+                $"EnemyData '{(enemyData == null ? "None" : enemyData.name)}' has no Avatar prefab.",
+                this);
+            return;
+        }
+
+        avatarInstance = Instantiate(enemyData.Avatar);
+        avatarInstance.name = enemyData.Avatar.name;
+        avatarInstance.transform.SetParent(transform, false);
+        avatarInstance.transform.localPosition = Vector3.zero;
+        avatarInstance.transform.localRotation = Quaternion.identity;
+        avatarAnimator = avatarInstance.GetComponentInChildren<Animator>(true);
+        avatarSortingRenderer =
+            avatarInstance.GetComponentInChildren<SpriteRenderer>(true);
+
+        if (avatarAnimator == null)
+        {
+            Debug.LogWarning(
+                $"Enemy Avatar '{enemyData.Avatar.name}' has no Animator.",
+                avatarInstance);
+        }
+        else if (avatarAnimator.runtimeAnimatorController == null)
+        {
+            Debug.LogWarning(
+                $"Enemy Avatar '{enemyData.Avatar.name}' has no Animator Controller.",
+                avatarAnimator);
+        }
+        else
+        {
+            if (!avatarAnimator.HasState(0, IdleAnimationStateHash))
+            {
+                Debug.LogWarning(
+                    $"Enemy Avatar '{enemyData.Avatar.name}' has no Base Layer.Idle state.",
+                    avatarAnimator);
+            }
+
+            if (!avatarAnimator.HasState(0, AttackAnimationStateHash))
+            {
+                Debug.LogWarning(
+                    $"Enemy Avatar '{enemyData.Avatar.name}' has no Base Layer.Attack state.",
+                    avatarAnimator);
+            }
+        }
+
+        PlayAvatarIdle();
+    }
+
+    private IEnumerator PlayAvatarAttackAnimation()
+    {
+        if (avatarAnimator == null
+            || avatarAnimator.runtimeAnimatorController == null
+            || !avatarAnimator.HasState(0, AttackAnimationStateHash))
+        {
+            yield break;
+        }
+
+        int animationSequence = ++avatarAnimationSequence;
+        avatarAnimator.Play(AttackAnimationStateHash, 0, 0f);
+        avatarAnimator.Update(0f);
+        AnimatorStateInfo attackState =
+            avatarAnimator.GetCurrentAnimatorStateInfo(0);
+        float duration = Mathf.Max(
+            0f,
+            attackState.length / Mathf.Max(0.01f, avatarAnimator.speed));
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration && avatarAnimator != null
+            && animationSequence == avatarAnimationSequence)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+            }
+        }
+
+        if (animationSequence == avatarAnimationSequence)
+        {
+            PlayAvatarIdle();
+        }
+    }
+
+    private void PlayAvatarIdle()
+    {
+        if (avatarAnimator == null
+            || avatarAnimator.runtimeAnimatorController == null
+            || !avatarAnimator.HasState(0, IdleAnimationStateHash))
+        {
+            return;
+        }
+
+        avatarAnimator.Play(IdleAnimationStateHash, 0, 0f);
+        avatarAnimator.Update(0f);
+    }
+
+    private int GetHighestAvatarSortingOrder()
+    {
+        int highestSortingOrder = avatarSortingRenderer == null
+            ? 0
+            : avatarSortingRenderer.sortingOrder;
+
+        if (avatarInstance == null)
+        {
+            return highestSortingOrder;
+        }
+
+        foreach (SpriteRenderer renderer in
+                 avatarInstance.GetComponentsInChildren<SpriteRenderer>(true))
+        {
+            highestSortingOrder = Mathf.Max(
+                highestSortingOrder,
+                renderer.sortingOrder);
+        }
+
+        return highestSortingOrder;
     }
 
     private void RefreshHealthUI(

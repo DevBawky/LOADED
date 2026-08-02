@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyId: porter
   displayName: "\uC9C0\uAC8C\uAFBC"
   description: "\uC544\uAD70\uC744 \uD68C\uBCF5\uD558\uAC70\uB098 \uBCF4\uD638\uB9C9\uC744 \uC8FC\uB294 \uC9C0\uC6D0\uBCD1"
-  sprite: {fileID: 3185191770978063329, guid: e30bbb53636eb4a45bde0c70bbd86137, type: 3}
+  avatar: {fileID: 0}
   maxHealth: 15
   dropChance: 100
   dropItems:

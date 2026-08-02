@@ -59,8 +59,8 @@ public class EnemyData : ScriptableObject
     [TextArea]
     [Tooltip("적의 특징과 전투 방식을 설명하는 문장입니다.")]
     [SerializeField] private string description;
-    [Tooltip("월드에 표시할 적 스프라이트입니다.")]
-    [SerializeField] private Sprite sprite;
+    [Tooltip("적 루트에 생성할 Animator 포함 Avatar 프리팹입니다.")]
+    [SerializeField] private GameObject avatar;
 
     [Header("Stats")]
     [Min(1)]
@@ -164,7 +164,7 @@ public class EnemyData : ScriptableObject
     public string EnemyId => enemyId;
     public string DisplayName => displayName;
     public string Description => description;
-    public Sprite Sprite => sprite;
+    public GameObject Avatar => avatar;
     public int MaxHealth => maxHealth;
     public float DropChance => Mathf.Clamp(dropChance, 0f, 100f);
     public IReadOnlyList<EnemyDropItemData> DropItems =>
