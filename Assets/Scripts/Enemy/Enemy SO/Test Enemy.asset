@@ -28,13 +28,25 @@ MonoBehaviour:
   preferredDistance: 2
   maxQueuedAttacks: 2
   queuedActionInterval: 0.2
+  queueElementRevealDuration: 0.25
   meleeAdditionalAttackChance: 0.5
   firingRange: 5
+  recoveryTurns: 1
+  maxSupportCharges: 2
+  supportHealAmount: 10
+  supportShieldAmount: 10
+  supportHealThreshold: 0.5
   thrownProjectilePrefab: {fileID: 0}
+  thrownProjectileSprite: {fileID: 0}
+  thrownProjectileColor: {r: 1, g: 1, b: 1, a: 1}
+  thrownProjectileSize: 0.35
   thrownProjectileDuration: 0.5
   thrownProjectileArcHeight: 2
   gunnerTelegraphMaterial: {fileID: 0}
   throwerTelegraphMaterial: {fileID: 0}
+  supportTelegraphMaterial: {fileID: 0}
+  supportHealColor: {r: 0.25, g: 1, b: 0.35, a: 1}
+  supportShieldColor: {r: 0.2, g: 0.8, b: 1, a: 1}
   telegraphLineWidth: 0.08
   telegraphVerticalOffset: 0.15
   throwerTelegraphSegments: 20

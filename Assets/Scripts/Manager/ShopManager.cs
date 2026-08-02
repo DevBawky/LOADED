@@ -229,7 +229,9 @@ public class ShopManager : MonoBehaviour
 
         foreach (ItemData itemData in itemPool)
         {
-            if (itemData != null && !candidates.Contains(itemData))
+            if (itemData != null && !candidates.Contains(itemData)
+                && playerInventory != null
+                && playerInventory.CanAdd(itemData))
             {
                 candidates.Add(itemData);
             }
