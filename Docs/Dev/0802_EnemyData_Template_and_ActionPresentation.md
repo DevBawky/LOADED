@@ -162,6 +162,30 @@ Thrower와 Porter는 전용 Avatar가 준비될 때까지 참조가 비어 있�
 
 이동 위치는 선형 보간 위치에 `sin(progress × π) × Arc Height`를 더해 계산한다. 게임이 일시정지된 동안 투사체 이동 시간도 진행되지 않는다.
 
+## 적 피격 및 사망 효과음
+
+피격 및 사망 효과음은 적 종류별 SO가 아니라 공용 `Enemy.prefab > EnemyController > Audio`에서 한 번만 설정한다. 따라서 모든 EnemyData와 Avatar가 같은 효과음 목록을 공유한다. 각 묶음은 비어 있는 항목을 제외한 `Clips` 중 하나를 같은 확률로 선택하며, 독립적인 `Volume`, `Min Pitch`, `Max Pitch` 값을 사용한다.
+
+| EnemyController 필드 | 재생 시점 |
+|---|---|
+| `Normal Hit Sfx` | 일반 플레이어 공격의 피해 또는 보호막 피해가 적용되고 적이 살아남았을 때 |
+| `Critical Hit Sfx` | 치명타 플레이어 공격의 피해 또는 보호막 피해가 적용되고 적이 살아남았을 때 |
+| `Death Sfx` | 직접 공격, 상태 피해 또는 충돌 피해로 체력이 0이 되었을 때 |
+
+치명적인 일반/치명타 공격은 피격음과 사망음이 겹치지 않도록 `Death Sfx`만 재생한다. 빠른 연속 피격에서는 재생 중인 AudioSource를 덮어쓰지 않고 풀에서 별도 Source를 사용하므로 각 클립의 무작위 피치가 끝까지 유지된다. 사망음은 적 GameObject 제거 전에 독립 오디오 오브젝트로 분리하여 적이 즉시 사라져도 클립이 끊기지 않으며, 재생 완료 후 자동 제거된다.
+
+`Sfx Audio Source`는 출력 설정의 기준이다. 비워 두면 2D AudioSource가 런타임에 자동 생성된다. Audio Mixer 또는 3D 공간 음향이 필요하면 공용 프리팹에 AudioSource를 추가해 Output, Spatial Blend, Rolloff와 Distance를 설정한 뒤 이 필드에 연결한다. 피격음 풀과 독립 사망음도 해당 설정을 복사한다.
+
+### 적용 방법
+
+1. `Assets/Prefabs/Enemy/Enemy.prefab`을 선택한다.
+2. `EnemyController > Audio`에서 `Normal Hit Sfx`, `Critical Hit Sfx`, `Death Sfx`를 펼친다.
+3. 각 `Clips`의 Size를 늘리고 상황별 AudioClip을 등록한다. 목록이 비어 있으면 해당 상황에서는 소리를 재생하지 않는다.
+4. 각 묶음의 Volume과 Min/Max Pitch를 조절한다. 두 피치 값을 같게 두면 고정 피치로 재생된다.
+5. `Sfx Audio Source`에서 공통 Audio Mixer와 공간 음향 설정을 조절한다.
+
+기존 `Test Enemy`와 `Porter` EnemyData에 임시로 들어 있던 일반 피격음 4개는 공용 Enemy 프리팹의 `Normal Hit Sfx`로 이전했으며 SO의 효과음 직렬화 데이터는 제거했다.
+
 ## 변경 파일
 
 - `Assets/Scripts/Enemy/EnemyData.cs`
@@ -203,6 +227,9 @@ Thrower와 Porter는 전용 Avatar가 준비될 때까지 참조가 비어 있�
 9. 일시정지 중 Queue 연출과 투사체 이동이 멈추고 재개 후 이어지는지 확인한다.
 10. Gunner가 공격 타일을 슬롯에 추가하는 순간 Attack을 재생하고, 클립 종료 후 Idle로 돌아가는지 확인한다.
 11. Thief가 공격 타일을 등록할 때는 Idle을 유지하고, 실제 공격 시 Attack을 재생한 뒤 Idle로 돌아가는지 확인한다.
+12. 일반 공격과 치명타 공격에서 각각 대응하는 Clips 목록만 사용하고, 연속 피격 시 소리가 중간에 끊기거나 피치가 변경되지 않는지 확인한다.
+13. 치명적인 공격에서는 피격음 대신 사망음만 재생되고, 적 GameObject가 제거된 뒤에도 사망음이 끝까지 들리는지 확인한다.
+14. 독 또는 충돌 피해로 사망했을 때도 사망음이 재생되는지 확인한다.
 
 ## 기존 문서와의 관계
 

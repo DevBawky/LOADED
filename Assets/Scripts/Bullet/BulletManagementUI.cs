@@ -103,8 +103,10 @@ public class BulletManagementUI : MonoBehaviour
     public void RemoveSelectedBullet()
     {
         if (selectedBullet == null || deckManager == null
-            || currencyManager == null)
+            || currencyManager == null
+            || !deckManager.CanRemoveBullet(selectedBullet))
         {
+            RefreshSelection();
             return;
         }
 
@@ -280,16 +282,21 @@ public class BulletManagementUI : MonoBehaviour
         bool canManageSelectedBullet = deckManager != null
             && currencyManager != null
             && deckManager.Contains(selectedBullet);
+        bool canRemoveSelectedBullet = canManageSelectedBullet
+            && deckManager.CanRemoveBullet(selectedBullet);
 
         if (removeButton != null)
         {
-            removeButton.interactable = canManageSelectedBullet
+            removeButton.interactable = canRemoveSelectedBullet
                 && currentMoney >= selectedBullet.RemoveCost;
         }
 
         if (removeButtonText != null)
         {
-            removeButtonText.text = $"Remove  ${selectedBullet.RemoveCost}";
+            removeButtonText.text = canManageSelectedBullet
+                && !canRemoveSelectedBullet
+                    ? $"Minimum {DeckManager.MinimumOwnedBulletCount} Bullets"
+                    : $"Remove  ${selectedBullet.RemoveCost}";
         }
 
         if (upgradeButton != null)

@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class DeckManager : MonoBehaviour
 {
+    public const int MinimumOwnedBulletCount = 7;
+
     [Header("Deck Settings")]
     [SerializeField] private List<BulletData> startingBullets =
         new List<BulletData>();
@@ -28,6 +30,8 @@ public class DeckManager : MonoBehaviour
     public int MaxReloadAmount => maxReloadAmount;
     public int OwnedBulletCount => deck.Count + loadedBullets.Count
         + graveyard.Count;
+    public bool CanRemoveOwnedBullet =>
+        OwnedBulletCount > MinimumOwnedBulletCount;
 
     private void Awake()
     {
@@ -121,7 +125,7 @@ public class DeckManager : MonoBehaviour
 
     public bool TryRemoveBullet(BulletInstance bullet)
     {
-        if (bullet == null)
+        if (!CanRemoveBullet(bullet))
         {
             return false;
         }
@@ -137,6 +141,13 @@ public class DeckManager : MonoBehaviour
 
         StateChanged?.Invoke();
         return true;
+    }
+
+    public bool CanRemoveBullet(BulletInstance bullet)
+    {
+        return bullet != null
+            && CanRemoveOwnedBullet
+            && Contains(bullet);
     }
 
     public bool TryDestroyBullet(BulletInstance bullet)
@@ -228,8 +239,51 @@ public class DeckManager : MonoBehaviour
             }
         }
 
+        EnsureMinimumStartingBulletCount();
+
         ShuffleDeck();
         StateChanged?.Invoke();
+    }
+
+    private void EnsureMinimumStartingBulletCount()
+    {
+        if (deck.Count >= MinimumOwnedBulletCount)
+        {
+            return;
+        }
+
+        BulletData fallbackBullet = null;
+
+        foreach (BulletData bulletData in startingBullets)
+        {
+            if (bulletData != null)
+            {
+                fallbackBullet = bulletData;
+                break;
+            }
+        }
+
+        if (fallbackBullet == null)
+        {
+            Debug.LogError(
+                $"At least {MinimumOwnedBulletCount} valid starting bullets "
+                + "are required, but no fallback BulletData is assigned.",
+                this);
+            return;
+        }
+
+        int missingBulletCount = MinimumOwnedBulletCount - deck.Count;
+
+        for (int index = 0; index < missingBulletCount; index++)
+        {
+            deck.Add(CreateBulletInstance(fallbackBullet));
+        }
+
+        Debug.LogWarning(
+            $"Starting bullet count was below {MinimumOwnedBulletCount}. "
+            + $"Added {missingBulletCount} copies of "
+            + $"'{fallbackBullet.name}' to satisfy the minimum.",
+            this);
     }
 
     private BulletInstance CreateBulletInstance(BulletData bulletData)

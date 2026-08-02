@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyId: porter
   displayName: "\uC9C0\uAC8C\uAFBC"
-  description: "\uC544\uAD70\uC744 \uD68C\uBCF5\uD558\uAC70\uB098 \uBCF4\uD638\uB9C9\uC744 \uC8FC\uB294 \uC9C0\uC6D0\uBCD1"
+  description: "\uC544\uAD70\uC744 \uD68C\uBCF5\uD558\uAC70\uB098 \uBCF4\uD638\uB9C9\uC744
+    \uC8FC\uB294 \uC9C0\uC6D0\uBCD1"
   avatar: {fileID: 0}
   maxHealth: 15
   dropChance: 100
@@ -28,6 +29,7 @@ MonoBehaviour:
   preferredDistance: 3
   maxQueuedAttacks: 1
   queuedActionInterval: 0.2
+  queueElementRevealDuration: 0.25
   meleeAdditionalAttackChance: 0
   firingRange: 1
   recoveryTurns: 0
@@ -36,6 +38,9 @@ MonoBehaviour:
   supportShieldAmount: 10
   supportHealThreshold: 0.5
   thrownProjectilePrefab: {fileID: 0}
+  thrownProjectileSprite: {fileID: 0}
+  thrownProjectileColor: {r: 1, g: 1, b: 1, a: 1}
+  thrownProjectileSize: 0.35
   thrownProjectileDuration: 0.5
   thrownProjectileArcHeight: 2
   gunnerTelegraphMaterial: {fileID: 0}
