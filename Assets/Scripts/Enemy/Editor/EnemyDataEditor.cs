@@ -8,7 +8,6 @@ public class EnemyDataEditor : Editor
     private SerializedProperty displayName;
     private SerializedProperty description;
     private SerializedProperty sprite;
-    private SerializedProperty prefab;
     private SerializedProperty maxHealth;
     private SerializedProperty dropChance;
     private SerializedProperty dropItems;
@@ -41,7 +40,6 @@ public class EnemyDataEditor : Editor
         displayName = Find("displayName");
         description = Find("description");
         sprite = Find("sprite");
-        prefab = Find("prefab");
         maxHealth = Find("maxHealth");
         dropChance = Find("dropChance");
         dropItems = Find("dropItems");
@@ -78,7 +76,7 @@ public class EnemyDataEditor : Editor
             EditorGUILayout.PropertyField(Find("m_Script"));
         }
 
-        DrawSection("기본 정보", enemyId, displayName, description, sprite, prefab);
+        DrawSection("기본 정보", enemyId, displayName, description, sprite);
         DrawSection(
             "전투 능력치",
             maxHealth,
@@ -184,25 +182,6 @@ public class EnemyDataEditor : Editor
         {
             EditorGUILayout.HelpBox(
                 "Enemy ID를 입력하세요.",
-                MessageType.Warning);
-        }
-
-        if (data.Prefab == null)
-        {
-            EditorGUILayout.HelpBox(
-                "생성 프리팹이 연결되지 않았습니다.",
-                MessageType.Warning);
-        }
-        else if (data.Prefab.GetComponent<EnemyController>() == null)
-        {
-            EditorGUILayout.HelpBox(
-                "프리팹 루트에 EnemyController가 필요합니다.",
-                MessageType.Error);
-        }
-        else if (data.Prefab.GetComponent<EnemyController>().Data != data)
-        {
-            EditorGUILayout.HelpBox(
-                "프리팹의 EnemyController가 현재 EnemyData를 참조하지 않습니다.",
                 MessageType.Warning);
         }
 

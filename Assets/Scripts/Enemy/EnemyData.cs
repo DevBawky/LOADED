@@ -61,8 +61,6 @@ public class EnemyData : ScriptableObject
     [SerializeField] private string description;
     [Tooltip("월드에 표시할 적 스프라이트입니다.")]
     [SerializeField] private Sprite sprite;
-    [Tooltip("이 데이터로 생성할 EnemyController 프리팹입니다.")]
-    [SerializeField] private GameObject prefab;
 
     [Header("Stats")]
     [Min(1)]
@@ -157,7 +155,6 @@ public class EnemyData : ScriptableObject
     public string DisplayName => displayName;
     public string Description => description;
     public Sprite Sprite => sprite;
-    public GameObject Prefab => prefab;
     public int MaxHealth => maxHealth;
     public float DropChance => Mathf.Clamp(dropChance, 0f, 100f);
     public IReadOnlyList<EnemyDropItemData> DropItems =>

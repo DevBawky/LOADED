@@ -634,8 +634,8 @@ public class StateManager : MonoBehaviour
 
             foreach (EnemyWaveEntry entry in wave.Enemies)
             {
-                if (entry == null || entry.EnemyPrefab == null
-                    || entry.EnemyPrefab.Data == null || entry.Count <= 0)
+                if (entry == null || entry.EnemyData == null
+                    || entry.Count <= 0)
                 {
                     return false;
                 }
