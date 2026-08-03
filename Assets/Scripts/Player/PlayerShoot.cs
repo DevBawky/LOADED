@@ -480,7 +480,7 @@ public class PlayerShoot : MonoBehaviour
                 initialBulletIndex - 1,
                 initialResolvedBullet,
                 horizontalDirection)
-            : !RefreshViableTargets(
+            : !HasViableShotTarget(
                 initialResolvedBullet,
                 horizontalDirection);
 
@@ -507,7 +507,7 @@ public class PlayerShoot : MonoBehaviour
                 BulletEffectType.PowderPouch);
             bool hasViableTarget = fireIntoAir
                 || (powderEffect == null
-                    ? RefreshViableTargets(
+                    ? HasViableShotTarget(
                         resolvedBullet,
                         horizontalDirection)
                     : HasViableFutureShot(
@@ -727,9 +727,22 @@ public class PlayerShoot : MonoBehaviour
             yield break;
         }
 
-        bool hasViableTarget = RefreshViableTargets(
+        bool hasEnemyTarget = RefreshViableTargets(
             bulletData,
             horizontalDirection);
+        bool hasBulletBlocker = waveManager.TryGetFirstBulletBlocker(
+            transform.position,
+            horizontalDirection,
+            bulletData.MaxRange,
+            out IPlayerBulletBlocker bulletBlocker);
+
+        if (hasBulletBlocker)
+        {
+            RemoveTargetsBehindBlocker(bulletBlocker, horizontalDirection);
+            hasEnemyTarget = targetBuffer.Count > 0;
+        }
+
+        bool hasViableTarget = hasEnemyTarget || hasBulletBlocker;
 
         if (!hasViableTarget && !allowEmptyShot)
         {
@@ -739,10 +752,24 @@ public class PlayerShoot : MonoBehaviour
 
         Vector3 endPoint;
 
-        if (hasViableTarget)
+        bool reachesBulletBlocker = false;
+
+        if (hasEnemyTarget)
         {
             BuildHitTargets(bulletData);
-            endPoint = hitBuffer[hitBuffer.Count - 1].transform.position;
+            reachesBulletBlocker = hasBulletBlocker
+                && hitBuffer.Count == targetBuffer.Count
+                && hitBuffer.Count < bulletData.MaxHitCount
+                && bulletData.RollPenetrationAfterHit(hitBuffer.Count);
+            endPoint = reachesBulletBlocker
+                ? bulletBlocker.WorldPosition
+                : hitBuffer[hitBuffer.Count - 1].transform.position;
+        }
+        else if (hasBulletBlocker)
+        {
+            hitBuffer.Clear();
+            reachesBulletBlocker = true;
+            endPoint = bulletBlocker.WorldPosition;
         }
         else
         {
@@ -795,6 +822,12 @@ public class PlayerShoot : MonoBehaviour
             horizontalDirection,
             isCritical,
             damageMultiplier);
+
+        if (reachesBulletBlocker && bulletBlocker != null
+            && bulletBlocker.IsBulletBlocking)
+        {
+            bulletBlocker.HandlePlayerBulletImpact();
+        }
         ReleaseProjectedDamage(shotReservations);
         HandleShotResult(bulletData, isCritical, generatesShells);
         onCompleted?.Invoke(true);
@@ -917,6 +950,52 @@ public class PlayerShoot : MonoBehaviour
         return targetBuffer.Count > 0;
     }
 
+    private bool HasViableShotTarget(
+        BulletInstance bullet,
+        int horizontalDirection)
+    {
+        if (RefreshViableTargets(bullet, horizontalDirection))
+        {
+            return true;
+        }
+
+        return bullet != null && waveManager != null
+            && waveManager.TryGetFirstBulletBlocker(
+                transform.position,
+                horizontalDirection,
+                bullet.MaxRange,
+                out _);
+    }
+
+    private void RemoveTargetsBehindBlocker(
+        IPlayerBulletBlocker blocker,
+        int horizontalDirection)
+    {
+        if (blocker == null || boardManager == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int originIndex))
+        {
+            return;
+        }
+
+        int direction = horizontalDirection >= 0 ? 1 : -1;
+        int blockerDistance = (blocker.TileIndex - originIndex) * direction;
+
+        for (int index = targetBuffer.Count - 1; index >= 0; index--)
+        {
+            EnemyController target = targetBuffer[index];
+
+            if (target == null || !boardManager.TryGetTileIndex(
+                    target.transform.position,
+                    out int targetIndex)
+                || (targetIndex - originIndex) * direction >= blockerDistance)
+            {
+                targetBuffer.RemoveAt(index);
+            }
+        }
+    }
+
     private bool HasViableFutureShot(
         int loadedBulletIndex,
         BulletInstance previousResolvedBullet,
@@ -939,7 +1018,7 @@ public class PlayerShoot : MonoBehaviour
             if (FindSpecialEffect(
                     resolvedBullet,
                     BulletEffectType.PowderPouch) == null
-                && RefreshViableTargets(
+                && HasViableShotTarget(
                     resolvedBullet,
                     horizontalDirection))
             {
@@ -2614,6 +2693,18 @@ public class PlayerShoot : MonoBehaviour
         }
 
         int direction = horizontalDirection >= 0 ? 1 : -1;
+        int blockerDistance = int.MaxValue;
+
+        if (waveManager != null
+            && waveManager.TryGetFirstBulletBlocker(
+                transform.position,
+                direction,
+                bullet.MaxRange,
+                out IPlayerBulletBlocker previewBlocker))
+        {
+            blockerDistance = Mathf.Abs(
+                previewBlocker.TileIndex - previewPlayerTileIndex);
+        }
 
         foreach (DamagePreviewEnemyState state
                  in damagePreviewStates.Values)
@@ -2627,7 +2718,8 @@ public class PlayerShoot : MonoBehaviour
             int offset = state.TileIndex - previewPlayerTileIndex;
 
             if (offset * direction > 0
-                && Mathf.Abs(offset) <= bullet.MaxRange)
+                && Mathf.Abs(offset) <= bullet.MaxRange
+                && Mathf.Abs(offset) < blockerDistance)
             {
                 targetBuffer.Add(state.Enemy);
             }

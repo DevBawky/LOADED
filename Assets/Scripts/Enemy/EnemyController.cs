@@ -25,6 +25,21 @@ public enum EnemySupportType
     Shield
 }
 
+public enum BigBarrelStep
+{
+    RotateToPlayer,
+    CreateBombQueue,
+    RegisterBomb,
+    PrepareBomb,
+    ExecuteBomb,
+    AdjustDistance,
+    CreateShotgunQueue,
+    RegisterShotgun,
+    PrepareShotgun,
+    ExecuteShotgun,
+    Reload
+}
+
 [System.Serializable]
 public class EnemyRandomSfxSettings
 {
@@ -144,6 +159,16 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private EnemySupportType preparedSupportType;
     [SerializeField] private EnemyTurnActionType lastTurnAction;
     [SerializeField] private bool isActing;
+    [SerializeField] private BigBarrelStep bigBarrelStep =
+        BigBarrelStep.RotateToPlayer;
+    [SerializeField] private bool isBigBarrelPhaseTwo;
+    [SerializeField] private bool bigBarrelActionUsesPhaseTwo;
+    [SerializeField] private int preparedBigBarrelFuse;
+    [SerializeField] private int bigBarrelReloadTurnsRemaining;
+    [SerializeField] private List<int> preparedBombTargetTileIndices =
+        new List<int>();
+    [SerializeField] private List<int> preparedShotgunTileIndices =
+        new List<int>();
 
     private BoardManager boardManager;
     private PlayerMove playerMove;
@@ -162,6 +187,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private int avatarAnimationSequence;
     private readonly List<AudioSource> sfxAudioSourcePool =
         new List<AudioSource>();
+    private readonly List<LineRenderer> bigBarrelTelegraphLines =
+        new List<LineRenderer>();
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
@@ -216,6 +243,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private void LateUpdate()
     {
         if (isAttackPrepared && enemyData != null
+            && enemyData.BehaviorType != EnemyBehaviorType.BigBarrel
             && enemyData.BehaviorType != EnemyBehaviorType.Melee)
         {
             RefreshAttackTelegraph();
@@ -275,6 +303,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             || playerMove == null || waveManager == null || actorMotion == null)
         {
             CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
+        {
+            TakeBigBarrelTurn();
             return;
         }
 
@@ -451,6 +485,34 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         return appliedDamage > 0;
     }
 
+    public int ApplyExplosionDamage(int normalDamage, int bossDamage)
+    {
+        int damage = enemyData != null
+            && enemyData.BehaviorType == EnemyBehaviorType.BigBarrel
+                ? bossDamage
+                : normalDamage;
+        int appliedDamage = ApplyDamageInternal(damage, false, 1.1f);
+
+        if (appliedDamage > 0)
+        {
+            damageNumberDisplay?.ShowAttackDamage(appliedDamage, false);
+        }
+
+        return appliedDamage;
+    }
+
+    public int ApplyEnvironmentalDamage(int damage)
+    {
+        int appliedDamage = ApplyDamageInternal(damage, false, 0.8f);
+
+        if (appliedDamage > 0)
+        {
+            damageNumberDisplay?.ShowAttackDamage(appliedDamage, false);
+        }
+
+        return appliedDamage;
+    }
+
     public IEnumerator FlyTo(
         Vector3 targetPosition,
         float duration)
@@ -554,11 +616,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (currentHealth == 0)
         {
             PlayDeathSfx();
-
-            if (actionQueueUI != null)
-            {
-                actionQueueUI.ResetDisplay();
-            }
+            ClearAttackQueue();
+            StopAllCoroutines();
+            isActing = false;
+            waveManager?.NotifyBigBarrelDefeated(this);
 
             Defeated?.Invoke(this);
             Destroy(gameObject);
@@ -830,6 +891,454 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         PrepareCurrentAttackQueue();
     }
 
+    private void TakeBigBarrelTurn()
+    {
+        if (!TryGetTurnContext(
+                out int directionToPlayer,
+                out int distanceToPlayer))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        switch (bigBarrelStep)
+        {
+            case BigBarrelStep.RotateToPlayer:
+                TryEnterBigBarrelPhaseTwo();
+                bigBarrelStep = BigBarrelStep.CreateBombQueue;
+
+                if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
+                {
+                    RotateToward(directionToPlayer);
+                }
+                else
+                {
+                    CompleteAction(EnemyTurnActionType.Wait);
+                }
+                break;
+
+            case BigBarrelStep.CreateBombQueue:
+                bigBarrelActionUsesPhaseTwo = isBigBarrelPhaseTwo;
+                bigBarrelStep = BigBarrelStep.RegisterBomb;
+                CreateAttackQueue();
+                break;
+
+            case BigBarrelStep.RegisterBomb:
+                RegisterBigBarrelAction(
+                    EnemyActionType.ExplosiveThrow,
+                    BigBarrelStep.PrepareBomb,
+                    BigBarrelStep.AdjustDistance);
+                break;
+
+            case BigBarrelStep.PrepareBomb:
+                CaptureBigBarrelBombTargets();
+                preparedBigBarrelFuse = bigBarrelActionUsesPhaseTwo
+                    ? enemyData.BigBarrel.PhaseTwoBombFuseTurns
+                    : enemyData.BigBarrel.BombFuseTurns;
+                bigBarrelStep = BigBarrelStep.ExecuteBomb;
+                PrepareCurrentAttackQueue();
+                break;
+
+            case BigBarrelStep.ExecuteBomb:
+                isAttackPrepared = false;
+                HideAttackTelegraph();
+                StartCoroutine(FireBigBarrelBombs());
+                break;
+
+            case BigBarrelStep.AdjustDistance:
+                TryEnterBigBarrelPhaseTwo();
+                bigBarrelStep = BigBarrelStep.CreateShotgunQueue;
+                AdjustBigBarrelDistance(
+                    directionToPlayer,
+                    distanceToPlayer);
+                break;
+
+            case BigBarrelStep.CreateShotgunQueue:
+                bigBarrelStep = BigBarrelStep.RegisterShotgun;
+                CreateAttackQueue();
+                break;
+
+            case BigBarrelStep.RegisterShotgun:
+                RegisterBigBarrelAction(
+                    EnemyActionType.ShotgunAttack,
+                    BigBarrelStep.PrepareShotgun,
+                    BigBarrelStep.Reload);
+                break;
+
+            case BigBarrelStep.PrepareShotgun:
+                CaptureBigBarrelShotgunTargets();
+                bigBarrelStep = BigBarrelStep.ExecuteShotgun;
+                PrepareCurrentAttackQueue();
+                break;
+
+            case BigBarrelStep.ExecuteShotgun:
+                isAttackPrepared = false;
+                HideAttackTelegraph();
+                StartCoroutine(FireBigBarrelShotgun());
+                break;
+
+            case BigBarrelStep.Reload:
+                TakeBigBarrelReloadTurn();
+                break;
+        }
+    }
+
+    private void RegisterBigBarrelAction(
+        EnemyActionType actionType,
+        BigBarrelStep successStep,
+        BigBarrelStep failureStep)
+    {
+        if (!isQueueCreated
+            || !TryAppendAction(
+                actionType,
+                0,
+                out Image attackIcon,
+                out _))
+        {
+            ClearAttackQueue();
+            bigBarrelStep = failureStep;
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        bigBarrelStep = successStep;
+        StartCoroutine(RevealRegisteredAction(attackIcon));
+    }
+
+    private void CaptureBigBarrelBombTargets()
+    {
+        preparedBombTargetTileIndices.Clear();
+        List<int> candidates = new List<int>();
+
+        if (!boardManager.TryGetTileIndex(
+                transform.position,
+                out int bossTileIndex))
+        {
+            return;
+        }
+
+        for (int tileIndex = 0;
+             tileIndex < boardManager.BoardCount;
+             tileIndex++)
+        {
+            if (tileIndex != bossTileIndex
+                && (waveManager.BombManager == null
+                    || !waveManager.BombManager.IsTileOccupied(tileIndex)))
+            {
+                candidates.Add(tileIndex);
+            }
+        }
+
+        int requestedCount = bigBarrelActionUsesPhaseTwo ? 3 : 2;
+
+        while (preparedBombTargetTileIndices.Count < requestedCount
+               && candidates.Count > 0)
+        {
+            int candidateIndex = UnityEngine.Random.Range(0, candidates.Count);
+            preparedBombTargetTileIndices.Add(candidates[candidateIndex]);
+            candidates.RemoveAt(candidateIndex);
+        }
+    }
+
+    private void CaptureBigBarrelShotgunTargets()
+    {
+        preparedShotgunTileIndices.Clear();
+
+        if (!boardManager.TryGetTileIndex(
+                transform.position,
+                out int bossTileIndex))
+        {
+            return;
+        }
+
+        int leftTile = bossTileIndex - 1;
+        int rightTile = bossTileIndex + 1;
+
+        if (leftTile >= 0)
+        {
+            preparedShotgunTileIndices.Add(leftTile);
+        }
+
+        if (rightTile < boardManager.BoardCount)
+        {
+            preparedShotgunTileIndices.Add(rightTile);
+        }
+    }
+
+    private void AdjustBigBarrelDistance(
+        int directionToPlayer,
+        int distanceToPlayer)
+    {
+        int preferredDistance = enemyData.PreferredDistance;
+
+        if (directionToPlayer == 0 || distanceToPlayer == preferredDistance)
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        int moveDirection = distanceToPlayer < preferredDistance
+            ? -directionToPlayer
+            : directionToPlayer;
+
+        if (!boardManager.TryGetAdjacentTilePosition(
+                transform.position,
+                moveDirection,
+                out Vector3 targetPosition)
+            || !boardManager.TryGetTileIndex(
+                targetPosition,
+                out int targetTileIndex)
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex)
+            || targetTileIndex == playerTileIndex
+            || waveManager.IsTileOccupied(targetTileIndex, this)
+            || waveManager.IsTileReservedForSpawn(targetTileIndex)
+            || waveManager.BombManager != null
+            && waveManager.BombManager.IsTileThreatened(targetTileIndex, 1))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        StartCoroutine(MoveRoutine(new[] { targetPosition }, false));
+    }
+
+    private IEnumerator FireBigBarrelBombs()
+    {
+        EnemyActionData action = PopFirstQueuedAction();
+        yield return PlayAvatarAttackAnimation();
+
+        foreach (int targetTileIndex in preparedBombTargetTileIndices)
+        {
+            if (currentHealth <= 0
+                || targetTileIndex < 0
+                || targetTileIndex >= boardManager.BoardCount
+                || !boardManager.TryGetTilePosition(
+                    targetTileIndex,
+                    out Vector3 targetPosition)
+                || waveManager.BombManager == null
+                || waveManager.BombManager.IsTileOccupied(targetTileIndex))
+            {
+                continue;
+            }
+
+            yield return PlayBigBarrelProjectile(targetPosition);
+            waveManager.BombManager.TrySpawnBomb(
+                enemyData,
+                targetTileIndex,
+                preparedBigBarrelFuse,
+                out _);
+        }
+
+        if (action != null && action.AttackData != null)
+        {
+            AttackExecuted?.Invoke(this, action.AttackData);
+        }
+
+        FinishBigBarrelAttack(BigBarrelStep.AdjustDistance);
+    }
+
+    private IEnumerator FireBigBarrelShotgun()
+    {
+        EnemyActionData action = PopFirstQueuedAction();
+        yield return PlayAvatarAttackAnimation();
+
+        foreach (int targetTileIndex in preparedShotgunTileIndices)
+        {
+            if (currentHealth <= 0)
+            {
+                break;
+            }
+
+            if (boardManager.TryGetTileIndex(
+                    playerMove.transform.position,
+                    out int playerTileIndex)
+                && playerTileIndex == targetTileIndex)
+            {
+                playerHealth.ApplyDamage(enemyData.BigBarrel.ShotgunDamage);
+            }
+
+            if (waveManager.TryGetEnemyAtTile(
+                    targetTileIndex,
+                    out EnemyController target,
+                    this))
+            {
+                target.ApplyEnvironmentalDamage(
+                    enemyData.BigBarrel.ShotgunDamage);
+            }
+        }
+
+        CombatCameraShake.Play(enemyData.BigBarrel.BossHitCameraShake);
+
+        if (action != null && action.AttackData != null)
+        {
+            AttackExecuted?.Invoke(this, action.AttackData);
+        }
+
+        bigBarrelReloadTurnsRemaining = enemyData.RecoveryTurns;
+        FinishBigBarrelAttack(bigBarrelReloadTurnsRemaining > 0
+            ? BigBarrelStep.Reload
+            : BigBarrelStep.RotateToPlayer);
+    }
+
+    private IEnumerator PlayBigBarrelProjectile(Vector3 targetPosition)
+    {
+        Vector3 startPosition = transform.position;
+        float duration = enemyData.ThrownProjectileDuration;
+        GameObject projectile = enemyData.ThrownProjectilePrefab == null
+            ? CreateDefaultThrownProjectile(startPosition)
+            : Instantiate(
+                enemyData.ThrownProjectilePrefab,
+                startPosition,
+                Quaternion.identity);
+
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsed += Time.deltaTime;
+            float progress = duration <= 0f
+                ? 1f
+                : Mathf.Clamp01(elapsed / duration);
+            Vector3 position = Vector3.Lerp(
+                startPosition,
+                targetPosition,
+                progress);
+            position += Vector3.up * (Mathf.Sin(progress * Mathf.PI)
+                * enemyData.BigBarrel.BombArcHeight);
+
+            if (projectile != null)
+            {
+                projectile.transform.position = position;
+            }
+        }
+
+        if (projectile != null)
+        {
+            projectile.transform.position = targetPosition;
+            Destroy(projectile);
+        }
+    }
+
+    private EnemyActionData PopFirstQueuedAction()
+    {
+        if (queuedAttackActions.Count == 0)
+        {
+            return null;
+        }
+
+        EnemyActionData action = queuedAttackActions[0];
+        queuedAttackActions.RemoveAt(0);
+        actionQueueUI.RemoveFirstIcon();
+        return action;
+    }
+
+    private void FinishBigBarrelAttack(BigBarrelStep nextStep)
+    {
+        isQueueCreated = false;
+        isAttackPrepared = false;
+        preparedBombTargetTileIndices.Clear();
+        preparedShotgunTileIndices.Clear();
+        actionQueueUI.ResetDisplay();
+        bigBarrelStep = nextStep;
+        CompleteAction(EnemyTurnActionType.Fire);
+    }
+
+    private void TakeBigBarrelReloadTurn()
+    {
+        if (bigBarrelReloadTurnsRemaining <= 0)
+        {
+            bigBarrelStep = BigBarrelStep.RotateToPlayer;
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        bigBarrelReloadTurnsRemaining--;
+
+        if (bigBarrelReloadTurnsRemaining == 0)
+        {
+            bigBarrelStep = BigBarrelStep.RotateToPlayer;
+        }
+
+        EnemyActionData reloadAction = FindAction(EnemyActionType.Reload);
+
+        if (reloadAction == null)
+        {
+            CompleteAction(EnemyTurnActionType.Reload);
+            return;
+        }
+
+        actionQueueUI.ResetDisplay();
+        actionQueueUI.ShowQueue();
+
+        if (actionQueueUI.AddAttackIcon(reloadAction, out Image icon))
+        {
+            StartCoroutine(RevealBigBarrelReload(icon));
+        }
+        else
+        {
+            CompleteAction(EnemyTurnActionType.Reload);
+        }
+    }
+
+    private IEnumerator RevealBigBarrelReload(Image icon)
+    {
+        yield return actionQueueUI.RevealIcon(
+            icon,
+            enemyData.QueueElementRevealDuration);
+        CompleteAction(EnemyTurnActionType.Reload);
+    }
+
+    private void TryEnterBigBarrelPhaseTwo()
+    {
+        if (isBigBarrelPhaseTwo || MaxHealth <= 0
+            || (float)currentHealth / MaxHealth
+            > enemyData.BigBarrel.PhaseTwoHealthRatio)
+        {
+            return;
+        }
+
+        isBigBarrelPhaseTwo = true;
+        StartCoroutine(PlayBigBarrelPhaseTransition());
+    }
+
+    private IEnumerator PlayBigBarrelPhaseTransition()
+    {
+        SpriteRenderer[] renderers = avatarInstance == null
+            ? GetComponentsInChildren<SpriteRenderer>(true)
+            : avatarInstance.GetComponentsInChildren<SpriteRenderer>(true);
+        Color[] originalColors = new Color[renderers.Length];
+
+        for (int index = 0; index < renderers.Length; index++)
+        {
+            originalColors[index] = renderers[index].color;
+            renderers[index].color = Color.Lerp(
+                originalColors[index],
+                new Color(1f, 0.25f, 0.05f, 1f),
+                0.7f);
+        }
+
+        yield return actionQueueUI.PlayPhaseTransition(
+            enemyData.QueueElementRevealDuration,
+            new Color(1f, 0.25f, 0.05f, 1f));
+
+        for (int index = 0; index < renderers.Length; index++)
+        {
+            if (renderers[index] != null)
+            {
+                renderers[index].color = originalColors[index];
+            }
+        }
+    }
+
     private void TakePorterTurn(
         int directionToPlayer,
         int distanceToPlayer)
@@ -891,7 +1400,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         EnemyActionData attackAction = GetAvailableAction(
             actionType,
             actionIndex,
-            actionType != EnemyActionType.Support);
+            actionType == EnemyActionType.MeleeAttack
+            || actionType == EnemyActionType.RangedAttack);
 
         if (attackAction == null
             || !actionQueueUI.AddAttackIcon(attackAction, out attackIcon))
@@ -979,6 +1489,20 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             || enemyData.BehaviorType == EnemyBehaviorType.Melee)
         {
             HideAttackTelegraph();
+            return;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
+        {
+            if (bigBarrelStep == BigBarrelStep.ExecuteBomb)
+            {
+                CreateBigBarrelBombTelegraphs();
+            }
+            else if (bigBarrelStep == BigBarrelStep.ExecuteShotgun)
+            {
+                CreateBigBarrelShotgunTelegraphs();
+            }
+
             return;
         }
 
@@ -1149,6 +1673,138 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             attackTelegraphLine.enabled = false;
         }
+
+        foreach (LineRenderer line in bigBarrelTelegraphLines)
+        {
+            if (line != null)
+            {
+                line.gameObject.SetActive(false);
+                Destroy(line.gameObject);
+            }
+        }
+
+        bigBarrelTelegraphLines.Clear();
+    }
+
+    private void CreateBigBarrelBombTelegraphs()
+    {
+        ClearBigBarrelTelegraphsOnly();
+        Material material = enemyData.BigBarrel.BombTelegraphMaterial;
+        Color color = new Color(1f, 0.45f, 0f, 0.72f);
+
+        foreach (int targetTileIndex in preparedBombTargetTileIndices)
+        {
+            if (!boardManager.TryGetTilePosition(
+                    targetTileIndex,
+                    out Vector3 targetPosition))
+            {
+                continue;
+            }
+
+            LineRenderer arc = CreateBigBarrelArc(
+                targetPosition,
+                material,
+                color);
+
+            if (arc != null)
+            {
+                bigBarrelTelegraphLines.Add(arc);
+            }
+
+            LineRenderer range = BoardTelegraphUtility.CreateTileRange(
+                transform,
+                "Line | Bomb Target Range",
+                boardManager,
+                targetTileIndex - enemyData.BigBarrel.BombExplosionRadius,
+                targetTileIndex + enemyData.BigBarrel.BombExplosionRadius,
+                material,
+                color,
+                enemyData.TelegraphVerticalOffset * 0.5f,
+                enemyData.TelegraphSortingOrder - 1);
+
+            if (range != null)
+            {
+                bigBarrelTelegraphLines.Add(range);
+            }
+        }
+    }
+
+    private void CreateBigBarrelShotgunTelegraphs()
+    {
+        ClearBigBarrelTelegraphsOnly();
+        Color color = new Color(1f, 0.08f, 0.04f, 0.78f);
+
+        foreach (int tileIndex in preparedShotgunTileIndices)
+        {
+            LineRenderer line = BoardTelegraphUtility.CreateTileRange(
+                transform,
+                "Line | Shotgun Target",
+                boardManager,
+                tileIndex,
+                tileIndex,
+                enemyData.BigBarrel.ShotgunTelegraphMaterial,
+                color,
+                enemyData.TelegraphVerticalOffset * 0.5f,
+                enemyData.TelegraphSortingOrder);
+
+            if (line != null)
+            {
+                bigBarrelTelegraphLines.Add(line);
+            }
+        }
+    }
+
+    private LineRenderer CreateBigBarrelArc(
+        Vector3 targetPosition,
+        Material material,
+        Color color)
+    {
+        GameObject lineObject = new GameObject("Line | Bomb Arc");
+        lineObject.transform.SetParent(transform, false);
+        LineRenderer line = lineObject.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.alignment = LineAlignment.View;
+        line.textureMode = LineTextureMode.Stretch;
+        line.numCapVertices = 2;
+        line.sharedMaterial = material;
+        line.widthMultiplier = enemyData.TelegraphLineWidth;
+        line.sortingOrder = enemyData.TelegraphSortingOrder;
+        line.startColor = color;
+        line.endColor = color;
+        int segmentCount = enemyData.ThrowerTelegraphSegments;
+        line.positionCount = segmentCount;
+        Vector3 startPosition = transform.position;
+        startPosition.y += enemyData.TelegraphVerticalOffset;
+        targetPosition.y += enemyData.TelegraphVerticalOffset;
+        targetPosition.z = startPosition.z;
+
+        for (int index = 0; index < segmentCount; index++)
+        {
+            float progress = (float)index / (segmentCount - 1);
+            Vector3 position = Vector3.Lerp(
+                startPosition,
+                targetPosition,
+                progress);
+            position += Vector3.up * (Mathf.Sin(progress * Mathf.PI)
+                * enemyData.BigBarrel.BombArcHeight);
+            line.SetPosition(index, position);
+        }
+
+        return line;
+    }
+
+    private void ClearBigBarrelTelegraphsOnly()
+    {
+        foreach (LineRenderer line in bigBarrelTelegraphLines)
+        {
+            if (line != null)
+            {
+                line.gameObject.SetActive(false);
+                Destroy(line.gameObject);
+            }
+        }
+
+        bigBarrelTelegraphLines.Clear();
     }
 
     private void RefreshShieldIndicator(
@@ -2137,6 +2793,13 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         preparedTargetPosition = Vector3.zero;
         preparedSupportTarget = null;
         preparedSupportType = EnemySupportType.None;
+        bigBarrelStep = BigBarrelStep.RotateToPlayer;
+        isBigBarrelPhaseTwo = false;
+        bigBarrelActionUsesPhaseTwo = false;
+        preparedBigBarrelFuse = 0;
+        bigBarrelReloadTurnsRemaining = 0;
+        preparedBombTargetTileIndices.Clear();
+        preparedShotgunTileIndices.Clear();
         lastTurnAction = EnemyTurnActionType.None;
         isActing = false;
 

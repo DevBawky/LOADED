@@ -239,6 +239,11 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
+        if (waveManager.IsTileOccupied(targetTileIndex))
+        {
+            return;
+        }
+
         if (waveManager.IsTileReservedForSpawn(targetTileIndex))
         {
             return;
@@ -627,6 +632,11 @@ public class PlayerMove : MonoBehaviour
                     tileIndex,
                     out collidedEnemy,
                     pushedEnemy))
+            {
+                break;
+            }
+
+            if (waveManager.IsTileOccupied(tileIndex, pushedEnemy))
             {
                 break;
             }
