@@ -359,6 +359,7 @@ GameObject:
   - component: {fileID: 6372297391433345502}
   - component: {fileID: 4183098370449869801}
   - component: {fileID: 700000000000000020}
+  - component: {fileID: 700000000000000021}
   - component: {fileID: 7459208863926184471}
   - component: {fileID: 6842197531604829375}
   - component: {fileID: 700000000000000002}
@@ -476,6 +477,7 @@ MonoBehaviour:
   cylinderUI: {fileID: 6842197531604829375}
   bulletFeedbackImage: {fileID: 0}
   combatPresentation: {fileID: 700000000000000020}
+  combatFeedback: {fileID: 700000000000000021}
   shotInterval: 0.2
   sfxAudioSource: {fileID: 6605989869902350061}
   reloadSfx:
@@ -543,14 +545,49 @@ MonoBehaviour:
   hitStopDuration: 0.035
   criticalHitStopDuration: 0.055
   hitFlashDuration: 0.085
-  hitSparkCount: 6
+  hitSparkCount: 12
   defeatHitStopDuration: 0.075
   defeatAfterimageDuration: 0.32
   defeatKnockbackDistance: 0.42
   defeatLiftHeight: 0.22
-  defeatSparkCount: 12
+  defeatSparkCount: 24
   defeatScreenFlashAlpha: 0.2
   defeatDustColor: {r: 0.72, g: 0.35, b: 0.12, a: 1}
+--- !u!114 &700000000000000021
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 918824946450782430}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c7d8f5e19a3b4e0e9f1a2b3c4d5e6f70, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Assembly-CSharp::CombatFeedbackController
+  comboDuration: 15
+  comboLowColor: {r: 1, g: 1, b: 1, a: 1}
+  comboHighColor: {r: 1, g: 0.42, b: 0.12, a: 1}
+  timerDangerColor: {r: 1, g: 0.18, b: 0.08, a: 1}
+  killSlowMotionScale: 0.3
+  killSlowMotionHold: 0.18
+  killSlowMotionRecovery: 0.18
+  killCameraShake: 0.055
+  volumePulseDuration: 0.8
+  chromaticBoost: 1
+  bloomBoost: 3
+  vignetteBoost: 0.09
+  lensDistortionBoost: -0.075
+  contrastBoost: 11
+  fullscreenImpactEnabled: 1
+  fullscreenImpactDuration: 0.42
+  shockwaveStrength: 1
+  rgbSplitStrength: 1
+  radialZoomStrength: 0.85
+  directionalTearStrength: 0.72
+  fullscreenImpactColor: {r: 1, g: 0.3, b: 0.06, a: 1}
+  killAccentClip: {fileID: 0}
+  killAccentVolume: 0.7
 --- !u!114 &7459208863926184471
 MonoBehaviour:
   m_ObjectHideFlags: 0

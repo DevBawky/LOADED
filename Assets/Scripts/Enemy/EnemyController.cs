@@ -503,6 +503,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyStatusDamage(int damage)
     {
+        return ApplyStatusDamageAmount(damage) > 0;
+    }
+
+    public int ApplyStatusDamageAmount(int damage)
+    {
         int appliedDamage = ApplyDamageInternal(damage, false, 0.45f);
 
         // Status damage popups show the effect's full damage, even when the
@@ -512,7 +517,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             damageNumberDisplay?.ShowPoisonDamage(damage);
         }
 
-        return appliedDamage > 0;
+        return appliedDamage;
     }
 
     public bool ApplyCollisionDamage(int damage)
