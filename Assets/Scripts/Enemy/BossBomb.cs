@@ -50,7 +50,11 @@ public class BossBomb : MonoBehaviour, IPlayerBulletBlocker
         isExploding = false;
         EnsureFallbackVisuals();
         RefreshFuseText();
-        CreateExplosionRangeTelegraph();
+
+        if (remainingFuse == 1)
+        {
+            CreateExplosionRangeTelegraph();
+        }
         return true;
     }
 
@@ -69,6 +73,11 @@ public class BossBomb : MonoBehaviour, IPlayerBulletBlocker
 
         remainingFuse = Mathf.Max(0, remainingFuse - 1);
         RefreshFuseText();
+
+        if (remainingFuse == 1 && explosionRangeLine == null)
+        {
+            CreateExplosionRangeTelegraph();
+        }
 
         if (remainingFuse == 0)
         {
@@ -157,6 +166,11 @@ public class BossBomb : MonoBehaviour, IPlayerBulletBlocker
 
     private void CreateExplosionRangeTelegraph()
     {
+        if (explosionRangeLine != null || remainingFuse != 1)
+        {
+            return;
+        }
+
         BigBarrelSettings settings = sourceData.BigBarrel;
         explosionRangeLine = BoardTelegraphUtility.CreateTileRange(
             transform,

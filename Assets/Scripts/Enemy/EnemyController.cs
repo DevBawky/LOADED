@@ -182,6 +182,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         new List<EnemyController>();
     private MaterialPropertyBlock lineColorProperties;
     private EnemyHealthBarFeedback healthBarFeedback;
+    private BossHudController bossHud;
     private Animator avatarAnimator;
     private SpriteRenderer avatarSortingRenderer;
     private int avatarAnimationSequence;
@@ -276,6 +277,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         ApplyInitialFacingDirection();
         SpawnAvatar();
         ResetRuntimeState();
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
+        {
+            ConfigureBigBarrelHud();
+        }
+
         ApplyCanvasOrientation();
         gameObject.name = string.IsNullOrWhiteSpace(enemyData.DisplayName)
             ? enemyData.name
@@ -389,6 +396,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private void OnDisable()
     {
         HideAttackTelegraph();
+        bossHud?.Unbind(this);
+        bossHud = null;
 
         if (shieldIndicatorLine != null)
         {
@@ -396,6 +405,30 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         isActing = false;
+    }
+
+    private void ConfigureBigBarrelHud()
+    {
+        if (canvasTransform != null)
+        {
+            canvasTransform.gameObject.SetActive(false);
+        }
+
+        bossHud = FindFirstObjectByType<BossHudController>(
+            FindObjectsInactive.Include);
+
+        if (bossHud == null)
+        {
+            Debug.LogWarning(
+                "Panel | Boss를 관리하는 BossHudController를 찾지 못했습니다.",
+                this);
+            return;
+        }
+
+        if (bossHud.Bind(this, healthBarFeedback, statusEffects))
+        {
+            RefreshHealthUI();
+        }
     }
 
     public bool ApplyDamage(int damage)
@@ -1494,11 +1527,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
         {
-            if (bigBarrelStep == BigBarrelStep.ExecuteBomb)
-            {
-                CreateBigBarrelBombTelegraphs();
-            }
-            else if (bigBarrelStep == BigBarrelStep.ExecuteShotgun)
+            if (bigBarrelStep == BigBarrelStep.ExecuteShotgun)
             {
                 CreateBigBarrelShotgunTelegraphs();
             }
@@ -1686,49 +1715,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         bigBarrelTelegraphLines.Clear();
     }
 
-    private void CreateBigBarrelBombTelegraphs()
-    {
-        ClearBigBarrelTelegraphsOnly();
-        Material material = enemyData.BigBarrel.BombTelegraphMaterial;
-        Color color = new Color(1f, 0.45f, 0f, 0.72f);
-
-        foreach (int targetTileIndex in preparedBombTargetTileIndices)
-        {
-            if (!boardManager.TryGetTilePosition(
-                    targetTileIndex,
-                    out Vector3 targetPosition))
-            {
-                continue;
-            }
-
-            LineRenderer arc = CreateBigBarrelArc(
-                targetPosition,
-                material,
-                color);
-
-            if (arc != null)
-            {
-                bigBarrelTelegraphLines.Add(arc);
-            }
-
-            LineRenderer range = BoardTelegraphUtility.CreateTileRange(
-                transform,
-                "Line | Bomb Target Range",
-                boardManager,
-                targetTileIndex - enemyData.BigBarrel.BombExplosionRadius,
-                targetTileIndex + enemyData.BigBarrel.BombExplosionRadius,
-                material,
-                color,
-                enemyData.TelegraphVerticalOffset * 0.5f,
-                enemyData.TelegraphSortingOrder - 1);
-
-            if (range != null)
-            {
-                bigBarrelTelegraphLines.Add(range);
-            }
-        }
-    }
-
     private void CreateBigBarrelShotgunTelegraphs()
     {
         ClearBigBarrelTelegraphsOnly();
@@ -1752,45 +1738,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 bigBarrelTelegraphLines.Add(line);
             }
         }
-    }
-
-    private LineRenderer CreateBigBarrelArc(
-        Vector3 targetPosition,
-        Material material,
-        Color color)
-    {
-        GameObject lineObject = new GameObject("Line | Bomb Arc");
-        lineObject.transform.SetParent(transform, false);
-        LineRenderer line = lineObject.AddComponent<LineRenderer>();
-        line.useWorldSpace = true;
-        line.alignment = LineAlignment.View;
-        line.textureMode = LineTextureMode.Stretch;
-        line.numCapVertices = 2;
-        line.sharedMaterial = material;
-        line.widthMultiplier = enemyData.TelegraphLineWidth;
-        line.sortingOrder = enemyData.TelegraphSortingOrder;
-        line.startColor = color;
-        line.endColor = color;
-        int segmentCount = enemyData.ThrowerTelegraphSegments;
-        line.positionCount = segmentCount;
-        Vector3 startPosition = transform.position;
-        startPosition.y += enemyData.TelegraphVerticalOffset;
-        targetPosition.y += enemyData.TelegraphVerticalOffset;
-        targetPosition.z = startPosition.z;
-
-        for (int index = 0; index < segmentCount; index++)
-        {
-            float progress = (float)index / (segmentCount - 1);
-            Vector3 position = Vector3.Lerp(
-                startPosition,
-                targetPosition,
-                progress);
-            position += Vector3.up * (Mathf.Sin(progress * Mathf.PI)
-                * enemyData.BigBarrel.BombArcHeight);
-            line.SetPosition(index, position);
-        }
-
-        return line;
     }
 
     private void ClearBigBarrelTelegraphsOnly()

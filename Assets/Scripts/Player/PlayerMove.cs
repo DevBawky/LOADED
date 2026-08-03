@@ -239,11 +239,6 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        if (waveManager.IsTileOccupied(targetTileIndex))
-        {
-            return;
-        }
-
         if (waveManager.IsTileReservedForSpawn(targetTileIndex))
         {
             return;

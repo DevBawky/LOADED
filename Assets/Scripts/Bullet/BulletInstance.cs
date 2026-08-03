@@ -71,6 +71,37 @@ public readonly struct BulletTooltipContext
 }
 
 [Serializable]
+public readonly struct BulletRuntimeStateSnapshot
+{
+    public BulletRuntimeStateSnapshot(
+        int abilityStacks,
+        int permanentStacks,
+        float storedDamageBonus,
+        float temporaryCriticalChanceBonus,
+        float temporaryDamageBonus,
+        int shotsObservedWhileLoaded)
+    {
+        AbilityStacks = Mathf.Max(0, abilityStacks);
+        PermanentStacks = Mathf.Max(0, permanentStacks);
+        StoredDamageBonus = Mathf.Max(0f, storedDamageBonus);
+        TemporaryCriticalChanceBonus = Mathf.Max(
+            0f,
+            temporaryCriticalChanceBonus);
+        TemporaryDamageBonus = Mathf.Max(0f, temporaryDamageBonus);
+        ShotsObservedWhileLoaded = Mathf.Max(
+            0,
+            shotsObservedWhileLoaded);
+    }
+
+    public int AbilityStacks { get; }
+    public int PermanentStacks { get; }
+    public float StoredDamageBonus { get; }
+    public float TemporaryCriticalChanceBonus { get; }
+    public float TemporaryDamageBonus { get; }
+    public int ShotsObservedWhileLoaded { get; }
+}
+
+[Serializable]
 public sealed class BulletInstance
 {
     [SerializeField] private BulletData data;
@@ -82,6 +113,7 @@ public sealed class BulletInstance
     [SerializeField] private float storedDamageBonus;
     [NonSerialized] private float temporaryCriticalChanceBonus;
     [NonSerialized] private float temporaryDamageBonus;
+    [NonSerialized] private int shotsObservedWhileLoaded;
 
     public BulletData Data => data;
     public int Level => Mathf.Clamp(level, 0, BulletData.MaximumUpgradeLevel);
@@ -93,6 +125,9 @@ public sealed class BulletInstance
     public float TemporaryCriticalChanceBonus => Mathf.Max(
         0f,
         temporaryCriticalChanceBonus);
+    public int ShotsObservedWhileLoaded => Mathf.Max(
+        0,
+        shotsObservedWhileLoaded);
     public bool CanUpgrade => data != null
         && Level < BulletData.MaximumUpgradeLevel;
     public string DisplayName => data == null
@@ -291,7 +326,7 @@ public sealed class BulletInstance
                     }
 
                     int stacks = Mathf.Min(
-                        context.BulletsFired,
+                        ShotsObservedWhileLoaded,
                         Mathf.Max(0, effect.StackCount));
                     float bonus = stacks * effect.Amount / 100f;
                     damageMultiplier *= 1f + bonus;
@@ -659,6 +694,39 @@ public sealed class BulletInstance
         abilityStacks = Mathf.Max(0, amount);
     }
 
+    public void BeginCylinderShotTracking()
+    {
+        shotsObservedWhileLoaded = 0;
+    }
+
+    public void RecordShotWhileLoaded()
+    {
+        shotsObservedWhileLoaded = shotsObservedWhileLoaded == int.MaxValue
+            ? int.MaxValue
+            : shotsObservedWhileLoaded + 1;
+    }
+
+    public BulletRuntimeStateSnapshot CaptureRuntimeState()
+    {
+        return new BulletRuntimeStateSnapshot(
+            AbilityStacks,
+            PermanentStacks,
+            StoredDamageBonus,
+            TemporaryCriticalChanceBonus,
+            TemporaryDamageBonus,
+            ShotsObservedWhileLoaded);
+    }
+
+    public void ApplyRuntimeState(BulletRuntimeStateSnapshot state)
+    {
+        abilityStacks = state.AbilityStacks;
+        permanentStacks = state.PermanentStacks;
+        storedDamageBonus = state.StoredDamageBonus;
+        temporaryCriticalChanceBonus = state.TemporaryCriticalChanceBonus;
+        temporaryDamageBonus = state.TemporaryDamageBonus;
+        shotsObservedWhileLoaded = state.ShotsObservedWhileLoaded;
+    }
+
     public void AddPermanentStacks(int amount)
     {
         if (amount <= 0)
@@ -681,6 +749,7 @@ public sealed class BulletInstance
     public void ResetStageState()
     {
         abilityStacks = 0;
+        shotsObservedWhileLoaded = 0;
         temporaryCriticalChanceBonus = 0f;
         temporaryDamageBonus = 0f;
     }

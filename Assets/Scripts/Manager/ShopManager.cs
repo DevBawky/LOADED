@@ -119,8 +119,32 @@ public class ShopManager : MonoBehaviour
 
     public void OpenShop()
     {
+        ResetOfferButtonsForNewVisit();
         GenerateOffers();
         GenerateItemOffers();
+    }
+
+    private void ResetOfferButtonsForNewVisit()
+    {
+        foreach (ShopBulletSlot slot in slots)
+        {
+            if (slot?.Button != null)
+            {
+                slot.Button.gameObject.SetActive(true);
+                slot.Button.interactable = true;
+            }
+        }
+
+        foreach (ShopItemSlot slot in itemSlots)
+        {
+            if (slot?.Button != null)
+            {
+                slot.Button.gameObject.SetActive(true);
+                slot.Button.interactable = true;
+            }
+        }
+
+        purchasedItemOffers.Clear();
     }
 
     public bool TryPurchase(int slotIndex)
@@ -229,9 +253,7 @@ public class ShopManager : MonoBehaviour
 
         foreach (ItemData itemData in itemPool)
         {
-            if (itemData != null && !candidates.Contains(itemData)
-                && playerInventory != null
-                && playerInventory.CanAdd(itemData))
+            if (itemData != null && !candidates.Contains(itemData))
             {
                 candidates.Add(itemData);
             }
