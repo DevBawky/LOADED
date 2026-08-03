@@ -21,6 +21,24 @@ Shader "Loaded/UI/Enemy Health Bar Impact"
         [HideInInspector] _HitStrength("Hit Strength", Range(0.0, 2.0)) = 0
         [HideInInspector] _Critical("Critical", Range(0.0, 1.0)) = 0
         [HideInInspector] _GhostMode("Ghost Mode", Range(0.0, 1.0)) = 0
+        [HideInInspector] _PreviewMode("Preview Mode", Range(0.0, 1.0)) = 0
+        [HideInInspector] _PreviewSegmentCount("Preview Segment Count", Float) = 0
+        [HideInInspector] _PreviewRange0("Preview Range 0", Vector) = (0, 0, 0, 0)
+        [HideInInspector] _PreviewRange1("Preview Range 1", Vector) = (0, 0, 0, 0)
+        [HideInInspector] _PreviewRange2("Preview Range 2", Vector) = (0, 0, 0, 0)
+        [HideInInspector] _PreviewRange3("Preview Range 3", Vector) = (0, 0, 0, 0)
+        [HideInInspector] _PreviewRange4("Preview Range 4", Vector) = (0, 0, 0, 0)
+        [HideInInspector] _PreviewRange5("Preview Range 5", Vector) = (0, 0, 0, 0)
+        [HideInInspector] _PreviewRange6("Preview Range 6", Vector) = (0, 0, 0, 0)
+        [HideInInspector] _PreviewRange7("Preview Range 7", Vector) = (0, 0, 0, 0)
+        [HideInInspector][HDR] _PreviewColor0("Preview Color 0", Color) = (0, 0, 0, 0)
+        [HideInInspector][HDR] _PreviewColor1("Preview Color 1", Color) = (0, 0, 0, 0)
+        [HideInInspector][HDR] _PreviewColor2("Preview Color 2", Color) = (0, 0, 0, 0)
+        [HideInInspector][HDR] _PreviewColor3("Preview Color 3", Color) = (0, 0, 0, 0)
+        [HideInInspector][HDR] _PreviewColor4("Preview Color 4", Color) = (0, 0, 0, 0)
+        [HideInInspector][HDR] _PreviewColor5("Preview Color 5", Color) = (0, 0, 0, 0)
+        [HideInInspector][HDR] _PreviewColor6("Preview Color 6", Color) = (0, 0, 0, 0)
+        [HideInInspector][HDR] _PreviewColor7("Preview Color 7", Color) = (0, 0, 0, 0)
 
         [HideInInspector] _StencilComp("Stencil Comparison", Float) = 8
         [HideInInspector] _Stencil("Stencil ID", Float) = 0
@@ -93,8 +111,24 @@ Shader "Loaded/UI/Enemy Health Bar Impact"
                 half4 _HitColor;
                 half4 _CriticalColor;
                 half4 _DangerColor;
+                half4 _PreviewColor0;
+                half4 _PreviewColor1;
+                half4 _PreviewColor2;
+                half4 _PreviewColor3;
+                half4 _PreviewColor4;
+                half4 _PreviewColor5;
+                half4 _PreviewColor6;
+                half4 _PreviewColor7;
                 float4 _HealthRect;
                 float4 _ClipRect;
+                float4 _PreviewRange0;
+                float4 _PreviewRange1;
+                float4 _PreviewRange2;
+                float4 _PreviewRange3;
+                float4 _PreviewRange4;
+                float4 _PreviewRange5;
+                float4 _PreviewRange6;
+                float4 _PreviewRange7;
                 float _FlowSpeed;
                 float _FlowScale;
                 float _FlowIntensity;
@@ -106,12 +140,40 @@ Shader "Loaded/UI/Enemy Health Bar Impact"
                 float _HitStrength;
                 float _Critical;
                 float _GhostMode;
+                float _PreviewMode;
+                float _PreviewSegmentCount;
             CBUFFER_END
 
             float Hash(float2 value)
             {
                 return frac(sin(dot(value, float2(127.1, 311.7)))
                     * 43758.5453);
+            }
+
+            void SelectPreviewSegment(
+                float horizontalPosition,
+                float4 rangeData,
+                half4 sourceColor,
+                inout half4 selectedColor,
+                inout float selectedEmphasis,
+                inout float selectedMask)
+            {
+                const float seamPadding = 0.002;
+                float segmentMask = step(
+                        rangeData.x - seamPadding,
+                        horizontalPosition)
+                    * step(
+                        horizontalPosition,
+                        rangeData.y + seamPadding);
+                selectedColor = lerp(
+                    selectedColor,
+                    sourceColor,
+                    segmentMask);
+                selectedEmphasis = lerp(
+                    selectedEmphasis,
+                    rangeData.z,
+                    segmentMask);
+                selectedMask = max(selectedMask, segmentMask);
             }
 
             Varyings Vertex(Attributes input)
@@ -135,6 +197,61 @@ Shader "Loaded/UI/Enemy Health Bar Impact"
                     (input.positionOS.xy - _HealthRect.xy)
                     * _HealthRect.zw);
                 float time = _Time.y;
+
+                if (_PreviewMode > 0.5)
+                {
+                    half4 selectedColor = half4(0, 0, 0, 0);
+                    float selectedEmphasis = 0.0;
+                    float rangeMask = 0.0;
+
+                    if (_PreviewSegmentCount > 0.5)
+                        SelectPreviewSegment(localUV.x, _PreviewRange0, _PreviewColor0, selectedColor, selectedEmphasis, rangeMask);
+                    if (_PreviewSegmentCount > 1.5)
+                        SelectPreviewSegment(localUV.x, _PreviewRange1, _PreviewColor1, selectedColor, selectedEmphasis, rangeMask);
+                    if (_PreviewSegmentCount > 2.5)
+                        SelectPreviewSegment(localUV.x, _PreviewRange2, _PreviewColor2, selectedColor, selectedEmphasis, rangeMask);
+                    if (_PreviewSegmentCount > 3.5)
+                        SelectPreviewSegment(localUV.x, _PreviewRange3, _PreviewColor3, selectedColor, selectedEmphasis, rangeMask);
+                    if (_PreviewSegmentCount > 4.5)
+                        SelectPreviewSegment(localUV.x, _PreviewRange4, _PreviewColor4, selectedColor, selectedEmphasis, rangeMask);
+                    if (_PreviewSegmentCount > 5.5)
+                        SelectPreviewSegment(localUV.x, _PreviewRange5, _PreviewColor5, selectedColor, selectedEmphasis, rangeMask);
+                    if (_PreviewSegmentCount > 6.5)
+                        SelectPreviewSegment(localUV.x, _PreviewRange6, _PreviewColor6, selectedColor, selectedEmphasis, rangeMask);
+                    if (_PreviewSegmentCount > 7.5)
+                        SelectPreviewSegment(localUV.x, _PreviewRange7, _PreviewColor7, selectedColor, selectedEmphasis, rangeMask);
+
+                    float stripePosition = localUV.x * 18.0
+                        + localUV.y * 7.0
+                        - time * lerp(0.7, 1.8, selectedEmphasis);
+                    float stripe = smoothstep(
+                        0.42,
+                        0.58,
+                        frac(stripePosition));
+                    float pulse = 0.82 + 0.18 * sin(
+                        time * 5.5 + localUV.x * 9.0);
+                    float brightness = lerp(
+                        0.72 + stripe * 0.34,
+                        0.92 + stripe * 0.48 * pulse,
+                        selectedEmphasis);
+                    half3 previewColor = selectedColor.rgb * brightness;
+                    float previewAlpha = textureColor.a
+                        * input.color.a
+                        * selectedColor.a
+                        * rangeMask;
+
+                    #ifdef UNITY_UI_CLIP_RECT
+                    float2 previewInside = step(
+                        _ClipRect.xy,
+                        input.positionOS.xy)
+                        * step(
+                            input.positionOS.xy,
+                            _ClipRect.zw);
+                    previewAlpha *= previewInside.x * previewInside.y;
+                    #endif
+
+                    return half4(previewColor, previewAlpha);
+                }
 
                 float flowWave = sin(
                     (localUV.x * _FlowScale

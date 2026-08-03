@@ -53,6 +53,8 @@ public class InventoryTooltipUI : MonoBehaviour
 
     private readonly Vector3[] tooltipCorners = new Vector3[4];
     private Canvas rootCanvas;
+    private BulletInstance previewedCylinderBullet;
+    private int previewedCylinderBulletIndex = -1;
 
     private void OnEnable()
     {
@@ -187,13 +189,14 @@ public class InventoryTooltipUI : MonoBehaviour
             || !cylinderUI.TryGetLoadedBulletAtScreenPosition(
                 pointerPosition,
                 GetCanvasCamera(),
-                out BulletInstance bullet)
+                out BulletInstance bullet,
+                out int loadedBulletIndex)
             || bullet == null)
         {
             return false;
         }
 
-        ShowCylinderBullet(bullet, pointerPosition);
+        ShowCylinderBullet(bullet, loadedBulletIndex, pointerPosition);
         return true;
     }
 
@@ -291,6 +294,7 @@ public class InventoryTooltipUI : MonoBehaviour
 
     private void ShowCylinderBullet(
         BulletInstance bullet,
+        int loadedBulletIndex,
         Vector2 pointerPosition)
     {
         HideItemTooltip();
@@ -321,10 +325,23 @@ public class InventoryTooltipUI : MonoBehaviour
         cylinderBulletTooltip.gameObject.SetActive(true);
         cylinderBulletTooltip.SetAsLastSibling();
         PositionInsideScreen(cylinderBulletTooltip, pointerPosition);
+
+        if (!ReferenceEquals(previewedCylinderBullet, bullet)
+            || previewedCylinderBulletIndex != loadedBulletIndex)
+        {
+            playerShoot?.ClearLoadedBulletDamagePreview();
+            playerShoot?.ShowLoadedBulletDamagePreview(loadedBulletIndex);
+            previewedCylinderBullet = bullet;
+            previewedCylinderBulletIndex = loadedBulletIndex;
+        }
     }
 
     private void RefreshNextChip()
     {
+        playerShoot?.ClearLoadedBulletDamagePreview();
+        previewedCylinderBullet = null;
+        previewedCylinderBulletIndex = -1;
+
         BulletInstance nextBullet = deckManager == null
             ? null
             : deckManager.PeekNextBullet();
@@ -500,6 +517,10 @@ public class InventoryTooltipUI : MonoBehaviour
         {
             cylinderBulletTooltip.gameObject.SetActive(false);
         }
+
+        playerShoot?.ClearLoadedBulletDamagePreview();
+        previewedCylinderBullet = null;
+        previewedCylinderBulletIndex = -1;
     }
 
     private void ResolveReferences()
