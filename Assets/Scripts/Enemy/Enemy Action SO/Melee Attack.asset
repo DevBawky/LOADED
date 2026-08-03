@@ -15,5 +15,5 @@ MonoBehaviour:
   actionType: 3
   movementDistance: 0
   attackData: {fileID: 11400000, guid: d6098802f1fc9c045a48ec725992d8b2, type: 2}
-  icon: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
+  icon: {fileID: 1095335737386660123, guid: 6c13a294c61226a428b2573a1b252ae0, type: 3}
   description: 

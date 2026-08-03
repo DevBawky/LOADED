@@ -1,0 +1,129 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Wall Impact
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_wall_impact
+  displayName: 벽꿍탄
+  description: "적이 진행 방향으로 더 밀릴 수 없으면 최종 대미지가 50% 증가합니다."
+  bulletIcon: {fileID: 1716355798612799165, guid: ade12d278a5fbea4f8e5d4c662a6ef48, type: 3}
+  cylinderIcon: {fileID: 470928459729146777, guid: 9452b498ae4c0bd43a1e5a784e7bfadd, type: 3}
+  price: 18
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 16
+  maxRange: 4
+  criticalChance: 15
+  criticalDamageMultiplier: 1.6
+  effects:
+  - effectType: 23
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 50
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+  secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  removeCost: 8
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "적을 1칸 밀치며, 더 밀릴 수 없으면 최종 대미지가 70% 증가합니다."
+    damage: 20
+    maxRange: 4
+    criticalChance: 18
+    criticalDamageMultiplier: 1.7
+    effects:
+    - effectType: 23
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 70
+    - effectType: 3
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 35
+  - description: "적을 2칸 밀치며, 더 밀릴 수 없으면 최종 대미지가 100% 증가합니다."
+    damage: 25
+    maxRange: 5
+    criticalChance: 22
+    criticalDamageMultiplier: 1.9
+    effects:
+    - effectType: 23
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 100
+    - effectType: 3
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 2
+      amount: 1
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 60
+  - description: "적을 3칸 밀치며, 더 밀릴 수 없으면 최종 대미지가 150% 증가합니다."
+    damage: 32
+    maxRange: 5
+    criticalChance: 28
+    criticalDamageMultiplier: 2.1
+    effects:
+    - effectType: 23
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 150
+    - effectType: 3
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 3
+      amount: 1
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 50
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 0

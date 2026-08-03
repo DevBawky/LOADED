@@ -23,26 +23,26 @@ MonoBehaviour:
   spawnTerm: 2
   waves:
   - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 2
   - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 2
   - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 2
   - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 4
   - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 4
   - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 4
   - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 4
   - enemies:
-    - enemyPrefab: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 4

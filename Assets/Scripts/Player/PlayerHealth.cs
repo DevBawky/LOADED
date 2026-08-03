@@ -44,7 +44,14 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         int modifiedDamage = statusEffects == null
             ? damage
             : statusEffects.ModifyIncomingAttackDamage(damage);
+        int previousHealth = currentHealth;
         SetCurrentHealth(currentHealth - modifiedDamage);
+
+        if (currentHealth < previousHealth)
+        {
+            SoundManager.PlayHit();
+        }
+
         return true;
     }
 

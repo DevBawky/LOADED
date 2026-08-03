@@ -8,16 +8,25 @@ public class PlayerCylinderUI : MonoBehaviour
 {
     private const string CylinderObjectName = "Image | Cylinder";
     private const string MainGamePanelName = "Panel | MainGame";
+    private static readonly int BulletInCylinderParameter =
+        Animator.StringToHash("bullet_in_cylinder");
 
     [Header("References")]
     [SerializeField] private RectTransform cylinderTransform;
     [SerializeField] private List<Image> bulletImages = new List<Image>();
+    [SerializeField] private Animator playerAnimator;
 
     [Header("Rotation")]
     [Min(0f)]
     [SerializeField] private float rotationStep = 60f;
     [Min(0f)]
     [SerializeField] private float rotationDuration = 0.15f;
+
+    [Header("Reload Presentation")]
+    [Min(1f)]
+    [SerializeField] private float reloadPunchScale = 1.18f;
+    [Min(0.01f)]
+    [SerializeField] private float reloadPunchDuration = 0.18f;
 
     [Header("Bullet Reordering")]
     [Range(0.1f, 0.9f)]
@@ -28,6 +37,8 @@ public class PlayerCylinderUI : MonoBehaviour
     private DeckManager deckManager;
     private PlayerShoot playerShoot;
     private Coroutine rotationCoroutine;
+    private Coroutine reloadPunchCoroutine;
+    private Vector3 cylinderRestScale = Vector3.one;
     private readonly List<Vector2> chamberPositions = new List<Vector2>();
     private readonly Dictionary<RectTransform, Coroutine> slotMoveCoroutines =
         new Dictionary<RectTransform, Coroutine>();
@@ -41,6 +52,7 @@ public class PlayerCylinderUI : MonoBehaviour
     private int draggedOriginalSiblingIndex;
     private int dragLoadedCount;
     private Vector2 dragPointerOffset;
+    private float cylinderTargetAngle;
 
     public int DisplayedBulletCount => displayedBulletCount;
     public bool IsDragging => isDraggingBullet;
@@ -48,6 +60,8 @@ public class PlayerCylinderUI : MonoBehaviour
     private void Awake()
     {
         playerShoot = GetComponent<PlayerShoot>();
+        playerAnimator ??= GetComponent<Animator>();
+        SetAnimatorBulletCount(0);
         ResolveMovedCylinderReferences();
         PrepareBulletSlots();
 
@@ -94,6 +108,14 @@ public class PlayerCylinderUI : MonoBehaviour
             StopCoroutine(rotationCoroutine);
             rotationCoroutine = null;
         }
+
+        if (reloadPunchCoroutine != null)
+        {
+            StopCoroutine(reloadPunchCoroutine);
+            reloadPunchCoroutine = null;
+        }
+
+        ResetReloadPresentation();
     }
 
     public void Initialize(DeckManager assignedDeckManager)
@@ -105,6 +127,22 @@ public class PlayerCylinderUI : MonoBehaviour
         SubscribeToDeck();
         isInitialized = false;
         RefreshDisplay(false);
+    }
+
+    public void PlayReloadPresentation(Color accentColor, float intensity = 1f)
+    {
+        if (cylinderTransform == null || reloadPunchDuration <= 0f)
+        {
+            return;
+        }
+
+        if (reloadPunchCoroutine != null)
+        {
+            StopCoroutine(reloadPunchCoroutine);
+        }
+
+        reloadPunchCoroutine = StartCoroutine(
+            ReloadPunchRoutine(accentColor, Mathf.Max(0f, intensity)));
     }
 
     private void ResolveMovedCylinderReferences()
@@ -147,6 +185,7 @@ public class PlayerCylinderUI : MonoBehaviour
         }
 
         cylinderTransform = movedCylinder;
+        cylinderRestScale = cylinderTransform.localScale;
         bulletImages.Clear();
 
         for (int childIndex = 0;
@@ -178,6 +217,11 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void PrepareBulletSlots()
     {
+        if (cylinderTransform != null)
+        {
+            cylinderRestScale = cylinderTransform.localScale;
+        }
+
         chamberPositions.Clear();
 
         foreach (Image bulletImage in bulletImages)
@@ -208,7 +252,21 @@ public class PlayerCylinderUI : MonoBehaviour
         Camera eventCamera,
         out BulletInstance bullet)
     {
+        return TryGetLoadedBulletAtScreenPosition(
+            screenPosition,
+            eventCamera,
+            out bullet,
+            out _);
+    }
+
+    public bool TryGetLoadedBulletAtScreenPosition(
+        Vector2 screenPosition,
+        Camera eventCamera,
+        out BulletInstance bullet,
+        out int loadedBulletIndex)
+    {
         bullet = null;
+        loadedBulletIndex = -1;
 
         if (isDraggingBullet || deckManager == null)
         {
@@ -231,6 +289,7 @@ public class PlayerCylinderUI : MonoBehaviour
                     eventCamera))
             {
                 bullet = deckManager.LoadedBullets[index];
+                loadedBulletIndex = index;
                 return bullet != null;
             }
         }
@@ -598,14 +657,19 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void RefreshDisplay(bool animateRotation)
     {
+        int currentLoadedCount = deckManager == null
+            ? 0
+            : deckManager.LoadedBullets.Count;
+        SetAnimatorBulletCount(currentLoadedCount);
+
         if (cylinderTransform == null)
         {
             return;
         }
 
-        int loadedCount = deckManager == null
-            ? 0
-            : Mathf.Min(deckManager.LoadedBullets.Count, bulletImages.Count);
+        int loadedCount = Mathf.Min(
+            currentLoadedCount,
+            bulletImages.Count);
 
         for (int imageIndex = 0;
              imageIndex < bulletImages.Count;
@@ -632,9 +696,8 @@ public class PlayerCylinderUI : MonoBehaviour
         if (!isInitialized)
         {
             displayedBulletCount = loadedCount;
-            SetCylinderAngle(loadedCount > 0
-                ? -(loadedCount - 1) * rotationStep
-                : 0f);
+            cylinderTargetAngle = GetStableCylinderAngle(loadedCount);
+            SetCylinderAngle(cylinderTargetAngle);
             cylinderTransform.gameObject.SetActive(loadedCount > 0);
             isInitialized = true;
             return;
@@ -653,29 +716,47 @@ public class PlayerCylinderUI : MonoBehaviour
             }
         }
 
-        float currentAngle = cylinderTransform.localEulerAngles.z;
-        float targetAngle = currentAngle;
-
-        if (loadedCount > previousCount)
+        if (loadedCount == previousCount)
         {
-            int addedBulletCount = loadedCount - previousCount;
-
-            if (previousCount == 0)
+            if (!animateRotation)
             {
-                addedBulletCount--;
+                StartCylinderRotation(
+                    GetStableCylinderAngle(loadedCount),
+                    false,
+                    loadedCount == 0);
             }
 
-            targetAngle -= Mathf.Max(0, addedBulletCount) * rotationStep;
+            return;
         }
-        else if (loadedCount < previousCount)
-        {
-            targetAngle += (previousCount - loadedCount) * rotationStep;
-        }
+
+        float targetAngle = loadedCount > 0
+            ? GetStableCylinderAngle(loadedCount)
+            : GetStableCylinderAngle(previousCount)
+                + previousCount * rotationStep;
 
         StartCylinderRotation(
             targetAngle,
             animateRotation,
             loadedCount == 0);
+    }
+
+    private float GetStableCylinderAngle(int loadedCount)
+    {
+        return loadedCount > 0
+            ? -(loadedCount - 1) * rotationStep
+            : 0f;
+    }
+
+    private void SetAnimatorBulletCount(int bulletCount)
+    {
+        if (playerAnimator == null)
+        {
+            return;
+        }
+
+        playerAnimator.SetInteger(
+            BulletInCylinderParameter,
+            Mathf.Max(0, bulletCount));
     }
 
     private void ApplyBulletImage(Image bulletImage, BulletInstance bulletData)
@@ -694,11 +775,15 @@ public class PlayerCylinderUI : MonoBehaviour
         bool animateRotation,
         bool hideWhenComplete)
     {
+        float previousTargetAngle = cylinderTargetAngle;
+
         if (rotationCoroutine != null)
         {
             StopCoroutine(rotationCoroutine);
             rotationCoroutine = null;
         }
+
+        cylinderTargetAngle = targetAngle;
 
         if (!animateRotation || rotationDuration <= 0f)
         {
@@ -708,18 +793,27 @@ public class PlayerCylinderUI : MonoBehaviour
             {
                 cylinderTransform.gameObject.SetActive(false);
                 SetCylinderAngle(0f);
+                cylinderTargetAngle = 0f;
             }
 
             return;
         }
 
         rotationCoroutine = StartCoroutine(
-            RotateCylinder(targetAngle, hideWhenComplete));
+            RotateCylinder(
+                previousTargetAngle,
+                targetAngle,
+                hideWhenComplete));
     }
 
-    private IEnumerator RotateCylinder(float targetAngle, bool hideWhenComplete)
+    private IEnumerator RotateCylinder(
+        float previousTargetAngle,
+        float targetAngle,
+        bool hideWhenComplete)
     {
-        float startAngle = cylinderTransform.localEulerAngles.z;
+        float startAngle = previousTargetAngle + Mathf.DeltaAngle(
+            previousTargetAngle,
+            cylinderTransform.localEulerAngles.z);
         float elapsedTime = 0f;
 
         while (elapsedTime < rotationDuration)
@@ -734,7 +828,7 @@ public class PlayerCylinderUI : MonoBehaviour
             elapsedTime += Time.deltaTime;
             float progress = Mathf.Clamp01(elapsedTime / rotationDuration);
             float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
-            SetCylinderAngle(Mathf.LerpAngle(
+            SetCylinderAngle(Mathf.LerpUnclamped(
                 startAngle,
                 targetAngle,
                 smoothProgress));
@@ -746,6 +840,7 @@ public class PlayerCylinderUI : MonoBehaviour
         {
             cylinderTransform.gameObject.SetActive(false);
             SetCylinderAngle(0f);
+            cylinderTargetAngle = 0f;
         }
 
         rotationCoroutine = null;
@@ -766,6 +861,61 @@ public class PlayerCylinderUI : MonoBehaviour
             if (bulletImage != null)
             {
                 bulletImage.rectTransform.rotation = Quaternion.identity;
+            }
+        }
+    }
+
+    private IEnumerator ReloadPunchRoutine(Color accentColor, float intensity)
+    {
+        cylinderRestScale = cylinderTransform.localScale;
+        float elapsed = 0f;
+        float peakScale = Mathf.Lerp(
+            1f,
+            reloadPunchScale,
+            Mathf.Clamp01(intensity));
+        Image newestBulletImage = displayedBulletCount <= 0
+            || displayedBulletCount > bulletImages.Count
+                ? null
+                : bulletImages[displayedBulletCount - 1];
+        Color originalBulletColor = newestBulletImage == null
+            ? Color.white
+            : newestBulletImage.color;
+        accentColor.a = 1f;
+
+        while (elapsed < reloadPunchDuration)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / reloadPunchDuration);
+            float pulse = Mathf.Sin(progress * Mathf.PI);
+            float scale = Mathf.Lerp(1f, peakScale, pulse);
+            cylinderTransform.localScale = cylinderRestScale * scale;
+
+            if (newestBulletImage != null)
+            {
+                newestBulletImage.color = Color.Lerp(
+                    originalBulletColor,
+                    Color.Lerp(Color.white, accentColor, 0.45f),
+                    pulse);
+            }
+        }
+
+        ResetReloadPresentation();
+        reloadPunchCoroutine = null;
+    }
+
+    private void ResetReloadPresentation()
+    {
+        if (cylinderTransform != null)
+        {
+            cylinderTransform.localScale = cylinderRestScale;
+        }
+
+        foreach (Image bulletImage in bulletImages)
+        {
+            if (bulletImage != null)
+            {
+                bulletImage.color = Color.white;
             }
         }
     }

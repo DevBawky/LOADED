@@ -58,6 +58,12 @@ public class StateManager : MonoBehaviour
     public int CurrentStageIndex => currentStageIndex;
     public int CurrentBattleIndex => currentBattleIndex;
     public GameFlowState CurrentState => currentState;
+    public StageData CurrentStage =>
+        stages != null
+        && currentStageIndex >= 0
+        && currentStageIndex < stages.Length
+            ? stages[currentStageIndex]
+            : null;
 
     private void Awake()
     {
@@ -628,8 +634,8 @@ public class StateManager : MonoBehaviour
 
             foreach (EnemyWaveEntry entry in wave.Enemies)
             {
-                if (entry == null || entry.EnemyPrefab == null
-                    || entry.EnemyPrefab.Data == null || entry.Count <= 0)
+                if (entry == null || entry.EnemyData == null
+                    || entry.Count <= 0)
                 {
                     return false;
                 }

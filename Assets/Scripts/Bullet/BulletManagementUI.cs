@@ -12,6 +12,8 @@ public class BulletManagementUI : MonoBehaviour
     [Header("Managers")]
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private CurrencyManager currencyManager;
+    [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private PlayerShoot playerShoot;
 
     [Header("Panel")]
     [SerializeField] private GameObject shopPanel;
@@ -101,8 +103,10 @@ public class BulletManagementUI : MonoBehaviour
     public void RemoveSelectedBullet()
     {
         if (selectedBullet == null || deckManager == null
-            || currencyManager == null)
+            || currencyManager == null
+            || !deckManager.CanRemoveBullet(selectedBullet))
         {
+            RefreshSelection();
             return;
         }
 
@@ -267,7 +271,9 @@ public class BulletManagementUI : MonoBehaviour
 
         if (bulletDescriptionText != null)
         {
-            bulletDescriptionText.text = selectedBullet.DetailedDescription;
+            bulletDescriptionText.richText = true;
+            bulletDescriptionText.text = selectedBullet.GetDetailedDescription(
+                CreateBulletTooltipContext());
         }
 
         int currentMoney = currencyManager == null
@@ -276,16 +282,21 @@ public class BulletManagementUI : MonoBehaviour
         bool canManageSelectedBullet = deckManager != null
             && currencyManager != null
             && deckManager.Contains(selectedBullet);
+        bool canRemoveSelectedBullet = canManageSelectedBullet
+            && deckManager.CanRemoveBullet(selectedBullet);
 
         if (removeButton != null)
         {
-            removeButton.interactable = canManageSelectedBullet
+            removeButton.interactable = canRemoveSelectedBullet
                 && currentMoney >= selectedBullet.RemoveCost;
         }
 
         if (removeButtonText != null)
         {
-            removeButtonText.text = $"Remove  ${selectedBullet.RemoveCost}";
+            removeButtonText.text = canManageSelectedBullet
+                && !canRemoveSelectedBullet
+                    ? $"Minimum {DeckManager.MinimumOwnedBulletCount} Bullets"
+                    : $"Remove  ${selectedBullet.RemoveCost}";
         }
 
         if (upgradeButton != null)
@@ -440,6 +451,8 @@ public class BulletManagementUI : MonoBehaviour
     {
         deckManager ??= FindSceneObject<DeckManager>();
         currencyManager ??= FindSceneObject<CurrencyManager>();
+        playerHealth ??= FindSceneObject<PlayerHealth>();
+        playerShoot ??= FindSceneObject<PlayerShoot>();
         shopPanel ??= FindGameObject("Panel | Shop");
         shopItemsLayout ??= FindGameObject("Layout | Shop Items");
         manageBulletsPanel ??= FindGameObject("Panel | Manage Bullets");
@@ -490,6 +503,15 @@ public class BulletManagementUI : MonoBehaviour
             "Text | Bullet Description");
     }
 
+    private BulletTooltipContext CreateBulletTooltipContext()
+    {
+        return BulletTooltipContext.Create(
+            deckManager,
+            currencyManager,
+            playerHealth,
+            playerShoot);
+    }
+
     private void RefreshUpgradeTooltip()
     {
         Mouse mouse = Mouse.current;
@@ -515,6 +537,7 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         int nextLevel = selectedBullet.Level + 1;
+        upgradeTooltipDescriptionText.richText = true;
         upgradeTooltipDescriptionText.text =
             selectedBullet.Data.GetDetailedDescription(nextLevel);
         upgradeTooltip.gameObject.SetActive(true);
