@@ -15,8 +15,7 @@ MonoBehaviour:
   enemyId: 1
   displayName: "\uCD1D\uC7A1\uC774"
   description: 
-  sprite: {fileID: -8967800792318746968, guid: e01b8be5e283e2b4a9b08f3598f12e78, type: 3}
-  prefab: {fileID: 8378092708147667353, guid: ec6663799f6803b43920f75685b1d3f7, type: 3}
+  avatar: {fileID: 1233976601806711513, guid: 07d432807c5c0de47a856af8e66063ab, type: 3}
   maxHealth: 20
   dropChance: 100
   dropItems:

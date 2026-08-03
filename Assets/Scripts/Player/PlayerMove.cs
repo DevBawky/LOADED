@@ -73,6 +73,8 @@ public class PlayerMove : MonoBehaviour
         0,
         nextPushAvailableTurn - TurnCount);
     public bool CanPush => RemainingPushCooldownTurns == 0;
+    public float PushCollisionDamageRatio =>
+        Mathf.Clamp01(pushCollisionDamageRatio);
 
     private void Awake()
     {

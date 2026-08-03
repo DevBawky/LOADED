@@ -1,5 +1,7 @@
 # 4종 적 AI 구현
 
+> 260802 후속 변경: 적 생성은 공용 `Enemy.prefab`에 `EnemyData`를 런타임 주입하는 방식으로 통합되었고, 행동 타일 툴팁·Queue 등장 연출·투척병 기본 원형 투사체가 추가되었다. 현재 설정 방법은 [`0802_EnemyData_Template_and_ActionPresentation.md`](0802_EnemyData_Template_and_ActionPresentation.md)를 우선한다.
+
 ## 공통 규칙
 
 - 모든 행동은 플레이어 턴을 1회 소비한다.

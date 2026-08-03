@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Stack
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_stack
+  displayName: 중첩탄
+  description: 발사 후 다음 일반 탄환의 최종 대미지가 20% 증가합니다. 중첩탄끼리는 효과가 누적됩니다.
+  bulletIcon: {fileID: 8684330195986053092, guid: cabf15510b152ba44a0688f4c44e5571, type: 3}
+  cylinderIcon: {fileID: 8307402940977883288, guid: d6e6a27bc19b5754492994a4628c969a, type: 3}
+  price: 14
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 8
+  maxRange: 3
+  criticalChance: 15
+  criticalDamageMultiplier: 1.5
+  effects:
+  - effectType: 12
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 20
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.35, g: 0.8, b: 1, a: 1}
+  secondaryLineColor: {r: 0.1, g: 0.35, b: 1, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.1
+  removeCost: 8
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "다음 일반 탄환의 최종 대미지가 25% 증가합니다. 중첩탄끼리는 효과가 누적됩니다."
+    damage: 11
+    maxRange: 3
+    criticalChance: 22
+    criticalDamageMultiplier: 1.7
+    effects:
+    - effectType: 12
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 25
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.35, g: 0.8, b: 1, a: 1}
+    secondaryLineColor: {r: 0.1, g: 0.35, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    removeCost: 8
+    upgradeCost: 35
+  - description: "다음 일반 탄환의 최종 대미지가 30% 증가합니다. 중첩탄끼리는 효과가 누적됩니다."
+    damage: 15
+    maxRange: 4
+    criticalChance: 30
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 12
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 30
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.35, g: 0.8, b: 1, a: 1}
+    secondaryLineColor: {r: 0.1, g: 0.35, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 60
+  - description: "다음 일반 탄환의 최종 대미지가 40% 증가합니다. 중첩탄끼리는 효과가 누적됩니다."
+    damage: 20
+    maxRange: 4
+    criticalChance: 40
+    criticalDamageMultiplier: 2.3
+    effects:
+    - effectType: 12
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 40
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 50
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.35, g: 0.8, b: 1, a: 1}
+    secondaryLineColor: {r: 0.1, g: 0.35, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.15
+    removeCost: 8
+    upgradeCost: 0

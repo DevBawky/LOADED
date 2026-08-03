@@ -120,4 +120,4 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 0

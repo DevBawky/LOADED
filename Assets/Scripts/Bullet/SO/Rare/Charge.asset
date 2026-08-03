@@ -1,0 +1,111 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Charge
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_charge
+  displayName: 충전탄
+  description: "앞서 발사된 탄환 하나당 충전 1을 얻은 것으로 계산하여 최종 대미지가 25% 증가합니다. 최대 5충전입니다."
+  bulletIcon: {fileID: 8684330195986053092, guid: cabf15510b152ba44a0688f4c44e5571, type: 3}
+  cylinderIcon: {fileID: 8307402940977883288, guid: d6e6a27bc19b5754492994a4628c969a, type: 3}
+  price: 18
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 12
+  maxRange: 4
+  criticalChance: 15
+  criticalDamageMultiplier: 1.7
+  effects:
+  - effectType: 31
+    target: 1
+    activationChance: 100
+    stackCount: 5
+    knockbackDistance: 1
+    amount: 25
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+  secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  removeCost: 8
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "앞서 발사된 탄환 하나당 최종 대미지가 30% 증가합니다. 최대 5충전입니다."
+    damage: 15
+    maxRange: 4
+    criticalChance: 18
+    criticalDamageMultiplier: 1.8
+    effects:
+    - effectType: 31
+      target: 1
+      activationChance: 100
+      stackCount: 5
+      knockbackDistance: 1
+      amount: 30
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 35
+  - description: "앞서 발사된 탄환 하나당 최종 대미지가 35% 증가합니다. 최대 6충전입니다."
+    damage: 19
+    maxRange: 5
+    criticalChance: 22
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 31
+      target: 1
+      activationChance: 100
+      stackCount: 6
+      knockbackDistance: 1
+      amount: 35
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 60
+  - description: "앞서 발사된 탄환 하나당 최종 대미지가 45% 증가합니다. 최대 6충전입니다."
+    damage: 25
+    maxRange: 5
+    criticalChance: 28
+    criticalDamageMultiplier: 2.2
+    effects:
+    - effectType: 31
+      target: 1
+      activationChance: 100
+      stackCount: 6
+      knockbackDistance: 1
+      amount: 45
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 40
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 0
