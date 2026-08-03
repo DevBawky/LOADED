@@ -74,26 +74,6 @@ MonoBehaviour:
   m_PostProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   m_DefaultMaterialType: 0
   m_DefaultCustomMaterial: {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
---- !u!114 &734958237459823745
-MonoBehaviour:
-  m_ObjectHideFlags: 3
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b00045f12942b46c698459096c89274e, type: 3}
-  m_Name: Kill Impact Fullscreen
-  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.FullScreenPassRendererFeature
-  m_Active: 1
-  m_Version: 1
-  injectionPoint: 600
-  fetchColorBuffer: 1
-  requirements: 0
-  passMaterial: {fileID: 2100000, guid: e8245b71bd27491bbda648093af10c5d, type: 2}
-  passIndex: 0
-  bindDepthStencilAttachment: 0
 --- !u!114 &165435233301028794
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -291,6 +271,26 @@ MonoBehaviour:
   - _audio: {fileID: 8300000, guid: 0cd16cc3ec9c6764a92c2b2bd029573c, type: 3}
   - _audio: {fileID: 8300000, guid: c99a484cd6b915f4087a45277c1d42ac, type: 3}
   - _audio: {fileID: 8300000, guid: bf48bc9e7e3ea1c4b94a886bb19bb56d, type: 3}
+--- !u!114 &734958237459823745
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b00045f12942b46c698459096c89274e, type: 3}
+  m_Name: Kill Impact Fullscreen
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.FullScreenPassRendererFeature
+  m_Active: 1
+  injectionPoint: 600
+  fetchColorBuffer: 1
+  requirements: 0
+  passMaterial: {fileID: 2100000, guid: e8245b71bd27491bbda648093af10c5d, type: 2}
+  passIndex: 0
+  bindDepthStencilAttachment: 0
+  m_Version: 1
 --- !u!114 &6156589275064915726
 MonoBehaviour:
   m_ObjectHideFlags: 3
