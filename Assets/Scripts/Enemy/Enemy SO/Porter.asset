@@ -16,12 +16,12 @@ MonoBehaviour:
   displayName: "\uC9C0\uAC8C\uAFBC"
   description: "\uC544\uAD70\uC744 \uD68C\uBCF5\uD558\uAC70\uB098 \uBCF4\uD638\uB9C9\uC744
     \uC8FC\uB294 \uC9C0\uC6D0\uBCD1"
-  avatar: {fileID: 0}
+  avatar: {fileID: 1233976601806711513, guid: 07d432807c5c0de47a856af8e66063ab, type: 3}
   maxHealth: 15
   dropChance: 100
   dropItems:
   - dropType: 0
-    amount: 5
+    amount: 25
     selectionWeight: 1
     itemData: {fileID: 0}
     bulletData: {fileID: 0}
@@ -55,3 +55,17 @@ MonoBehaviour:
   actions:
   - {fileID: 11400000, guid: 9f93c6972b894a749138f38b75d7dc46, type: 2}
   randomizeStartingActionIndex: 0
+  bigBarrel:
+    phaseTwoHealthRatio: 0.5
+    bombDamage: 20
+    bossSelfExplosionDamage: 10
+    bombExplosionRadius: 1
+    bombFuseTurns: 3
+    phaseTwoBombFuseTurns: 2
+    shotgunDamage: 15
+    bossBombPrefab: {fileID: 0}
+    bombArcHeight: 2
+    bombTelegraphMaterial: {fileID: 0}
+    shotgunTelegraphMaterial: {fileID: 0}
+    explosionCameraShake: 0.2
+    bossHitCameraShake: 0.12

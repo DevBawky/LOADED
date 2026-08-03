@@ -45,6 +45,7 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private Transform enemyParent;
     [SerializeField] private RewardManager rewardManager;
+    [SerializeField] private BossBombManager bossBombManager;
 
     [Header("Runtime State")]
     [SerializeField] private List<EnemyController> activeEnemies =
@@ -61,12 +62,17 @@ public class WaveManager : MonoBehaviour
     private int spawnTerm;
     private bool isResolvingTurn;
     private Coroutine enemyTurnCoroutine;
+    private int currentEnemyTurnCycle;
     private readonly List<EnemyTargetData> enemyTargetBuffer =
         new List<EnemyTargetData>();
 
     public event Action StateChanged;
     public event Action BattleCompleted;
     public event Action BattleFailed;
+    public event Action<int> EnemyTurnCycleCompleted;
+    // TODO: A future persistent unlock service can subscribe and add
+    // ExplosiveBullet.asset on the first Big Barrel defeat.
+    public event Action<EnemyData> BigBarrelDefeated;
 
     public IReadOnlyList<EnemyController> ActiveEnemies => activeEnemies;
     public IReadOnlyList<EnemyWave> Waves => waves ?? Array.Empty<EnemyWave>();
@@ -80,6 +86,8 @@ public class WaveManager : MonoBehaviour
     public bool IsBattleCompleted => isBattleCompleted;
     public bool IsStageCleared => isBattleCompleted;
     public bool IsResolvingTurn => isResolvingTurn;
+    public int CurrentEnemyTurnCycle => currentEnemyTurnCycle;
+    public BossBombManager BombManager => bossBombManager;
 
     private void Awake()
     {
@@ -106,6 +114,7 @@ public class WaveManager : MonoBehaviour
         if (ValidateReferences())
         {
             playerMove.SetWaveManager(this);
+            EnsureBossBombManager();
         }
     }
 
@@ -141,6 +150,8 @@ public class WaveManager : MonoBehaviour
 
         ResetBattleRuntime();
         playerMove.SetWaveManager(this);
+        EnsureBossBombManager();
+        bossBombManager.ResumeForBattle();
         spawnTerm = Mathf.Max(0, configuredSpawnTerm);
 
         int waveCount = configuredWaves == null ? 0 : configuredWaves.Count;
@@ -166,7 +177,27 @@ public class WaveManager : MonoBehaviour
 
     public bool IsTileOccupied(int tileIndex, EnemyController ignoredEnemy = null)
     {
-        return TryGetEnemyAtTile(tileIndex, out _, ignoredEnemy);
+        return TryGetEnemyAtTile(tileIndex, out _, ignoredEnemy)
+            || bossBombManager != null
+            && bossBombManager.IsTileOccupied(tileIndex);
+    }
+
+    public bool TryGetFirstBulletBlocker(
+        Vector3 originWorldPosition,
+        int direction,
+        int maxRange,
+        out IPlayerBulletBlocker blocker)
+    {
+        blocker = null;
+        return bossBombManager != null
+            && boardManager.TryGetTileIndex(
+                originWorldPosition,
+                out int originTileIndex)
+            && bossBombManager.TryGetFirstBulletBlocker(
+                originTileIndex,
+                direction,
+                maxRange,
+                out blocker);
     }
 
     public bool TryGetEnemyAtTile(
@@ -264,6 +295,7 @@ public class WaveManager : MonoBehaviour
     private IEnumerator ResolveEnemyTurns()
     {
         isResolvingTurn = true;
+        currentEnemyTurnCycle++;
         playerMove.SetEnemyTurnResolving(true);
         StateChanged?.Invoke();
 
@@ -300,6 +332,7 @@ public class WaveManager : MonoBehaviour
         }
 
         RemoveMissingEnemies();
+        EnemyTurnCycleCompleted?.Invoke(currentEnemyTurnCycle);
         AdvanceWaveCountdown();
         playerMove.SetEnemyTurnResolving(false);
         isResolvingTurn = false;
@@ -693,6 +726,7 @@ public class WaveManager : MonoBehaviour
         }
 
         isBattleCompleted = true;
+        bossBombManager?.ClearAll();
         isWaitingForNextWave = false;
         remainingSpawnTurns = 0;
         ClearSpawnWarnings();
@@ -709,6 +743,7 @@ public class WaveManager : MonoBehaviour
 
         Debug.LogError(message, this);
         isBattleCompleted = true;
+        bossBombManager?.ClearAll();
         isWaitingForNextWave = false;
         remainingSpawnTurns = 0;
         ClearSpawnWarnings();
@@ -739,12 +774,14 @@ public class WaveManager : MonoBehaviour
         }
 
         activeEnemies.Clear();
+        bossBombManager?.ClearAll();
         reservedSpawnTileIndices.Clear();
         currentWaveIndex = -1;
         remainingSpawnTurns = 0;
         isWaitingForNextWave = false;
         isBattleCompleted = false;
         isResolvingTurn = false;
+        currentEnemyTurnCycle = 0;
         playerMove.SetEnemyTurnResolving(false);
         StateChanged?.Invoke();
     }
@@ -836,6 +873,36 @@ public class WaveManager : MonoBehaviour
             "Enemy Prefab Template, Board Manager, Player Move, and Player Health must be assigned in the Inspector.",
             this);
         return false;
+    }
+
+    public void NotifyBigBarrelDefeated(EnemyController boss)
+    {
+        if (boss != null
+            && boss.Data != null
+            && boss.Data.BehaviorType == EnemyBehaviorType.BigBarrel)
+        {
+            bossBombManager?.PauseForBossDefeat();
+            BigBarrelDefeated?.Invoke(boss.Data);
+        }
+    }
+
+    private void EnsureBossBombManager()
+    {
+        if (bossBombManager == null)
+        {
+            bossBombManager = GetComponent<BossBombManager>();
+        }
+
+        if (bossBombManager == null)
+        {
+            bossBombManager = gameObject.AddComponent<BossBombManager>();
+        }
+
+        bossBombManager.Initialize(
+            this,
+            boardManager,
+            playerMove,
+            playerHealth);
     }
 
     private readonly struct EnemyTargetData

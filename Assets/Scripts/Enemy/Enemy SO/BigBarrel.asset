@@ -10,39 +10,41 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 69e667af92ed4e86b5d259be5262b93c, type: 3}
-  m_Name: Test Gunner
+  m_Name: BigBarrel
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
-  enemyId: 1
-  displayName: "\uCD1D\uC7A1\uC774"
-  description: 
-  avatar: {fileID: 1233976601806711513, guid: 07d432807c5c0de47a856af8e66063ab, type: 3}
-  maxHealth: 20
+  enemyId: stage1_big_barrel
+  displayName: "\uD3ED\uC57D\uC655 \uBE45 \uBCA0\uB7F4"
+  description: "\uC2DC\uD55C\uD3ED\uD0C4\uACFC \uC591\uC606 \uC0B0\uD0C4 \uC0AC\uACA9\uC744
+    \uACE0\uC815 \uC21C\uC11C\uB85C \uC0AC\uC6A9\uD558\uB294 \uC2A4\uD14C\uC774\uC9C0
+    1 \uBCF4\uC2A4."
+  avatar: {fileID: 1233976601806711513, guid: 681bb752688943b41b903f4b80db2c5b, type: 3}
+  maxHealth: 300
   dropChance: 100
   dropItems:
   - dropType: 0
-    amount: 15
-    selectionWeight: 1
+    amount: 500
+    selectionWeight: 0
     itemData: {fileID: 0}
     bulletData: {fileID: 0}
-  behaviorType: 1
+  behaviorType: 4
   preferredDistance: 2
   maxQueuedAttacks: 1
   queuedActionInterval: 0.2
   queueElementRevealDuration: 0.25
   meleeAdditionalAttackChance: 0.5
-  firingRange: 4
-  recoveryTurns: 1
-  maxSupportCharges: 2
+  firingRange: 5
+  recoveryTurns: 2
+  maxSupportCharges: 0
   supportHealAmount: 10
   supportShieldAmount: 10
   supportHealThreshold: 0.5
   thrownProjectilePrefab: {fileID: 0}
-  thrownProjectileSprite: {fileID: 0}
-  thrownProjectileColor: {r: 1, g: 1, b: 1, a: 1}
+  thrownProjectileSprite: {fileID: 21300000, guid: a069b69aaf6538944912b5fd98e64eff, type: 3}
+  thrownProjectileColor: {r: 0.16, g: 0.12, b: 0.08, a: 1}
   thrownProjectileSize: 0.35
-  thrownProjectileDuration: 0.5
+  thrownProjectileDuration: 0.45
   thrownProjectileArcHeight: 2
-  gunnerTelegraphMaterial: {fileID: 2100000, guid: 4b917feaf47b4c0492dfb7a61abfb75d, type: 2}
+  gunnerTelegraphMaterial: {fileID: 0}
   throwerTelegraphMaterial: {fileID: 0}
   supportTelegraphMaterial: {fileID: 0}
   supportHealColor: {r: 0.25, g: 1, b: 0.35, a: 1}
@@ -52,8 +54,9 @@ MonoBehaviour:
   throwerTelegraphSegments: 20
   telegraphSortingOrder: 20
   actions:
-  - {fileID: 11400000, guid: 7e1cbe3d707bdae4dbd479728766a343, type: 2}
-  - {fileID: 11400000, guid: 5f9dab475b2e6b44f9cc4577790de03c, type: 2}
+  - {fileID: 11400000, guid: 1de5f66cdcc44cbaa66dde9a571db26a, type: 2}
+  - {fileID: 11400000, guid: 19a2df4edc6847918c791d8f41fce7b2, type: 2}
+  - {fileID: 11400000, guid: 1ca315b0f4f347299ee45dc99ff3223a, type: 2}
   randomizeStartingActionIndex: 0
   bigBarrel:
     phaseTwoHealthRatio: 0.5
@@ -63,9 +66,9 @@ MonoBehaviour:
     bombFuseTurns: 3
     phaseTwoBombFuseTurns: 2
     shotgunDamage: 15
-    bossBombPrefab: {fileID: 0}
+    bossBombPrefab: {fileID: 1000000000000000, guid: 3aebf47531e847b4b271281656ef0a7d, type: 3}
     bombArcHeight: 2
-    bombTelegraphMaterial: {fileID: 0}
-    shotgunTelegraphMaterial: {fileID: 0}
+    bombTelegraphMaterial: {fileID: 2100000, guid: 2a5802554d894229a660bb78a851c43a, type: 2}
+    shotgunTelegraphMaterial: {fileID: 2100000, guid: 2bf3800206664361ab696b8d29eaf021, type: 2}
     explosionCameraShake: 0.2
     bossHitCameraShake: 0.12

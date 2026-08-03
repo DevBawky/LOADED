@@ -8,7 +8,10 @@ public enum EnemyActionType
     MeleeAttack,
     RangedAttack,
     Wait,
-    Support
+    Support,
+    ExplosiveThrow,
+    ShotgunAttack,
+    Reload
 }
 
 [CreateAssetMenu(fileName = "New Enemy Action", menuName = "Loaded/Enemy/Action")]
@@ -64,6 +67,9 @@ public class EnemyActionData : ScriptableObject
                 EnemyActionType.RangedAttack => CreateAttackSummary(),
                 EnemyActionType.Wait => "이번 턴에는 행동하지 않습니다.",
                 EnemyActionType.Support => "아군을 지원합니다.",
+                EnemyActionType.ExplosiveThrow => "고정된 타일에 폭탄을 투척합니다.",
+                EnemyActionType.ShotgunAttack => "고정된 양옆 타일을 동시에 공격합니다.",
+                EnemyActionType.Reload => "다음 공격을 위해 재장전합니다.",
                 _ => string.Empty
             };
         }
