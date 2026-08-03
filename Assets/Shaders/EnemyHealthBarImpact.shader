@@ -200,43 +200,56 @@ Shader "Loaded/UI/Enemy Health Bar Impact"
 
                 if (_PreviewMode > 0.5)
                 {
+                    // Preview Images are plain quads stretched directly over
+                    // HP_Value, so their UV is the authoritative health-bar
+                    // coordinate. Do not derive it from HP_Bar/object space.
+                    float2 previewUV = saturate(input.uv);
                     half4 selectedColor = half4(0, 0, 0, 0);
                     float selectedEmphasis = 0.0;
                     float rangeMask = 0.0;
 
                     if (_PreviewSegmentCount > 0.5)
-                        SelectPreviewSegment(localUV.x, _PreviewRange0, _PreviewColor0, selectedColor, selectedEmphasis, rangeMask);
+                        SelectPreviewSegment(previewUV.x, _PreviewRange0, _PreviewColor0, selectedColor, selectedEmphasis, rangeMask);
                     if (_PreviewSegmentCount > 1.5)
-                        SelectPreviewSegment(localUV.x, _PreviewRange1, _PreviewColor1, selectedColor, selectedEmphasis, rangeMask);
+                        SelectPreviewSegment(previewUV.x, _PreviewRange1, _PreviewColor1, selectedColor, selectedEmphasis, rangeMask);
                     if (_PreviewSegmentCount > 2.5)
-                        SelectPreviewSegment(localUV.x, _PreviewRange2, _PreviewColor2, selectedColor, selectedEmphasis, rangeMask);
+                        SelectPreviewSegment(previewUV.x, _PreviewRange2, _PreviewColor2, selectedColor, selectedEmphasis, rangeMask);
                     if (_PreviewSegmentCount > 3.5)
-                        SelectPreviewSegment(localUV.x, _PreviewRange3, _PreviewColor3, selectedColor, selectedEmphasis, rangeMask);
+                        SelectPreviewSegment(previewUV.x, _PreviewRange3, _PreviewColor3, selectedColor, selectedEmphasis, rangeMask);
                     if (_PreviewSegmentCount > 4.5)
-                        SelectPreviewSegment(localUV.x, _PreviewRange4, _PreviewColor4, selectedColor, selectedEmphasis, rangeMask);
+                        SelectPreviewSegment(previewUV.x, _PreviewRange4, _PreviewColor4, selectedColor, selectedEmphasis, rangeMask);
                     if (_PreviewSegmentCount > 5.5)
-                        SelectPreviewSegment(localUV.x, _PreviewRange5, _PreviewColor5, selectedColor, selectedEmphasis, rangeMask);
+                        SelectPreviewSegment(previewUV.x, _PreviewRange5, _PreviewColor5, selectedColor, selectedEmphasis, rangeMask);
                     if (_PreviewSegmentCount > 6.5)
-                        SelectPreviewSegment(localUV.x, _PreviewRange6, _PreviewColor6, selectedColor, selectedEmphasis, rangeMask);
+                        SelectPreviewSegment(previewUV.x, _PreviewRange6, _PreviewColor6, selectedColor, selectedEmphasis, rangeMask);
                     if (_PreviewSegmentCount > 7.5)
-                        SelectPreviewSegment(localUV.x, _PreviewRange7, _PreviewColor7, selectedColor, selectedEmphasis, rangeMask);
+                        SelectPreviewSegment(previewUV.x, _PreviewRange7, _PreviewColor7, selectedColor, selectedEmphasis, rangeMask);
 
-                    float stripePosition = localUV.x * 18.0
-                        + localUV.y * 7.0
+                    float stripePosition = previewUV.x * 18.0
+                        + previewUV.y * 7.0
                         - time * lerp(0.7, 1.8, selectedEmphasis);
                     float stripe = smoothstep(
                         0.42,
                         0.58,
                         frac(stripePosition));
                     float pulse = 0.82 + 0.18 * sin(
-                        time * 5.5 + localUV.x * 9.0);
+                        time * 5.5 + previewUV.x * 9.0);
                     float brightness = lerp(
                         0.72 + stripe * 0.34,
                         0.92 + stripe * 0.48 * pulse,
                         selectedEmphasis);
-                    half3 previewColor = selectedColor.rgb * brightness;
-                    float previewAlpha = textureColor.a
-                        * input.color.a
+                    // Bullet trails render emissively, while this UI pass is
+                    // alpha blended. Preserve the Primary Line Color hue but
+                    // lift very dark colors enough to remain identifiable.
+                    float colorPeak = max(
+                        selectedColor.r,
+                        max(selectedColor.g, selectedColor.b));
+                    float visibilityGain = min(
+                        2.5,
+                        0.48 / max(colorPeak, 0.001));
+                    half3 previewColor = selectedColor.rgb
+                        * max(brightness, visibilityGain);
+                    float previewAlpha = input.color.a
                         * selectedColor.a
                         * rangeMask;
 
