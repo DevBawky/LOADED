@@ -6,7 +6,23 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class EnemyHealthBarFeedback : MonoBehaviour
 {
+    private const int MaxDamagePreviewSegments = 8;
+    public readonly struct DamagePreviewSegment
+    {
+        public DamagePreviewSegment(int damage, Color color, bool emphasized)
+        {
+            Damage = Mathf.Max(0, damage);
+            Color = color;
+            Emphasized = emphasized;
+        }
+
+        public int Damage { get; }
+        public Color Color { get; }
+        public bool Emphasized { get; }
+    }
+
     private const string DamageGhostName = "HP_DamageGhost";
+    private const string DamagePreviewName = "HP_DamagePreview";
     private static readonly int HealthRectId =
         Shader.PropertyToID("_HealthRect");
     private static readonly int HealthRatioId =
@@ -19,6 +35,32 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
         Shader.PropertyToID("_Critical");
     private static readonly int GhostModeId =
         Shader.PropertyToID("_GhostMode");
+    private static readonly int PreviewModeId =
+        Shader.PropertyToID("_PreviewMode");
+    private static readonly int PreviewSegmentCountId =
+        Shader.PropertyToID("_PreviewSegmentCount");
+    private static readonly int[] PreviewRangeIds =
+    {
+        Shader.PropertyToID("_PreviewRange0"),
+        Shader.PropertyToID("_PreviewRange1"),
+        Shader.PropertyToID("_PreviewRange2"),
+        Shader.PropertyToID("_PreviewRange3"),
+        Shader.PropertyToID("_PreviewRange4"),
+        Shader.PropertyToID("_PreviewRange5"),
+        Shader.PropertyToID("_PreviewRange6"),
+        Shader.PropertyToID("_PreviewRange7")
+    };
+    private static readonly int[] PreviewColorIds =
+    {
+        Shader.PropertyToID("_PreviewColor0"),
+        Shader.PropertyToID("_PreviewColor1"),
+        Shader.PropertyToID("_PreviewColor2"),
+        Shader.PropertyToID("_PreviewColor3"),
+        Shader.PropertyToID("_PreviewColor4"),
+        Shader.PropertyToID("_PreviewColor5"),
+        Shader.PropertyToID("_PreviewColor6"),
+        Shader.PropertyToID("_PreviewColor7")
+    };
 
     [Header("Reference")]
     [SerializeField] private Image healthFillImage;
@@ -54,6 +96,14 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
 
     private readonly List<GameObject> activeShards =
         new List<GameObject>();
+    private readonly List<Image> damagePreviewImages =
+        new List<Image>();
+    private readonly List<Material> damagePreviewMaterials =
+        new List<Material>();
+    private readonly Vector4[] damagePreviewRanges =
+        new Vector4[MaxDamagePreviewSegments];
+    private readonly Color[] damagePreviewColors =
+        new Color[MaxDamagePreviewSegments];
 
     private Image damageGhostImage;
     private RectTransform barRect;
@@ -67,6 +117,9 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
     private Material fillRuntimeMaterial;
     private Material ghostRuntimeMaterial;
     private bool initialized;
+    private bool previewActive;
+    private bool previewChildrenSanitized;
+    private float previewOriginalHealthValue;
 
     public void Initialize(Image fillImage)
     {
@@ -97,6 +150,8 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
             return;
         }
 
+        ClearDamagePreview();
+
         StopManagedCoroutine(ref ghostRoutine);
         StopManagedCoroutine(ref impactRoutine);
         StopManagedCoroutine(ref flashRoutine);
@@ -119,6 +174,8 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
         {
             return;
         }
+
+        ClearDamagePreview();
 
         float targetValue = Mathf.Clamp01(normalizedHealth);
         float previousValue = healthFillImage.fillAmount;
@@ -155,6 +212,271 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
             clampedStrength));
 
         SpawnDamageShards(targetValue, isCritical, clampedStrength);
+    }
+
+    public void ShowDamagePreview(
+        int currentHealth,
+        int maxHealth,
+        IReadOnlyList<DamagePreviewSegment> segments)
+    {
+        if (!EnsureInitialized() || maxHealth <= 0 || segments == null
+            || segments.Count == 0)
+        {
+            ClearDamagePreview();
+            return;
+        }
+
+        ClearDamagePreview();
+        previewActive = true;
+        previewOriginalHealthValue = healthFillImage.fillAmount;
+        damageGhostImage.enabled = false;
+
+        int remainingHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+        float displayedRemainingRatio = Mathf.Clamp01(
+            previewOriginalHealthValue);
+        int visibleSegmentCount = 0;
+
+        foreach (DamagePreviewSegment segment in segments)
+        {
+            if (visibleSegmentCount >= MaxDamagePreviewSegments)
+            {
+                break;
+            }
+
+            int appliedDamage = Mathf.Min(remainingHealth, segment.Damage);
+
+            if (appliedDamage <= 0)
+            {
+                continue;
+            }
+
+            float endRatio = displayedRemainingRatio;
+            remainingHealth -= appliedDamage;
+            displayedRemainingRatio = Mathf.Max(
+                0f,
+                displayedRemainingRatio
+                    - (float)appliedDamage / maxHealth);
+            float startRatio = displayedRemainingRatio;
+            StoreDamagePreviewSegment(
+                visibleSegmentCount++,
+                startRatio,
+                endRatio,
+                segment.Color,
+                segment.Emphasized);
+        }
+
+        if (visibleSegmentCount > 0)
+        {
+            ConfigureDamagePreviewImage(
+                EnsureDamagePreviewImage(0),
+                visibleSegmentCount);
+        }
+
+        for (int index = 1;
+             index < damagePreviewImages.Count;
+             index++)
+        {
+            if (damagePreviewImages[index] != null)
+            {
+                damagePreviewImages[index].gameObject.SetActive(false);
+            }
+        }
+
+        if (visibleSegmentCount == 0)
+        {
+            ClearDamagePreview();
+        }
+    }
+
+    public void ClearDamagePreview()
+    {
+        if (!previewActive)
+        {
+            return;
+        }
+
+        previewActive = false;
+
+        if (healthFillImage != null)
+        {
+            healthFillImage.fillAmount = previewOriginalHealthValue;
+        }
+
+        if (damageGhostImage != null)
+        {
+            damageGhostImage.enabled = true;
+        }
+
+        foreach (Image previewImage in damagePreviewImages)
+        {
+            if (previewImage != null)
+            {
+                previewImage.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private Image EnsureDamagePreviewImage(int index)
+    {
+        SanitizeExistingDamagePreviewChildren();
+
+        while (damagePreviewImages.Count <= index)
+        {
+            GameObject previewObject = new GameObject(
+                $"{DamagePreviewName}_{damagePreviewImages.Count + 1}",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image));
+            previewObject.layer = healthFillImage.gameObject.layer;
+
+            RectTransform previewRect =
+                previewObject.GetComponent<RectTransform>();
+            previewRect.SetParent(healthFillImage.transform.parent, false);
+            CopyRectTransform(healthFillImage.rectTransform, previewRect);
+
+            Image previewImage = previewObject.GetComponent<Image>();
+            CopyImageSettings(healthFillImage, previewImage);
+            previewImage.raycastTarget = false;
+
+            Material sourceMaterial = healthBarMaterial != null
+                ? healthBarMaterial
+                : healthFillImage.material;
+            Shader previewShader = Shader.Find(
+                "Loaded/UI/Enemy Health Bar Impact");
+
+            if (sourceMaterial == null
+                || !sourceMaterial.HasProperty(PreviewModeId))
+            {
+                sourceMaterial = previewShader == null
+                    ? sourceMaterial
+                    : new Material(previewShader)
+                    {
+                        name = $"{previewShader.name} ({name} Preview Base)"
+                    };
+            }
+
+            Material previewMaterial = sourceMaterial == null
+                ? null
+                : new Material(sourceMaterial)
+                {
+                    name = $"{sourceMaterial.name} ({name} Preview)"
+                };
+            previewImage.material = previewMaterial;
+            damagePreviewImages.Add(previewImage);
+            damagePreviewMaterials.Add(previewMaterial);
+
+            if (sourceMaterial != healthBarMaterial
+                && sourceMaterial != healthFillImage.material
+                && sourceMaterial != previewMaterial)
+            {
+                Destroy(sourceMaterial);
+            }
+        }
+
+        Image result = damagePreviewImages[index];
+        result.transform.SetAsLastSibling();
+        result.gameObject.SetActive(true);
+        return result;
+    }
+
+    private void SanitizeExistingDamagePreviewChildren()
+    {
+        if (previewChildrenSanitized || barRect == null)
+        {
+            return;
+        }
+
+        previewChildrenSanitized = true;
+
+        for (int childIndex = barRect.childCount - 1;
+             childIndex >= 0;
+             childIndex--)
+        {
+            Transform child = barRect.GetChild(childIndex);
+
+            if (child == null || !child.name.StartsWith(DamagePreviewName))
+            {
+                continue;
+            }
+
+            child.gameObject.SetActive(false);
+            Image staleImage = child.GetComponent<Image>();
+            Material staleMaterial = staleImage == null
+                ? null
+                : staleImage.material;
+
+            if (staleMaterial != null && staleMaterial != healthBarMaterial
+                && staleMaterial != fillRuntimeMaterial
+                && staleMaterial != ghostRuntimeMaterial)
+            {
+                Destroy(staleMaterial);
+            }
+
+            Destroy(child.gameObject);
+        }
+    }
+
+    private void StoreDamagePreviewSegment(
+        int index,
+        float startRatio,
+        float endRatio,
+        Color color,
+        bool emphasized)
+    {
+        bool fillsFromRight = healthFillImage.fillMethod
+                == Image.FillMethod.Horizontal
+            && healthFillImage.fillOrigin == 1;
+        float previewStart = fillsFromRight ? 1f - endRatio : startRatio;
+        float previewEnd = fillsFromRight ? 1f - startRatio : endRatio;
+        damagePreviewRanges[index] = new Vector4(
+            previewStart,
+            previewEnd,
+            emphasized ? 1f : 0f,
+            0f);
+        damagePreviewColors[index] = color;
+    }
+
+    private void ConfigureDamagePreviewImage(
+        Image previewImage,
+        int segmentCount)
+    {
+        previewImage.fillAmount = 1f;
+        previewImage.color = Color.white;
+
+        Material material = previewImage.material;
+
+        if (material == null || !material.HasProperty(PreviewModeId))
+        {
+            previewImage.gameObject.SetActive(false);
+            return;
+        }
+
+        Rect fillRect = healthFillImage.rectTransform.rect;
+        Vector4 rectData = new Vector4(
+            fillRect.xMin,
+            fillRect.yMin,
+            1f / Mathf.Max(fillRect.width, 0.001f),
+            1f / Mathf.Max(fillRect.height, 0.001f));
+        SetMaterialState(
+            material,
+            rectData,
+            previewOriginalHealthValue,
+            previewOriginalHealthValue,
+            0f,
+            false);
+        material.SetFloat(PreviewModeId, 1f);
+        material.SetFloat(PreviewSegmentCountId, segmentCount);
+
+        for (int index = 0; index < MaxDamagePreviewSegments; index++)
+        {
+            bool isUsed = index < segmentCount;
+            material.SetVector(
+                PreviewRangeIds[index],
+                isUsed ? damagePreviewRanges[index] : Vector4.zero);
+            material.SetColor(
+                PreviewColorIds[index],
+                isUsed ? damagePreviewColors[index] : Color.clear);
+        }
     }
 
     private bool EnsureInitialized()
@@ -217,6 +539,8 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
         };
         fillRuntimeMaterial.SetFloat(GhostModeId, 0f);
         ghostRuntimeMaterial.SetFloat(GhostModeId, 1f);
+        fillRuntimeMaterial.SetFloat(PreviewModeId, 0f);
+        ghostRuntimeMaterial.SetFloat(PreviewModeId, 0f);
         healthFillImage.material = fillRuntimeMaterial;
         damageGhostImage.material = ghostRuntimeMaterial;
         SetShaderState(
@@ -588,6 +912,7 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
 
     private void OnDisable()
     {
+        ClearDamagePreview();
         StopManagedCoroutine(ref ghostRoutine);
         StopManagedCoroutine(ref impactRoutine);
         StopManagedCoroutine(ref flashRoutine);
@@ -626,5 +951,15 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
         {
             Destroy(ghostRuntimeMaterial);
         }
+
+        foreach (Material previewMaterial in damagePreviewMaterials)
+        {
+            if (previewMaterial != null)
+            {
+                Destroy(previewMaterial);
+            }
+        }
+
+        damagePreviewMaterials.Clear();
     }
 }

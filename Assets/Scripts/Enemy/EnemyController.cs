@@ -416,6 +416,20 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             : statusEffects.ModifyIncomingAttackDamage(damage);
     }
 
+    public void ShowDamagePreview(
+        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments)
+    {
+        healthBarFeedback?.ShowDamagePreview(
+            currentHealth,
+            MaxHealth,
+            segments);
+    }
+
+    public void ClearDamagePreview()
+    {
+        healthBarFeedback?.ClearDamagePreview();
+    }
+
     public bool ApplyStatusDamage(int damage)
     {
         int appliedDamage = ApplyDamageInternal(damage, false, 0.45f);

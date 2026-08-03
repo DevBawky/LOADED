@@ -252,7 +252,21 @@ public class PlayerCylinderUI : MonoBehaviour
         Camera eventCamera,
         out BulletInstance bullet)
     {
+        return TryGetLoadedBulletAtScreenPosition(
+            screenPosition,
+            eventCamera,
+            out bullet,
+            out _);
+    }
+
+    public bool TryGetLoadedBulletAtScreenPosition(
+        Vector2 screenPosition,
+        Camera eventCamera,
+        out BulletInstance bullet,
+        out int loadedBulletIndex)
+    {
         bullet = null;
+        loadedBulletIndex = -1;
 
         if (isDraggingBullet || deckManager == null)
         {
@@ -275,6 +289,7 @@ public class PlayerCylinderUI : MonoBehaviour
                     eventCamera))
             {
                 bullet = deckManager.LoadedBullets[index];
+                loadedBulletIndex = index;
                 return bullet != null;
             }
         }
