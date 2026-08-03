@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyId: 1
   displayName: "\uD22C\uCC99\uBCD1"
   description: 
-  avatar: {fileID: 1233976601806711513, guid: 681bb752688943b41b903f4b80db2c5b, type: 3}
+  avatar: {fileID: 1233976601806711513, guid: 6718b6967c22ff54490cf76113040c67, type: 3}
   maxHealth: 10
   dropChance: 100
   dropItems:
