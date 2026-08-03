@@ -415,7 +415,7 @@ MonoBehaviour:
   enable3DGame: 0
   faceCameraView: 1
   lookAtCamera: 0
-  renderThroughWalls: 1
+  renderThroughWalls: 0
   consistentScreenSize: 1
   distanceScalingSettings:
     baseDistance: 15
@@ -825,13 +825,13 @@ MonoBehaviour:
       m_RotationOrder: 4
   enableCollision: 1
   collisionSettings:
-    radius: 0.5
-    pushFactor: 1.5
+    radius: 1
+    pushFactor: 3
     desiredDirection: {x: 0, y: 2, z: 0}
-  enablePush: 0
+  enablePush: 1
   pushSettings:
-    radius: 3
-    pushOffset: 1
+    radius: 5
+    pushOffset: 3
     scaleWithMesh: 0
   updateDelay: 0.0125
   enablePooling: 0
@@ -839,7 +839,7 @@ MonoBehaviour:
   disableOnSceneLoad: 1
   limitActiveInstances: 0
   maxActiveInstances: 50
-  editorLastFont: 
+  editorLastFont: Smear Outline3D
   position: {x: 0, y: 0, z: 0}
 --- !u!210 &7125660089367822529
 SortingGroup:

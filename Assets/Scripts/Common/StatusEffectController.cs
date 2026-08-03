@@ -98,6 +98,59 @@ public class StatusEffectController : MonoBehaviour
         }
     }
 
+    public int ActiveStatusTypeCount
+    {
+        get
+        {
+            int count = 0;
+
+            foreach (StatusEffectType type in Enum.GetValues(
+                         typeof(StatusEffectType)))
+            {
+                if (GetStacks(type) > 0)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+    }
+
+    public int Consume(StatusEffectType type)
+    {
+        int stacks = GetStacks(type);
+        SetStacks(type, 0);
+        return stacks;
+    }
+
+    public bool MultiplyActiveStacks(int multiplier)
+    {
+        if (multiplier <= 1)
+        {
+            return false;
+        }
+
+        bool changed = false;
+
+        foreach (StatusEffectType type in Enum.GetValues(
+                     typeof(StatusEffectType)))
+        {
+            int stacks = GetStacks(type);
+
+            if (stacks <= 0)
+            {
+                continue;
+            }
+
+            long multiplied = (long)stacks * multiplier;
+            SetStacks(type, (int)Math.Min(int.MaxValue, multiplied));
+            changed = true;
+        }
+
+        return changed;
+    }
+
     public bool Add(StatusEffectType type, int stacks)
     {
         if (stacks <= 0)

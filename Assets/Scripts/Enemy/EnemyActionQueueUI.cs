@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -47,6 +48,15 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     public bool AddAttackIcon(EnemyActionData actionData)
     {
+        return AddAttackIcon(actionData, out _);
+    }
+
+    public bool AddAttackIcon(
+        EnemyActionData actionData,
+        out Image attackIcon)
+    {
+        attackIcon = null;
+
         if (queueImage == null || iconParent == null
             || attackIconPrefab == null || actionData == null)
         {
@@ -54,15 +64,42 @@ public class EnemyActionQueueUI : MonoBehaviour
         }
 
         ShowQueue();
-        Image attackIcon = Instantiate(attackIconPrefab, iconParent);
+        attackIcon = Instantiate(attackIconPrefab, iconParent);
         attackIcon.sprite = actionData.Icon;
         attackIcon.color = actionData.Icon == null
             ? missingIconColor
             : Color.white;
         attackIcon.preserveAspect = true;
+        EnemyActionTooltipTrigger tooltipTrigger =
+            attackIcon.GetComponent<EnemyActionTooltipTrigger>();
+        if (tooltipTrigger == null)
+        {
+            tooltipTrigger = attackIcon.gameObject.AddComponent<
+                EnemyActionTooltipTrigger>();
+        }
+
+        tooltipTrigger.Configure(actionData);
         spawnedIcons.Add(attackIcon);
         RefreshQueueWidth();
         return true;
+    }
+
+    public IEnumerator RevealQueue(float duration)
+    {
+        ShowQueue();
+
+        if (queueImage != null)
+        {
+            yield return RevealGraphic(queueImage.gameObject, duration);
+        }
+    }
+
+    public IEnumerator RevealIcon(Image icon, float duration)
+    {
+        if (icon != null)
+        {
+            yield return RevealGraphic(icon.gameObject, duration);
+        }
     }
 
     public void SetPrepared(bool prepared)
@@ -261,5 +298,60 @@ public class EnemyActionQueueUI : MonoBehaviour
         readyRect.anchoredPosition = queueRect.anchoredPosition;
         readyRect.sizeDelta = queueRect.sizeDelta;
         readyRect.pivot = queueRect.pivot;
+    }
+
+    private static IEnumerator RevealGraphic(
+        GameObject target,
+        float duration)
+    {
+        if (target == null)
+        {
+            yield break;
+        }
+
+        CanvasGroup canvasGroup = target.GetComponent<CanvasGroup>();
+        if (canvasGroup == null)
+        {
+            canvasGroup = target.AddComponent<CanvasGroup>();
+        }
+
+        Transform targetTransform = target.transform;
+        Vector3 finalScale = targetTransform.localScale;
+
+        if (duration <= 0f)
+        {
+            canvasGroup.alpha = 1f;
+            targetTransform.localScale = finalScale;
+            yield break;
+        }
+
+        canvasGroup.alpha = 0f;
+        targetTransform.localScale = finalScale * 0.75f;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration && target != null)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / duration);
+            float easedProgress = 1f - Mathf.Pow(1f - progress, 3f);
+            canvasGroup.alpha = easedProgress;
+            targetTransform.localScale = Vector3.LerpUnclamped(
+                finalScale * 0.75f,
+                finalScale,
+                easedProgress);
+        }
+
+        if (target != null)
+        {
+            canvasGroup.alpha = 1f;
+            targetTransform.localScale = finalScale;
+        }
     }
 }

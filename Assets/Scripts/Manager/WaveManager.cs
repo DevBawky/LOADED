@@ -7,11 +7,11 @@ using UnityEngine.Serialization;
 [Serializable]
 public class EnemyWaveEntry
 {
-    [SerializeField] private EnemyController enemyPrefab;
+    [SerializeField] private EnemyData enemyData;
     [Min(1)]
     [SerializeField] private int count = 1;
 
-    public EnemyController EnemyPrefab => enemyPrefab;
+    public EnemyData EnemyData => enemyData;
     public int Count => count;
 }
 
@@ -38,6 +38,8 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private float enemyActionInterval = 0.15f;
 
     [Header("References")]
+    [Tooltip("모든 EnemyData를 실행하는 공용 적 템플릿 프리팹입니다.")]
+    [SerializeField] private EnemyController enemyPrefabTemplate;
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
@@ -341,7 +343,7 @@ public class WaveManager : MonoBehaviour
             || enemyCount > GetAvailableSpawnTileCount())
         {
             Debug.LogError(
-                $"Wave {nextWaveIndex + 1} must contain valid enemy prefabs and fit on the available board tiles.",
+                $"Wave {nextWaveIndex + 1} must contain valid EnemyData and fit on the available board tiles.",
                 this);
             return false;
         }
@@ -371,7 +373,7 @@ public class WaveManager : MonoBehaviour
                 spawnTileListIndex++;
 
                 if (!TrySpawnEnemy(
-                        entry.EnemyPrefab,
+                        entry.EnemyData,
                         spawnTileIndex,
                         out EnemyController enemy))
                 {
@@ -395,13 +397,13 @@ public class WaveManager : MonoBehaviour
     }
 
     private bool TrySpawnEnemy(
-        EnemyController enemyPrefab,
+        EnemyData enemyData,
         int spawnTileIndex,
         out EnemyController spawnedEnemy)
     {
         spawnedEnemy = null;
 
-        if (enemyPrefab == null
+        if (enemyData == null || enemyPrefabTemplate == null
             || !boardManager.TryGetTilePosition(
                 spawnTileIndex,
                 out Vector3 spawnPosition))
@@ -412,12 +414,17 @@ public class WaveManager : MonoBehaviour
         spawnPosition += spawnPositionOffset;
 
         EnemyController enemy = Instantiate(
-            enemyPrefab,
+            enemyPrefabTemplate,
             spawnPosition,
             Quaternion.identity,
             enemyParent);
 
-        if (!enemy.Initialize(boardManager, playerMove, playerHealth, this))
+        if (!enemy.Initialize(
+                enemyData,
+                boardManager,
+                playerMove,
+                playerHealth,
+                this))
         {
             Destroy(enemy.gameObject);
             return false;
@@ -440,8 +447,7 @@ public class WaveManager : MonoBehaviour
 
         foreach (EnemyWaveEntry entry in wave.Enemies)
         {
-            if (entry == null || entry.EnemyPrefab == null
-                || entry.EnemyPrefab.Data == null || entry.Count <= 0)
+            if (entry == null || entry.EnemyData == null || entry.Count <= 0)
             {
                 return false;
             }
@@ -759,7 +765,7 @@ public class WaveManager : MonoBehaviour
                 || enemyCount > availableSpawnTileCount)
             {
                 Debug.LogError(
-                    $"Wave {waveIndex + 1} must contain valid enemy prefabs and fit on the available board tiles.",
+                    $"Wave {waveIndex + 1} must contain valid EnemyData and fit on the available board tiles.",
                     this);
                 return false;
             }
@@ -820,13 +826,14 @@ public class WaveManager : MonoBehaviour
 
     private bool ValidateReferences()
     {
-        if (boardManager != null && playerMove != null && playerHealth != null)
+        if (enemyPrefabTemplate != null && boardManager != null
+            && playerMove != null && playerHealth != null)
         {
             return true;
         }
 
         Debug.LogError(
-            "Board Manager, Player Move, and Player Health must be assigned in the Inspector.",
+            "Enemy Prefab Template, Board Manager, Player Move, and Player Health must be assigned in the Inspector.",
             this);
         return false;
     }

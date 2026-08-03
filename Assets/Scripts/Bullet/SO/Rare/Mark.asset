@@ -39,12 +39,12 @@ MonoBehaviour:
   penetrationChances:
   - chance: 100
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-  primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+  primaryLineColor: {r: 0.26415092, g: 0, b: 0, a: 1}
   secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
   removeCost: 5
-  upgradeCost: 10
+  upgradeCost: 20
   upgradeLevels:
   - description: "\uC801\uC5D0\uAC8C \uD45C\uC2DD\uC744 5 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
     damage: 8
@@ -66,7 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 25
+    upgradeCost: 35
   - description: "\uC801\uC5D0\uAC8C \uD45C\uC2DD\uC744 5 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\r\n30%
       \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uB429\uB2C8\uB2E4."
     damage: 10
@@ -89,7 +89,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 50
+    upgradeCost: 60
   - description: "\uC801\uC5D0\uAC8C \uD45C\uC2DD\uC744 5 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\r\n50%
       \uD655\uB960\uB85C \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uB429\uB2C8\uB2E4."
     damage: 15
@@ -115,4 +115,4 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.35
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 0
