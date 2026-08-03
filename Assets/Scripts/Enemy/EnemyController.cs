@@ -105,6 +105,8 @@ public class EnemyRandomSfxSettings
 
 public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
+    private const int MaxBigBarrelPostShotgunRecoveryTurns = 2;
+
     private const int InitialFacingDirection = -1;
     private static readonly int IdleAnimationStateHash =
         Animator.StringToHash("Base Layer.Idle");
@@ -951,6 +953,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 break;
 
             case BigBarrelStep.CreateBombQueue:
+                TryEnterBigBarrelPhaseTwo();
                 bigBarrelActionUsesPhaseTwo = isBigBarrelPhaseTwo;
                 bigBarrelStep = BigBarrelStep.RegisterBomb;
                 CreateAttackQueue();
@@ -1056,7 +1059,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             if (tileIndex != bossTileIndex
                 && (waveManager.BombManager == null
-                    || !waveManager.BombManager.IsTileOccupied(tileIndex)))
+                    || !waveManager.BombManager.HasBombAtTile(tileIndex)))
             {
                 candidates.Add(tileIndex);
             }
@@ -1126,9 +1129,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 out int playerTileIndex)
             || targetTileIndex == playerTileIndex
             || waveManager.IsTileOccupied(targetTileIndex, this)
-            || waveManager.IsTileReservedForSpawn(targetTileIndex)
-            || waveManager.BombManager != null
-            && waveManager.BombManager.IsTileThreatened(targetTileIndex, 1))
+            || waveManager.IsTileReservedForSpawn(targetTileIndex))
         {
             CompleteAction(EnemyTurnActionType.Wait);
             return;
@@ -1151,7 +1152,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                     targetTileIndex,
                     out Vector3 targetPosition)
                 || waveManager.BombManager == null
-                || waveManager.BombManager.IsTileOccupied(targetTileIndex))
+                || waveManager.BombManager.HasBombAtTile(targetTileIndex))
             {
                 continue;
             }
@@ -1209,10 +1210,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             AttackExecuted?.Invoke(this, action.AttackData);
         }
 
-        bigBarrelReloadTurnsRemaining = enemyData.RecoveryTurns;
+        bigBarrelReloadTurnsRemaining = Mathf.Min(
+            MaxBigBarrelPostShotgunRecoveryTurns,
+            enemyData.RecoveryTurns);
         FinishBigBarrelAttack(bigBarrelReloadTurnsRemaining > 0
             ? BigBarrelStep.Reload
-            : BigBarrelStep.RotateToPlayer);
+            : BigBarrelStep.CreateBombQueue);
     }
 
     private IEnumerator PlayBigBarrelProjectile(Vector3 targetPosition)
@@ -1289,7 +1292,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     {
         if (bigBarrelReloadTurnsRemaining <= 0)
         {
-            bigBarrelStep = BigBarrelStep.RotateToPlayer;
+            bigBarrelStep = BigBarrelStep.CreateBombQueue;
             CompleteAction(EnemyTurnActionType.Wait);
             return;
         }
@@ -1298,36 +1301,18 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (bigBarrelReloadTurnsRemaining == 0)
         {
-            bigBarrelStep = BigBarrelStep.RotateToPlayer;
+            bigBarrelStep = BigBarrelStep.CreateBombQueue;
         }
 
-        EnemyActionData reloadAction = FindAction(EnemyActionType.Reload);
-
-        if (reloadAction == null)
+        if (!TryGetTurnContext(
+                out int directionToPlayer,
+                out int distanceToPlayer))
         {
-            CompleteAction(EnemyTurnActionType.Reload);
+            CompleteAction(EnemyTurnActionType.Wait);
             return;
         }
 
-        actionQueueUI.ResetDisplay();
-        actionQueueUI.ShowQueue();
-
-        if (actionQueueUI.AddAttackIcon(reloadAction, out Image icon))
-        {
-            StartCoroutine(RevealBigBarrelReload(icon));
-        }
-        else
-        {
-            CompleteAction(EnemyTurnActionType.Reload);
-        }
-    }
-
-    private IEnumerator RevealBigBarrelReload(Image icon)
-    {
-        yield return actionQueueUI.RevealIcon(
-            icon,
-            enemyData.QueueElementRevealDuration);
-        CompleteAction(EnemyTurnActionType.Reload);
+        AdjustBigBarrelDistance(directionToPlayer, distanceToPlayer);
     }
 
     private void TryEnterBigBarrelPhaseTwo()

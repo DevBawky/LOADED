@@ -177,9 +177,7 @@ public class WaveManager : MonoBehaviour
 
     public bool IsTileOccupied(int tileIndex, EnemyController ignoredEnemy = null)
     {
-        return TryGetEnemyAtTile(tileIndex, out _, ignoredEnemy)
-            || bossBombManager != null
-            && bossBombManager.IsTileOccupied(tileIndex);
+        return TryGetEnemyAtTile(tileIndex, out _, ignoredEnemy);
     }
 
     public bool TryGetFirstBulletBlocker(
@@ -189,15 +187,7 @@ public class WaveManager : MonoBehaviour
         out IPlayerBulletBlocker blocker)
     {
         blocker = null;
-        return bossBombManager != null
-            && boardManager.TryGetTileIndex(
-                originWorldPosition,
-                out int originTileIndex)
-            && bossBombManager.TryGetFirstBulletBlocker(
-                originTileIndex,
-                direction,
-                maxRange,
-                out blocker);
+        return false;
     }
 
     public bool TryGetEnemyAtTile(

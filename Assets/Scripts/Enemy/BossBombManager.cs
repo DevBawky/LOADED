@@ -103,10 +103,10 @@ public class BossBombManager : MonoBehaviour
         return true;
     }
 
-    public bool IsTileOccupied(int tileIndex)
+    public bool HasBombAtTile(int tileIndex)
     {
         return bombsByTile.TryGetValue(tileIndex, out BossBomb bomb)
-            && bomb != null && bomb.IsBulletBlocking;
+            && bomb != null && !bomb.IsExploding;
     }
 
     public bool TryGetBombAtTile(int tileIndex, out BossBomb bomb)
@@ -118,34 +118,6 @@ public class BossBombManager : MonoBehaviour
         }
 
         bomb = null;
-        return false;
-    }
-
-    public bool TryGetFirstBulletBlocker(
-        int originTileIndex,
-        int direction,
-        int maxRange,
-        out IPlayerBulletBlocker blocker)
-    {
-        blocker = null;
-        int step = direction >= 0 ? 1 : -1;
-
-        for (int distance = 1; distance <= maxRange; distance++)
-        {
-            int tileIndex = originTileIndex + step * distance;
-
-            if (tileIndex < 0 || tileIndex >= boardManager.BoardCount)
-            {
-                break;
-            }
-
-            if (TryGetBombAtTile(tileIndex, out BossBomb bomb))
-            {
-                blocker = bomb;
-                return true;
-            }
-        }
-
         return false;
     }
 

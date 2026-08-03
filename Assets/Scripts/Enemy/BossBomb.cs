@@ -1,7 +1,7 @@
 using TMPro;
 using UnityEngine;
 
-public class BossBomb : MonoBehaviour, IPlayerBulletBlocker
+public class BossBomb : MonoBehaviour
 {
     private const float DangerBlinkSpeed = 8f;
 
@@ -22,8 +22,6 @@ public class BossBomb : MonoBehaviour, IPlayerBulletBlocker
     private Color baseRangeColor = new Color(1f, 0.45f, 0f, 0.65f);
 
     public int TileIndex => tileIndex;
-    public Vector3 WorldPosition => transform.position;
-    public bool IsBulletBlocking => !isExploding && gameObject.activeInHierarchy;
     public int RemainingFuse => remainingFuse;
     public int CreatedTurnCycle => createdTurnCycle;
     public bool IsExploding => isExploding;
@@ -56,12 +54,6 @@ public class BossBomb : MonoBehaviour, IPlayerBulletBlocker
             CreateExplosionRangeTelegraph();
         }
         return true;
-    }
-
-    public void HandlePlayerBulletImpact()
-    {
-        // Bombs intentionally absorb every player projectile without taking
-        // damage or detonating. PlayerShoot consumes the fired cylinder.
     }
 
     public void ProcessEnemyTurnCycleEnd(int completedTurnCycle)
