@@ -66,6 +66,12 @@ public class ShopManager : MonoBehaviour
     [SerializeField] private List<ShopBulletSlot> slots =
         new List<ShopBulletSlot>();
 
+    [Header("Bullet Offer Frames")]
+    [SerializeField] private Sprite normalBulletFrame;
+    [SerializeField] private Sprite rareBulletFrame;
+    [SerializeField] private Sprite aceBulletFrame;
+    [SerializeField] private Sprite legendaryBulletFrame;
+
     [Header("Item Offers")]
     [Tooltip("Every unique item has the same appearance probability.")]
     [SerializeField] private List<ItemData> itemPool = new List<ItemData>();
@@ -223,7 +229,9 @@ public class ShopManager : MonoBehaviour
 
         foreach (ItemData itemData in itemPool)
         {
-            if (itemData != null && !candidates.Contains(itemData))
+            if (itemData != null && !candidates.Contains(itemData)
+                && playerInventory != null
+                && playerInventory.CanAdd(itemData))
             {
                 candidates.Add(itemData);
             }
@@ -361,6 +369,16 @@ public class ShopManager : MonoBehaviour
         {
             slot.Button.gameObject.SetActive(offer != null);
             slot.Button.interactable = offer != null;
+
+            if (offer != null && slot.Button.image != null)
+            {
+                Sprite gradeFrame = GetBulletFrame(offer.Grade);
+
+                if (gradeFrame != null)
+                {
+                    slot.Button.image.sprite = gradeFrame;
+                }
+            }
         }
 
         if (slot.BulletIcon != null)
@@ -378,6 +396,18 @@ public class ShopManager : MonoBehaviour
         {
             slot.CostText.text = offer == null ? string.Empty : $"${offer.Price}";
         }
+    }
+
+    private Sprite GetBulletFrame(BulletGrade grade)
+    {
+        return grade switch
+        {
+            BulletGrade.Normal => normalBulletFrame,
+            BulletGrade.Rare => rareBulletFrame,
+            BulletGrade.Ace => aceBulletFrame,
+            BulletGrade.Legendary => legendaryBulletFrame,
+            _ => normalBulletFrame
+        };
     }
 
     private void RefreshItemSlots()

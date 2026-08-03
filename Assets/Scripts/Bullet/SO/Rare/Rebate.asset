@@ -1,0 +1,112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Rebate
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_rebate
+  displayName: 환급탄
+  description: "치명타 발생 시 40% 확률로 골드 1을 얻습니다."
+  bulletIcon: {fileID: -417160762183536762, guid: 0eb1b539167d57e48aed3fe49912a95f, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 9f3da703d3a3228458471a1253b1a404, type: 3}
+  price: 16
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 10
+  maxRange: 4
+  criticalChance: 25
+  criticalDamageMultiplier: 1.8
+  effects:
+  - effectType: 28
+    target: 1
+    activationChance: 40
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 1
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+  secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  removeCost: 8
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "치명타 발생 시 55% 확률로 골드 1을 얻습니다."
+    damage: 13
+    maxRange: 4
+    criticalChance: 30
+    criticalDamageMultiplier: 1.9
+    effects:
+    - effectType: 28
+      target: 1
+      activationChance: 55
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 35
+  - description: "치명타 발생 시 70% 확률로 골드 2를 얻습니다."
+    damage: 16
+    maxRange: 5
+    criticalChance: 35
+    criticalDamageMultiplier: 2.1
+    effects:
+    - effectType: 28
+      target: 1
+      activationChance: 70
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 2
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 30
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 60
+  - description: "치명타 발생 시 반드시 골드 2를 얻으며, 이 탄환은 턴을 소비하지 않습니다."
+    damage: 21
+    maxRange: 5
+    criticalChance: 40
+    criticalDamageMultiplier: 2.4
+    effects:
+    - effectType: 28
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 2
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 50
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
+    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.12
+    removeCost: 8
+    upgradeCost: 0
