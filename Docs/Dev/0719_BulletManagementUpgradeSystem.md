@@ -123,6 +123,14 @@ Next Chip 이미지는 특정 패널 활성 상태와 무관하게 다음 탄환
 
 상점의 관리 패널에서 보유 탄환을 행당 최대 5개씩 확인하고 하나를 선택해 비용을 지불하여 제거하거나 +3까지 강화할 수 있다. 강화 레벨은 탄환 개별 상태로 유지되며 실제 발사 능력치와 UI에 모두 반영된다.
 
+260802 이후 전체 보유 탄환에는 최소 7개 제한이 적용된다. 전체 보유량은 draw deck, loaded bullets와 graveyard의 합계이며 영역 사이의 장전·발사·재활용 이동은 보유량 감소로 보지 않는다. `DeckManager.TryRemoveBullet`이 상점 제거와 탄환 자기 파괴 효과의 공통 진입점에서 `OwnedBulletCount > 7`을 검사하므로, 8개일 때 한 개를 제거해 7개가 되는 것은 허용하지만 7개에서 추가 제거하는 것은 거부한다.
+
+`BulletManagementUI`는 보유량이 7개일 때 Remove 버튼을 비활성화하고 버튼 문구를 `Minimum 7 Bullets`로 바꾼다. 제거 메소드도 결제 전에 `CanRemoveBullet`을 재검사하므로 UI 갱신과 클릭 사이에 상태가 달라져도 비용이 차감되지 않는다. 다른 시스템이 `TryRemoveBullet` 또는 `TryDestroyBullet`을 직접 호출해도 같은 중앙 규칙이 적용된다.
+
+게임 시작 시 유효한 `Starting Bullets`가 7개 미만이면 첫 번째 유효 BulletData를 필요한 수만큼 복제해 정확히 7개로 보정하고 경고를 기록한다. 유효한 시작 탄환이 하나도 없어 복제 기준을 정할 수 없는 잘못된 설정은 오류를 기록한다. 현재 Stage 1 시작 목록은 11개이므로 자동 보정 없이 그대로 시작한다.
+
+검증 기준은 `8 → 7` 제거 성공, `7 → 6` 제거 실패다. 상점 제거가 실패하면 비용이 차감되지 않아야 하며, 전투 중 `DestroyBullet` 또는 화약 주머니가 자기 파괴를 요청하더라도 draw deck, loaded bullets, graveyard 합계는 7개 아래로 내려가지 않아야 한다.
+
 ### Lessons Learned
 
 런타임에 같은 ScriptableObject를 여러 장 보유할 수 있는 시스템에서는 공유 에셋 자체에 레벨을 저장하면 모든 복사본이 함께 변경된다. 불변 설정은 `BulletData`, 개별 진행 상태는 `BulletInstance`로 분리해야 한다.

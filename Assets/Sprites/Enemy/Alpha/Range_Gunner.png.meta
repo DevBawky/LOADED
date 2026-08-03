@@ -1,0 +1,494 @@
+fileFormatVersion: 2
+guid: 3472b7c71c5845540a981d890ad4ac96
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 8483902031665324626
+    second: Range_Gunner_0
+  - first:
+      213: -415520378042281933
+    second: Range_Gunner_1
+  - first:
+      213: 2028934877716715908
+    second: Range_Gunner_2
+  - first:
+      213: -2748178821439947377
+    second: Range_Gunner_3
+  - first:
+      213: 2646285383259288131
+    second: Range_Gunner_4
+  - first:
+      213: 2738336434100254889
+    second: Range_Gunner_5
+  - first:
+      213: 6409626959193107291
+    second: Range_Gunner_6
+  - first:
+      213: -4771716668203757484
+    second: Range_Gunner_7
+  - first:
+      213: 498501089451927255
+    second: Range_Gunner_8
+  - first:
+      213: 5133320113681573121
+    second: Range_Gunner_9
+  - first:
+      213: 2909163717380399044
+    second: Range_Gunner_10
+  - first:
+      213: -1215850789388263579
+    second: Range_Gunner_11
+  - first:
+      213: -6731630590116676975
+    second: Range_Gunner_12
+  - first:
+      213: 8384103174723891977
+    second: Range_Gunner_13
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: 4
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WindowsStoreApps
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Range_Gunner_0
+      rect:
+        serializedVersion: 2
+        x: 92
+        y: 166
+        width: 82
+        height: 65
+      alignment: 9
+      pivot: {x: 0.47380158, y: 0.1694972}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25260aab2ffdcb570800000000000000
+      internalID: 8483902031665324626
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_1
+      rect:
+        serializedVersion: 2
+        x: 36
+        y: 128
+        width: 15
+        height: 13
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3309addea66cb3af0800000000000000
+      internalID: -415520378042281933
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_2
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 125
+        width: 13
+        height: 17
+      alignment: 9
+      pivot: {x: 0.8277911, y: 0.48209515}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 48994b28589382c10800000000000000
+      internalID: 2028934877716715908
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_3
+      rect:
+        serializedVersion: 2
+        x: 78
+        y: 126
+        width: 14
+        height: 15
+      alignment: 9
+      pivot: {x: 0.8369893, y: 0.5101461}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f8df1d02ce18cd9d0800000000000000
+      internalID: -2748178821439947377
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_4
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 96
+        width: 73
+        height: 63
+      alignment: 9
+      pivot: {x: 0.42494786, y: 0.49999988}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3427a73198e79b420800000000000000
+      internalID: 2646285383259288131
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_5
+      rect:
+        serializedVersion: 2
+        x: 185
+        y: 126
+        width: 18
+        height: 19
+      alignment: 9
+      pivot: {x: 0.14489238, y: 0.6201485}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9a83e0e7a76800620800000000000000
+      internalID: 2738336434100254889
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_6
+      rect:
+        serializedVersion: 2
+        x: 209
+        y: 126
+        width: 16
+        height: 17
+      alignment: 9
+      pivot: {x: 0.14806366, y: 0.5895224}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b5be87d72c193f850800000000000000
+      internalID: 6409626959193107291
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_7
+      rect:
+        serializedVersion: 2
+        x: 229
+        y: 128
+        width: 18
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 45097eec8f477cdb0800000000000000
+      internalID: -4771716668203757484
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_8
+      rect:
+        serializedVersion: 2
+        x: 96
+        y: 68
+        width: 19
+        height: 24
+      alignment: 9
+      pivot: {x: 0.7483079, y: 0.92486}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7d66de489180be600800000000000000
+      internalID: 498501089451927255
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_9
+      rect:
+        serializedVersion: 2
+        x: 156
+        y: 72
+        width: 24
+        height: 24
+      alignment: 9
+      pivot: {x: 0.20830472, y: 0.8804715}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 105ab5622773d3740800000000000000
+      internalID: 5133320113681573121
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_10
+      rect:
+        serializedVersion: 2
+        x: 163
+        y: 53
+        width: 22
+        height: 19
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 4cfd9efccfc6f5820800000000000000
+      internalID: 2909163717380399044
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_11
+      rect:
+        serializedVersion: 2
+        x: 94
+        y: 54
+        width: 20
+        height: 11
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 56f52ae162e602fe0800000000000000
+      internalID: -1215850789388263579
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_12
+      rect:
+        serializedVersion: 2
+        x: 87
+        y: 35
+        width: 27
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 19a31fcd4a17492a0800000000000000
+      internalID: -6731630590116676975
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Range_Gunner_13
+      rect:
+        serializedVersion: 2
+        x: 161
+        y: 34
+        width: 22
+        height: 14
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 90374a1aa615a5470800000000000000
+      internalID: 8384103174723891977
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 650d63523f45ddc40a63130ed5b45ff4
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Range_Gunner_0: 8483902031665324626
+      Range_Gunner_1: -415520378042281933
+      Range_Gunner_10: 2909163717380399044
+      Range_Gunner_11: -1215850789388263579
+      Range_Gunner_12: -6731630590116676975
+      Range_Gunner_13: 8384103174723891977
+      Range_Gunner_2: 2028934877716715908
+      Range_Gunner_3: -2748178821439947377
+      Range_Gunner_4: 2646285383259288131
+      Range_Gunner_5: 2738336434100254889
+      Range_Gunner_6: 6409626959193107291
+      Range_Gunner_7: -4771716668203757484
+      Range_Gunner_8: 498501089451927255
+      Range_Gunner_9: 5133320113681573121
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

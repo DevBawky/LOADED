@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Powder Pouch
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_powder_pouch
+  displayName: 화약 주머니
+  description: 발사 시 자신을 파괴하고 실린더에 남은 탄환들의 치명타 확률을 30%p 증가시킵니다.
+  bulletIcon: {fileID: 890402192481520174, guid: 5e769983b24010f41a1f0f3d6aa75298, type: 3}
+  cylinderIcon: {fileID: -8793840650327370687, guid: 81fc923aa9f569f4081b781224e9b6c9, type: 3}
+  price: 14
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 0
+  maxRange: 3
+  criticalChance: 0
+  criticalDamageMultiplier: 1.5
+  effects:
+  - effectType: 11
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 30
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+  secondaryLineColor: {r: 0.55, g: 0.2, b: 0.05, a: 1}
+  doesNotConsumeTurn: 0
+  recoilStrength: 0
+  removeCost: 8
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "실린더에 남은 탄환들의 치명타 확률을 35%p 증가시킵니다."
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 35
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+    secondaryLineColor: {r: 0.55, g: 0.2, b: 0.05, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    removeCost: 8
+    upgradeCost: 35
+  - description: "실린더에 남은 탄환들의 치명타 확률을 40%p 증가시킵니다."
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 40
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+    secondaryLineColor: {r: 0.55, g: 0.2, b: 0.05, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    removeCost: 8
+    upgradeCost: 60
+  - description: "실린더에 남은 탄환들의 치명타 확률을 50%p 증가시킵니다."
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 50
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 1, g: 0.55, b: 0.12, a: 1}
+    secondaryLineColor: {r: 0.55, g: 0.2, b: 0.05, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    removeCost: 8
+    upgradeCost: 0

@@ -59,10 +59,8 @@ public class EnemyData : ScriptableObject
     [TextArea]
     [Tooltip("적의 특징과 전투 방식을 설명하는 문장입니다.")]
     [SerializeField] private string description;
-    [Tooltip("월드에 표시할 적 스프라이트입니다.")]
-    [SerializeField] private Sprite sprite;
-    [Tooltip("이 데이터로 생성할 EnemyController 프리팹입니다.")]
-    [SerializeField] private GameObject prefab;
+    [Tooltip("적 루트에 생성할 Animator 포함 Avatar 프리팹입니다.")]
+    [SerializeField] private GameObject avatar;
 
     [Header("Stats")]
     [Min(1)]
@@ -89,6 +87,9 @@ public class EnemyData : ScriptableObject
     [Min(0f)]
     [Tooltip("예약된 공격을 연속 실행할 때 각 공격 사이의 시간입니다.")]
     [SerializeField] private float queuedActionInterval = 0.2f;
+    [Min(0f)]
+    [Tooltip("Image | Queue와 행동 타일 하나가 서서히 나타나는 시간입니다.")]
+    [SerializeField] private float queueElementRevealDuration = 0.25f;
     [Range(0f, 1f)]
     [Tooltip("근접 적이 선호 거리 안에서 추가 공격을 예약할 확률입니다.")]
     [SerializeField] private float meleeAdditionalAttackChance = 0.5f;
@@ -114,8 +115,15 @@ public class EnemyData : ScriptableObject
     [SerializeField] private float supportHealThreshold = 0.5f;
 
     [Header("Thrower Projectile")]
-    [Tooltip("투척병이 포물선으로 던질 투사체 프리팹입니다. 비어 있으면 투사체 없이 타이밍만 적용됩니다.")]
+    [Tooltip("투척병이 포물선으로 던질 투사체 프리팹입니다. 비어 있으면 스프라이트 투척물을 자동 생성합니다.")]
     [SerializeField] private GameObject thrownProjectilePrefab;
+    [Tooltip("투척물 프리팹이 없을 때 표시할 스프라이트입니다. 비어 있으면 기본 원형 이미지를 사용합니다.")]
+    [SerializeField] private Sprite thrownProjectileSprite;
+    [Tooltip("자동 생성되는 투척 스프라이트의 색상입니다.")]
+    [SerializeField] private Color thrownProjectileColor = Color.white;
+    [Min(0.01f)]
+    [Tooltip("자동 생성되는 투척 스프라이트의 월드 크기입니다.")]
+    [SerializeField] private float thrownProjectileSize = 0.35f;
     [Min(0f)]
     [Tooltip("투척체가 목표 타일까지 날아가는 시간입니다.")]
     [SerializeField] private float thrownProjectileDuration = 0.5f;
@@ -156,8 +164,7 @@ public class EnemyData : ScriptableObject
     public string EnemyId => enemyId;
     public string DisplayName => displayName;
     public string Description => description;
-    public Sprite Sprite => sprite;
-    public GameObject Prefab => prefab;
+    public GameObject Avatar => avatar;
     public int MaxHealth => maxHealth;
     public float DropChance => Mathf.Clamp(dropChance, 0f, 100f);
     public IReadOnlyList<EnemyDropItemData> DropItems =>
@@ -166,6 +173,8 @@ public class EnemyData : ScriptableObject
     public int PreferredDistance => preferredDistance;
     public int MaxQueuedAttacks => Mathf.Max(1, maxQueuedAttacks);
     public float QueuedActionInterval => Mathf.Max(0f, queuedActionInterval);
+    public float QueueElementRevealDuration =>
+        Mathf.Max(0f, queueElementRevealDuration);
     public float MeleeAdditionalAttackChance =>
         Mathf.Clamp01(meleeAdditionalAttackChance);
     // Kept for older callers and serialized assets. Ranged enemies always use
@@ -177,6 +186,9 @@ public class EnemyData : ScriptableObject
     public int SupportShieldAmount => Mathf.Max(1, supportShieldAmount);
     public float SupportHealThreshold => Mathf.Clamp01(supportHealThreshold);
     public GameObject ThrownProjectilePrefab => thrownProjectilePrefab;
+    public Sprite ThrownProjectileSprite => thrownProjectileSprite;
+    public Color ThrownProjectileColor => thrownProjectileColor;
+    public float ThrownProjectileSize => Mathf.Max(0.01f, thrownProjectileSize);
     public float ThrownProjectileDuration =>
         Mathf.Max(0f, thrownProjectileDuration);
     public float ThrownProjectileArcHeight =>
@@ -253,6 +265,9 @@ public class EnemyData : ScriptableObject
         preferredDistance = Mathf.Max(0, preferredDistance);
         maxQueuedAttacks = Mathf.Max(1, maxQueuedAttacks);
         queuedActionInterval = Mathf.Max(0f, queuedActionInterval);
+        queueElementRevealDuration = Mathf.Max(
+            0f,
+            queueElementRevealDuration);
         meleeAdditionalAttackChance = Mathf.Clamp01(
             meleeAdditionalAttackChance);
         firingRange = Mathf.Max(1, firingRange);
@@ -262,6 +277,7 @@ public class EnemyData : ScriptableObject
         supportShieldAmount = Mathf.Max(1, supportShieldAmount);
         supportHealThreshold = Mathf.Clamp01(supportHealThreshold);
         thrownProjectileDuration = Mathf.Max(0f, thrownProjectileDuration);
+        thrownProjectileSize = Mathf.Max(0.01f, thrownProjectileSize);
         thrownProjectileArcHeight = Mathf.Max(
             0f,
             thrownProjectileArcHeight);

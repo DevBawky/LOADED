@@ -25,19 +25,88 @@ public enum EnemySupportType
     Shield
 }
 
+[System.Serializable]
+public class EnemyRandomSfxSettings
+{
+    [Tooltip("상황이 발생할 때 무작위로 선택할 효과음 목록입니다.")]
+    [SerializeField] private List<AudioClip> clips = new List<AudioClip>();
+    [Range(0f, 1f)]
+    [Tooltip("이 효과음 묶음의 재생 볼륨입니다.")]
+    [SerializeField] private float volume = 1f;
+    [Range(0.01f, 3f)]
+    [Tooltip("무작위 피치의 최솟값입니다.")]
+    [SerializeField] private float minPitch = 0.95f;
+    [Range(0.01f, 3f)]
+    [Tooltip("무작위 피치의 최댓값입니다.")]
+    [SerializeField] private float maxPitch = 1.05f;
+
+    public float Volume => Mathf.Clamp01(volume);
+    public float RandomPitch => UnityEngine.Random.Range(
+        Mathf.Min(minPitch, maxPitch),
+        Mathf.Max(minPitch, maxPitch));
+
+    public AudioClip GetRandomClip()
+    {
+        if (clips == null || clips.Count == 0)
+        {
+            return null;
+        }
+
+        int validClipCount = 0;
+
+        foreach (AudioClip clip in clips)
+        {
+            if (clip != null)
+            {
+                validClipCount++;
+            }
+        }
+
+        if (validClipCount == 0)
+        {
+            return null;
+        }
+
+        int selectedClipIndex = UnityEngine.Random.Range(0, validClipCount);
+
+        foreach (AudioClip clip in clips)
+        {
+            if (clip == null)
+            {
+                continue;
+            }
+
+            if (selectedClipIndex == 0)
+            {
+                return clip;
+            }
+
+            selectedClipIndex--;
+        }
+
+        return null;
+    }
+}
+
 public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
     private const int InitialFacingDirection = -1;
+    private static readonly int IdleAnimationStateHash =
+        Animator.StringToHash("Base Layer.Idle");
+    private static readonly int AttackAnimationStateHash =
+        Animator.StringToHash("Base Layer.Attack");
     private static readonly int BaseColorId =
         Shader.PropertyToID("_BaseColor");
     private static readonly int BeamColorId =
         Shader.PropertyToID("_BeamColor");
     private static readonly int GridColorId =
         Shader.PropertyToID("_GridColor");
+    private const int DefaultProjectileResolution = 32;
+    private static Sprite defaultThrownProjectileSprite;
 
     [Header("Data")]
+    [Tooltip("런타임에 WaveManager가 주입하는 적 데이터입니다.")]
     [SerializeField] private EnemyData enemyData;
-    [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Image healthFillImage;
     [SerializeField] private Transform canvasTransform;
     [SerializeField] private ActorMotion actorMotion;
@@ -45,7 +114,21 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private StatusEffectController statusEffects;
     [SerializeField] private EnemyDamageNumberDisplay damageNumberDisplay;
 
+    [Header("Audio")]
+    [Tooltip("출력 Mixer와 2D/3D 설정의 기준 AudioSource입니다. 비어 있으면 2D Source를 자동 생성합니다.")]
+    [SerializeField] private AudioSource sfxAudioSource;
+    [Tooltip("일반 공격에 맞았을 때 사용할 효과음 설정입니다.")]
+    [SerializeField] private EnemyRandomSfxSettings normalHitSfx =
+        new EnemyRandomSfxSettings();
+    [Tooltip("치명타 공격에 맞았을 때 사용할 효과음 설정입니다.")]
+    [SerializeField] private EnemyRandomSfxSettings criticalHitSfx =
+        new EnemyRandomSfxSettings();
+    [Tooltip("적이 죽을 때 사용할 효과음 설정입니다.")]
+    [SerializeField] private EnemyRandomSfxSettings deathSfx =
+        new EnemyRandomSfxSettings();
+
     [Header("Runtime State")]
+    [SerializeField] private GameObject avatarInstance;
     [SerializeField] private int currentHealth;
     [SerializeField] private int currentShield;
     [SerializeField] private int remainingSupportCharges;
@@ -74,6 +157,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         new List<EnemyController>();
     private MaterialPropertyBlock lineColorProperties;
     private EnemyHealthBarFeedback healthBarFeedback;
+    private Animator avatarAnimator;
+    private SpriteRenderer avatarSortingRenderer;
+    private int avatarAnimationSequence;
+    private readonly List<AudioSource> sfxAudioSourcePool =
+        new List<AudioSource>();
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
@@ -120,8 +208,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         healthBarFeedback?.Initialize(healthFillImage);
+        InitializeSfxAudioSource();
         ResetRuntimeState();
-        ApplySprite();
         ApplyCanvasOrientation();
     }
 
@@ -135,12 +223,13 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     }
 
     public bool Initialize(
+        EnemyData assignedEnemyData,
         BoardManager assignedBoardManager,
         PlayerMove assignedPlayerMove,
         PlayerHealth assignedPlayerHealth,
         WaveManager assignedWaveManager)
     {
-        if (enemyData == null || assignedBoardManager == null
+        if (assignedEnemyData == null || assignedBoardManager == null
             || assignedPlayerMove == null || assignedPlayerHealth == null
             || assignedWaveManager == null || actorMotion == null
             || actionQueueUI == null)
@@ -151,14 +240,18 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return false;
         }
 
+        enemyData = assignedEnemyData;
         boardManager = assignedBoardManager;
         playerMove = assignedPlayerMove;
         playerHealth = assignedPlayerHealth;
         waveManager = assignedWaveManager;
         ApplyInitialFacingDirection();
+        SpawnAvatar();
         ResetRuntimeState();
-        ApplySprite();
         ApplyCanvasOrientation();
+        gameObject.name = string.IsNullOrWhiteSpace(enemyData.DisplayName)
+            ? enemyData.name
+            : enemyData.DisplayName;
         isInitialized = true;
         return true;
     }
@@ -288,13 +381,20 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return 0;
         }
 
-        int modifiedDamage = statusEffects == null
-            ? damage
-            : statusEffects.ModifyIncomingAttackDamage(damage);
+        int modifiedDamage = PredictAttackDamage(damage);
         int appliedDamage = ApplyDamageInternal(
             modifiedDamage,
             isCritical,
             isCritical ? 1.45f : 1f);
+
+        if (appliedDamage > 0 && currentHealth > 0)
+        {
+            PlayRandomSfx(
+                isCritical
+                    ? criticalHitSfx
+                    : normalHitSfx);
+        }
+
         int markBonusDamage = Mathf.Max(0, modifiedDamage - damage);
 
         // Damage popups communicate the attack's full power, not the amount
@@ -302,6 +402,32 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         damageNumberDisplay?.ShowAttackDamage(damage, isCritical);
         damageNumberDisplay?.ShowMarkBonusDamage(markBonusDamage);
         return appliedDamage;
+    }
+
+    public int PredictAttackDamage(int damage)
+    {
+        if (damage <= 0 || currentHealth <= 0)
+        {
+            return 0;
+        }
+
+        return statusEffects == null
+            ? damage
+            : statusEffects.ModifyIncomingAttackDamage(damage);
+    }
+
+    public void ShowDamagePreview(
+        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments)
+    {
+        healthBarFeedback?.ShowDamagePreview(
+            currentHealth,
+            MaxHealth,
+            segments);
+    }
+
+    public void ClearDamagePreview()
+    {
+        healthBarFeedback?.ClearDamagePreview();
     }
 
     public bool ApplyStatusDamage(int damage)
@@ -370,6 +496,26 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         return applied;
     }
 
+    public int ActiveStatusTypeCount => statusEffects == null
+        ? 0
+        : statusEffects.ActiveStatusTypeCount;
+
+    public int GetStatusStacks(StatusEffectType type)
+    {
+        return statusEffects == null ? 0 : statusEffects.GetStacks(type);
+    }
+
+    public int ConsumeStatusStacks(StatusEffectType type)
+    {
+        return statusEffects == null ? 0 : statusEffects.Consume(type);
+    }
+
+    public bool MultiplyActiveStatusStacks(int multiplier)
+    {
+        return currentHealth > 0 && statusEffects != null
+            && statusEffects.MultiplyActiveStacks(multiplier);
+    }
+
     public void ShowLifeStealStatus()
     {
         damageNumberDisplay?.ShowLifeStealStatus();
@@ -407,6 +553,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (currentHealth == 0)
         {
+            PlayDeathSfx();
+
             if (actionQueueUI != null)
             {
                 actionQueueUI.ResetDisplay();
@@ -417,6 +565,123 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         return appliedDamage;
+    }
+
+    private void InitializeSfxAudioSource()
+    {
+        if (sfxAudioSource == null)
+        {
+            sfxAudioSource = GetComponent<AudioSource>();
+        }
+
+        if (sfxAudioSource == null)
+        {
+            sfxAudioSource = gameObject.AddComponent<AudioSource>();
+            sfxAudioSource.spatialBlend = 0f;
+        }
+
+        sfxAudioSource.playOnAwake = false;
+        sfxAudioSource.loop = false;
+        sfxAudioSourcePool.Clear();
+        sfxAudioSourcePool.Add(sfxAudioSource);
+    }
+
+    private void PlayRandomSfx(EnemyRandomSfxSettings settings)
+    {
+        if (!TryGetRandomSfx(settings, out AudioClip clip,
+                out float volume, out float pitch))
+        {
+            return;
+        }
+
+        AudioSource source = GetAvailableSfxAudioSource();
+        source.clip = clip;
+        source.volume = volume;
+        source.pitch = pitch;
+        source.Play();
+    }
+
+    private void PlayDeathSfx()
+    {
+        if (!TryGetRandomSfx(deathSfx, out AudioClip clip,
+                out float volume, out float pitch))
+        {
+            return;
+        }
+
+        GameObject audioObject = new GameObject("Enemy Death SFX");
+        audioObject.transform.position = transform.position;
+        AudioSource source = audioObject.AddComponent<AudioSource>();
+        CopyAudioSourceSettings(sfxAudioSource, source);
+        source.playOnAwake = false;
+        source.loop = false;
+        source.clip = clip;
+        source.volume = volume;
+        source.pitch = pitch;
+        source.Play();
+
+        float playbackDuration = clip.length / Mathf.Max(0.01f, Mathf.Abs(pitch));
+        Destroy(audioObject, playbackDuration + 0.1f);
+    }
+
+    private static bool TryGetRandomSfx(
+        EnemyRandomSfxSettings settings,
+        out AudioClip clip,
+        out float volume,
+        out float pitch)
+    {
+        clip = settings?.GetRandomClip();
+        volume = settings == null ? 1f : settings.Volume;
+        pitch = settings == null ? 1f : settings.RandomPitch;
+        return clip != null;
+    }
+
+    private AudioSource GetAvailableSfxAudioSource()
+    {
+        foreach (AudioSource source in sfxAudioSourcePool)
+        {
+            if (source != null && !source.isPlaying)
+            {
+                return source;
+            }
+        }
+
+        GameObject audioObject = new GameObject("Enemy SFX Source");
+        audioObject.transform.SetParent(transform, false);
+        AudioSource pooledSource = audioObject.AddComponent<AudioSource>();
+        CopyAudioSourceSettings(sfxAudioSource, pooledSource);
+        pooledSource.playOnAwake = false;
+        pooledSource.loop = false;
+        sfxAudioSourcePool.Add(pooledSource);
+        return pooledSource;
+    }
+
+    private static void CopyAudioSourceSettings(
+        AudioSource source,
+        AudioSource destination)
+    {
+        if (source == null || destination == null)
+        {
+            return;
+        }
+
+        destination.outputAudioMixerGroup = source.outputAudioMixerGroup;
+        destination.mute = source.mute;
+        destination.bypassEffects = source.bypassEffects;
+        destination.bypassListenerEffects = source.bypassListenerEffects;
+        destination.bypassReverbZones = source.bypassReverbZones;
+        destination.priority = source.priority;
+        destination.panStereo = source.panStereo;
+        destination.spatialBlend = source.spatialBlend;
+        destination.reverbZoneMix = source.reverbZoneMix;
+        destination.dopplerLevel = source.dopplerLevel;
+        destination.spread = source.spread;
+        destination.rolloffMode = source.rolloffMode;
+        destination.minDistance = source.minDistance;
+        destination.maxDistance = source.maxDistance;
+        destination.ignoreListenerPause = source.ignoreListenerPause;
+        destination.ignoreListenerVolume = source.ignoreListenerVolume;
+        destination.velocityUpdateMode = source.velocityUpdateMode;
     }
 
     public bool Heal(int amount)
@@ -611,8 +876,13 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private bool TryAppendAction(
         EnemyActionType actionType,
-        int actionIndex)
+        int actionIndex,
+        out Image attackIcon,
+        out EnemyActionData appendedAction)
     {
+        attackIcon = null;
+        appendedAction = null;
+
         if (queuedAttackActions.Count >= enemyData.MaxQueuedAttacks)
         {
             return false;
@@ -624,19 +894,21 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             actionType != EnemyActionType.Support);
 
         if (attackAction == null
-            || !actionQueueUI.AddAttackIcon(attackAction))
+            || !actionQueueUI.AddAttackIcon(attackAction, out attackIcon))
         {
             return false;
         }
 
         queuedAttackActions.Add(attackAction);
+        appendedAction = attackAction;
         return true;
     }
 
     private void CreateAttackQueue()
     {
-        EnsureAttackQueueVisible();
-        CompleteAction(EnemyTurnActionType.CreateQueue);
+        isQueueCreated = true;
+        isAttackPrepared = false;
+        StartCoroutine(RevealAttackQueue());
     }
 
     private void RegisterAction(
@@ -644,14 +916,24 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int actionIndex)
     {
         if (!isQueueCreated
-            || !TryAppendAction(actionType, actionIndex))
+            || !TryAppendAction(
+                actionType,
+                actionIndex,
+                out Image attackIcon,
+                out EnemyActionData appendedAction))
         {
             ClearAttackQueue();
             CompleteAction(EnemyTurnActionType.Wait);
             return;
         }
 
-        CompleteAction(EnemyTurnActionType.RegisterAttack);
+        if (enemyData.BehaviorType != EnemyBehaviorType.Melee
+            && appendedAction.ActionType == EnemyActionType.RangedAttack)
+        {
+            StartCoroutine(PlayAvatarAttackAnimation());
+        }
+
+        StartCoroutine(RevealRegisteredAction(attackIcon));
     }
 
     private void ApplyInitialFacingDirection()
@@ -668,16 +950,19 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         transform.localScale = localScale;
     }
 
-    private void EnsureAttackQueueVisible()
+    private IEnumerator RevealAttackQueue()
     {
-        if (isQueueCreated)
-        {
-            return;
-        }
+        yield return actionQueueUI.RevealQueue(
+            enemyData.QueueElementRevealDuration);
+        CompleteAction(EnemyTurnActionType.CreateQueue);
+    }
 
-        isQueueCreated = true;
-        isAttackPrepared = false;
-        actionQueueUI.ShowQueue();
+    private IEnumerator RevealRegisteredAction(Image attackIcon)
+    {
+        yield return actionQueueUI.RevealIcon(
+            attackIcon,
+            enemyData.QueueElementRevealDuration);
+        CompleteAction(EnemyTurnActionType.RegisterAttack);
     }
 
     private void PrepareCurrentAttackQueue()
@@ -730,9 +1015,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             ApplyLineShaderColor(lineRenderer, telegraphColor);
         }
 
-        if (spriteRenderer != null)
+        if (avatarSortingRenderer != null)
         {
-            lineRenderer.sortingLayerID = spriteRenderer.sortingLayerID;
+            lineRenderer.sortingLayerID =
+                avatarSortingRenderer.sortingLayerID;
         }
 
         bool positionsApplied = enemyData.BehaviorType switch
@@ -897,10 +1183,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 ? 19
                 : enemyData.TelegraphSortingOrder - 1;
 
-            if (spriteRenderer != null)
+            if (avatarSortingRenderer != null)
             {
                 shieldIndicatorLine.sortingLayerID =
-                    spriteRenderer.sortingLayerID;
+                    avatarSortingRenderer.sortingLayerID;
             }
 
             for (int pointIndex = 0;
@@ -1037,6 +1323,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
         {
             yield break;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.Melee)
+        {
+            yield return PlayAvatarAttackAnimation();
         }
 
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
@@ -1271,7 +1562,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         float duration = enemyData.ThrownProjectileDuration;
         float arcHeight = enemyData.ThrownProjectileArcHeight;
         GameObject projectile = enemyData.ThrownProjectilePrefab == null
-            ? null
+            ? CreateDefaultThrownProjectile(startPosition)
             : Instantiate(
                 enemyData.ThrownProjectilePrefab,
                 startPosition,
@@ -1319,6 +1610,78 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             projectile.transform.position = targetPosition;
             Destroy(projectile);
         }
+    }
+
+    private GameObject CreateDefaultThrownProjectile(Vector3 position)
+    {
+        GameObject projectile = new GameObject("Sprite | Thrown Projectile");
+        projectile.transform.position = position;
+        projectile.transform.localScale = Vector3.one
+            * enemyData.ThrownProjectileSize;
+        SpriteRenderer projectileRenderer =
+            projectile.AddComponent<SpriteRenderer>();
+        projectileRenderer.sprite = enemyData.ThrownProjectileSprite != null
+            ? enemyData.ThrownProjectileSprite
+            : GetDefaultThrownProjectileSprite();
+        projectileRenderer.color = enemyData.ThrownProjectileColor;
+
+        if (avatarSortingRenderer != null)
+        {
+            projectileRenderer.sortingLayerID =
+                avatarSortingRenderer.sortingLayerID;
+            projectileRenderer.sortingOrder =
+                GetHighestAvatarSortingOrder() + 1;
+        }
+
+        return projectile;
+    }
+
+    private static Sprite GetDefaultThrownProjectileSprite()
+    {
+        if (defaultThrownProjectileSprite != null)
+        {
+            return defaultThrownProjectileSprite;
+        }
+
+        int resolution = DefaultProjectileResolution;
+        Texture2D texture = new Texture2D(
+            resolution,
+            resolution,
+            TextureFormat.RGBA32,
+            false);
+        texture.name = "Runtime Default Thrown Projectile";
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.filterMode = FilterMode.Bilinear;
+        texture.hideFlags = HideFlags.HideAndDontSave;
+        Color[] pixels = new Color[resolution * resolution];
+        Vector2 center = Vector2.one * ((resolution - 1) * 0.5f);
+        float radius = resolution * 0.46f;
+        float edgeWidth = 1.5f;
+
+        for (int y = 0; y < resolution; y++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                float distance = Vector2.Distance(new Vector2(x, y), center);
+                float alpha = 1f - Mathf.SmoothStep(
+                    radius - edgeWidth,
+                    radius,
+                    distance);
+                pixels[y * resolution + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply(false, true);
+        defaultThrownProjectileSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, resolution, resolution),
+            new Vector2(0.5f, 0.5f),
+            resolution);
+        defaultThrownProjectileSprite.name =
+            "Runtime Default Thrown Projectile";
+        defaultThrownProjectileSprite.hideFlags = HideFlags.HideAndDontSave;
+        return defaultThrownProjectileSprite;
     }
 
     private void ApplyAttackToTarget(
@@ -1790,12 +2153,137 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         RefreshHealthUI();
     }
 
-    private void ApplySprite()
+    private void SpawnAvatar()
     {
-        if (spriteRenderer != null && enemyData != null && enemyData.Sprite != null)
+        avatarAnimationSequence++;
+
+        if (avatarInstance != null)
         {
-            spriteRenderer.sprite = enemyData.Sprite;
+            Destroy(avatarInstance);
         }
+
+        avatarInstance = null;
+        avatarAnimator = null;
+        avatarSortingRenderer = null;
+
+        if (enemyData == null || enemyData.Avatar == null)
+        {
+            Debug.LogWarning(
+                $"EnemyData '{(enemyData == null ? "None" : enemyData.name)}' has no Avatar prefab.",
+                this);
+            return;
+        }
+
+        avatarInstance = Instantiate(enemyData.Avatar);
+        avatarInstance.name = enemyData.Avatar.name;
+        avatarInstance.transform.SetParent(transform, false);
+        avatarInstance.transform.localPosition = Vector3.zero;
+        avatarInstance.transform.localRotation = Quaternion.identity;
+        avatarAnimator = avatarInstance.GetComponentInChildren<Animator>(true);
+        avatarSortingRenderer =
+            avatarInstance.GetComponentInChildren<SpriteRenderer>(true);
+
+        if (avatarAnimator == null)
+        {
+            Debug.LogWarning(
+                $"Enemy Avatar '{enemyData.Avatar.name}' has no Animator.",
+                avatarInstance);
+        }
+        else if (avatarAnimator.runtimeAnimatorController == null)
+        {
+            Debug.LogWarning(
+                $"Enemy Avatar '{enemyData.Avatar.name}' has no Animator Controller.",
+                avatarAnimator);
+        }
+        else
+        {
+            if (!avatarAnimator.HasState(0, IdleAnimationStateHash))
+            {
+                Debug.LogWarning(
+                    $"Enemy Avatar '{enemyData.Avatar.name}' has no Base Layer.Idle state.",
+                    avatarAnimator);
+            }
+
+            if (!avatarAnimator.HasState(0, AttackAnimationStateHash))
+            {
+                Debug.LogWarning(
+                    $"Enemy Avatar '{enemyData.Avatar.name}' has no Base Layer.Attack state.",
+                    avatarAnimator);
+            }
+        }
+
+        PlayAvatarIdle();
+    }
+
+    private IEnumerator PlayAvatarAttackAnimation()
+    {
+        if (avatarAnimator == null
+            || avatarAnimator.runtimeAnimatorController == null
+            || !avatarAnimator.HasState(0, AttackAnimationStateHash))
+        {
+            yield break;
+        }
+
+        int animationSequence = ++avatarAnimationSequence;
+        avatarAnimator.Play(AttackAnimationStateHash, 0, 0f);
+        avatarAnimator.Update(0f);
+        AnimatorStateInfo attackState =
+            avatarAnimator.GetCurrentAnimatorStateInfo(0);
+        float duration = Mathf.Max(
+            0f,
+            attackState.length / Mathf.Max(0.01f, avatarAnimator.speed));
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration && avatarAnimator != null
+            && animationSequence == avatarAnimationSequence)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+            }
+        }
+
+        if (animationSequence == avatarAnimationSequence)
+        {
+            PlayAvatarIdle();
+        }
+    }
+
+    private void PlayAvatarIdle()
+    {
+        if (avatarAnimator == null
+            || avatarAnimator.runtimeAnimatorController == null
+            || !avatarAnimator.HasState(0, IdleAnimationStateHash))
+        {
+            return;
+        }
+
+        avatarAnimator.Play(IdleAnimationStateHash, 0, 0f);
+        avatarAnimator.Update(0f);
+    }
+
+    private int GetHighestAvatarSortingOrder()
+    {
+        int highestSortingOrder = avatarSortingRenderer == null
+            ? 0
+            : avatarSortingRenderer.sortingOrder;
+
+        if (avatarInstance == null)
+        {
+            return highestSortingOrder;
+        }
+
+        foreach (SpriteRenderer renderer in
+                 avatarInstance.GetComponentsInChildren<SpriteRenderer>(true))
+        {
+            highestSortingOrder = Mathf.Max(
+                highestSortingOrder,
+                renderer.sortingOrder);
+        }
+
+        return highestSortingOrder;
     }
 
     private void RefreshHealthUI(
