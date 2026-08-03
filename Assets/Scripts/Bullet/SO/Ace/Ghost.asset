@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_ghost
   displayName: "\uC720\uB839\uD0C4"
   description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD569\uB2C8\uB2E4."
-  bulletIcon: {fileID: -6138938593977612690, guid: eb307bc2a03f0da428437dedf95e60ee, type: 3}
+  bulletIcon: {fileID: 6341267608059338579, guid: 406843d572897ad4b8c689a7d872fa1e, type: 3}
   cylinderIcon: {fileID: 21300000, guid: b43edd6bdc25126428beb37e419723ef, type: 3}
   price: 14
   grade: 2
@@ -37,7 +37,7 @@ MonoBehaviour:
   doesNotConsumeTurn: 1
   recoilStrength: 0.1
   removeCost: 5
-  upgradeCost: 10
+  upgradeCost: 30
   upgradeLevels:
   - description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD569\uB2C8\uB2E4.\n50%
       \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
@@ -55,7 +55,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 55
   - description: "\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD569\uB2C8\uB2E4.\n50%
       \uD655\uB960\uB85C \uCD5C\uB300 2\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
     damage: 36
@@ -73,7 +73,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 90
   - description: "\"\uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uACE0 \uC7A5\uC804\uD569\uB2C8\uB2E4.\n50%
       \uD655\uB960\uB85C \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n\uC801
       \uCC98\uCE58 \uC2DC $3\uC744 \uD68D\uB4DD\uD569\uB2C8\uB2E4.\""
@@ -102,4 +102,4 @@ MonoBehaviour:
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 10
+    upgradeCost: 0

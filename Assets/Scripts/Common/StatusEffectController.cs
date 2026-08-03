@@ -53,7 +53,32 @@ public class StatusEffectController : MonoBehaviour
     private void Awake()
     {
         target = GetComponent<IStatusEffectTarget>();
+        ResolveStatusIconParent();
         RefreshAllIcons();
+    }
+
+    private void ResolveStatusIconParent()
+    {
+        if (statusIconParent != null && statusIconParent.IsChildOf(transform))
+        {
+            return;
+        }
+
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+
+        foreach (Transform child in children)
+        {
+            if (child != transform && child.name == "Image | Status")
+            {
+                statusIconParent = child;
+                return;
+            }
+        }
+
+        statusIconParent = null;
+        Debug.LogError(
+            $"{nameof(StatusEffectController)} requires a child named 'Image | Status'.",
+            this);
     }
 
     public int GetStacks(StatusEffectType type)
@@ -71,6 +96,59 @@ public class StatusEffectController : MonoBehaviour
             default:
                 return 0;
         }
+    }
+
+    public int ActiveStatusTypeCount
+    {
+        get
+        {
+            int count = 0;
+
+            foreach (StatusEffectType type in Enum.GetValues(
+                         typeof(StatusEffectType)))
+            {
+                if (GetStacks(type) > 0)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+    }
+
+    public int Consume(StatusEffectType type)
+    {
+        int stacks = GetStacks(type);
+        SetStacks(type, 0);
+        return stacks;
+    }
+
+    public bool MultiplyActiveStacks(int multiplier)
+    {
+        if (multiplier <= 1)
+        {
+            return false;
+        }
+
+        bool changed = false;
+
+        foreach (StatusEffectType type in Enum.GetValues(
+                     typeof(StatusEffectType)))
+        {
+            int stacks = GetStacks(type);
+
+            if (stacks <= 0)
+            {
+                continue;
+            }
+
+            long multiplied = (long)stacks * multiplier;
+            SetStacks(type, (int)Math.Min(int.MaxValue, multiplied));
+            changed = true;
+        }
+
+        return changed;
     }
 
     public bool Add(StatusEffectType type, int stacks)
