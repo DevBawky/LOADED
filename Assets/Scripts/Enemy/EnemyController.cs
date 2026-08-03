@@ -112,6 +112,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         Animator.StringToHash("Base Layer.Idle");
     private static readonly int AttackAnimationStateHash =
         Animator.StringToHash("Base Layer.Attack");
+    private static readonly int IsReloadedAnimationParameterHash =
+        Animator.StringToHash("isReloaded");
     private static readonly int BaseColorId =
         Shader.PropertyToID("_BaseColor");
     private static readonly int BeamColorId =
@@ -1428,6 +1430,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         queuedAttackActions.Add(attackAction);
+        RefreshGunnerReloadedAnimation();
         appendedAction = attackAction;
         return true;
     }
@@ -1448,17 +1451,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 actionType,
                 actionIndex,
                 out Image attackIcon,
-                out EnemyActionData appendedAction))
+                out _))
         {
             ClearAttackQueue();
             CompleteAction(EnemyTurnActionType.Wait);
             return;
-        }
-
-        if (enemyData.BehaviorType != EnemyBehaviorType.Melee
-            && appendedAction.ActionType == EnemyActionType.RangedAttack)
-        {
-            StartCoroutine(PlayAvatarAttackAnimation());
         }
 
         StartCoroutine(RevealRegisteredAction(attackIcon));
@@ -1872,6 +1869,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             queuedAttackActions.RemoveAt(0);
             yield return ExecuteQueuedAttack(attackAction);
             actionQueueUI.RemoveFirstIcon();
+            RefreshGunnerReloadedAnimation();
 
             if (queuedAttackActions.Count > 0)
             {
@@ -2113,6 +2111,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             yield break;
         }
 
+        PlayThrowerAttackAnimation();
         yield return PlayThrownProjectile(preparedTargetPosition);
 
         if (attackData.AttackEffectPrefab != null)
@@ -2477,6 +2476,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private void ClearAttackQueue()
     {
         queuedAttackActions.Clear();
+        RefreshGunnerReloadedAnimation();
         isQueueCreated = false;
         isAttackPrepared = false;
         preparedTargetTileIndex = -1;
@@ -2718,6 +2718,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             : enemyData.MaxSupportCharges;
         recoveryTurnsRemaining = 0;
         queuedAttackActions.Clear();
+        RefreshGunnerReloadedAnimation();
         isQueueCreated = false;
         isAttackPrepared = false;
         isRetreating = false;
@@ -2808,6 +2809,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         PlayAvatarIdle();
+        RefreshGunnerReloadedAnimation();
     }
 
     private IEnumerator PlayAvatarAttackAnimation()
@@ -2844,6 +2846,57 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             PlayAvatarIdle();
         }
+    }
+
+    private void PlayThrowerAttackAnimation()
+    {
+        if (enemyData == null
+            || enemyData.BehaviorType != EnemyBehaviorType.Thrower
+            || avatarAnimator == null
+            || avatarAnimator.runtimeAnimatorController == null
+            || !avatarAnimator.HasState(0, AttackAnimationStateHash))
+        {
+            return;
+        }
+
+        avatarAnimationSequence++;
+        avatarAnimator.Play(AttackAnimationStateHash, 0, 0f);
+        avatarAnimator.Update(0f);
+    }
+
+    private void RefreshGunnerReloadedAnimation()
+    {
+        if (enemyData == null
+            || enemyData.BehaviorType != EnemyBehaviorType.Gunner
+            || avatarAnimator == null
+            || avatarAnimator.runtimeAnimatorController == null
+            || !HasAnimatorParameter(
+                IsReloadedAnimationParameterHash,
+                AnimatorControllerParameterType.Bool))
+        {
+            return;
+        }
+
+        avatarAnimator.SetBool(
+            IsReloadedAnimationParameterHash,
+            queuedAttackActions.Count > 0);
+    }
+
+    private bool HasAnimatorParameter(
+        int parameterHash,
+        AnimatorControllerParameterType parameterType)
+    {
+        foreach (AnimatorControllerParameter parameter
+                 in avatarAnimator.parameters)
+        {
+            if (parameter.nameHash == parameterHash
+                && parameter.type == parameterType)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void PlayAvatarIdle()
