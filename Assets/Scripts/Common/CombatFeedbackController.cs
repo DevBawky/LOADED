@@ -213,7 +213,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void OnDisable()
     {
-        RestoreSlowMotion();
+        CancelSlowMotionAndRestore();
         RestoreVolume();
         RestoreAudioFilter();
         ResetFullscreenImpact();
@@ -222,6 +222,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void OnDestroy()
     {
+        CancelSlowMotionAndRestore();
         DestroyRuntimeClip(hitAccentClip, "Runtime Hit Accent");
         DestroyRuntimeClip(criticalAccentClip, "Runtime Critical Accent");
         DestroyRuntimeClip(killAccentClip, "Runtime Kill Accent");
@@ -809,7 +810,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         if (slowMotionCoroutine != null)
         {
             StopCoroutine(slowMotionCoroutine);
-            RestoreSlowMotion();
+            slowMotionCoroutine = null;
         }
 
         float scale = Mathf.Lerp(0.52f, killSlowMotionScale, intensity);
@@ -830,8 +831,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
             yield return null;
         }
 
-        slowMotionBaseScale = Time.timeScale;
-        ownsTimeScale = true;
+        if (!ownsTimeScale)
+        {
+            slowMotionBaseScale = Time.timeScale;
+            ownsTimeScale = true;
+        }
         float elapsed = 0f;
 
         while (elapsed < holdDuration)
@@ -872,12 +876,23 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void RestoreSlowMotion()
     {
-        if (ownsTimeScale && Time.timeScale > 0f)
+        if (ownsTimeScale)
         {
             Time.timeScale = slowMotionBaseScale;
         }
 
         ownsTimeScale = false;
+    }
+
+    private void CancelSlowMotionAndRestore()
+    {
+        if (slowMotionCoroutine != null)
+        {
+            StopCoroutine(slowMotionCoroutine);
+            slowMotionCoroutine = null;
+        }
+
+        RestoreSlowMotion();
     }
 
     private void QueueFullscreenImpact(
