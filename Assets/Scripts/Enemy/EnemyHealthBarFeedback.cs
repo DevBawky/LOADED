@@ -228,12 +228,16 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
 
         ClearDamagePreview();
         previewActive = true;
-        previewOriginalHealthValue = healthFillImage.fillAmount;
+        // The Image can retain a preview-era fill amount across a domain
+        // reload. Always rebuild the baseline from authoritative health so a
+        // full-health enemy starts at the actual right edge of the bar.
+        previewOriginalHealthValue = Mathf.Clamp01(
+            (float)currentHealth / maxHealth);
+        healthFillImage.fillAmount = previewOriginalHealthValue;
         damageGhostImage.enabled = false;
 
         int remainingHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
-        float displayedRemainingRatio = Mathf.Clamp01(
-            previewOriginalHealthValue);
+        float displayedRemainingRatio = previewOriginalHealthValue;
         int visibleSegmentCount = 0;
 
         foreach (DamagePreviewSegment segment in segments)
@@ -331,11 +335,26 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
 
             RectTransform previewRect =
                 previewObject.GetComponent<RectTransform>();
-            previewRect.SetParent(healthFillImage.transform.parent, false);
-            CopyRectTransform(healthFillImage.rectTransform, previewRect);
+            // The prediction must use HP_Value itself as its coordinate
+            // space. Making it a sibling only copied HP_Value's layout while
+            // still measuring/rendering relative to HP_Bar.
+            previewRect.SetParent(healthFillImage.transform, false);
+            previewRect.anchorMin = Vector2.zero;
+            previewRect.anchorMax = Vector2.one;
+            previewRect.anchoredPosition = Vector2.zero;
+            previewRect.sizeDelta = Vector2.zero;
+            previewRect.pivot = healthFillImage.rectTransform.pivot;
+            previewRect.localRotation = Quaternion.identity;
+            previewRect.localScale = Vector3.one;
 
             Image previewImage = previewObject.GetComponent<Image>();
             CopyImageSettings(healthFillImage, previewImage);
+            // A plain quad gives the shader an exact 0..1 UV range. Reusing
+            // HP_Value's rounded UISprite makes a narrow segment at UV 1
+            // disappear inside the sprite's transparent right border.
+            previewImage.sprite = null;
+            previewImage.type = Image.Type.Simple;
+            previewImage.fillAmount = 1f;
             previewImage.raycastTarget = false;
 
             Material sourceMaterial = healthBarMaterial != null
@@ -381,18 +400,46 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
 
     private void SanitizeExistingDamagePreviewChildren()
     {
-        if (previewChildrenSanitized || barRect == null)
+        bool hasValidTrackedPreview = damagePreviewImages.Count > 0
+            && damagePreviewImages[0] != null
+            && damagePreviewImages[0].transform.parent
+                == healthFillImage.transform;
+
+        if ((previewChildrenSanitized && hasValidTrackedPreview)
+            || barRect == null)
         {
             return;
         }
 
         previewChildrenSanitized = true;
 
-        for (int childIndex = barRect.childCount - 1;
+        SanitizeDamagePreviewChildren(barRect);
+
+        if (healthFillImage.transform != barRect)
+        {
+            SanitizeDamagePreviewChildren(healthFillImage.transform);
+        }
+
+        // During a domain reload Unity can restore the runtime child while
+        // leaving these non-serialized tracking collections in a different
+        // state. Never keep a reference to an object scheduled for Destroy;
+        // EnsureDamagePreviewImage must create a fresh overlay below.
+        damagePreviewImages.Clear();
+        damagePreviewMaterials.Clear();
+    }
+
+    private void SanitizeDamagePreviewChildren(Transform parent)
+    {
+        if (parent == null)
+        {
+            return;
+        }
+
+        for (int childIndex = parent.childCount - 1;
              childIndex >= 0;
              childIndex--)
         {
-            Transform child = barRect.GetChild(childIndex);
+            Transform child = parent.GetChild(childIndex);
 
             if (child == null || !child.name.StartsWith(DamagePreviewName))
             {
