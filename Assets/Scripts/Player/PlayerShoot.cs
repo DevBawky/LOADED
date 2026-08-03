@@ -876,6 +876,18 @@ public class PlayerShoot : MonoBehaviour
         }
     }
 
+    private float GetCurrentCylinderBuild()
+    {
+        if (initialLoadedBulletCount <= 1)
+        {
+            return 1f;
+        }
+
+        return Mathf.Clamp01(
+            (float)Mathf.Max(1, bulletsFiredThisCylinder)
+            / initialLoadedBulletCount);
+    }
+
     private void InitializeSfxAudioSource()
     {
         if (sfxAudioSource == null)
@@ -1714,6 +1726,7 @@ public class PlayerShoot : MonoBehaviour
                     ? default
                     : combatPresentation.CaptureEnemy(enemy);
             int healthBeforeHit = enemy.CurrentHealth;
+            int targetMaxHealth = enemy.MaxHealth;
             bool defeatPresented = false;
             float targetDamageMultiplier = GetTargetDamageMultiplier(
                 bulletData,
@@ -1755,8 +1768,11 @@ public class PlayerShoot : MonoBehaviour
                 combatFeedback?.RecordDefeat(
                     enemySnapshot.Position,
                     horizontalDirection,
+                    0,
+                    targetMaxHealth,
                     isCritical,
-                    waveManager != null && waveManager.ActiveEnemies.Count <= 1);
+                    waveManager != null && waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild());
                 yield return ApplyConditionalEvents(
                     bulletData,
                     BulletConditionalTrigger.EnemyDefeated,
@@ -1788,8 +1804,21 @@ public class PlayerShoot : MonoBehaviour
                 combatFeedback?.RecordDefeat(
                     enemySnapshot.Position,
                     horizontalDirection,
+                    appliedDamage,
+                    targetMaxHealth,
                     isCritical,
-                    waveManager != null && waveManager.ActiveEnemies.Count <= 1);
+                    waveManager != null && waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild());
+            }
+            else if (appliedDamage > 0)
+            {
+                combatFeedback?.RecordHit(
+                    enemySnapshot.Position,
+                    horizontalDirection,
+                    appliedDamage,
+                    targetMaxHealth,
+                    isCritical,
+                    GetCurrentCylinderBuild());
             }
             bool defeatedByManagedEffect = false;
 
@@ -1976,6 +2005,7 @@ public class PlayerShoot : MonoBehaviour
                         / 100);
                 int poisonDamage = (int)scaledPoisonDamage;
                 int healthBeforePoison = enemy.CurrentHealth;
+                int poisonTargetMaxHealth = enemy.MaxHealth;
                 Vector3 poisonImpactPosition = enemy.transform.position;
                 int appliedPoisonDamage = enemy.ApplyStatusDamageAmount(
                     poisonDamage);
@@ -1990,9 +2020,22 @@ public class PlayerShoot : MonoBehaviour
                     combatFeedback?.RecordDefeat(
                         poisonImpactPosition,
                         horizontalDirection,
+                        appliedPoisonDamage,
+                        poisonTargetMaxHealth,
                         false,
                         waveManager != null
-                            && waveManager.ActiveEnemies.Count <= 1);
+                            && waveManager.ActiveEnemies.Count <= 1,
+                        GetCurrentCylinderBuild());
+                }
+                else if (appliedPoisonDamage > 0)
+                {
+                    combatFeedback?.RecordHit(
+                        poisonImpactPosition,
+                        horizontalDirection,
+                        appliedPoisonDamage,
+                        poisonTargetMaxHealth,
+                        false,
+                        GetCurrentCylinderBuild());
                 }
             }
 

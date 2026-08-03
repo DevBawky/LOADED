@@ -586,8 +586,15 @@ MonoBehaviour:
   radialZoomStrength: 0.85
   directionalTearStrength: 0.72
   fullscreenImpactColor: {r: 1, g: 0.3, b: 0.06, a: 1}
+  hitFullscreenDuration: 0.14
+  minimumHitIntensity: 0.18
+  hitCameraShake: 0.018
+  hitAccentClip: {fileID: 0}
+  criticalAccentClip: {fileID: 0}
   killAccentClip: {fileID: 0}
-  killAccentVolume: 0.7
+  hitAccentVolume: 0.72
+  criticalAccentVolume: 0.9
+  killAccentVolume: 0.95
 --- !u!114 &7459208863926184471
 MonoBehaviour:
   m_ObjectHideFlags: 0
