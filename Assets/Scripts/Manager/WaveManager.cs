@@ -33,8 +33,10 @@ public class WaveManager : MonoBehaviour
 
     [Header("Turn Timing")]
     [Min(0f)]
+    [Tooltip("모든 적이 즉시 행동을 마칠 때 적 전체가 공유하는 기본 턴 시간입니다.")]
     [SerializeField] private float enemyTurnDelay = 0.35f;
     [Min(0f)]
+    [Tooltip("실제 공격 행동 뒤에만 추가하는 간격입니다.")]
     [SerializeField] private float enemyActionInterval = 0.15f;
 
     [Header("References")]
@@ -289,10 +291,10 @@ public class WaveManager : MonoBehaviour
         playerMove.SetEnemyTurnResolving(true);
         StateChanged?.Invoke();
 
-        yield return WaitForTurnTime(enemyTurnDelay);
         RemoveMissingEnemies();
 
         EnemyController[] enemiesThisTurn = activeEnemies.ToArray();
+        float remainingTurnDelay = enemyTurnDelay;
 
         for (int enemyIndex = 0;
              enemyIndex < enemiesThisTurn.Length;
@@ -303,10 +305,16 @@ public class WaveManager : MonoBehaviour
             if (enemy != null && activeEnemies.Contains(enemy))
             {
                 enemy.TakeTurn();
+                float actionElapsedTime = 0f;
 
                 while (enemy != null && enemy.IsActing)
                 {
                     yield return null;
+
+                    if (!GamePauseController.IsPaused)
+                    {
+                        actionElapsedTime += Time.deltaTime;
+                    }
                 }
 
                 if (playerHealth.IsDefeated)
@@ -314,12 +322,25 @@ public class WaveManager : MonoBehaviour
                     break;
                 }
 
-                if (enemyIndex < enemiesThisTurn.Length - 1)
+                bool performedAttack = enemy != null
+                    && enemy.LastTurnAction == EnemyTurnActionType.Fire;
+
+                if (!performedAttack)
+                {
+                    remainingTurnDelay = Mathf.Max(
+                        0f,
+                        remainingTurnDelay - actionElapsedTime);
+                }
+
+                if (performedAttack
+                    && enemyIndex < enemiesThisTurn.Length - 1)
                 {
                     yield return WaitForTurnTime(enemyActionInterval);
                 }
             }
         }
+
+        yield return WaitForTurnTime(remainingTurnDelay);
 
         RemoveMissingEnemies();
         EnemyTurnCycleCompleted?.Invoke(currentEnemyTurnCycle);

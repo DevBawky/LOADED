@@ -1130,7 +1130,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WaveManager
   spawnPositionOffset: {x: 0, y: 1.05, z: 0}
   enemyTurnDelay: 0.1
-  enemyActionInterval: 0.05
+  enemyActionInterval: 0.1
   enemyPrefabTemplate: {fileID: 7796848737825960580, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
   boardManager: {fileID: 561211666}
   playerMove: {fileID: 2023230408}
