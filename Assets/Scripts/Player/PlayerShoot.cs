@@ -155,6 +155,7 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private PlayerCylinderUI cylinderUI;
     [SerializeField] private Image bulletFeedbackImage;
     [SerializeField] private CombatPresentation combatPresentation;
+    [SerializeField] private CombatFeedbackController combatFeedback;
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.2f;
 
@@ -241,10 +242,16 @@ public class PlayerShoot : MonoBehaviour
     {
         currencyManager ??= FindFirstObjectByType<CurrencyManager>();
         combatPresentation ??= GetComponent<CombatPresentation>();
+        combatFeedback ??= GetComponent<CombatFeedbackController>();
 
         if (combatPresentation == null)
         {
             combatPresentation = gameObject.AddComponent<CombatPresentation>();
+        }
+
+        if (combatFeedback == null)
+        {
+            combatFeedback = gameObject.AddComponent<CombatFeedbackController>();
         }
 
         if (playerMove != null)
@@ -467,6 +474,7 @@ public class PlayerShoot : MonoBehaviour
         criticalShotsThisCylinder = 0;
         bulletDestroyedThisCylinder = false;
         pendingSaverGold = 0;
+        combatFeedback?.BeginCylinder();
         bool saverRefundsTurn = false;
         int quickDrawThreshold = GetLoadedEffectMaximumStackCount(
             BulletEffectType.QuickDraw);
@@ -723,6 +731,7 @@ public class PlayerShoot : MonoBehaviour
 
         isFiring = false;
         playerMove.SetShooting(false);
+        combatFeedback?.EndCylinder();
         currentConsumedBullet = null;
         reservedDamageByEnemy.Clear();
     }
@@ -1743,6 +1752,11 @@ public class PlayerShoot : MonoBehaviour
                     bulletData,
                     isCritical,
                     true);
+                combatFeedback?.RecordDefeat(
+                    enemySnapshot.Position,
+                    horizontalDirection,
+                    isCritical,
+                    waveManager != null && waveManager.ActiveEnemies.Count <= 1);
                 yield return ApplyConditionalEvents(
                     bulletData,
                     BulletConditionalTrigger.EnemyDefeated,
@@ -1756,7 +1770,11 @@ public class PlayerShoot : MonoBehaviour
             int appliedDamage = enemy.ApplyAttackDamage(
                 attackDamage,
                 isCritical);
-            bool defeatedByAttack = appliedDamage >= healthBeforeHit;
+            bool defeatedByAttack = healthBeforeHit > 0
+                && enemy.CurrentHealth <= 0;
+            combatFeedback?.RecordDamage(
+                appliedDamage,
+                attackDamage > appliedDamage);
             combatPresentation?.PlayImpact(
                 enemySnapshot,
                 horizontalDirection,
@@ -1764,6 +1782,15 @@ public class PlayerShoot : MonoBehaviour
                 isCritical,
                 defeatedByAttack);
             defeatPresented = defeatedByAttack;
+
+            if (defeatedByAttack)
+            {
+                combatFeedback?.RecordDefeat(
+                    enemySnapshot.Position,
+                    horizontalDirection,
+                    isCritical,
+                    waveManager != null && waveManager.ActiveEnemies.Count <= 1);
+            }
             bool defeatedByManagedEffect = false;
 
             IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
@@ -1813,6 +1840,7 @@ public class PlayerShoot : MonoBehaviour
             yield return ApplyManagedTargetEffects(
                 bulletData,
                 enemy,
+                horizontalDirection,
                 result => defeatedByManagedEffect = result);
 
             if (enemy == null || enemy.CurrentHealth <= 0)
@@ -1906,6 +1934,7 @@ public class PlayerShoot : MonoBehaviour
     private IEnumerator ApplyManagedTargetEffects(
         BulletInstance bullet,
         EnemyController enemy,
+        int horizontalDirection,
         Action<bool> onCompleted)
     {
         if (bullet == null || enemy == null || enemy.CurrentHealth <= 0)
@@ -1947,8 +1976,24 @@ public class PlayerShoot : MonoBehaviour
                         / 100);
                 int poisonDamage = (int)scaledPoisonDamage;
                 int healthBeforePoison = enemy.CurrentHealth;
-                enemy.ApplyStatusDamage(poisonDamage);
-                defeated = poisonDamage >= healthBeforePoison;
+                Vector3 poisonImpactPosition = enemy.transform.position;
+                int appliedPoisonDamage = enemy.ApplyStatusDamageAmount(
+                    poisonDamage);
+                combatFeedback?.RecordDamage(
+                    appliedPoisonDamage,
+                    poisonDamage > appliedPoisonDamage);
+                defeated = healthBeforePoison > 0
+                    && enemy.CurrentHealth <= 0;
+
+                if (defeated)
+                {
+                    combatFeedback?.RecordDefeat(
+                        poisonImpactPosition,
+                        horizontalDirection,
+                        false,
+                        waveManager != null
+                            && waveManager.ActiveEnemies.Count <= 1);
+                }
             }
 
             if (!defeated && enemy != null && enemy.CurrentHealth > 0

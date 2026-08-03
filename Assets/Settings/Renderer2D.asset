@@ -42,7 +42,8 @@ MonoBehaviour:
     probeVolumeBlendStatesCS: {fileID: 0}
   m_RendererFeatures:
   - {fileID: -939174192915003014}
-  m_RendererFeatureMap: 7a4916290c62f7f2
+  - {fileID: 734958237459823745}
+  m_RendererFeatureMap: 7a4916290c62f7f2813c8a7c9f18330a
   m_UseNativeRenderPass: 0
   m_LayerMask:
     serializedVersion: 2
@@ -73,6 +74,26 @@ MonoBehaviour:
   m_PostProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   m_DefaultMaterialType: 0
   m_DefaultCustomMaterial: {fileID: 2100000, guid: a97c105638bdf8b4a8650670310a4cd3, type: 2}
+--- !u!114 &734958237459823745
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b00045f12942b46c698459096c89274e, type: 3}
+  m_Name: Kill Impact Fullscreen
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.FullScreenPassRendererFeature
+  m_Active: 1
+  m_Version: 1
+  injectionPoint: 600
+  fetchColorBuffer: 1
+  requirements: 0
+  passMaterial: {fileID: 2100000, guid: e8245b71bd27491bbda648093af10c5d, type: 2}
+  passIndex: 0
+  bindDepthStencilAttachment: 0
 --- !u!114 &165435233301028794
 MonoBehaviour:
   m_ObjectHideFlags: 3
