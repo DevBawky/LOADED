@@ -18,7 +18,7 @@ MonoBehaviour:
     \uACE0\uC815 \uC21C\uC11C\uB85C \uC0AC\uC6A9\uD558\uB294 \uC2A4\uD14C\uC774\uC9C0
     1 \uBCF4\uC2A4."
   avatar: {fileID: 1233976601806711513, guid: 681bb752688943b41b903f4b80db2c5b, type: 3}
-  maxHealth: 300
+  maxHealth: 2000
   dropChance: 100
   dropItems:
   - dropType: 0
@@ -29,8 +29,8 @@ MonoBehaviour:
   behaviorType: 4
   preferredDistance: 2
   maxQueuedAttacks: 1
-  queuedActionInterval: 0.2
-  queueElementRevealDuration: 0.25
+  queuedActionInterval: 0.1
+  queueElementRevealDuration: 0.15
   meleeAdditionalAttackChance: 0.5
   firingRange: 5
   recoveryTurns: 2
@@ -42,7 +42,7 @@ MonoBehaviour:
   thrownProjectileSprite: {fileID: 21300000, guid: a069b69aaf6538944912b5fd98e64eff, type: 3}
   thrownProjectileColor: {r: 0.16, g: 0.12, b: 0.08, a: 1}
   thrownProjectileSize: 0.35
-  thrownProjectileDuration: 0.45
+  thrownProjectileDuration: 0.3
   thrownProjectileArcHeight: 2
   gunnerTelegraphMaterial: {fileID: 0}
   throwerTelegraphMaterial: {fileID: 0}
@@ -59,12 +59,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1ca315b0f4f347299ee45dc99ff3223a, type: 2}
   randomizeStartingActionIndex: 0
   bigBarrel:
-    phaseTwoHealthRatio: 0.5
+    phaseTwoHealthRatio: 0.6
     bombDamage: 20
     bossSelfExplosionDamage: 10
     bombExplosionRadius: 1
     bombFuseTurns: 3
-    phaseTwoBombFuseTurns: 2
+    phaseTwoBombFuseTurns: 3
     shotgunDamage: 15
     bossBombPrefab: {fileID: 1000000000000000, guid: 3aebf47531e847b4b271281656ef0a7d, type: 3}
     bombArcHeight: 2

@@ -298,10 +298,7 @@ public class StateManager : MonoBehaviour
             yield break;
         }
 
-        if (IsCurrentStageComplete())
-        {
-            deckManager.ClearLoadedBullets();
-        }
+        deckManager.ClearLoadedBullets();
 
         currentState = GameFlowState.BattleClear;
         SetPanels(false, false, false);
@@ -459,19 +456,6 @@ public class StateManager : MonoBehaviour
 
         nextBattleIndex = 0;
         return true;
-    }
-
-    private bool IsCurrentStageComplete()
-    {
-        if (stages == null || currentStageIndex < 0
-            || currentStageIndex >= stages.Length)
-        {
-            return false;
-        }
-
-        StageData stage = stages[currentStageIndex];
-        return stage != null && stage.Battles.Count > 0
-            && currentBattleIndex == stage.Battles.Count - 1;
     }
 
     private string GetShopExitLabel()

@@ -61,6 +61,7 @@ public class DeckManager : MonoBehaviour
 
         int topIndex = deck.Count - 1;
         loadedBullet = deck[topIndex];
+        loadedBullet?.BeginCylinderShotTracking();
         loadedBullets.Add(loadedBullet);
         deck.RemoveAt(topIndex);
         RecycleGraveyardBeforeDeckRunsOut();
