@@ -55,6 +55,7 @@ public static class LoadingTransitionPrefabBuilder
         Image cylinder = CreateImage("Image | Cylinder", root.transform, new Color(0.20f, 0.19f, 0.21f, 1f));
         SetCenteredRect(cylinder.rectTransform, new Vector2(390f, 390f), Vector2.zero);
         cylinder.sprite = GetRoundSprite();
+        cylinder.preserveAspect = true;
         CanvasGroup cylinderGroup = cylinder.gameObject.AddComponent<CanvasGroup>();
         cylinderGroup.alpha = 0f;
 
