@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: b6284da92dcc20243bab6faec44d37b3
+guid: 7b79d6a48f71d2f44bc1338af5e892f5
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4466179198060467541
-    second: Item_Whiskey_0
+      213: 7042858435584613796
+    second: Bullet_Resonance_Cylinder_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Item_Whiskey_0
+      name: Bullet_Resonance_Cylinder_0
       rect:
         serializedVersion: 2
-        x: 11
+        x: 0
         y: 0
-        width: 43
-        height: 62
+        width: 64
+        height: 64
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 55512ab515e0bfd30800000000000000
-      internalID: 4466179198060467541
+      spriteID: 4ad5268be624db160800000000000000
+      internalID: 7042858435584613796
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Item_Whiskey_0: 4466179198060467541
+      Bullet_Resonance_Cylinder_0: 7042858435584613796
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
