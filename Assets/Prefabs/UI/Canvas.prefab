@@ -6158,7 +6158,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 1344c3c82d62a2a41a3576d8abb8e3ea, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.RawImage
   m_Material: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -6201,7 +6201,7 @@ VideoPlayer:
   - {fileID: 0}
   m_DirectAudioVolumes:
   - 1
-  m_Url:
+  m_Url: 
   m_EnabledAudioTracks: 01
   m_DirectAudioMutes: 00
   m_ControlledAudioTrackCount: 1
@@ -6221,13 +6221,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0ce7fa9d75ce4b219c655c2bf789909b, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ShopVideoController
   shopManager: {fileID: 0}
   videoPlayer: {fileID: 5326779710147945461}
   idleClip: {fileID: 32900000, guid: 7b48f8369ddfd264f9307f893d1f1e30, type: 3}
-  idleReverseClip: {fileID: 0}
   purchaseClip: {fileID: 32900000, guid: 94a05b86f8ffbae41a48515d62d24b5e, type: 3}
+  idlePlaybackSpeed: 1
+  purchasePlaybackSpeed: 1
 --- !u!1 &5160530878660592987
 GameObject:
   m_ObjectHideFlags: 0

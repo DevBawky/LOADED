@@ -1,5 +1,5 @@
-using System.Collections;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.Video;
 
 [RequireComponent(typeof(VideoPlayer))]
@@ -7,8 +7,7 @@ public class ShopVideoController : MonoBehaviour
 {
     private enum PlaybackState
     {
-        IdleForward,
-        IdleReverse,
+        Idle,
         Purchase
     }
 
@@ -18,18 +17,18 @@ public class ShopVideoController : MonoBehaviour
 
     [Header("Clips")]
     [SerializeField] private VideoClip idleClip;
-    [Tooltip("Optional. A pre-rendered reverse clip gives the smoothest and most portable reverse playback.")]
-    [SerializeField] private VideoClip idleReverseClip;
     [SerializeField] private VideoClip purchaseClip;
 
+    [Header("Playback Speed")]
+    [Min(0.01f)]
+    [FormerlySerializedAs("idleForwardPlaybackSpeed")]
+    [SerializeField] private float idlePlaybackSpeed = 1f;
+    [Min(0.01f)]
+    [SerializeField] private float purchasePlaybackSpeed = 1f;
+
     private PlaybackState playbackState;
-    private Coroutine manualReverseCoroutine;
     private int queuedPurchases;
     private bool isSubscribed;
-    private bool isWatchingNativeReverse;
-    private bool nativeReverseHasAdvanced;
-    private double nativeReverseStartTime;
-    private float nativeReverseStartedAt;
 
     public int QueuedPurchases => queuedPurchases;
 
@@ -40,7 +39,6 @@ public class ShopVideoController : MonoBehaviour
         if (videoPlayer != null)
         {
             videoPlayer.playOnAwake = false;
-            videoPlayer.isLooping = false;
             videoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
         }
     }
@@ -50,52 +48,16 @@ public class ShopVideoController : MonoBehaviour
         ResolveReferences();
         Subscribe();
         queuedPurchases = 0;
-        PlayState(PlaybackState.IdleForward);
+        PlayIdle();
     }
 
     private void OnDisable()
     {
         Unsubscribe();
-        StopManualReverse();
 
         if (videoPlayer != null)
         {
             videoPlayer.Stop();
-        }
-    }
-
-    private void Update()
-    {
-        if (!isWatchingNativeReverse || videoPlayer == null
-            || playbackState != PlaybackState.IdleReverse)
-        {
-            return;
-        }
-
-        double completionThreshold = videoPlayer.frameRate > 0f
-            ? 1.5d / videoPlayer.frameRate
-            : 0.02d;
-
-        if (videoPlayer.time < nativeReverseStartTime - completionThreshold)
-        {
-            nativeReverseHasAdvanced = true;
-        }
-
-        if (nativeReverseHasAdvanced
-            && videoPlayer.time <= completionThreshold)
-        {
-            isWatchingNativeReverse = false;
-            HandlePlaybackCompleted(videoPlayer);
-            return;
-        }
-
-        if (!nativeReverseHasAdvanced
-            && Time.unscaledTime - nativeReverseStartedAt >= 1f)
-        {
-            isWatchingNativeReverse = false;
-            videoPlayer.playbackSpeed = 1f;
-            manualReverseCoroutine = StartCoroutine(
-                PlayReverseBySeeking(videoPlayer, nativeReverseStartTime));
         }
     }
 
@@ -120,7 +82,7 @@ public class ShopVideoController : MonoBehaviour
         }
 
         videoPlayer.prepareCompleted += HandlePrepared;
-        videoPlayer.loopPointReached += HandlePlaybackCompleted;
+        videoPlayer.loopPointReached += HandleLoopPointReached;
         videoPlayer.errorReceived += HandleVideoError;
 
         if (shopManager != null)
@@ -139,7 +101,7 @@ public class ShopVideoController : MonoBehaviour
         }
 
         videoPlayer.prepareCompleted -= HandlePrepared;
-        videoPlayer.loopPointReached -= HandlePlaybackCompleted;
+        videoPlayer.loopPointReached -= HandleLoopPointReached;
         videoPlayer.errorReceived -= HandleVideoError;
 
         if (shopManager != null)
@@ -158,19 +120,34 @@ public class ShopVideoController : MonoBehaviour
             return;
         }
 
-        PlayState(PlaybackState.Purchase);
+        PlayPurchase();
     }
 
-    private void PlayState(PlaybackState nextState)
+    private void PlayIdle()
     {
-        if (videoPlayer == null)
-        {
-            return;
-        }
+        PlayClip(
+            PlaybackState.Idle,
+            idleClip,
+            Mathf.Max(0.01f, idlePlaybackSpeed),
+            true);
+    }
 
-        VideoClip nextClip = GetClip(nextState);
+    private void PlayPurchase()
+    {
+        PlayClip(
+            PlaybackState.Purchase,
+            purchaseClip,
+            Mathf.Max(0.01f, purchasePlaybackSpeed),
+            false);
+    }
 
-        if (nextClip == null)
+    private void PlayClip(
+        PlaybackState nextState,
+        VideoClip clip,
+        float playbackSpeed,
+        bool loop)
+    {
+        if (videoPlayer == null || clip == null)
         {
             Debug.LogWarning(
                 $"Shop video clip for {nextState} is not assigned.",
@@ -178,145 +155,49 @@ public class ShopVideoController : MonoBehaviour
             return;
         }
 
-        StopManualReverse();
-        isWatchingNativeReverse = false;
         playbackState = nextState;
         videoPlayer.Stop();
-        videoPlayer.playbackSpeed = 1f;
-        videoPlayer.isLooping = false;
-        videoPlayer.clip = nextClip;
+        videoPlayer.clip = clip;
+        videoPlayer.playbackSpeed = playbackSpeed;
+        videoPlayer.isLooping = loop;
         videoPlayer.Prepare();
-    }
-
-    private VideoClip GetClip(PlaybackState state)
-    {
-        if (state == PlaybackState.Purchase)
-        {
-            return purchaseClip;
-        }
-
-        if (state == PlaybackState.IdleReverse && idleReverseClip != null)
-        {
-            return idleReverseClip;
-        }
-
-        return idleClip;
     }
 
     private void HandlePrepared(VideoPlayer preparedPlayer)
     {
-        bool needsNativeReverse = playbackState == PlaybackState.IdleReverse
-            && idleReverseClip == null;
-
-        if (!needsNativeReverse)
-        {
-            preparedPlayer.time = 0d;
-            preparedPlayer.Play();
-            return;
-        }
-
-        double lastFrameTime = GetLastFrameTime(preparedPlayer);
-
-        if (preparedPlayer.canSetPlaybackSpeed)
-        {
-            preparedPlayer.time = lastFrameTime;
-            preparedPlayer.playbackSpeed = -1f;
-            preparedPlayer.Play();
-            nativeReverseStartTime = lastFrameTime;
-            nativeReverseStartedAt = Time.unscaledTime;
-            nativeReverseHasAdvanced = false;
-            isWatchingNativeReverse = true;
-            return;
-        }
-
-        manualReverseCoroutine = StartCoroutine(
-            PlayReverseBySeeking(preparedPlayer, lastFrameTime));
-    }
-
-    private IEnumerator PlayReverseBySeeking(
-        VideoPlayer preparedPlayer,
-        double startTime)
-    {
-        preparedPlayer.time = startTime;
+        preparedPlayer.time = 0d;
         preparedPlayer.Play();
-        yield return null;
-        preparedPlayer.Pause();
-
-        double currentTime = startTime;
-
-        while (isActiveAndEnabled
-            && playbackState == PlaybackState.IdleReverse
-            && currentTime > 0d)
-        {
-            currentTime = System.Math.Max(
-                0d,
-                currentTime - Time.unscaledDeltaTime);
-            preparedPlayer.time = currentTime;
-            yield return null;
-        }
-
-        manualReverseCoroutine = null;
-
-        if (isActiveAndEnabled
-            && playbackState == PlaybackState.IdleReverse)
-        {
-            HandlePlaybackCompleted(preparedPlayer);
-        }
     }
 
-    private static double GetLastFrameTime(VideoPlayer player)
+    private void HandleLoopPointReached(VideoPlayer player)
     {
-        if (player.frameRate > 0f)
+        if (playbackState == PlaybackState.Idle)
         {
-            return System.Math.Max(0d, player.length - 1d / player.frameRate);
+            return;
         }
 
-        return System.Math.Max(0d, player.length - 0.001d);
-    }
-
-    private void HandlePlaybackCompleted(VideoPlayer _)
-    {
-        isWatchingNativeReverse = false;
-
-        switch (playbackState)
+        if (queuedPurchases > 0)
         {
-            case PlaybackState.Purchase:
-                if (queuedPurchases > 0)
-                {
-                    queuedPurchases--;
-                    PlayState(PlaybackState.Purchase);
-                }
-                else
-                {
-                    PlayState(PlaybackState.IdleForward);
-                }
-
-                break;
-
-            case PlaybackState.IdleForward:
-                PlayState(PlaybackState.IdleReverse);
-                break;
-
-            case PlaybackState.IdleReverse:
-                PlayState(PlaybackState.IdleForward);
-                break;
+            queuedPurchases--;
+            player.time = 0d;
+            player.playbackSpeed = Mathf.Max(
+                0.01f,
+                purchasePlaybackSpeed);
+            player.Play();
+            return;
         }
+
+        PlayIdle();
     }
 
     private void HandleVideoError(VideoPlayer _, string message)
     {
         Debug.LogError($"Shop video playback failed: {message}", this);
-        HandlePlaybackCompleted(videoPlayer);
-    }
 
-    private void StopManualReverse()
-    {
-        if (manualReverseCoroutine == null)
+        if (playbackState == PlaybackState.Purchase)
         {
-            return;
+            queuedPurchases = 0;
+            PlayIdle();
         }
-
-        StopCoroutine(manualReverseCoroutine);
-        manualReverseCoroutine = null;
     }
 }

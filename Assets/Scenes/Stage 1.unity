@@ -826,7 +826,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 073797afb82c5a1438f328866b10b3f0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_ComponentVersion: 2
+  m_ComponentVersion: 3
   m_LightType: 4
   m_BlendStyleIndex: 0
   m_FalloffIntensity: 0.5
@@ -1893,6 +1893,18 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -108.4
       objectReference: {fileID: 0}
+    - target: {fileID: 109909161247443637, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: m_Color.b
+      value: 0.60784316
+      objectReference: {fileID: 0}
+    - target: {fileID: 109909161247443637, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: m_Color.g
+      value: 0.6862745
+      objectReference: {fileID: 0}
+    - target: {fileID: 109909161247443637, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: m_Color.r
+      value: 0.81960785
+      objectReference: {fileID: 0}
     - target: {fileID: 474633276586221439, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -2291,7 +2303,7 @@ PrefabInstance:
       objectReference: {fileID: 32900000, guid: 7b48f8369ddfd264f9307f893d1f1e30, type: 3}
     - target: {fileID: 5326779710147945461, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_PlayOnAwake
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5326779710147945461, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_AudioOutputMode
@@ -2299,23 +2311,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5326779710147945461, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_ControlledAudioTrackCount
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5326779710147945461, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_DirectAudioMutes.Array.size
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5326779710147945461, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_DirectAudioVolumes.Array.size
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5326779710147945461, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_EnabledAudioTracks.Array.size
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5326779710147945461, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_TargetAudioSources.Array.size
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5434841124754176303, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_AnchorMax.y
@@ -2374,8 +2386,8 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 2400001004}
     - target: {fileID: 8467219530047261139, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
-      propertyPath: idleReverseClip
-      value: 
+      propertyPath: purchasePlaybackSpeed
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 8747193649216516833, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_AnchorMax.y
