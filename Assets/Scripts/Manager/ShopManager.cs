@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -78,6 +79,31 @@ public class ShopManager : MonoBehaviour
     [SerializeField] private List<ShopItemSlot> itemSlots =
         new List<ShopItemSlot>();
 
+    [Header("Refresh")]
+    [SerializeField] private Button refreshButton;
+    [SerializeField] private TMP_Text refreshCostText;
+    [Min(0)]
+    [SerializeField] private int initialRefreshCost;
+    [Min(0)]
+    [SerializeField] private int refreshCostIncrease = 1;
+
+    [Header("Refresh Animation")]
+    [Min(0f)]
+    [SerializeField] private float refreshHideDuration = 0.12f;
+    [Min(0f)]
+    [SerializeField] private float refreshRevealDuration = 0.18f;
+    [Min(0f)]
+    [SerializeField] private float refreshRevealInterval = 0.08f;
+    [Range(0f, 1f)]
+    [SerializeField] private float refreshHiddenScale = 0.75f;
+    [Min(1f)]
+    [SerializeField] private float refreshOvershootScale = 1.08f;
+    [Min(0f)]
+    [SerializeField] private float refreshRevealOffset = 20f;
+
+    [Header("Runtime State")]
+    [SerializeField] private int currentRefreshCost;
+
     private readonly List<BulletData> currentOffers =
         new List<BulletData>();
     private readonly List<UnityAction> slotClickActions =
@@ -87,18 +113,43 @@ public class ShopManager : MonoBehaviour
     private readonly List<bool> purchasedItemOffers = new List<bool>();
     private readonly List<UnityAction> itemSlotClickActions =
         new List<UnityAction>();
+    private UnityAction refreshClickAction;
+    private string refreshButtonLabel;
+    private bool isRefreshing;
+
+    private sealed class OfferVisualState
+    {
+        public Button Button;
+        public CanvasGroup CanvasGroup;
+        public RectTransform RectTransform;
+        public Vector3 BaseScale;
+        public Vector2 BasePosition;
+        public bool DesiredInteractable;
+    }
 
     public event Action OffersChanged;
+    public event Action PurchaseCompleted;
 
     public IReadOnlyList<BulletData> CurrentOffers => currentOffers;
     public IReadOnlyList<ItemData> CurrentItemOffers => currentItemOffers;
+    public int CurrentRefreshCost => currentRefreshCost;
+    public bool IsRefreshing => isRefreshing;
 
     private void Awake()
     {
         ResolveReferences();
         BindSlotButtons();
         BindItemSlotButtons();
+        BindRefreshButton();
+        currentRefreshCost = Mathf.Max(0, initialRefreshCost);
         ClearOffers();
+
+        if (currencyManager != null)
+        {
+            currencyManager.MoneyChanged += HandleMoneyChanged;
+        }
+
+        RefreshRefreshButton();
 
         if (playerInventory != null)
         {
@@ -110,6 +161,12 @@ public class ShopManager : MonoBehaviour
     {
         UnbindSlotButtons();
         UnbindItemSlotButtons();
+        UnbindRefreshButton();
+
+        if (currencyManager != null)
+        {
+            currencyManager.MoneyChanged -= HandleMoneyChanged;
+        }
 
         if (playerInventory != null)
         {
@@ -122,6 +179,255 @@ public class ShopManager : MonoBehaviour
         ResetOfferButtonsForNewVisit();
         GenerateOffers();
         GenerateItemOffers();
+        RefreshRefreshButton();
+    }
+
+    public bool TryRefreshOffers()
+    {
+        if (isRefreshing || !isActiveAndEnabled || currencyManager == null
+            || currencyManager.CurrentMoney < currentRefreshCost)
+        {
+            RefreshRefreshButton();
+            return false;
+        }
+
+        isRefreshing = true;
+
+        if (!currencyManager.TrySpendMoney(currentRefreshCost))
+        {
+            isRefreshing = false;
+            RefreshRefreshButton();
+            return false;
+        }
+
+        StartCoroutine(RefreshOffersSequence());
+        RefreshRefreshButton();
+        return true;
+    }
+
+    private IEnumerator RefreshOffersSequence()
+    {
+        List<OfferVisualState> visuals = BuildOfferVisualStates();
+        SetOfferVisualInput(visuals, false);
+
+        float elapsed = 0f;
+
+        while (elapsed < refreshHideDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = refreshHideDuration <= 0f
+                ? 1f
+                : Mathf.Clamp01(elapsed / refreshHideDuration);
+            float eased = SmoothStep(progress);
+
+            foreach (OfferVisualState visual in visuals)
+            {
+                visual.CanvasGroup.alpha = 1f - eased;
+                visual.RectTransform.localScale = visual.BaseScale
+                    * Mathf.Lerp(1f, refreshHiddenScale, eased);
+            }
+
+            yield return null;
+        }
+
+        foreach (OfferVisualState visual in visuals)
+        {
+            visual.CanvasGroup.alpha = 0f;
+            visual.RectTransform.localScale = visual.BaseScale
+                * refreshHiddenScale;
+        }
+
+        ResetOfferButtonsForNewVisit();
+        GenerateOffers();
+        GenerateItemOffers();
+
+        long nextCost = (long)currentRefreshCost
+            + Mathf.Max(0, refreshCostIncrease);
+        currentRefreshCost = (int)Math.Min(int.MaxValue, nextCost);
+        RefreshRefreshButton();
+
+        Canvas.ForceUpdateCanvases();
+
+        foreach (OfferVisualState visual in visuals)
+        {
+            visual.DesiredInteractable = visual.Button.interactable;
+            visual.Button.interactable = false;
+            visual.BasePosition = visual.RectTransform.anchoredPosition;
+            visual.RectTransform.anchoredPosition = visual.BasePosition
+                + Vector2.down * refreshRevealOffset;
+        }
+
+        visuals.Sort(CompareOfferVisualPositions);
+        Vector3 costTextScale = refreshCostText == null
+            ? Vector3.one
+            : refreshCostText.rectTransform.localScale;
+
+        if (refreshCostText != null)
+        {
+            refreshCostText.rectTransform.localScale = costTextScale * 1.15f;
+        }
+
+        float revealTotalDuration = refreshRevealDuration
+            + refreshRevealInterval * Mathf.Max(0, visuals.Count - 1);
+        elapsed = 0f;
+
+        while (elapsed < revealTotalDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+
+            for (int index = 0; index < visuals.Count; index++)
+            {
+                OfferVisualState visual = visuals[index];
+
+                if (!visual.Button.gameObject.activeSelf)
+                {
+                    continue;
+                }
+
+                float localElapsed = elapsed - refreshRevealInterval * index;
+                float progress = refreshRevealDuration <= 0f
+                    ? (localElapsed >= 0f ? 1f : 0f)
+                    : Mathf.Clamp01(localElapsed / refreshRevealDuration);
+                float eased = SmoothStep(progress);
+                visual.CanvasGroup.alpha = eased;
+                visual.RectTransform.anchoredPosition = Vector2.LerpUnclamped(
+                    visual.BasePosition + Vector2.down * refreshRevealOffset,
+                    visual.BasePosition,
+                    eased);
+                visual.RectTransform.localScale = visual.BaseScale
+                    * EvaluateRevealScale(progress);
+            }
+
+            if (refreshCostText != null)
+            {
+                float costProgress = Mathf.Clamp01(elapsed / 0.16f);
+                refreshCostText.rectTransform.localScale = costTextScale
+                    * Mathf.Lerp(1.15f, 1f, SmoothStep(costProgress));
+            }
+
+            yield return null;
+        }
+
+        foreach (OfferVisualState visual in visuals)
+        {
+            visual.CanvasGroup.alpha = 1f;
+            visual.CanvasGroup.blocksRaycasts = true;
+            visual.CanvasGroup.interactable = true;
+            visual.RectTransform.localScale = visual.BaseScale;
+            visual.RectTransform.anchoredPosition = visual.BasePosition;
+            visual.Button.interactable = visual.DesiredInteractable;
+        }
+
+        if (refreshCostText != null)
+        {
+            refreshCostText.rectTransform.localScale = costTextScale;
+        }
+
+        isRefreshing = false;
+        RefreshRefreshButton();
+    }
+
+    private List<OfferVisualState> BuildOfferVisualStates()
+    {
+        List<OfferVisualState> visuals = new List<OfferVisualState>();
+        HashSet<Button> collectedButtons = new HashSet<Button>();
+
+        foreach (ShopBulletSlot slot in slots)
+        {
+            AddOfferVisualState(slot?.Button, visuals, collectedButtons);
+        }
+
+        foreach (ShopItemSlot slot in itemSlots)
+        {
+            AddOfferVisualState(slot?.Button, visuals, collectedButtons);
+        }
+
+        return visuals;
+    }
+
+    private static void AddOfferVisualState(
+        Button button,
+        List<OfferVisualState> visuals,
+        HashSet<Button> collectedButtons)
+    {
+        if (button == null || !collectedButtons.Add(button))
+        {
+            return;
+        }
+
+        CanvasGroup canvasGroup = button.GetComponent<CanvasGroup>();
+
+        if (canvasGroup == null)
+        {
+            canvasGroup = button.gameObject.AddComponent<CanvasGroup>();
+        }
+
+        RectTransform rectTransform = button.transform as RectTransform;
+
+        if (rectTransform == null)
+        {
+            return;
+        }
+
+        visuals.Add(new OfferVisualState
+        {
+            Button = button,
+            CanvasGroup = canvasGroup,
+            RectTransform = rectTransform,
+            BaseScale = rectTransform.localScale,
+            BasePosition = rectTransform.anchoredPosition,
+            DesiredInteractable = button.interactable
+        });
+    }
+
+    private static void SetOfferVisualInput(
+        List<OfferVisualState> visuals,
+        bool enabled)
+    {
+        foreach (OfferVisualState visual in visuals)
+        {
+            visual.Button.interactable = enabled
+                && visual.DesiredInteractable;
+            visual.CanvasGroup.blocksRaycasts = enabled;
+            visual.CanvasGroup.interactable = enabled;
+        }
+    }
+
+    private static int CompareOfferVisualPositions(
+        OfferVisualState left,
+        OfferVisualState right)
+    {
+        int horizontalComparison = left.RectTransform.position.x.CompareTo(
+            right.RectTransform.position.x);
+
+        return horizontalComparison != 0
+            ? horizontalComparison
+            : right.RectTransform.position.y.CompareTo(
+                left.RectTransform.position.y);
+    }
+
+    private float EvaluateRevealScale(float progress)
+    {
+        const float overshootPoint = 0.7f;
+
+        if (progress <= overshootPoint)
+        {
+            float firstProgress = SmoothStep(progress / overshootPoint);
+            return Mathf.Lerp(
+                refreshHiddenScale,
+                refreshOvershootScale,
+                firstProgress);
+        }
+
+        float settleProgress = SmoothStep(
+            (progress - overshootPoint) / (1f - overshootPoint));
+        return Mathf.Lerp(refreshOvershootScale, 1f, settleProgress);
+    }
+
+    private static float SmoothStep(float value)
+    {
+        value = Mathf.Clamp01(value);
+        return value * value * (3f - 2f * value);
     }
 
     private void ResetOfferButtonsForNewVisit()
@@ -174,6 +480,7 @@ public class ShopManager : MonoBehaviour
 
         slot.Button.interactable = false;
         OffersChanged?.Invoke();
+        PurchaseCompleted?.Invoke();
         return true;
     }
 
@@ -206,6 +513,7 @@ public class ShopManager : MonoBehaviour
         purchasedItemOffers[slotIndex] = true;
         slot.Button.interactable = false;
         OffersChanged?.Invoke();
+        PurchaseCompleted?.Invoke();
         return true;
     }
 
@@ -551,11 +859,56 @@ public class ShopManager : MonoBehaviour
         itemSlotClickActions.Clear();
     }
 
+    private void BindRefreshButton()
+    {
+        if (refreshButton == null)
+        {
+            return;
+        }
+
+        refreshClickAction = () => TryRefreshOffers();
+        refreshButton.onClick.AddListener(refreshClickAction);
+    }
+
+    private void UnbindRefreshButton()
+    {
+        if (refreshButton != null && refreshClickAction != null)
+        {
+            refreshButton.onClick.RemoveListener(refreshClickAction);
+        }
+
+        refreshClickAction = null;
+    }
+
+    private void HandleMoneyChanged(int _)
+    {
+        RefreshRefreshButton();
+    }
+
+    private void RefreshRefreshButton()
+    {
+        if (refreshButton != null)
+        {
+            refreshButton.interactable = currencyManager != null
+                && !isRefreshing
+                && currencyManager.CurrentMoney >= currentRefreshCost;
+        }
+
+        if (refreshCostText != null)
+        {
+            refreshCostText.text = string.IsNullOrWhiteSpace(refreshButtonLabel)
+                ? $"${currentRefreshCost}"
+                : $"{refreshButtonLabel} ${currentRefreshCost}";
+        }
+    }
+
     private void ResolveReferences()
     {
         currencyManager ??= FindSceneObject<CurrencyManager>();
         deckManager ??= FindSceneObject<DeckManager>();
         playerInventory ??= FindSceneObject<PlayerInventory>();
+
+        ResolveRefreshButton();
 
         if (itemPool.Count == 0)
         {
@@ -599,6 +952,54 @@ public class ShopManager : MonoBehaviour
                 FindNamedChild<Image>(button.transform, "Image | Sprite"),
                 FindNamedChild<TMP_Text>(button.transform, "Text | Cost")));
         }
+    }
+
+    private void ResolveRefreshButton()
+    {
+        if (refreshButton == null)
+        {
+            Button[] allButtons = FindObjectsByType<Button>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+
+            foreach (Button button in allButtons)
+            {
+                if (button != null && button.gameObject.scene.IsValid()
+                    && button.name == "Button | Refresh"
+                    && HasNamedAncestor(button.transform, "Panel | Shop"))
+                {
+                    refreshButton = button;
+                    break;
+                }
+            }
+        }
+
+        if (refreshCostText == null && refreshButton != null)
+        {
+            refreshCostText = refreshButton.GetComponentInChildren<TMP_Text>(true);
+        }
+
+        if (refreshCostText != null)
+        {
+            refreshButtonLabel = refreshCostText.text;
+        }
+    }
+
+    private static bool HasNamedAncestor(Transform transform, string objectName)
+    {
+        Transform current = transform == null ? null : transform.parent;
+
+        while (current != null)
+        {
+            if (current.name == objectName)
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private static T FindSceneObject<T>() where T : UnityEngine.Object
