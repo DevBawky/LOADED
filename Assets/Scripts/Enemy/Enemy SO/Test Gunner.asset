@@ -20,7 +20,7 @@ MonoBehaviour:
   dropChance: 100
   dropItems:
   - dropType: 0
-    amount: 5
+    amount: 15
     selectionWeight: 1
     itemData: {fileID: 0}
     bulletData: {fileID: 0}
@@ -28,14 +28,25 @@ MonoBehaviour:
   preferredDistance: 2
   maxQueuedAttacks: 1
   queuedActionInterval: 0.2
+  queueElementRevealDuration: 0.25
   meleeAdditionalAttackChance: 0.5
   firingRange: 4
   recoveryTurns: 1
+  maxSupportCharges: 2
+  supportHealAmount: 10
+  supportShieldAmount: 10
+  supportHealThreshold: 0.5
   thrownProjectilePrefab: {fileID: 0}
+  thrownProjectileSprite: {fileID: 0}
+  thrownProjectileColor: {r: 1, g: 1, b: 1, a: 1}
+  thrownProjectileSize: 0.35
   thrownProjectileDuration: 0.5
   thrownProjectileArcHeight: 2
   gunnerTelegraphMaterial: {fileID: 2100000, guid: 4b917feaf47b4c0492dfb7a61abfb75d, type: 2}
   throwerTelegraphMaterial: {fileID: 0}
+  supportTelegraphMaterial: {fileID: 0}
+  supportHealColor: {r: 0.25, g: 1, b: 0.35, a: 1}
+  supportShieldColor: {r: 0.2, g: 0.8, b: 1, a: 1}
   telegraphLineWidth: 0.08
   telegraphVerticalOffset: 0.15
   throwerTelegraphSegments: 20
@@ -44,3 +55,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7e1cbe3d707bdae4dbd479728766a343, type: 2}
   - {fileID: 11400000, guid: 5f9dab475b2e6b44f9cc4577790de03c, type: 2}
   randomizeStartingActionIndex: 0
+  bigBarrel:
+    phaseTwoHealthRatio: 0.5
+    bombDamage: 20
+    bossSelfExplosionDamage: 10
+    bombExplosionRadius: 1
+    bombFuseTurns: 3
+    phaseTwoBombFuseTurns: 2
+    shotgunDamage: 15
+    bossBombPrefab: {fileID: 0}
+    bombArcHeight: 2
+    bombTelegraphMaterial: {fileID: 0}
+    shotgunTelegraphMaterial: {fileID: 0}
+    explosionCameraShake: 0.2
+    bossHitCameraShake: 0.12

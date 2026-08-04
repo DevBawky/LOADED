@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Mixed Grade
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_mixed_grade
-  displayName: 혼성탄
-  description: "실린더에 남은 자신과 다른 등급의 탄환 하나당 최종 대미지가 8% 증가합니다."
-  bulletIcon: {fileID: 6765700697151959687, guid: 60b4f5719946c9740b22d46877404c80, type: 3}
-  cylinderIcon: {fileID: -7185434700578658702, guid: f2f34068e9bbe2248a5746f96fcaff0a, type: 3}
+  displayName: "\uD63C\uC131\uD0C4"
+  description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC740 \uC790\uC2E0\uACFC \uB2E4\uB978
+    \uB4F1\uAE09\uC758 \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+    8% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 4923265321069294368, guid: e5e105338554a3344b4991ef6218a494, type: 3}
   price: 18
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +46,9 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "실린더에 남은 자신과 다른 등급의 탄환 하나당 최종 대미지가 10% 증가합니다."
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC740 \uC790\uC2E0\uACFC \uB2E4\uB978
+      \uB4F1\uAE09\uC758 \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      10% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 16
     maxRange: 4
     criticalChance: 18
@@ -66,7 +69,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "실린더에 남은 자신과 다른 등급의 탄환 하나당 최종 대미지가 12% 증가합니다."
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC740 \uC790\uC2E0\uACFC \uB2E4\uB978
+      \uB4F1\uAE09\uC758 \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      12% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 21
     maxRange: 5
     criticalChance: 23
@@ -88,7 +93,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "실린더에 남은 자신과 다른 등급의 탄환 하나당 최종 대미지가 15% 증가합니다."
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC740 \uC790\uC2E0\uACFC \uB2E4\uB978
+      \uB4F1\uAE09\uC758 \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      15% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 27
     maxRange: 5
     criticalChance: 30

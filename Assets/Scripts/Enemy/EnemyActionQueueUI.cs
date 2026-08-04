@@ -154,6 +154,23 @@ public class EnemyActionQueueUI : MonoBehaviour
         RefreshQueueWidth();
     }
 
+    public IEnumerator PlayPhaseTransition(float duration, Color accentColor)
+    {
+        if (queueImage == null)
+        {
+            yield break;
+        }
+
+        ShowQueue();
+        Color originalColor = queueImage.color;
+        queueImage.color = accentColor;
+        yield return RevealGraphic(
+            queueImage.gameObject,
+            Mathf.Max(0.1f, duration));
+        queueImage.color = originalColor;
+        ResetDisplay();
+    }
+
     private void ApplyQueueSprite(Sprite stateSprite)
     {
         if (queueImage == null)

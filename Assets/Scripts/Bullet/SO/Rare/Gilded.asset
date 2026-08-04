@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Gilded
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_gilded
-  displayName: 도금탄
-  description: "보유 골드 5당 최종 대미지가 1% 증가합니다."
-  bulletIcon: {fileID: -417160762183536762, guid: 0eb1b539167d57e48aed3fe49912a95f, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: 9f3da703d3a3228458471a1253b1a404, type: 3}
+  displayName: "\uB3C4\uAE08\uD0C4"
+  description: "\uBCF4\uC720 \uACE8\uB4DC 5\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+    1% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 8207180785050344417, guid: 728a2de427860fc40a06dc391a5d689d, type: 3}
   price: 15
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +45,8 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "보유 골드 4당 최종 대미지가 1% 증가합니다."
+  - description: "\uBCF4\uC720 \uACE8\uB4DC 4\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      1% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 15
     maxRange: 4
     criticalChance: 18
@@ -66,7 +67,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "보유 골드 3당 최종 대미지가 1% 증가합니다. 치명타 시 30% 확률로 골드 1을 얻습니다."
+  - description: "\uBCF4\uC720 \uACE8\uB4DC 3\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      1% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCE58\uBA85\uD0C0 \uC2DC 30% \uD655\uB960\uB85C
+      \uACE8\uB4DC 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4."
     damage: 19
     maxRange: 5
     criticalChance: 22
@@ -93,7 +96,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "보유 골드 2당 최종 대미지가 1% 증가합니다. 치명타 시 50% 확률로 골드 2를 얻습니다."
+  - description: "\uBCF4\uC720 \uACE8\uB4DC 2\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      1% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCE58\uBA85\uD0C0 \uC2DC 50% \uD655\uB960\uB85C
+      \uACE8\uB4DC 2\uB97C \uC5BB\uC2B5\uB2C8\uB2E4."
     damage: 24
     maxRange: 5
     criticalChance: 28

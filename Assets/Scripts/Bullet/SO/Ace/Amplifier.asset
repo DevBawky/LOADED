@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Amplifier
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_amplifier
-  displayName: 증폭탄
-  description: "50% 확률로 대상이 가진 모든 상태이상 스택을 2배로 만듭니다."
-  bulletIcon: {fileID: -1019154925492222630, guid: 4e4231e03b1667e4cbbdf07d9af0dbbd, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: a16ebab303ff4064eb40d38facb2016c, type: 3}
+  displayName: "\uC99D\uD3ED\uD0C4"
+  description: "50% \uD655\uB960\uB85C \uB300\uC0C1\uC774 \uAC00\uC9C4 \uBAA8\uB4E0
+    \uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD\uC744 2\uBC30\uB85C \uB9CC\uB4ED\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 2641190778768216385, guid: 2c63fd166474af84597b03192c176150, type: 3}
   price: 30
   grade: 2
   useCustomGradeNameColor: 0
@@ -45,7 +45,8 @@ MonoBehaviour:
   removeCost: 12
   upgradeCost: 30
   upgradeLevels:
-  - description: "65% 확률로 대상이 가진 모든 상태이상 스택을 2배로 만듭니다."
+  - description: "65% \uD655\uB960\uB85C \uB300\uC0C1\uC774 \uAC00\uC9C4 \uBAA8\uB4E0
+      \uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD\uC744 2\uBC30\uB85C \uB9CC\uB4ED\uB2C8\uB2E4."
     damage: 14
     maxRange: 4
     criticalChance: 24
@@ -66,7 +67,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 55
-  - description: "80% 확률로 상태이상 스택을 3배로 만들고 표식 2를 부여합니다."
+  - description: "80% \uD655\uB960\uB85C \uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD\uC744
+      3\uBC30\uB85C \uB9CC\uB4E4\uACE0 \uD45C\uC2DD 2\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
     damage: 18
     maxRange: 5
     criticalChance: 28
@@ -93,7 +95,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 90
-  - description: "반드시 상태이상 스택을 3배로 만들고 표식 3과 약화 2를 부여합니다. 턴을 소비하지 않습니다."
+  - description: "\uBC18\uB4DC\uC2DC \uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD\uC744
+      3\uBC30\uB85C \uB9CC\uB4E4\uACE0 \uD45C\uC2DD 3\uACFC \uC57D\uD654 2\uB97C
+      \uBD80\uC5EC\uD569\uB2C8\uB2E4. \uD134\uC744 \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 24
     maxRange: 5
     criticalChance: 35

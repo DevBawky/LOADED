@@ -7,7 +7,65 @@ public enum EnemyBehaviorType
     Melee = 0,
     Gunner = 1,
     Thrower = 2,
-    Porter = 3
+    Porter = 3,
+    BigBarrel = 4
+}
+
+[Serializable]
+public class BigBarrelSettings
+{
+    [Range(0f, 1f)]
+    [SerializeField] private float phaseTwoHealthRatio = 0.5f;
+    [Min(1)] [SerializeField] private int bombDamage = 20;
+    [Min(1)] [SerializeField] private int bossSelfExplosionDamage = 10;
+    [Min(1)] [SerializeField] private int bombExplosionRadius = 1;
+    [Range(1, 3)] [SerializeField] private int bombFuseTurns = 3;
+    [Range(1, 3)] [SerializeField] private int phaseTwoBombFuseTurns = 2;
+    [Min(1)] [SerializeField] private int shotgunDamage = 15;
+    [SerializeField] private GameObject bossBombPrefab;
+    [Min(0f)] [SerializeField] private float bombArcHeight = 2f;
+    [SerializeField] private Material bombTelegraphMaterial;
+    [SerializeField] private Material shotgunTelegraphMaterial;
+    [Min(0f)] [SerializeField] private float explosionCameraShake = 0.2f;
+    [Min(0f)] [SerializeField] private float bossHitCameraShake = 0.12f;
+
+    public float PhaseTwoHealthRatio => Mathf.Clamp01(phaseTwoHealthRatio);
+    public int BombDamage => Mathf.Max(1, bombDamage);
+    public int BossSelfExplosionDamage =>
+        Mathf.Max(1, bossSelfExplosionDamage);
+    public int BombExplosionRadius => Mathf.Max(1, bombExplosionRadius);
+    public int BombFuseTurns => Mathf.Clamp(bombFuseTurns, 1, 3);
+    public int PhaseTwoBombFuseTurns =>
+        Mathf.Clamp(phaseTwoBombFuseTurns, 1, 3);
+    public int ShotgunDamage => Mathf.Max(1, shotgunDamage);
+    public GameObject BossBombPrefab => bossBombPrefab;
+    public float BombArcHeight => Mathf.Max(0f, bombArcHeight);
+    public Material BombTelegraphMaterial => bombTelegraphMaterial;
+    public Material ShotgunTelegraphMaterial => shotgunTelegraphMaterial;
+    public float ExplosionCameraShake => Mathf.Max(0f, explosionCameraShake);
+    public float BossHitCameraShake => Mathf.Max(0f, bossHitCameraShake);
+    public float ConfiguredPhaseTwoHealthRatio => phaseTwoHealthRatio;
+    public int ConfiguredBombDamage => bombDamage;
+    public int ConfiguredBombExplosionRadius => bombExplosionRadius;
+    public int ConfiguredBombFuseTurns => bombFuseTurns;
+    public int ConfiguredPhaseTwoBombFuseTurns => phaseTwoBombFuseTurns;
+
+    public void ClampValues()
+    {
+        phaseTwoHealthRatio = Mathf.Clamp01(phaseTwoHealthRatio);
+        bombDamage = Mathf.Max(1, bombDamage);
+        bossSelfExplosionDamage = Mathf.Max(1, bossSelfExplosionDamage);
+        bombExplosionRadius = Mathf.Max(1, bombExplosionRadius);
+        bombFuseTurns = Mathf.Clamp(bombFuseTurns, 1, 3);
+        phaseTwoBombFuseTurns = Mathf.Clamp(
+            phaseTwoBombFuseTurns,
+            1,
+            3);
+        shotgunDamage = Mathf.Max(1, shotgunDamage);
+        bombArcHeight = Mathf.Max(0f, bombArcHeight);
+        explosionCameraShake = Mathf.Max(0f, explosionCameraShake);
+        bossHitCameraShake = Mathf.Max(0f, bossHitCameraShake);
+    }
 }
 
 public enum EnemyDropType
@@ -161,6 +219,10 @@ public class EnemyData : ScriptableObject
     [Tooltip("활성화하면 시작 공격 행동의 선택 순서를 무작위로 섞을 수 있습니다. 현재 큐 AI에서는 목록 순서를 기본으로 사용합니다.")]
     [SerializeField] private bool randomizeStartingActionIndex;
 
+    [Header("Big Barrel Boss")]
+    [SerializeField] private BigBarrelSettings bigBarrel =
+        new BigBarrelSettings();
+
     public string EnemyId => enemyId;
     public string DisplayName => displayName;
     public string Description => description;
@@ -208,6 +270,7 @@ public class EnemyData : ScriptableObject
     public IReadOnlyList<EnemyActionData> Actions =>
         actions ?? (IReadOnlyList<EnemyActionData>)Array.Empty<EnemyActionData>();
     public bool RandomizeStartingActionIndex => randomizeStartingActionIndex;
+    public BigBarrelSettings BigBarrel => bigBarrel ??= new BigBarrelSettings();
 
     public bool TryRollDrop(out EnemyDropItemData selectedDrop)
     {
@@ -286,5 +349,6 @@ public class EnemyData : ScriptableObject
             throwerTelegraphSegments,
             4,
             64);
+        bigBarrel ??= new BigBarrelSettings();
     }
 }

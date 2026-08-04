@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Bullet_UI_Hover
-  m_Shader: {fileID: 4800000, guid: 0e3c9814cf22434da818ad6c2bb7e912, type: 3}
+  m_Shader: {fileID: 4800000, guid: 74c66d3d26df4eecbfad1b59f4e7b47c, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -29,22 +29,22 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BorderWidth: 0.052
+    - _BorderWidth: 0.0389
     - _ColorMask: 15
-    - _FlameReach: 0.085
-    - _Intensity: 1
+    - _FlameReach: 0.0355
+    - _Intensity: 3.42
     - _PulseAmount: 0.2
-    - _Scale: 14
-    - _Softness: 0.018
-    - _Speed: 2.2
+    - _Scale: 10.6
+    - _Softness: 0.0344
+    - _Speed: 1.74
     - _Stencil: 0
     - _StencilComp: 8
     - _StencilOp: 0
     - _StencilReadMask: 255
     - _StencilWriteMask: 255
     m_Colors:
-    - _EmberColor: {r: 0.29479277, g: 1, b: 0, a: 1}
-    - _FlameColor: {r: 0, g: 1, b: 0.9008024, a: 1}
-    - _HotColor: {r: 1, g: 1, b: 1, a: 1}
+    - _EmberColor: {r: 1, g: 0.16016221, b: 0, a: 1}
+    - _FlameColor: {r: 1, g: 0, b: 0.042650223, a: 1}
+    - _HotColor: {r: 1, g: 0.53394943, b: 0, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

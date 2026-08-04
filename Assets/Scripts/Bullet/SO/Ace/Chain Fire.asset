@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Chain Fire
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_chain_fire
-  displayName: 연쇄탄
-  description: 발사 후 100%, 80%, 60%, 40%, 20% 확률로 연속 사격합니다. 탄환은 추가로 소모하지 않습니다.
-  bulletIcon: {fileID: -9188724726990822325, guid: 1a0fdd87f0b7ac6428966d6afac5a701, type: 3}
-  cylinderIcon: {fileID: 1926606657520468, guid: a7b3d1ea3ed0f074ba93a3e9944dae7a, type: 3}
+  displayName: "\uC5F0\uC1C4\uD0C4"
+  description: "\uBC1C\uC0AC \uD6C4 100%, 80%, 60%, 40%, 20% \uD655\uB960\uB85C \uC5F0\uC18D
+    \uC0AC\uACA9\uD569\uB2C8\uB2E4. \uD0C4\uD658\uC740 \uCD94\uAC00\uB85C \uC18C\uBAA8\uD558\uC9C0
+    \uC54A\uC2B5\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 9112154179431215879, guid: b964c48982b5b5c4189196291744795d, type: 3}
   price: 26
   grade: 2
   useCustomGradeNameColor: 0
@@ -45,7 +46,9 @@ MonoBehaviour:
   removeCost: 12
   upgradeCost: 30
   upgradeLevels:
-  - description: "발사 후 100%, 82%, 64%, 46%, 28% 확률로 연속 사격합니다. 탄환은 추가로 소모하지 않습니다."
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 82%, 64%, 46%, 28% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4. \uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 10
     maxRange: 3
     criticalChance: 20
@@ -66,7 +69,9 @@ MonoBehaviour:
     recoilStrength: 0.08
     removeCost: 12
     upgradeCost: 55
-  - description: "발사 후 100%, 85%, 70%, 55%, 40%, 25% 확률로 연속 사격합니다. 탄환은 추가로 소모하지 않습니다."
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 85%, 70%, 55%, 40%, 25% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4. \uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 12
     maxRange: 4
     criticalChance: 28
@@ -87,7 +92,9 @@ MonoBehaviour:
     recoilStrength: 0.1
     removeCost: 12
     upgradeCost: 90
-  - description: "발사 후 100%, 90%, 80%, 70%, 60%, 50%, 40% 확률로 연속 사격합니다. 탄환은 추가로 소모하지 않습니다."
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 90%, 80%, 70%, 60%, 50%, 40% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4. \uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 15
     maxRange: 5
     criticalChance: 38

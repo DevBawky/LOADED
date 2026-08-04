@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Quick Draw
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_quick_draw
-  displayName: 퀵드로우탄
-  description: "3발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
-  bulletIcon: {fileID: 6341267608059338579, guid: 406843d572897ad4b8c689a7d872fa1e, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: b43edd6bdc25126428beb37e419723ef, type: 3}
+  displayName: "\uD035\uB4DC\uB85C\uC6B0\uD0C4"
+  description: "3\uBC1C \uC774\uD558\uB85C \uC7A5\uC804\uB41C \uC2E4\uB9B0\uB354\uC5D0
+    \uD3EC\uD568\uB418\uBA74 \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744
+    \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 6895671342812299232, guid: 2ba24d181d8b0e744ab0e56d44b8e03d, type: 3}
   price: 28
   grade: 2
   useCustomGradeNameColor: 0
@@ -45,7 +46,9 @@ MonoBehaviour:
   removeCost: 12
   upgradeCost: 30
   upgradeLevels:
-  - description: "4발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
+  - description: "4\uBC1C \uC774\uD558\uB85C \uC7A5\uC804\uB41C \uC2E4\uB9B0\uB354\uC5D0
+      \uD3EC\uD568\uB418\uBA74 \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744
+      \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 18
     maxRange: 4
     criticalChance: 28
@@ -66,7 +69,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 55
-  - description: "5발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
+  - description: "5\uBC1C \uC774\uD558\uB85C \uC7A5\uC804\uB41C \uC2E4\uB9B0\uB354\uC5D0
+      \uD3EC\uD568\uB418\uBA74 \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744
+      \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 23
     maxRange: 5
     criticalChance: 32
@@ -87,7 +92,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 90
-  - description: "6발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
+  - description: "6\uBC1C \uC774\uD558\uB85C \uC7A5\uC804\uB41C \uC2E4\uB9B0\uB354\uC5D0
+      \uD3EC\uD568\uB418\uBA74 \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744
+      \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 30
     maxRange: 5
     criticalChance: 38

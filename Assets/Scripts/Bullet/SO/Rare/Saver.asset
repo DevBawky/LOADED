@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Saver
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_saver
-  displayName: 절약탄
-  description: "이번 실린더에서 탄환이 파괴되지 않으면 발사 종료 후 골드 2를 얻습니다."
-  bulletIcon: {fileID: -417160762183536762, guid: 0eb1b539167d57e48aed3fe49912a95f, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: 9f3da703d3a3228458471a1253b1a404, type: 3}
+  displayName: "\uC808\uC57D\uD0C4"
+  description: "\uC774\uBC88 \uC2E4\uB9B0\uB354\uC5D0\uC11C \uD0C4\uD658\uC774 \uD30C\uAD34\uB418\uC9C0
+    \uC54A\uC73C\uBA74 \uBC1C\uC0AC \uC885\uB8CC \uD6C4 \uACE8\uB4DC 2\uB97C \uC5BB\uC2B5\uB2C8\uB2E4."
+  cylinderIcon: {fileID: -555243900412843026, guid: 365ff2b15b89144438f146a633e5fc4f, type: 3}
   price: 14
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +45,9 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "이번 실린더에서 탄환이 파괴되지 않으면 발사 종료 후 골드 3을 얻습니다."
+  - description: "\uC774\uBC88 \uC2E4\uB9B0\uB354\uC5D0\uC11C \uD0C4\uD658\uC774
+      \uD30C\uAD34\uB418\uC9C0 \uC54A\uC73C\uBA74 \uBC1C\uC0AC \uC885\uB8CC \uD6C4
+      \uACE8\uB4DC 3\uC744 \uC5BB\uC2B5\uB2C8\uB2E4."
     damage: 13
     maxRange: 4
     criticalChance: 18
@@ -66,7 +68,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "이번 실린더에서 탄환이 파괴되지 않으면 발사 종료 후 골드 4를 얻습니다."
+  - description: "\uC774\uBC88 \uC2E4\uB9B0\uB354\uC5D0\uC11C \uD0C4\uD658\uC774
+      \uD30C\uAD34\uB418\uC9C0 \uC54A\uC73C\uBA74 \uBC1C\uC0AC \uC885\uB8CC \uD6C4
+      \uACE8\uB4DC 4\uB97C \uC5BB\uC2B5\uB2C8\uB2E4."
     damage: 16
     maxRange: 5
     criticalChance: 21
@@ -87,7 +91,10 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "이번 실린더에서 탄환이 파괴되지 않으면 골드 6을 얻고 이번 발사 행동은 턴을 소비하지 않습니다."
+  - description: "\uC774\uBC88 \uC2E4\uB9B0\uB354\uC5D0\uC11C \uD0C4\uD658\uC774
+      \uD30C\uAD34\uB418\uC9C0 \uC54A\uC73C\uBA74 \uACE8\uB4DC 6\uC744 \uC5BB\uACE0
+      \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744 \uC18C\uBE44\uD558\uC9C0
+      \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 20
     maxRange: 5
     criticalChance: 25

@@ -143,6 +143,86 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
         initialized = damageGhostImage != null;
     }
 
+    public void Rebind(Image fillImage)
+    {
+        if (fillImage == null)
+        {
+            return;
+        }
+
+        if (healthFillImage == fillImage && initialized)
+        {
+            SetValueImmediate(fillImage.fillAmount);
+            return;
+        }
+
+        ClearDamagePreview();
+        StopManagedCoroutine(ref ghostRoutine);
+        StopManagedCoroutine(ref impactRoutine);
+        StopManagedCoroutine(ref flashRoutine);
+        StopManagedCoroutine(ref shaderHitRoutine);
+        RestoreBarTransform();
+
+        foreach (GameObject shard in activeShards)
+        {
+            if (shard != null)
+            {
+                Destroy(shard);
+            }
+        }
+
+        activeShards.Clear();
+
+        foreach (Image previewImage in damagePreviewImages)
+        {
+            if (previewImage != null)
+            {
+                Destroy(previewImage.gameObject);
+            }
+        }
+
+        damagePreviewImages.Clear();
+
+        foreach (Material previewMaterial in damagePreviewMaterials)
+        {
+            if (previewMaterial != null)
+            {
+                Destroy(previewMaterial);
+            }
+        }
+
+        damagePreviewMaterials.Clear();
+
+        if (damageGhostImage != null)
+        {
+            Destroy(damageGhostImage.gameObject);
+            damageGhostImage = null;
+        }
+
+        if (healthFillImage != null)
+        {
+            healthFillImage.material = healthBarMaterial;
+        }
+
+        if (fillRuntimeMaterial != null)
+        {
+            Destroy(fillRuntimeMaterial);
+            fillRuntimeMaterial = null;
+        }
+
+        if (ghostRuntimeMaterial != null)
+        {
+            Destroy(ghostRuntimeMaterial);
+            ghostRuntimeMaterial = null;
+        }
+
+        initialized = false;
+        previewActive = false;
+        previewChildrenSanitized = false;
+        healthFillImage = fillImage;
+        Initialize(fillImage);
+    }
+
     public void SetValueImmediate(float normalizedHealth)
     {
         if (!EnsureInitialized())
