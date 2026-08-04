@@ -69,8 +69,12 @@ public class StateManager : MonoBehaviour
     {
         SetPanels(false, false, false);
 
+        gameStartUI ??= FindFirstObjectByType<GameStartUI>(
+            FindObjectsInactive.Include);
+
         if (gameStartUI != null)
         {
+            gameStartUI.PrepareForUse();
             gameStartUI.ResetAndHide();
         }
 

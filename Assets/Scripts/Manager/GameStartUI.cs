@@ -63,6 +63,7 @@ public sealed class GameStartUI : MonoBehaviour
     private bool clickReceived;
     private Button pendingClickButton;
     private UnityAction pendingClickAction;
+    private bool reportEventsSubscribed;
 
     public bool IsConfigured => stageNoticePanel != null
         && stageNoticeButton != null
@@ -85,10 +86,15 @@ public sealed class GameStartUI : MonoBehaviour
 
     private void Awake()
     {
+        PrepareForUse();
+        ResetVisualState();
+    }
+
+    public void PrepareForUse()
+    {
         FindChildReferences();
         ResolveGameplayReferences();
         SubscribeToReportEvents();
-        ResetVisualState();
     }
 
     private void OnDestroy()
@@ -300,6 +306,11 @@ public sealed class GameStartUI : MonoBehaviour
 
     private void SubscribeToReportEvents()
     {
+        if (reportEventsSubscribed)
+        {
+            return;
+        }
+
         if (playerShoot != null)
         {
             playerShoot.BulletFired += HandleBulletFired;
@@ -315,10 +326,17 @@ public sealed class GameStartUI : MonoBehaviour
         {
             playerMove.TurnCompleted += HandleTurnCompleted;
         }
+
+        reportEventsSubscribed = true;
     }
 
     private void UnsubscribeFromReportEvents()
     {
+        if (!reportEventsSubscribed)
+        {
+            return;
+        }
+
         if (playerShoot != null)
         {
             playerShoot.BulletFired -= HandleBulletFired;
@@ -334,6 +352,8 @@ public sealed class GameStartUI : MonoBehaviour
         {
             playerMove.TurnCompleted -= HandleTurnCompleted;
         }
+
+        reportEventsSubscribed = false;
     }
 
     private void HandleBulletFired(BulletInstance bullet)
