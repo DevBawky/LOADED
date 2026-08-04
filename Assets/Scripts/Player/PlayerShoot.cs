@@ -10,6 +10,9 @@ using Unity.Cinemachine;
 
 public class PlayerShoot : MonoBehaviour
 {
+    public event Action<BulletInstance> BulletFired;
+    public event Action<int> DamageDealt;
+
     private const float BulletFeedbackStartAlpha = 0.2f;
 
     [Serializable]
@@ -308,7 +311,9 @@ public class PlayerShoot : MonoBehaviour
 
     private void Update()
     {
-        if (GamePauseController.IsPaused || isFiring)
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning
+            || isFiring)
         {
             return;
         }
@@ -341,7 +346,9 @@ public class PlayerShoot : MonoBehaviour
 
     public void Reload()
     {
-        if (GamePauseController.IsPaused || isFiring
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning
+            || isFiring
             || cylinderUI != null && cylinderUI.IsDragging
             || !TryBeginAction())
         {
@@ -836,6 +843,7 @@ public class PlayerShoot : MonoBehaviour
         PlayRandomSfx(isCritical ? criticalShotSfx : normalShotSfx);
         GenerateRecoil(bulletData);
         RecordSuccessfulShot();
+        BulletFired?.Invoke(bulletData);
         combatPresentation?.PlayShot(
             firePoint,
             bulletData,
@@ -1786,6 +1794,10 @@ public class PlayerShoot : MonoBehaviour
             int appliedDamage = enemy.ApplyAttackDamage(
                 attackDamage,
                 isCritical);
+            if (appliedDamage > 0)
+            {
+                DamageDealt?.Invoke(appliedDamage);
+            }
             bool defeatedByAttack = healthBeforeHit > 0
                 && enemy.CurrentHealth <= 0;
             combatFeedback?.RecordDamage(

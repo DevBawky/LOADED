@@ -95,7 +95,9 @@ public class InventoryTooltipUI : MonoBehaviour
     {
         Mouse mouse = Mouse.current;
 
-        if (GamePauseController.IsPaused || mouse == null
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning
+            || mouse == null
             || cylinderUI != null && cylinderUI.IsDragging)
         {
             HideAll();
