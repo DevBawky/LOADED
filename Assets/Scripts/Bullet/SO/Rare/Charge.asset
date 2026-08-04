@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Charge
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_charge
-  displayName: 충전탄
-  description: "앞서 발사된 탄환 하나당 충전 1을 얻은 것으로 계산하여 최종 대미지가 25% 증가합니다. 최대 5충전입니다."
-  bulletIcon: {fileID: 8684330195986053092, guid: cabf15510b152ba44a0688f4c44e5571, type: 3}
-  cylinderIcon: {fileID: 8307402940977883288, guid: d6e6a27bc19b5754492994a4628c969a, type: 3}
+  displayName: "\uCDA9\uC804\uD0C4"
+  description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9 \uCDA9\uC804
+    1\uC744 \uC5BB\uC740 \uAC83\uC73C\uB85C \uACC4\uC0B0\uD558\uC5EC \uCD5C\uC885
+    \uB300\uBBF8\uC9C0\uAC00 25% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCD5C\uB300 5\uCDA9\uC804\uC785\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 1639023946578512397, guid: a81c8bca0cd6ecb4da0dbfdb79980f87, type: 3}
   price: 18
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +46,9 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "앞서 발사된 탄환 하나당 최종 대미지가 30% 증가합니다. 최대 5충전입니다."
+  - description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 30% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCD5C\uB300
+      5\uCDA9\uC804\uC785\uB2C8\uB2E4."
     damage: 15
     maxRange: 4
     criticalChance: 18
@@ -66,7 +69,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "앞서 발사된 탄환 하나당 최종 대미지가 35% 증가합니다. 최대 6충전입니다."
+  - description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 35% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCD5C\uB300
+      6\uCDA9\uC804\uC785\uB2C8\uB2E4."
     damage: 19
     maxRange: 5
     criticalChance: 22
@@ -87,7 +92,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "앞서 발사된 탄환 하나당 최종 대미지가 45% 증가합니다. 최대 6충전입니다."
+  - description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 45% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCD5C\uB300
+      6\uCDA9\uC804\uC785\uB2C8\uB2E4."
     damage: 25
     maxRange: 5
     criticalChance: 28

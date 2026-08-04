@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Legacy
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_legacy
-  displayName: 유산탄
-  description: "다른 탄환이 영구 파괴될 때마다 영구 유산 1을 얻습니다. 유산 하나당 최종 대미지 +15%입니다."
-  bulletIcon: {fileID: 6341267608059338579, guid: 406843d572897ad4b8c689a7d872fa1e, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: b43edd6bdc25126428beb37e419723ef, type: 3}
+  displayName: "\uC720\uC0B0\uD0C4"
+  description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420 \uB54C\uB9C8\uB2E4
+    \uC601\uAD6C \uC720\uC0B0 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4. \uC720\uC0B0 \uD558\uB098\uB2F9
+    \uCD5C\uC885 \uB300\uBBF8\uC9C0 +15%\uC785\uB2C8\uB2E4."
+  cylinderIcon: {fileID: -9192586164993529986, guid: 81c43afc203a57d4dbadd0567903f9e7, type: 3}
   price: 30
   grade: 2
   useCustomGradeNameColor: 0
@@ -45,7 +46,9 @@ MonoBehaviour:
   removeCost: 12
   upgradeCost: 30
   upgradeLevels:
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 1을 얻습니다. 유산 하나당 최종 대미지 +20%입니다."
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4. \uC720\uC0B0
+      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +20%\uC785\uB2C8\uB2E4."
     damage: 16
     maxRange: 4
     criticalChance: 24
@@ -66,7 +69,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 55
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 1을 얻습니다. 유산 하나당 최종 대미지 +25%입니다."
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4. \uC720\uC0B0
+      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +25%\uC785\uB2C8\uB2E4."
     damage: 21
     maxRange: 5
     criticalChance: 28
@@ -88,7 +93,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 90
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 2를 얻습니다. 유산 하나당 최종 대미지 +30%입니다."
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 2\uB97C \uC5BB\uC2B5\uB2C8\uB2E4. \uC720\uC0B0
+      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +30%\uC785\uB2C8\uB2E4."
     damage: 28
     maxRange: 5
     criticalChance: 35

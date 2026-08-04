@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Masterpiece
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_masterpiece
-  displayName: 명품탄
-  description: "보유한 에이스·레전더리 탄환 하나당 최종 대미지가 12% 증가합니다."
-  bulletIcon: {fileID: 6765700697151959687, guid: 60b4f5719946c9740b22d46877404c80, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: 0ab4c268261c43e43b56d357084e1cc3, type: 3}
+  displayName: "\uBA85\uD488\uD0C4"
+  description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB354\uB9AC
+    \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 12% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 3980920622273506909, guid: 545c7c4fbc9be074ea6a254309f79abe, type: 3}
   price: 32
   grade: 2
   useCustomGradeNameColor: 0
@@ -45,7 +45,8 @@ MonoBehaviour:
   removeCost: 12
   upgradeCost: 30
   upgradeLevels:
-  - description: "보유한 에이스·레전더리 탄환 하나당 최종 대미지가 15% 증가합니다."
+  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB354\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 15% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 20
     maxRange: 4
     criticalChance: 24
@@ -66,7 +67,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 55
-  - description: "보유한 에이스·레전더리 탄환 하나당 최종 대미지가 18% 증가합니다."
+  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB354\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 18% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 26
     maxRange: 5
     criticalChance: 29
@@ -88,7 +90,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 90
-  - description: "보유한 에이스·레전더리 탄환 하나당 최종 대미지가 22% 증가합니다."
+  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB354\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 22% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 34
     maxRange: 5
     criticalChance: 36

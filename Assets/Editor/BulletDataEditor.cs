@@ -47,7 +47,6 @@ public class BulletDataEditor : Editor
         EditorGUILayout.LabelField("Basic Information", EditorStyles.boldLabel);
         Draw("bulletId");
         Draw("displayName");
-        Draw("bulletIcon");
         Draw("cylinderIcon");
         Draw("price");
         Draw("grade");
@@ -149,10 +148,10 @@ public class BulletDataEditor : Editor
                 MessageType.Warning);
         }
 
-        if (bullet.BulletIcon == null && bullet.CylinderIcon == null)
+        if (bullet.CylinderIcon == null)
         {
             EditorGUILayout.HelpBox(
-                "Both Bullet Icon and Cylinder Icon are empty. UI cannot display this bullet.",
+                "Cylinder Icon is empty. UI cannot display this bullet.",
                 MessageType.Warning);
         }
 

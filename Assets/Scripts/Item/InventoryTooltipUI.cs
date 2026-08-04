@@ -287,7 +287,7 @@ public class InventoryTooltipUI : MonoBehaviour
 
         bulletDescriptionText.richText = true;
         bulletDescriptionText.text = bullet.GetDetailedDescription(level);
-        ApplyIcon(bulletIcon, bullet.BulletIcon);
+        ApplyIcon(bulletIcon, null);
         ApplyIcon(bulletCylinderIcon, bullet.CylinderIcon);
         bulletTooltip.gameObject.SetActive(true);
         bulletTooltip.SetAsLastSibling();
@@ -461,9 +461,7 @@ public class InventoryTooltipUI : MonoBehaviour
             return null;
         }
 
-        return bullet.BulletIcon != null
-            ? bullet.BulletIcon
-            : bullet.CylinderIcon;
+        return bullet.CylinderIcon;
     }
 
     private static void DisableRaycasts(RectTransform root)

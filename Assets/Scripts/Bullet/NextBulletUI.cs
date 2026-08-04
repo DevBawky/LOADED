@@ -107,8 +107,6 @@ public class NextBulletUI : MonoBehaviour
             return null;
         }
 
-        return bullet.BulletIcon != null
-            ? bullet.BulletIcon
-            : bullet.CylinderIcon;
+        return bullet.CylinderIcon;
     }
 }

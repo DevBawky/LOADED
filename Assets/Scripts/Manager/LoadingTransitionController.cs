@@ -76,6 +76,22 @@ public sealed class LoadingTransitionController : MonoBehaviour
             return;
         }
 
+        LoadingTransitionController existing =
+            FindFirstObjectByType<LoadingTransitionController>(
+                FindObjectsInactive.Include);
+
+        if (existing != null)
+        {
+            existing.gameObject.SetActive(true);
+
+            if (Instance == null)
+            {
+                existing.RegisterAsInstance();
+            }
+
+            return;
+        }
+
         LoadingTransitionController prefab = Resources.Load<LoadingTransitionController>(ResourcePath);
 
         if (prefab == null)
@@ -84,10 +100,21 @@ public sealed class LoadingTransitionController : MonoBehaviour
             return;
         }
 
-        Instantiate(prefab);
+        LoadingTransitionController created = Instantiate(prefab);
+        created.gameObject.SetActive(true);
+
+        if (Instance == null)
+        {
+            created.RegisterAsInstance();
+        }
     }
 
     private void Awake()
+    {
+        RegisterAsInstance();
+    }
+
+    private void RegisterAsInstance()
     {
         if (Instance != null && Instance != this)
         {

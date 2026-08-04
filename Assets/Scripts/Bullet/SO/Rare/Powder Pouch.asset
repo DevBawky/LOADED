@@ -17,8 +17,7 @@ MonoBehaviour:
   description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0\uC744 \uD30C\uAD34\uD558\uACE0 \uC2E4\uB9B0\uB354\uC5D0
     \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960\uC744 30%p
     \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
-  bulletIcon: {fileID: 890402192481520174, guid: 5e769983b24010f41a1f0f3d6aa75298, type: 3}
-  cylinderIcon: {fileID: -8793840650327370687, guid: 81fc923aa9f569f4081b781224e9b6c9, type: 3}
+  cylinderIcon: {fileID: -7456226695306883464, guid: e4a881bd99bdb5a41a4d95fd6e40581c, type: 3}
   price: 14
   grade: 1
   useCustomGradeNameColor: 0
