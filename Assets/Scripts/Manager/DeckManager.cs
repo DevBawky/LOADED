@@ -5,6 +5,7 @@ using UnityEngine;
 public class DeckManager : MonoBehaviour
 {
     public const int MinimumOwnedBulletCount = 7;
+    public const int MaximumOwnedBulletCount = 15;
 
     [Header("Deck Settings")]
     [SerializeField] private List<BulletData> startingBullets =
@@ -28,8 +29,11 @@ public class DeckManager : MonoBehaviour
     public IReadOnlyList<BulletInstance> LoadedBullets => loadedBullets;
     public IReadOnlyList<BulletInstance> Graveyard => graveyard;
     public int MaxReloadAmount => maxReloadAmount;
-    public int OwnedBulletCount => deck.Count + loadedBullets.Count
+    public int TotalBulletCount => deck.Count + loadedBullets.Count
         + graveyard.Count;
+    public int OwnedBulletCount => CountOwnedBullets(deck)
+        + CountOwnedBullets(loadedBullets)
+        + CountOwnedBullets(graveyard);
     public bool CanRemoveOwnedBullet =>
         OwnedBulletCount > MinimumOwnedBulletCount;
 
@@ -103,7 +107,7 @@ public class DeckManager : MonoBehaviour
 
     public bool TryAddBullet(BulletData bulletData)
     {
-        if (bulletData == null)
+        if (!CanAddBullet(bulletData))
         {
             return false;
         }
@@ -113,9 +117,32 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public bool CanAddBullet(BulletData bulletData)
+    {
+        return bulletData != null
+            && (!CountsTowardOwnedLimit(bulletData, 0)
+                || OwnedBulletCount < MaximumOwnedBulletCount);
+    }
+
     public bool TryUpgradeBullet(BulletInstance bullet)
     {
-        if (!Contains(bullet) || !bullet.TryUpgrade())
+        if (!Contains(bullet) || !bullet.CanUpgrade)
+        {
+            return false;
+        }
+
+        bool countsNow = CountsTowardOwnedLimit(bullet);
+        bool countsAfterUpgrade = CountsTowardOwnedLimit(
+            bullet.Data,
+            bullet.Level + 1);
+
+        if (!countsNow && countsAfterUpgrade
+            && OwnedBulletCount >= MaximumOwnedBulletCount)
+        {
+            return false;
+        }
+
+        if (!bullet.TryUpgrade())
         {
             return false;
         }
@@ -147,8 +174,9 @@ public class DeckManager : MonoBehaviour
     public bool CanRemoveBullet(BulletInstance bullet)
     {
         return bullet != null
-            && CanRemoveOwnedBullet
-            && Contains(bullet);
+            && Contains(bullet)
+            && (!CountsTowardOwnedLimit(bullet)
+                || CanRemoveOwnedBullet);
     }
 
     public bool TryDestroyBullet(BulletInstance bullet)
@@ -234,7 +262,7 @@ public class DeckManager : MonoBehaviour
 
         foreach (BulletData bulletData in startingBullets)
         {
-            if (bulletData != null)
+            if (CanAddBullet(bulletData))
             {
                 deck.Add(CreateBulletInstance(bulletData));
             }
@@ -248,7 +276,7 @@ public class DeckManager : MonoBehaviour
 
     private void EnsureMinimumStartingBulletCount()
     {
-        if (deck.Count >= MinimumOwnedBulletCount)
+        if (OwnedBulletCount >= MinimumOwnedBulletCount)
         {
             return;
         }
@@ -257,7 +285,8 @@ public class DeckManager : MonoBehaviour
 
         foreach (BulletData bulletData in startingBullets)
         {
-            if (bulletData != null)
+            if (bulletData != null
+                && CountsTowardOwnedLimit(bulletData, 0))
             {
                 fallbackBullet = bulletData;
                 break;
@@ -273,7 +302,7 @@ public class DeckManager : MonoBehaviour
             return;
         }
 
-        int missingBulletCount = MinimumOwnedBulletCount - deck.Count;
+        int missingBulletCount = MinimumOwnedBulletCount - OwnedBulletCount;
 
         for (int index = 0; index < missingBulletCount; index++)
         {
@@ -285,6 +314,76 @@ public class DeckManager : MonoBehaviour
             + $"Added {missingBulletCount} copies of "
             + $"'{fallbackBullet.name}' to satisfy the minimum.",
             this);
+    }
+
+    public static bool CountsTowardOwnedLimit(BulletInstance bullet)
+    {
+        return bullet != null && !HasDestructionEffect(
+            bullet.Effects,
+            bullet.ConditionalEvents);
+    }
+
+    public static bool CountsTowardOwnedLimit(
+        BulletData bulletData,
+        int level = 0)
+    {
+        return bulletData != null && !HasDestructionEffect(
+            bulletData.GetEffects(level),
+            bulletData.GetConditionalEvents(level));
+    }
+
+    private static int CountOwnedBullets(
+        IReadOnlyList<BulletInstance> bullets)
+    {
+        int count = 0;
+
+        foreach (BulletInstance bullet in bullets)
+        {
+            if (CountsTowardOwnedLimit(bullet))
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static bool HasDestructionEffect(
+        IReadOnlyList<BulletEffectData> effects,
+        IReadOnlyList<BulletConditionalEventData> conditionalEvents)
+    {
+        if (ContainsDestructionEffect(effects))
+        {
+            return true;
+        }
+
+        foreach (BulletConditionalEventData conditionalEvent
+                 in conditionalEvents)
+        {
+            if (conditionalEvent != null
+                && ContainsDestructionEffect(conditionalEvent.Events))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsDestructionEffect(
+        IReadOnlyList<BulletEffectData> effects)
+    {
+        foreach (BulletEffectData effect in effects)
+        {
+            if (effect != null
+                && (effect.EffectType == BulletEffectType.DestroyBullet
+                    || effect.EffectType == BulletEffectType.PowderPouch))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private BulletInstance CreateBulletInstance(BulletData bulletData)

@@ -58,6 +58,7 @@ public class ShopManager : MonoBehaviour
     [SerializeField] private CurrencyManager currencyManager;
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private PlayerInventory playerInventory;
+    [SerializeField] private TMP_Text myBulletCountText;
 
     [Header("Bullet Offers")]
     [Tooltip("The configured candidate pool. Offers are drawn without replacement up to the number of connected slots.")]
@@ -106,6 +107,7 @@ public class ShopManager : MonoBehaviour
 
     private readonly List<BulletData> currentOffers =
         new List<BulletData>();
+    private readonly List<bool> purchasedBulletOffers = new List<bool>();
     private readonly List<UnityAction> slotClickActions =
         new List<UnityAction>();
     private readonly List<ItemData> currentItemOffers =
@@ -149,7 +151,13 @@ public class ShopManager : MonoBehaviour
             currencyManager.MoneyChanged += HandleMoneyChanged;
         }
 
+        if (deckManager != null)
+        {
+            deckManager.StateChanged += HandleDeckStateChanged;
+        }
+
         RefreshRefreshButton();
+        RefreshOwnedBulletCount();
 
         if (playerInventory != null)
         {
@@ -168,6 +176,11 @@ public class ShopManager : MonoBehaviour
             currencyManager.MoneyChanged -= HandleMoneyChanged;
         }
 
+        if (deckManager != null)
+        {
+            deckManager.StateChanged -= HandleDeckStateChanged;
+        }
+
         if (playerInventory != null)
         {
             playerInventory.Changed -= RefreshItemSlots;
@@ -180,6 +193,7 @@ public class ShopManager : MonoBehaviour
         GenerateOffers();
         GenerateItemOffers();
         RefreshRefreshButton();
+        RefreshOwnedBulletCount();
     }
 
     public bool TryRefreshOffers()
@@ -451,6 +465,7 @@ public class ShopManager : MonoBehaviour
         }
 
         purchasedItemOffers.Clear();
+        purchasedBulletOffers.Clear();
     }
 
     public bool TryPurchase(int slotIndex)
@@ -467,6 +482,7 @@ public class ShopManager : MonoBehaviour
         if (slot == null || slot.Button == null || !slot.Button.interactable
             || bulletData == null || currencyManager == null
             || deckManager == null
+            || !deckManager.CanAddBullet(bulletData)
             || !currencyManager.TrySpendMoney(bulletData.Price))
         {
             return false;
@@ -478,7 +494,8 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
-        slot.Button.interactable = false;
+        purchasedBulletOffers[slotIndex] = true;
+        RefreshSlots();
         OffersChanged?.Invoke();
         PurchaseCompleted?.Invoke();
         return true;
@@ -535,6 +552,7 @@ public class ShopManager : MonoBehaviour
     {
         List<BulletData> candidates = BuildCandidateList();
         currentOffers.Clear();
+        purchasedBulletOffers.Clear();
 
         int offerCount = Mathf.Min(slots.Count, candidates.Count);
 
@@ -548,6 +566,7 @@ public class ShopManager : MonoBehaviour
             }
 
             currentOffers.Add(candidates[candidateIndex]);
+            purchasedBulletOffers.Add(false);
             candidates.RemoveAt(candidateIndex);
         }
 
@@ -684,11 +703,16 @@ public class ShopManager : MonoBehaviour
             BulletData offer = slotIndex < currentOffers.Count
                 ? currentOffers[slotIndex]
                 : null;
-            RefreshSlot(slots[slotIndex], offer);
+            bool purchased = slotIndex < purchasedBulletOffers.Count
+                && purchasedBulletOffers[slotIndex];
+            RefreshSlot(slots[slotIndex], offer, purchased);
         }
     }
 
-    private void RefreshSlot(ShopBulletSlot slot, BulletData offer)
+    private void RefreshSlot(
+        ShopBulletSlot slot,
+        BulletData offer,
+        bool purchased)
     {
         if (slot == null)
         {
@@ -698,7 +722,8 @@ public class ShopManager : MonoBehaviour
         if (slot.Button != null)
         {
             slot.Button.gameObject.SetActive(offer != null);
-            slot.Button.interactable = offer != null;
+            slot.Button.interactable = offer != null && !purchased
+                && (deckManager == null || deckManager.CanAddBullet(offer));
 
             if (offer != null && slot.Button.image != null)
             {
@@ -783,6 +808,7 @@ public class ShopManager : MonoBehaviour
     private void ClearOffers()
     {
         currentOffers.Clear();
+        purchasedBulletOffers.Clear();
         currentItemOffers.Clear();
         purchasedItemOffers.Clear();
         RefreshSlots();
@@ -884,6 +910,26 @@ public class ShopManager : MonoBehaviour
         RefreshRefreshButton();
     }
 
+    private void HandleDeckStateChanged()
+    {
+        RefreshOwnedBulletCount();
+        RefreshSlots();
+    }
+
+    private void RefreshOwnedBulletCount()
+    {
+        if (myBulletCountText == null)
+        {
+            return;
+        }
+
+        int bulletCount = deckManager == null
+            ? 0
+            : deckManager.OwnedBulletCount;
+        myBulletCountText.text = $"탄환 보유 개수: {bulletCount}/"
+            + DeckManager.MaximumOwnedBulletCount;
+    }
+
     private void RefreshRefreshButton()
     {
         if (refreshButton != null)
@@ -908,6 +954,7 @@ public class ShopManager : MonoBehaviour
         playerInventory ??= FindSceneObject<PlayerInventory>();
 
         ResolveRefreshButton();
+        ResolveBulletCountText();
 
         if (itemPool.Count == 0)
         {
@@ -981,6 +1028,30 @@ public class ShopManager : MonoBehaviour
         if (refreshCostText != null)
         {
             refreshButtonLabel = refreshCostText.text;
+        }
+    }
+
+    private void ResolveBulletCountText()
+    {
+        if (myBulletCountText != null)
+        {
+            return;
+        }
+
+        TMP_Text[] allTexts = FindObjectsByType<TMP_Text>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        foreach (TMP_Text textComponent in allTexts)
+        {
+            if (textComponent != null
+                && textComponent.gameObject.scene.IsValid()
+                && textComponent.name == "Text | My Bullet Count"
+                && HasNamedAncestor(textComponent.transform, "Panel | Shop"))
+            {
+                myBulletCountText = textComponent;
+                break;
+            }
         }
     }
 
