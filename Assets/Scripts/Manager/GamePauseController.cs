@@ -14,6 +14,11 @@ public class GamePauseController : MonoBehaviour
 
     private void Update()
     {
+        if (LoadingTransitionController.IsTransitioning)
+        {
+            return;
+        }
+
         Keyboard keyboard = Keyboard.current;
 
         if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
@@ -24,6 +29,11 @@ public class GamePauseController : MonoBehaviour
 
     public void TogglePause()
     {
+        if (LoadingTransitionController.IsTransitioning)
+        {
+            return;
+        }
+
         SetPaused(!IsPaused);
     }
 

@@ -718,6 +718,7 @@ public class PlayerMove : MonoBehaviour
     private bool CanPerformAction()
     {
         return !GamePauseController.IsPaused
+            && !LoadingTransitionController.IsTransitioning
             && !isInputLocked
             && !isShooting
             && !isActing

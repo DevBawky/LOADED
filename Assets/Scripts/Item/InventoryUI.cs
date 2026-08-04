@@ -29,7 +29,9 @@ public class InventoryUI : MonoBehaviour
     {
         Mouse mouse = Mouse.current;
 
-        if (GamePauseController.IsPaused || mouse == null
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning
+            || mouse == null
             || !mouse.leftButton.wasPressedThisFrame
             || playerInventory == null || itemImages == null)
         {

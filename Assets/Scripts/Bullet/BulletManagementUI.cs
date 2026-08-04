@@ -519,7 +519,8 @@ public class BulletManagementUI : MonoBehaviour
             ? null
             : upgradeButton.transform as RectTransform;
 
-        if (mouse == null || upgradeButtonRect == null
+        if (LoadingTransitionController.IsTransitioning
+            || mouse == null || upgradeButtonRect == null
             || upgradeTooltip == null
             || upgradeTooltipDescriptionText == null
             || manageBulletsPanel == null

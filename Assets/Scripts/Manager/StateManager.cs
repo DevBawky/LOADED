@@ -159,7 +159,8 @@ public class StateManager : MonoBehaviour
             return;
         }
 
-        OpenShopAfterBattleClear();
+        SetInputLocked(true);
+        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
     }
 
     private void OpenShopAfterBattleClear()
@@ -188,6 +189,17 @@ public class StateManager : MonoBehaviour
     }
 
     public void GoToBattle()
+    {
+        if (currentState != GameFlowState.Shop)
+        {
+            return;
+        }
+
+        SetInputLocked(true);
+        LoadingTransitionController.RunTransition(ContinueToBattle);
+    }
+
+    private void ContinueToBattle()
     {
         if (currentState != GameFlowState.Shop)
         {
@@ -317,7 +329,7 @@ public class StateManager : MonoBehaviour
         }
 
         battleClearCoroutine = null;
-        OpenShopAfterBattleClear();
+        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
     }
 
     private void HandleBattleFailed()
