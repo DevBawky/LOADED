@@ -200,6 +200,20 @@ public sealed class LoadingTransitionController : MonoBehaviour
             return false;
         }
 
+        if (!controller.gameObject.activeSelf)
+        {
+            controller.gameObject.SetActive(true);
+        }
+
+        if (!controller.gameObject.activeInHierarchy)
+        {
+            Debug.LogError(
+                "Loading transition Canvas could not be activated. "
+                + "Its parent hierarchy must be active.",
+                controller);
+            return false;
+        }
+
         if (controller.IsConfigured())
         {
             return true;
@@ -215,6 +229,11 @@ public sealed class LoadingTransitionController : MonoBehaviour
         string sceneName,
         int sceneBuildIndex)
     {
+        if (!gameObject.activeSelf)
+        {
+            gameObject.SetActive(true);
+        }
+
         if (transitionCoroutine != null)
         {
             return false;

@@ -12,6 +12,7 @@ public class PlayerShoot : MonoBehaviour
 {
     public event Action<BulletInstance> BulletFired;
     public event Action<int> DamageDealt;
+    public event Action<PlayerBehaviourAction> BehaviourActionStarted;
 
     private const float BulletFeedbackStartAlpha = 0.2f;
 
@@ -368,6 +369,7 @@ public class PlayerShoot : MonoBehaviour
 
         if (deckManager.TryReload(out BulletInstance loadedBullet))
         {
+            BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Reload);
             PlayRandomSfx(reloadSfx);
             combatPresentation?.PlayReload(loadedBullet, cylinderUI);
 
@@ -418,6 +420,7 @@ public class PlayerShoot : MonoBehaviour
         }
 
         ClearLoadedBulletDamagePreview();
+        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Shoot);
         StartCoroutine(ShootLoadedBullets(horizontalDirection));
     }
 
@@ -4091,6 +4094,7 @@ public class PlayerShoot : MonoBehaviour
         if (recoilCameraTransform != null)
         {
             recoilCameraTransform.position = cameraRestPosition;
+            recoilCameraTransform.localRotation = Quaternion.identity;
         }
     }
 

@@ -38,10 +38,11 @@ public sealed class CombatCameraShake : MonoBehaviour
         if (shakeRoutine != null)
         {
             StopCoroutine(shakeRoutine);
-            transform.localPosition = baseLocalPosition;
+            RestoreCameraTransform();
         }
 
         baseLocalPosition = transform.localPosition;
+        transform.localRotation = Quaternion.identity;
         shakeRoutine = StartCoroutine(ShakeRoutine(strength));
     }
 
@@ -66,18 +67,24 @@ public sealed class CombatCameraShake : MonoBehaviour
                 + new Vector3(offset.x, offset.y, 0f);
         }
 
-        transform.localPosition = baseLocalPosition;
+        RestoreCameraTransform();
         shakeRoutine = null;
     }
 
     private void OnDisable()
     {
-        transform.localPosition = baseLocalPosition;
+        RestoreCameraTransform();
         shakeRoutine = null;
 
         if (instance == this)
         {
             instance = null;
         }
+    }
+
+    private void RestoreCameraTransform()
+    {
+        transform.localPosition = baseLocalPosition;
+        transform.localRotation = Quaternion.identity;
     }
 }
