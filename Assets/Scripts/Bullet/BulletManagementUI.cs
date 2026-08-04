@@ -253,7 +253,7 @@ public class BulletManagementUI : MonoBehaviour
             return;
         }
 
-        ApplyIcon(bulletIcon, selectedBullet.BulletIcon);
+        ApplyIcon(bulletIcon, null);
         ApplyIcon(cylinderIcon, selectedBullet.CylinderIcon);
 
         if (bulletNameText != null)
@@ -777,9 +777,7 @@ public class BulletManagementUI : MonoBehaviour
             return null;
         }
 
-        return bullet.BulletIcon != null
-            ? bullet.BulletIcon
-            : bullet.CylinderIcon;
+        return bullet.CylinderIcon;
     }
 
     private static void ApplyIcon(Image image, Sprite sprite)

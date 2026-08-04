@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Shell Collector
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_shell_collector
-  displayName: 탄피 수집탄
-  description: "다른 사격에서 탄피를 저장합니다. 탄피 2개당 50% 위력으로 추가 사격하며 최대 3회 발사합니다."
-  bulletIcon: {fileID: 1749605940074572079, guid: ab8bf7764ae65e0428325c8eea1e6c74, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: ff771df025c71e04c9c634cbc6ec431b, type: 3}
+  displayName: "\uD0C4\uD53C \uC218\uC9D1\uD0C4"
+  description: "\uB2E4\uB978 \uC0AC\uACA9\uC5D0\uC11C \uD0C4\uD53C\uB97C \uC800\uC7A5\uD569\uB2C8\uB2E4.
+    \uD0C4\uD53C 2\uAC1C\uB2F9 50% \uC704\uB825\uC73C\uB85C \uCD94\uAC00 \uC0AC\uACA9\uD558\uBA70
+    \uCD5C\uB300 3\uD68C \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 8246226265278136234, guid: b84d059f65143994e9167873d4daf159, type: 3}
   price: 20
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +46,9 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "다른 사격에서 탄피를 저장합니다. 탄피 2개당 60% 위력으로 추가 사격하며 최대 3회 발사합니다."
+  - description: "\uB2E4\uB978 \uC0AC\uACA9\uC5D0\uC11C \uD0C4\uD53C\uB97C \uC800\uC7A5\uD569\uB2C8\uB2E4.
+      \uD0C4\uD53C 2\uAC1C\uB2F9 60% \uC704\uB825\uC73C\uB85C \uCD94\uAC00 \uC0AC\uACA9\uD558\uBA70
+      \uCD5C\uB300 3\uD68C \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
     damage: 13
     maxRange: 4
     criticalChance: 18
@@ -66,7 +69,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "다른 사격에서 탄피를 저장합니다. 탄피 2개당 70% 위력으로 추가 사격하며 최대 4회 발사합니다."
+  - description: "\uB2E4\uB978 \uC0AC\uACA9\uC5D0\uC11C \uD0C4\uD53C\uB97C \uC800\uC7A5\uD569\uB2C8\uB2E4.
+      \uD0C4\uD53C 2\uAC1C\uB2F9 70% \uC704\uB825\uC73C\uB85C \uCD94\uAC00 \uC0AC\uACA9\uD558\uBA70
+      \uCD5C\uB300 4\uD68C \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
     damage: 16
     maxRange: 5
     criticalChance: 22
@@ -87,7 +92,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "다른 사격에서 탄피를 저장합니다. 탄피 1개당 75% 위력으로 추가 사격하며 최대 4회 발사합니다."
+  - description: "\uB2E4\uB978 \uC0AC\uACA9\uC5D0\uC11C \uD0C4\uD53C\uB97C \uC800\uC7A5\uD569\uB2C8\uB2E4.
+      \uD0C4\uD53C 1\uAC1C\uB2F9 75% \uC704\uB825\uC73C\uB85C \uCD94\uAC00 \uC0AC\uACA9\uD558\uBA70
+      \uCD5C\uB300 4\uD68C \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
     damage: 20
     maxRange: 5
     criticalChance: 28

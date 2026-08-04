@@ -426,7 +426,7 @@ GameObject:
   - component: {fileID: 4064423382310575712}
   - component: {fileID: 7413258921714967167}
   - component: {fileID: 6192071353145095701}
-  - component: {fileID: 8365304237614359797}
+  - component: {fileID: 7533821384826531738}
   m_Layer: 5
   m_Name: Canvas _ Game Start
   m_TagString: Untagged
@@ -519,7 +519,7 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &8365304237614359797
+--- !u!114 &7533821384826531738
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -532,15 +532,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameStartUI
   stageNoticePanel: {fileID: 6622230707495379367}
-  stageNoticeButton: {fileID: 6469704093357642790}
+  stageNoticeButton: {fileID: 0}
   stageInfoText: {fileID: 2837176957877659090}
   stageSubTitleText: {fileID: 7275382222220098665}
-  stageNoticeClickText: {fileID: 9052629717908933865}
-  stageReportPanel: {fileID: 5444055579294853986}
-  stageReportButton: {fileID: 3527139134509454375}
-  stageReportTitleText: {fileID: 2421416643911389667}
-  stageReportBodyText: {fileID: 3125200271113758034}
-  stageReportClickText: {fileID: 3396618824688757348}
+  stageNoticeClickText: {fileID: 0}
+  stageReportPanel: {fileID: 0}
+  stageReportButton: {fileID: 0}
+  stageReportTitleText: {fileID: 0}
+  stageReportBodyText: {fileID: 0}
+  stageReportClickText: {fileID: 0}
   gameplayCanvas: {fileID: 0}
   cinemachineCamera: {fileID: 0}
   playerTrackingTarget: {fileID: 0}
@@ -550,8 +550,8 @@ MonoBehaviour:
   clickTextBlinkInterval: 0.3
   useUnscaledTime: 1
   fightText: {fileID: 58027665752101708}
-  fightHoldDuration: 0.7
-  fightFadeDuration: 0.3
+  fightHoldDuration: 1
+  fightFadeDuration: 1
   damageValueColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   damageTakenValueColor: {r: 1, g: 0.3, b: 0.3, a: 1}
   summaryValueColor: {r: 0.45, g: 1, b: 0.55, a: 1}
@@ -710,7 +710,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &5975761020860329616
 RectTransform:
   m_ObjectHideFlags: 0
@@ -833,7 +833,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &3241630997841869027
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1005,8 +1005,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\uC2A4\uD14C\uC774\uC9C0 1-1"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: e4c648398d2f1674eb6b84e85ede3eb2, type: 2}
-  m_sharedMaterial: {fileID: -9187310579416913216, guid: e4c648398d2f1674eb6b84e85ede3eb2, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 7f995939749854a4db06a99fe70c99b9, type: 2}
+  m_sharedMaterial: {fileID: 3402484682845410467, guid: 7f995939749854a4db06a99fe70c99b9, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1030,7 +1030,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 139.55
+  m_fontSize: 134.7
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -1142,7 +1142,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\uC2DC\uC791!!"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: e4c648398d2f1674eb6b84e85ede3eb2, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 7f995939749854a4db06a99fe70c99b9, type: 2}
   m_sharedMaterial: {fileID: -6608467338199845685, guid: 7754c1e3299865749b453c841894af8b, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
@@ -1279,8 +1279,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: "\uC801\uB4E4\uC744 \uBAA8\uB450 \uCC98\uCE58\uD558\uC2ED\uC2DC\uC624"
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: e4c648398d2f1674eb6b84e85ede3eb2, type: 2}
-  m_sharedMaterial: {fileID: -9187310579416913216, guid: e4c648398d2f1674eb6b84e85ede3eb2, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: 7f995939749854a4db06a99fe70c99b9, type: 2}
+  m_sharedMaterial: {fileID: 3402484682845410467, guid: 7f995939749854a4db06a99fe70c99b9, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -1304,7 +1304,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 72
+  m_fontSize: 65.05
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -1321,7 +1321,7 @@ MonoBehaviour:
   m_lineSpacingMax: 0
   m_paragraphSpacing: 0
   m_charWidthMaxAdj: 0
-  m_TextWrappingMode: 1
+  m_TextWrappingMode: 0
   m_wordWrappingRatios: 0.4
   m_overflowMode: 0
   m_linkedTextComponent: {fileID: 0}

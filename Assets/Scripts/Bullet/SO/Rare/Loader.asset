@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Loader
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_loader
-  displayName: 장전수탄
-  description: "빈 약실 하나당 최종 대미지가 20% 증가합니다."
-  bulletIcon: {fileID: 1749605940074572079, guid: ab8bf7764ae65e0428325c8eea1e6c74, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: ff771df025c71e04c9c634cbc6ec431b, type: 3}
+  displayName: "\uC7A5\uC804\uC218\uD0C4"
+  description: "\uBE48 \uC57D\uC2E4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+    20% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 4344118158884105661, guid: c57199f7a69bc414da6d73b68565e16b, type: 3}
   price: 16
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +45,8 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "빈 약실 하나당 최종 대미지가 25% 증가합니다."
+  - description: "\uBE48 \uC57D\uC2E4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      25% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 16
     maxRange: 4
     criticalChance: 18
@@ -66,7 +67,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "빈 약실 하나당 최종 대미지가 30% 증가합니다."
+  - description: "\uBE48 \uC57D\uC2E4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      30% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 20
     maxRange: 5
     criticalChance: 22
@@ -87,7 +89,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "빈 약실 하나당 최종 대미지가 40% 증가합니다."
+  - description: "\uBE48 \uC57D\uC2E4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      40% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 26
     maxRange: 5
     criticalChance: 28

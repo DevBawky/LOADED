@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Coagulation
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_coagulation
-  displayName: 응고탄
-  description: "잃은 체력 2%당 치명타 확률이 1%p 증가합니다."
-  bulletIcon: {fileID: -1940218674652858746, guid: d070a037b58048a4589e036dc85abd39, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: de7770955ab5a3940a0c00259e4c5b21, type: 3}
+  displayName: "\uC751\uACE0\uD0C4"
+  description: "\uC783\uC740 \uCCB4\uB825 2%\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960\uC774
+    1%p \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 8499059365894075233, guid: c3e1f9e0cefefeb4aa92aff766e0c54f, type: 3}
   price: 15
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +45,8 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "잃은 체력 2%당 치명타 확률이 1%p 증가합니다."
+  - description: "\uC783\uC740 \uCCB4\uB825 2%\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960\uC774
+      1%p \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 15
     maxRange: 4
     criticalChance: 14
@@ -66,7 +67,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "잃은 체력 1%당 치명타 확률이 1%p 증가합니다."
+  - description: "\uC783\uC740 \uCCB4\uB825 1%\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960\uC774
+      1%p \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 19
     maxRange: 5
     criticalChance: 18
@@ -87,7 +89,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "잃은 체력 1%당 치명타 확률이 1%p 증가하며, 50% 확률로 피해만큼 흡혈합니다."
+  - description: "\uC783\uC740 \uCCB4\uB825 1%\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960\uC774
+      1%p \uC99D\uAC00\uD558\uBA70, 50% \uD655\uB960\uB85C \uD53C\uD574\uB9CC\uD07C
+      \uD761\uD608\uD569\uB2C8\uB2E4."
     damage: 24
     maxRange: 5
     criticalChance: 22

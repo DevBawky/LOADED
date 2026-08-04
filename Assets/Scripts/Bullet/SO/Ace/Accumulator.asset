@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Accumulator
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_accumulator
-  displayName: 축전탄
-  description: "다른 탄환이 치명타를 발생시키면 전력을 저장합니다. 전력 하나당 최종 대미지 +20%, 발사 후 50%를 보존합니다."
-  bulletIcon: {fileID: 6765700697151959687, guid: 60b4f5719946c9740b22d46877404c80, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: 0ab4c268261c43e43b56d357084e1cc3, type: 3}
+  displayName: "\uCD95\uC804\uD0C4"
+  description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
+    \uC804\uB825\uC744 \uC800\uC7A5\uD569\uB2C8\uB2E4. \uC804\uB825 \uD558\uB098\uB2F9
+    \uCD5C\uC885 \uB300\uBBF8\uC9C0 +20%, \uBC1C\uC0AC \uD6C4 50%\uB97C \uBCF4\uC874\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 6396061427510755365, guid: 125bc83cf0534c64aaea6b7f4d16d2f6, type: 3}
   price: 32
   grade: 2
   useCustomGradeNameColor: 0
@@ -45,7 +46,9 @@ MonoBehaviour:
   removeCost: 12
   upgradeCost: 30
   upgradeLevels:
-  - description: "다른 탄환의 치명타로 전력을 저장합니다. 전력 하나당 최종 대미지 +25%, 발사 후 60%를 보존합니다."
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0\uB85C \uC804\uB825\uC744
+      \uC800\uC7A5\uD569\uB2C8\uB2E4. \uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885
+      \uB300\uBBF8\uC9C0 +25%, \uBC1C\uC0AC \uD6C4 60%\uB97C \uBCF4\uC874\uD569\uB2C8\uB2E4."
     damage: 18
     maxRange: 4
     criticalChance: 24
@@ -66,7 +69,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 55
-  - description: "다른 탄환의 치명타로 전력을 저장합니다. 전력 하나당 최종 대미지 +30%, 발사 후 75%를 보존합니다."
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0\uB85C \uC804\uB825\uC744
+      \uC800\uC7A5\uD569\uB2C8\uB2E4. \uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885
+      \uB300\uBBF8\uC9C0 +30%, \uBC1C\uC0AC \uD6C4 75%\uB97C \uBCF4\uC874\uD569\uB2C8\uB2E4."
     damage: 23
     maxRange: 5
     criticalChance: 28
@@ -88,7 +93,10 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 90
-  - description: "다른 탄환의 치명타로 전력을 저장합니다. 전력 하나당 최종 대미지 +40%이며 발사 후에도 모두 보존합니다."
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0\uB85C \uC804\uB825\uC744
+      \uC800\uC7A5\uD569\uB2C8\uB2E4. \uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885
+      \uB300\uBBF8\uC9C0 +40%\uC774\uBA70 \uBC1C\uC0AC \uD6C4\uC5D0\uB3C4 \uBAA8\uB450
+      \uBCF4\uC874\uD569\uB2C8\uB2E4."
     damage: 30
     maxRange: 5
     criticalChance: 35

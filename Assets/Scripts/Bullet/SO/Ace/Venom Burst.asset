@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Venom Burst
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_venom_burst
-  displayName: 맹독탄
-  description: "대상의 독을 모두 소비하고 남은 독 피해를 100% 즉시 적용합니다."
-  bulletIcon: {fileID: -2161083405499952055, guid: b67da11b4e4b5774791c1f5837decbcb, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: 17d546df5d530844cafa77fb15c602bb, type: 3}
+  displayName: "\uB9F9\uB3C5\uD0C4"
+  description: "\uB300\uC0C1\uC758 \uB3C5\uC744 \uBAA8\uB450 \uC18C\uBE44\uD558\uACE0
+    \uB0A8\uC740 \uB3C5 \uD53C\uD574\uB97C 100% \uC989\uC2DC \uC801\uC6A9\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: -4169730618207851146, guid: bf217de4a496384478866404bb6540a6, type: 3}
   price: 30
   grade: 2
   useCustomGradeNameColor: 0
@@ -45,7 +45,9 @@ MonoBehaviour:
   removeCost: 12
   upgradeCost: 30
   upgradeLevels:
-  - description: "독을 모두 소비해 남은 독 피해의 110%를 즉시 적용하고 독 2를 부여합니다."
+  - description: "\uB3C5\uC744 \uBAA8\uB450 \uC18C\uBE44\uD574 \uB0A8\uC740 \uB3C5
+      \uD53C\uD574\uC758 110%\uB97C \uC989\uC2DC \uC801\uC6A9\uD558\uACE0 \uB3C5
+      2\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
     damage: 16
     maxRange: 4
     criticalChance: 24
@@ -66,7 +68,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 55
-  - description: "독을 모두 소비해 남은 독 피해의 125%를 즉시 적용하고 독 4를 부여합니다."
+  - description: "\uB3C5\uC744 \uBAA8\uB450 \uC18C\uBE44\uD574 \uB0A8\uC740 \uB3C5
+      \uD53C\uD574\uC758 125%\uB97C \uC989\uC2DC \uC801\uC6A9\uD558\uACE0 \uB3C5
+      4\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
     damage: 21
     maxRange: 5
     criticalChance: 28
@@ -88,7 +92,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 90
-  - description: "독을 모두 소비해 남은 독 피해의 150%를 즉시 적용하고 독 6을 부여합니다."
+  - description: "\uB3C5\uC744 \uBAA8\uB450 \uC18C\uBE44\uD574 \uB0A8\uC740 \uB3C5
+      \uD53C\uD574\uC758 150%\uB97C \uC989\uC2DC \uC801\uC6A9\uD558\uACE0 \uB3C5
+      6\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
     damage: 28
     maxRange: 5
     criticalChance: 35
