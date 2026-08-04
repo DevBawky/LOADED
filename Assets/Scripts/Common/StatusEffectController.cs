@@ -81,6 +81,24 @@ public class StatusEffectController : MonoBehaviour
             this);
     }
 
+    public void ConfigureIconUI(
+        Transform assignedParent,
+        GameObject assignedPrefab)
+    {
+        foreach (DebuffIconUI icon in icons.Values)
+        {
+            if (icon != null)
+            {
+                Destroy(icon.gameObject);
+            }
+        }
+
+        icons.Clear();
+        statusIconParent = assignedParent;
+        debuffIconPrefab = assignedPrefab;
+        RefreshAllIcons();
+    }
+
     public int GetStacks(StatusEffectType type)
     {
         switch (type)

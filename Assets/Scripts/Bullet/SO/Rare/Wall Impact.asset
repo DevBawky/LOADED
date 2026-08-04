@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Wall Impact
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_wall_impact
-  displayName: 벽꿍탄
-  description: "적이 진행 방향으로 더 밀릴 수 없으면 최종 대미지가 50% 증가합니다."
-  bulletIcon: {fileID: 1716355798612799165, guid: ade12d278a5fbea4f8e5d4c662a6ef48, type: 3}
-  cylinderIcon: {fileID: 470928459729146777, guid: 9452b498ae4c0bd43a1e5a784e7bfadd, type: 3}
+  displayName: "\uBCBD\uAFCD\uD0C4"
+  description: "\uC801\uC774 \uC9C4\uD589 \uBC29\uD5A5\uC73C\uB85C \uB354 \uBC00\uB9B4
+    \uC218 \uC5C6\uC73C\uBA74 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 50% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: -7083666770999427850, guid: e170791347034894ea9607c2245a7052, type: 3}
   price: 18
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +45,8 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "적을 1칸 밀치며, 더 밀릴 수 없으면 최종 대미지가 70% 증가합니다."
+  - description: "\uC801\uC744 1\uCE78 \uBC00\uCE58\uBA70, \uB354 \uBC00\uB9B4 \uC218
+      \uC5C6\uC73C\uBA74 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 70% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 20
     maxRange: 4
     criticalChance: 18
@@ -72,7 +73,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "적을 2칸 밀치며, 더 밀릴 수 없으면 최종 대미지가 100% 증가합니다."
+  - description: "\uC801\uC744 2\uCE78 \uBC00\uCE58\uBA70, \uB354 \uBC00\uB9B4 \uC218
+      \uC5C6\uC73C\uBA74 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 100% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 25
     maxRange: 5
     criticalChance: 22
@@ -99,7 +101,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "적을 3칸 밀치며, 더 밀릴 수 없으면 최종 대미지가 150% 증가합니다."
+  - description: "\uC801\uC744 3\uCE78 \uBC00\uCE58\uBA70, \uB354 \uBC00\uB9B4 \uC218
+      \uC5C6\uC73C\uBA74 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 150% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 32
     maxRange: 5
     criticalChance: 28

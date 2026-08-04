@@ -69,8 +69,12 @@ public class StateManager : MonoBehaviour
     {
         SetPanels(false, false, false);
 
+        gameStartUI ??= FindFirstObjectByType<GameStartUI>(
+            FindObjectsInactive.Include);
+
         if (gameStartUI != null)
         {
+            gameStartUI.PrepareForUse();
             gameStartUI.ResetAndHide();
         }
 
@@ -159,7 +163,8 @@ public class StateManager : MonoBehaviour
             return;
         }
 
-        OpenShopAfterBattleClear();
+        SetInputLocked(true);
+        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
     }
 
     private void OpenShopAfterBattleClear()
@@ -188,6 +193,17 @@ public class StateManager : MonoBehaviour
     }
 
     public void GoToBattle()
+    {
+        if (currentState != GameFlowState.Shop)
+        {
+            return;
+        }
+
+        SetInputLocked(true);
+        LoadingTransitionController.RunTransition(ContinueToBattle);
+    }
+
+    private void ContinueToBattle()
     {
         if (currentState != GameFlowState.Shop)
         {
@@ -298,10 +314,7 @@ public class StateManager : MonoBehaviour
             yield break;
         }
 
-        if (IsCurrentStageComplete())
-        {
-            deckManager.ClearLoadedBullets();
-        }
+        deckManager.ClearLoadedBullets();
 
         currentState = GameFlowState.BattleClear;
         SetPanels(false, false, false);
@@ -320,7 +333,7 @@ public class StateManager : MonoBehaviour
         }
 
         battleClearCoroutine = null;
-        OpenShopAfterBattleClear();
+        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
     }
 
     private void HandleBattleFailed()
@@ -459,19 +472,6 @@ public class StateManager : MonoBehaviour
 
         nextBattleIndex = 0;
         return true;
-    }
-
-    private bool IsCurrentStageComplete()
-    {
-        if (stages == null || currentStageIndex < 0
-            || currentStageIndex >= stages.Length)
-        {
-            return false;
-        }
-
-        StageData stage = stages[currentStageIndex];
-        return stage != null && stage.Battles.Count > 0
-            && currentBattleIndex == stage.Battles.Count - 1;
     }
 
     private string GetShopExitLabel()

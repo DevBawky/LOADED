@@ -62,6 +62,7 @@ public class PlayerMove : MonoBehaviour
 
     public event Action TurnCompleted;
     public event Action<int> PushCooldownChanged;
+    public event Action<PlayerBehaviourAction> BehaviourActionStarted;
 
     public int TurnCount { get; private set; }
     public bool IsShooting => isShooting;
@@ -186,6 +187,7 @@ public class PlayerMove : MonoBehaviour
         }
 
         int targetDirection = transform.localScale.x >= 0f ? -1 : 1;
+        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Rotate);
         StartCoroutine(RotateRoutine(targetDirection));
     }
 
@@ -196,6 +198,7 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
+        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Wait);
         CompleteTurn();
     }
 
@@ -231,6 +234,7 @@ public class PlayerMove : MonoBehaviour
 
             if (moveDirection == facingDirection && CanPush)
             {
+                NotifyMoveStarted(direction);
                 StartCoroutine(PushRoutine(
                     adjacentEnemy,
                     direction));
@@ -244,7 +248,15 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
+        NotifyMoveStarted(direction);
         StartCoroutine(MoveRoutine(targetPosition));
+    }
+
+    private void NotifyMoveStarted(int direction)
+    {
+        BehaviourActionStarted?.Invoke(direction < 0
+            ? PlayerBehaviourAction.MoveLeft
+            : PlayerBehaviourAction.MoveRight);
     }
 
     private IEnumerator PushRoutine(
@@ -631,6 +643,11 @@ public class PlayerMove : MonoBehaviour
                 break;
             }
 
+            if (waveManager.IsTileOccupied(tileIndex, pushedEnemy))
+            {
+                break;
+            }
+
             if (!boardManager.TryGetTilePosition(
                     tileIndex,
                     out Vector3 tilePosition))
@@ -713,6 +730,7 @@ public class PlayerMove : MonoBehaviour
     private bool CanPerformAction()
     {
         return !GamePauseController.IsPaused
+            && !LoadingTransitionController.IsTransitioning
             && !isInputLocked
             && !isShooting
             && !isActing

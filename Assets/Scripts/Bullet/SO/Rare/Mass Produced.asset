@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Mass Produced
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_mass_produced
-  displayName: 양산탄
-  description: "보유한 노멀·레어 탄환 하나당 최종 대미지가 6% 증가합니다."
-  bulletIcon: {fileID: 1749605940074572079, guid: ab8bf7764ae65e0428325c8eea1e6c74, type: 3}
-  cylinderIcon: {fileID: 21300000, guid: ff771df025c71e04c9c634cbc6ec431b, type: 3}
+  displayName: "\uC591\uC0B0\uD0C4"
+  description: "\uBCF4\uC720\uD55C \uB178\uBA40\xB7\uB808\uC5B4 \uD0C4\uD658 \uD558\uB098\uB2F9
+    \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 6% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 717467629373744656, guid: bc354602cb3f4404ab5aa5b6c9e503db, type: 3}
   price: 16
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +45,8 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "보유한 노멀·레어 탄환 하나당 최종 대미지가 8% 증가합니다."
+  - description: "\uBCF4\uC720\uD55C \uB178\uBA40\xB7\uB808\uC5B4 \uD0C4\uD658 \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 8% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 14
     maxRange: 4
     criticalChance: 18
@@ -66,7 +67,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "보유한 노멀·레어 탄환 하나당 최종 대미지가 10% 증가합니다."
+  - description: "\uBCF4\uC720\uD55C \uB178\uBA40\xB7\uB808\uC5B4 \uD0C4\uD658 \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 10% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 18
     maxRange: 5
     criticalChance: 22
@@ -88,7 +90,8 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "보유한 노멀·레어 탄환 하나당 최종 대미지가 12% 증가합니다."
+  - description: "\uBCF4\uC720\uD55C \uB178\uBA40\xB7\uB808\uC5B4 \uD0C4\uD658 \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 12% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 24
     maxRange: 5
     criticalChance: 28

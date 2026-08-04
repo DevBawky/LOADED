@@ -20,7 +20,7 @@ MonoBehaviour:
   dropChance: 100
   dropItems:
   - dropType: 0
-    amount: 5
+    amount: 10
     selectionWeight: 1
     itemData: {fileID: 0}
     bulletData: {fileID: 0}
@@ -55,3 +55,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7e1cbe3d707bdae4dbd479728766a343, type: 2}
   - {fileID: 11400000, guid: e86794259aec7ab48aa8a538ccb82888, type: 2}
   randomizeStartingActionIndex: 0
+  bigBarrel:
+    phaseTwoHealthRatio: 0.5
+    bombDamage: 20
+    bossSelfExplosionDamage: 10
+    bombExplosionRadius: 1
+    bombFuseTurns: 3
+    phaseTwoBombFuseTurns: 2
+    shotgunDamage: 15
+    bossBombPrefab: {fileID: 0}
+    bombArcHeight: 2
+    bombTelegraphMaterial: {fileID: 0}
+    shotgunTelegraphMaterial: {fileID: 0}
+    explosionCameraShake: 0.2
+    bossHitCameraShake: 0.12

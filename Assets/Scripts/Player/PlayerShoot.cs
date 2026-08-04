@@ -10,6 +10,10 @@ using Unity.Cinemachine;
 
 public class PlayerShoot : MonoBehaviour
 {
+    public event Action<BulletInstance> BulletFired;
+    public event Action<int> DamageDealt;
+    public event Action<PlayerBehaviourAction> BehaviourActionStarted;
+
     private const float BulletFeedbackStartAlpha = 0.2f;
 
     [Serializable]
@@ -155,6 +159,7 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private PlayerCylinderUI cylinderUI;
     [SerializeField] private Image bulletFeedbackImage;
     [SerializeField] private CombatPresentation combatPresentation;
+    [SerializeField] private CombatFeedbackController combatFeedback;
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.2f;
 
@@ -216,6 +221,8 @@ public class PlayerShoot : MonoBehaviour
         new Dictionary<BulletInstance, int>();
     private readonly Dictionary<BulletInstance, int> previewPermanentStacks =
         new Dictionary<BulletInstance, int>();
+    private readonly Dictionary<BulletInstance, int> previewShotsObserved =
+        new Dictionary<BulletInstance, int>();
     private int previewPlayerTileIndex = -1;
     private BulletInstance currentConsumedBullet;
     private int initialLoadedBulletCount;
@@ -239,10 +246,16 @@ public class PlayerShoot : MonoBehaviour
     {
         currencyManager ??= FindFirstObjectByType<CurrencyManager>();
         combatPresentation ??= GetComponent<CombatPresentation>();
+        combatFeedback ??= GetComponent<CombatFeedbackController>();
 
         if (combatPresentation == null)
         {
             combatPresentation = gameObject.AddComponent<CombatPresentation>();
+        }
+
+        if (combatFeedback == null)
+        {
+            combatFeedback = gameObject.AddComponent<CombatFeedbackController>();
         }
 
         if (playerMove != null)
@@ -299,7 +312,9 @@ public class PlayerShoot : MonoBehaviour
 
     private void Update()
     {
-        if (GamePauseController.IsPaused || isFiring)
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning
+            || isFiring)
         {
             return;
         }
@@ -332,7 +347,9 @@ public class PlayerShoot : MonoBehaviour
 
     public void Reload()
     {
-        if (GamePauseController.IsPaused || isFiring
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning
+            || isFiring
             || cylinderUI != null && cylinderUI.IsDragging
             || !TryBeginAction())
         {
@@ -352,6 +369,7 @@ public class PlayerShoot : MonoBehaviour
 
         if (deckManager.TryReload(out BulletInstance loadedBullet))
         {
+            BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Reload);
             PlayRandomSfx(reloadSfx);
             combatPresentation?.PlayReload(loadedBullet, cylinderUI);
 
@@ -402,6 +420,7 @@ public class PlayerShoot : MonoBehaviour
         }
 
         ClearLoadedBulletDamagePreview();
+        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Shoot);
         StartCoroutine(ShootLoadedBullets(horizontalDirection));
     }
 
@@ -457,12 +476,15 @@ public class PlayerShoot : MonoBehaviour
         bool firedAnyBullet = false;
         bool consumesTurn = false;
         BulletInstance previousResolvedBullet = null;
+        BulletRuntimeStateSnapshot previousPreFireState = default;
+        bool hasPreviousPreFireState = false;
         float stackedDamageBonus = 0f;
         initialLoadedBulletCount = deckManager.LoadedBullets.Count;
         bulletsFiredThisCylinder = 0;
         criticalShotsThisCylinder = 0;
         bulletDestroyedThisCylinder = false;
         pendingSaverGold = 0;
+        combatFeedback?.BeginCylinder();
         bool saverRefundsTurn = false;
         int quickDrawThreshold = GetLoadedEffectMaximumStackCount(
             BulletEffectType.QuickDraw);
@@ -480,7 +502,7 @@ public class PlayerShoot : MonoBehaviour
                 initialBulletIndex - 1,
                 initialResolvedBullet,
                 horizontalDirection)
-            : !RefreshViableTargets(
+            : !HasViableShotTarget(
                 initialResolvedBullet,
                 horizontalDirection);
 
@@ -507,7 +529,7 @@ public class PlayerShoot : MonoBehaviour
                 BulletEffectType.PowderPouch);
             bool hasViableTarget = fireIntoAir
                 || (powderEffect == null
-                    ? RefreshViableTargets(
+                    ? HasViableShotTarget(
                         resolvedBullet,
                         horizontalDirection)
                     : HasViableFutureShot(
@@ -530,6 +552,16 @@ public class PlayerShoot : MonoBehaviour
             currentConsumedBullet = firedBullet;
             consumesTurn |= !quickDrawActive
                 && !resolvedBullet.DoesNotConsumeTurn;
+
+            bool clonedPreviousShot = resolvedBullet != firedBullet;
+
+            if (clonedPreviousShot && hasPreviousPreFireState)
+            {
+                firedBullet.ApplyRuntimeState(previousPreFireState);
+            }
+
+            BulletRuntimeStateSnapshot currentPreFireState =
+                firedBullet.CaptureRuntimeState();
 
             if (powderEffect != null)
             {
@@ -668,8 +700,9 @@ public class PlayerShoot : MonoBehaviour
                 saverRefundsTurn |= saverEffect.StackCount >= 2;
             }
 
-            bulletsFiredThisCylinder++;
             previousResolvedBullet = resolvedBullet;
+            previousPreFireState = currentPreFireState;
+            hasPreviousPreFireState = true;
             currentConsumedBullet = null;
 
             if (deckManager.LoadedBullets.Count > 0 && shotInterval > 0f)
@@ -708,6 +741,7 @@ public class PlayerShoot : MonoBehaviour
 
         isFiring = false;
         playerMove.SetShooting(false);
+        combatFeedback?.EndCylinder();
         currentConsumedBullet = null;
         reservedDamageByEnemy.Clear();
     }
@@ -727,9 +761,22 @@ public class PlayerShoot : MonoBehaviour
             yield break;
         }
 
-        bool hasViableTarget = RefreshViableTargets(
+        bool hasEnemyTarget = RefreshViableTargets(
             bulletData,
             horizontalDirection);
+        bool hasBulletBlocker = waveManager.TryGetFirstBulletBlocker(
+            transform.position,
+            horizontalDirection,
+            bulletData.MaxRange,
+            out IPlayerBulletBlocker bulletBlocker);
+
+        if (hasBulletBlocker)
+        {
+            RemoveTargetsBehindBlocker(bulletBlocker, horizontalDirection);
+            hasEnemyTarget = targetBuffer.Count > 0;
+        }
+
+        bool hasViableTarget = hasEnemyTarget || hasBulletBlocker;
 
         if (!hasViableTarget && !allowEmptyShot)
         {
@@ -739,10 +786,24 @@ public class PlayerShoot : MonoBehaviour
 
         Vector3 endPoint;
 
-        if (hasViableTarget)
+        bool reachesBulletBlocker = false;
+
+        if (hasEnemyTarget)
         {
             BuildHitTargets(bulletData);
-            endPoint = hitBuffer[hitBuffer.Count - 1].transform.position;
+            reachesBulletBlocker = hasBulletBlocker
+                && hitBuffer.Count == targetBuffer.Count
+                && hitBuffer.Count < bulletData.MaxHitCount
+                && bulletData.RollPenetrationAfterHit(hitBuffer.Count);
+            endPoint = reachesBulletBlocker
+                ? bulletBlocker.WorldPosition
+                : hitBuffer[hitBuffer.Count - 1].transform.position;
+        }
+        else if (hasBulletBlocker)
+        {
+            hitBuffer.Clear();
+            reachesBulletBlocker = true;
+            endPoint = bulletBlocker.WorldPosition;
         }
         else
         {
@@ -784,6 +845,8 @@ public class PlayerShoot : MonoBehaviour
         ShowBulletFeedback(bulletData);
         PlayRandomSfx(isCritical ? criticalShotSfx : normalShotSfx);
         GenerateRecoil(bulletData);
+        RecordSuccessfulShot();
+        BulletFired?.Invoke(bulletData);
         combatPresentation?.PlayShot(
             firePoint,
             bulletData,
@@ -795,9 +858,45 @@ public class PlayerShoot : MonoBehaviour
             horizontalDirection,
             isCritical,
             damageMultiplier);
+
+        if (reachesBulletBlocker && bulletBlocker != null
+            && bulletBlocker.IsBulletBlocking)
+        {
+            bulletBlocker.HandlePlayerBulletImpact();
+        }
         ReleaseProjectedDamage(shotReservations);
         HandleShotResult(bulletData, isCritical, generatesShells);
         onCompleted?.Invoke(true);
+    }
+
+    private void RecordSuccessfulShot()
+    {
+        if (bulletsFiredThisCylinder < int.MaxValue)
+        {
+            bulletsFiredThisCylinder++;
+        }
+
+        if (deckManager == null)
+        {
+            return;
+        }
+
+        foreach (BulletInstance loadedBullet in deckManager.LoadedBullets)
+        {
+            loadedBullet?.RecordShotWhileLoaded();
+        }
+    }
+
+    private float GetCurrentCylinderBuild()
+    {
+        if (initialLoadedBulletCount <= 1)
+        {
+            return 1f;
+        }
+
+        return Mathf.Clamp01(
+            (float)Mathf.Max(1, bulletsFiredThisCylinder)
+            / initialLoadedBulletCount);
     }
 
     private void InitializeSfxAudioSource()
@@ -917,6 +1016,52 @@ public class PlayerShoot : MonoBehaviour
         return targetBuffer.Count > 0;
     }
 
+    private bool HasViableShotTarget(
+        BulletInstance bullet,
+        int horizontalDirection)
+    {
+        if (RefreshViableTargets(bullet, horizontalDirection))
+        {
+            return true;
+        }
+
+        return bullet != null && waveManager != null
+            && waveManager.TryGetFirstBulletBlocker(
+                transform.position,
+                horizontalDirection,
+                bullet.MaxRange,
+                out _);
+    }
+
+    private void RemoveTargetsBehindBlocker(
+        IPlayerBulletBlocker blocker,
+        int horizontalDirection)
+    {
+        if (blocker == null || boardManager == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int originIndex))
+        {
+            return;
+        }
+
+        int direction = horizontalDirection >= 0 ? 1 : -1;
+        int blockerDistance = (blocker.TileIndex - originIndex) * direction;
+
+        for (int index = targetBuffer.Count - 1; index >= 0; index--)
+        {
+            EnemyController target = targetBuffer[index];
+
+            if (target == null || !boardManager.TryGetTileIndex(
+                    target.transform.position,
+                    out int targetIndex)
+                || (targetIndex - originIndex) * direction >= blockerDistance)
+            {
+                targetBuffer.RemoveAt(index);
+            }
+        }
+    }
+
     private bool HasViableFutureShot(
         int loadedBulletIndex,
         BulletInstance previousResolvedBullet,
@@ -939,7 +1084,7 @@ public class PlayerShoot : MonoBehaviour
             if (FindSpecialEffect(
                     resolvedBullet,
                     BulletEffectType.PowderPouch) == null
-                && RefreshViableTargets(
+                && HasViableShotTarget(
                     resolvedBullet,
                     horizontalDirection))
             {
@@ -1181,7 +1326,7 @@ public class PlayerShoot : MonoBehaviour
         if (chargeEffect != null)
         {
             int charges = Mathf.Min(
-                bulletsFiredThisCylinder,
+                firedBullet.ShotsObservedWhileLoaded,
                 chargeEffect.StackCount);
             multiplier *= 1f + charges * chargeEffect.Amount / 100f;
         }
@@ -1592,6 +1737,7 @@ public class PlayerShoot : MonoBehaviour
                     ? default
                     : combatPresentation.CaptureEnemy(enemy);
             int healthBeforeHit = enemy.CurrentHealth;
+            int targetMaxHealth = enemy.MaxHealth;
             bool defeatPresented = false;
             float targetDamageMultiplier = GetTargetDamageMultiplier(
                 bulletData,
@@ -1630,6 +1776,14 @@ public class PlayerShoot : MonoBehaviour
                     bulletData,
                     isCritical,
                     true);
+                combatFeedback?.RecordDefeat(
+                    enemySnapshot.Position,
+                    horizontalDirection,
+                    0,
+                    targetMaxHealth,
+                    isCritical,
+                    waveManager != null && waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild());
                 yield return ApplyConditionalEvents(
                     bulletData,
                     BulletConditionalTrigger.EnemyDefeated,
@@ -1643,7 +1797,15 @@ public class PlayerShoot : MonoBehaviour
             int appliedDamage = enemy.ApplyAttackDamage(
                 attackDamage,
                 isCritical);
-            bool defeatedByAttack = appliedDamage >= healthBeforeHit;
+            if (appliedDamage > 0)
+            {
+                DamageDealt?.Invoke(appliedDamage);
+            }
+            bool defeatedByAttack = healthBeforeHit > 0
+                && enemy.CurrentHealth <= 0;
+            combatFeedback?.RecordDamage(
+                appliedDamage,
+                attackDamage > appliedDamage);
             combatPresentation?.PlayImpact(
                 enemySnapshot,
                 horizontalDirection,
@@ -1651,6 +1813,28 @@ public class PlayerShoot : MonoBehaviour
                 isCritical,
                 defeatedByAttack);
             defeatPresented = defeatedByAttack;
+
+            if (defeatedByAttack)
+            {
+                combatFeedback?.RecordDefeat(
+                    enemySnapshot.Position,
+                    horizontalDirection,
+                    appliedDamage,
+                    targetMaxHealth,
+                    isCritical,
+                    waveManager != null && waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild());
+            }
+            else if (appliedDamage > 0)
+            {
+                combatFeedback?.RecordHit(
+                    enemySnapshot.Position,
+                    horizontalDirection,
+                    appliedDamage,
+                    targetMaxHealth,
+                    isCritical,
+                    GetCurrentCylinderBuild());
+            }
             bool defeatedByManagedEffect = false;
 
             IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
@@ -1700,6 +1884,7 @@ public class PlayerShoot : MonoBehaviour
             yield return ApplyManagedTargetEffects(
                 bulletData,
                 enemy,
+                horizontalDirection,
                 result => defeatedByManagedEffect = result);
 
             if (enemy == null || enemy.CurrentHealth <= 0)
@@ -1793,6 +1978,7 @@ public class PlayerShoot : MonoBehaviour
     private IEnumerator ApplyManagedTargetEffects(
         BulletInstance bullet,
         EnemyController enemy,
+        int horizontalDirection,
         Action<bool> onCompleted)
     {
         if (bullet == null || enemy == null || enemy.CurrentHealth <= 0)
@@ -1834,8 +2020,38 @@ public class PlayerShoot : MonoBehaviour
                         / 100);
                 int poisonDamage = (int)scaledPoisonDamage;
                 int healthBeforePoison = enemy.CurrentHealth;
-                enemy.ApplyStatusDamage(poisonDamage);
-                defeated = poisonDamage >= healthBeforePoison;
+                int poisonTargetMaxHealth = enemy.MaxHealth;
+                Vector3 poisonImpactPosition = enemy.transform.position;
+                int appliedPoisonDamage = enemy.ApplyStatusDamageAmount(
+                    poisonDamage);
+                combatFeedback?.RecordDamage(
+                    appliedPoisonDamage,
+                    poisonDamage > appliedPoisonDamage);
+                defeated = healthBeforePoison > 0
+                    && enemy.CurrentHealth <= 0;
+
+                if (defeated)
+                {
+                    combatFeedback?.RecordDefeat(
+                        poisonImpactPosition,
+                        horizontalDirection,
+                        appliedPoisonDamage,
+                        poisonTargetMaxHealth,
+                        false,
+                        waveManager != null
+                            && waveManager.ActiveEnemies.Count <= 1,
+                        GetCurrentCylinderBuild());
+                }
+                else if (appliedPoisonDamage > 0)
+                {
+                    combatFeedback?.RecordHit(
+                        poisonImpactPosition,
+                        horizontalDirection,
+                        appliedPoisonDamage,
+                        poisonTargetMaxHealth,
+                        false,
+                        GetCurrentCylinderBuild());
+                }
             }
 
             if (!defeated && enemy != null && enemy.CurrentHealth > 0
@@ -2193,6 +2409,7 @@ public class PlayerShoot : MonoBehaviour
         previewStoredBonuses.Clear();
         previewAbilityStacks.Clear();
         previewPermanentStacks.Clear();
+        previewShotsObserved.Clear();
         previewPlayerTileIndex = boardManager.TryGetTileIndex(
             transform.position,
             out int playerTileIndex)
@@ -2230,6 +2447,7 @@ public class PlayerShoot : MonoBehaviour
             previewStoredBonuses[bullet] = bullet.StoredDamageBonus;
             previewAbilityStacks[bullet] = bullet.AbilityStacks;
             previewPermanentStacks[bullet] = bullet.PermanentStacks;
+            previewShotsObserved[bullet] = bullet.ShotsObservedWhileLoaded;
         }
     }
 
@@ -2243,6 +2461,8 @@ public class PlayerShoot : MonoBehaviour
         int previewCriticalShots = 0;
         float stackedDamageBonus = 0f;
         BulletInstance previousResolvedBullet = null;
+        BulletRuntimeStateSnapshot previousPreFireState = default;
+        bool hasPreviousPreFireState = false;
         int initialIndex = loadedBullets.Count - 1;
         BulletInstance initialResolvedBullet = initialIndex < 0
             ? null
@@ -2271,6 +2491,16 @@ public class PlayerShoot : MonoBehaviour
             BulletInstance resolvedBullet = ResolveShotBullet(
                 firedBullet,
                 previousResolvedBullet);
+
+            if (resolvedBullet != firedBullet && hasPreviousPreFireState)
+            {
+                ApplyPreviewRuntimeState(
+                    firedBullet,
+                    previousPreFireState);
+            }
+
+            BulletRuntimeStateSnapshot currentPreFireState =
+                CapturePreviewRuntimeState(firedBullet);
             BulletEffectData powderEffect = FindSpecialEffect(
                 resolvedBullet,
                 BulletEffectType.PowderPouch);
@@ -2301,8 +2531,9 @@ public class PlayerShoot : MonoBehaviour
                 }
 
                 GrantPreviewLegacyStacks(firedBullet);
-                previewBulletsFired++;
                 previousResolvedBullet = resolvedBullet;
+                previousPreFireState = currentPreFireState;
+                hasPreviousPreFireState = true;
                 continue;
             }
 
@@ -2380,6 +2611,8 @@ public class PlayerShoot : MonoBehaviour
                 guaranteedCritical,
                 true,
                 emphasized,
+                bulletIndex,
+                ref previewBulletsFired,
                 ref previewCriticalShots);
 
             BulletEffectData chainEffect = FindSpecialEffect(
@@ -2399,6 +2632,8 @@ public class PlayerShoot : MonoBehaviour
                         guaranteedCritical,
                         true,
                         emphasized,
+                        bulletIndex,
+                        ref previewBulletsFired,
                         ref previewCriticalShots))
                 {
                     break;
@@ -2419,6 +2654,8 @@ public class PlayerShoot : MonoBehaviour
                         guaranteedCritical,
                         false,
                         emphasized,
+                        bulletIndex,
+                        ref previewBulletsFired,
                         ref previewCriticalShots))
                 {
                     break;
@@ -2441,8 +2678,9 @@ public class PlayerShoot : MonoBehaviour
                 GrantPreviewLegacyStacks(firedBullet);
             }
 
-            previewBulletsFired++;
             previousResolvedBullet = resolvedBullet;
+            previousPreFireState = currentPreFireState;
+            hasPreviousPreFireState = true;
         }
     }
 
@@ -2454,6 +2692,8 @@ public class PlayerShoot : MonoBehaviour
         bool guaranteedCritical,
         bool generatesShells,
         bool emphasized,
+        int firedBulletIndex,
+        ref int previewBulletsFired,
         ref int previewCriticalShots)
     {
         if (!BuildGuaranteedPreviewHitTargets(
@@ -2554,6 +2794,13 @@ public class PlayerShoot : MonoBehaviour
             guaranteedCritical,
             generatesShells);
 
+        if (previewBulletsFired < int.MaxValue)
+        {
+            previewBulletsFired++;
+        }
+
+        RecordPreviewShotForRemainingBullets(firedBulletIndex);
+
         if (guaranteedCritical)
         {
             previewCriticalShots++;
@@ -2614,6 +2861,18 @@ public class PlayerShoot : MonoBehaviour
         }
 
         int direction = horizontalDirection >= 0 ? 1 : -1;
+        int blockerDistance = int.MaxValue;
+
+        if (waveManager != null
+            && waveManager.TryGetFirstBulletBlocker(
+                transform.position,
+                direction,
+                bullet.MaxRange,
+                out IPlayerBulletBlocker previewBlocker))
+        {
+            blockerDistance = Mathf.Abs(
+                previewBlocker.TileIndex - previewPlayerTileIndex);
+        }
 
         foreach (DamagePreviewEnemyState state
                  in damagePreviewStates.Values)
@@ -2627,7 +2886,8 @@ public class PlayerShoot : MonoBehaviour
             int offset = state.TileIndex - previewPlayerTileIndex;
 
             if (offset * direction > 0
-                && Mathf.Abs(offset) <= bullet.MaxRange)
+                && Mathf.Abs(offset) <= bullet.MaxRange
+                && Mathf.Abs(offset) < blockerDistance)
             {
                 targetBuffer.Add(state.Enemy);
             }
@@ -2776,7 +3036,7 @@ public class PlayerShoot : MonoBehaviour
         if (effect != null)
         {
             multiplier *= 1f + Mathf.Min(
-                    previewBulletsFired,
+                    GetPreviewShotsObserved(firedBullet),
                     effect.StackCount)
                 * effect.Amount / 100f;
         }
@@ -3510,6 +3770,67 @@ public class PlayerShoot : MonoBehaviour
                 : 0;
     }
 
+    private int GetPreviewShotsObserved(BulletInstance bullet)
+    {
+        return bullet != null
+            && previewShotsObserved.TryGetValue(bullet, out int value)
+                ? Mathf.Max(0, value)
+                : 0;
+    }
+
+    private BulletRuntimeStateSnapshot CapturePreviewRuntimeState(
+        BulletInstance bullet)
+    {
+        return new BulletRuntimeStateSnapshot(
+            GetPreviewAbilityStacks(bullet),
+            GetPreviewPermanentStacks(bullet),
+            GetPreviewStoredBonus(bullet),
+            GetPreviewCriticalBonus(bullet),
+            GetPreviewDamageBonus(bullet),
+            GetPreviewShotsObserved(bullet));
+    }
+
+    private void ApplyPreviewRuntimeState(
+        BulletInstance bullet,
+        BulletRuntimeStateSnapshot state)
+    {
+        if (bullet == null)
+        {
+            return;
+        }
+
+        previewAbilityStacks[bullet] = state.AbilityStacks;
+        previewPermanentStacks[bullet] = state.PermanentStacks;
+        previewStoredBonuses[bullet] = state.StoredDamageBonus;
+        previewCriticalBonuses[bullet] =
+            state.TemporaryCriticalChanceBonus;
+        previewDamageBonuses[bullet] = state.TemporaryDamageBonus;
+        previewShotsObserved[bullet] = state.ShotsObservedWhileLoaded;
+    }
+
+    private void RecordPreviewShotForRemainingBullets(
+        int firedBulletIndex)
+    {
+        int remainingCount = Mathf.Min(
+            firedBulletIndex,
+            deckManager.LoadedBullets.Count);
+
+        for (int index = 0; index < remainingCount; index++)
+        {
+            BulletInstance bullet = deckManager.LoadedBullets[index];
+
+            if (bullet == null)
+            {
+                continue;
+            }
+
+            int currentCount = GetPreviewShotsObserved(bullet);
+            previewShotsObserved[bullet] = currentCount == int.MaxValue
+                ? int.MaxValue
+                : currentCount + 1;
+        }
+    }
+
     private int CalculateAttackDamage(
         BulletInstance bulletData,
         bool isCritical,
@@ -3773,6 +4094,7 @@ public class PlayerShoot : MonoBehaviour
         if (recoilCameraTransform != null)
         {
             recoilCameraTransform.position = cameraRestPosition;
+            recoilCameraTransform.localRotation = Quaternion.identity;
         }
     }
 

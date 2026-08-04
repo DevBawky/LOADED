@@ -364,8 +364,6 @@ public class BulletData : ScriptableObject
     [SerializeField] private string bulletId;
     [SerializeField] private string displayName;
     [SerializeField, TextArea] private string description;
-    [FormerlySerializedAs("sprite")]
-    [SerializeField] private Sprite bulletIcon;
     [SerializeField] private Sprite cylinderIcon;
     [Min(0)]
     [SerializeField] private int price;
@@ -419,7 +417,6 @@ public class BulletData : ScriptableObject
     public string BulletId => bulletId;
     public string DisplayName => displayName;
     public string Description => description;
-    public Sprite BulletIcon => bulletIcon;
     public Sprite CylinderIcon => cylinderIcon;
     public int Price => Mathf.Max(0, price);
     public BulletGrade Grade => grade;

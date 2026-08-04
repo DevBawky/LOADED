@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Resonance
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_resonance
-  displayName: 공명탄
-  description: 실린더에 남아 있는 다른 공명탄 하나당 최종 대미지가 25% 증가합니다.
-  bulletIcon: {fileID: 6765700697151959687, guid: 60b4f5719946c9740b22d46877404c80, type: 3}
-  cylinderIcon: {fileID: -7185434700578658702, guid: f2f34068e9bbe2248a5746f96fcaff0a, type: 3}
+  displayName: "\uACF5\uBA85\uD0C4"
+  description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978 \uACF5\uBA85\uD0C4
+    \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 25% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 7042858435584613796, guid: 7b79d6a48f71d2f44bc1338af5e892f5, type: 3}
   price: 16
   grade: 1
   useCustomGradeNameColor: 0
@@ -45,7 +45,9 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 대미지가 30% 증가합니다."
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      30% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 18
     maxRange: 3
     criticalChance: 21
@@ -66,7 +68,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 대미지가 40% 증가합니다."
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      40% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 24
     maxRange: 4
     criticalChance: 29
@@ -87,7 +91,9 @@ MonoBehaviour:
     recoilStrength: 0.15
     removeCost: 8
     upgradeCost: 60
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 대미지가 50% 증가합니다."
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
+      50% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 32
     maxRange: 5
     criticalChance: 40

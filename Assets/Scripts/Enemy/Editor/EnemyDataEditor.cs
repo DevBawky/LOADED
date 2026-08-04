@@ -37,6 +37,7 @@ public class EnemyDataEditor : Editor
     private SerializedProperty throwerTelegraphSegments;
     private SerializedProperty telegraphSortingOrder;
     private SerializedProperty actions;
+    private SerializedProperty bigBarrel;
 
     private void OnEnable()
     {
@@ -73,6 +74,7 @@ public class EnemyDataEditor : Editor
         throwerTelegraphSegments = Find("throwerTelegraphSegments");
         telegraphSortingOrder = Find("telegraphSortingOrder");
         actions = Find("actions");
+        bigBarrel = Find("bigBarrel");
     }
 
     public override void OnInspectorGUI()
@@ -146,6 +148,22 @@ public class EnemyDataEditor : Editor
                 EditorGUILayout.PropertyField(supportTelegraphMaterial);
                 EditorGUILayout.PropertyField(supportHealColor);
                 EditorGUILayout.PropertyField(supportShieldColor);
+                DrawTelegraphSettings();
+                break;
+
+            case EnemyBehaviorType.BigBarrel:
+                EditorGUILayout.HelpBox(
+                    "고정 순서로 폭탄 투척, 거리 조정, 양옆 산탄 사격, 재장전을 반복합니다.",
+                    MessageType.Info);
+                EditorGUILayout.PropertyField(preferredDistance);
+                EditorGUILayout.PropertyField(recoveryTurns);
+                EditorGUILayout.PropertyField(thrownProjectilePrefab);
+                EditorGUILayout.PropertyField(thrownProjectileSprite);
+                EditorGUILayout.PropertyField(thrownProjectileColor);
+                EditorGUILayout.PropertyField(thrownProjectileSize);
+                EditorGUILayout.PropertyField(thrownProjectileDuration);
+                EditorGUILayout.PropertyField(bigBarrel, true);
+                EditorGUILayout.PropertyField(throwerTelegraphSegments);
                 DrawTelegraphSettings();
                 break;
         }
@@ -222,6 +240,12 @@ public class EnemyDataEditor : Editor
             }
         }
 
+        if (data.BehaviorType == EnemyBehaviorType.BigBarrel)
+        {
+            DrawBigBarrelValidation(data);
+            return;
+        }
+
         EnemyActionType requiredAction = data.BehaviorType switch
         {
             EnemyBehaviorType.Melee => EnemyActionType.MeleeAttack,
@@ -253,6 +277,74 @@ public class EnemyDataEditor : Editor
                 "행동 예고선 머티리얼이 연결되지 않았습니다.",
                 MessageType.Warning);
         }
+    }
+
+    private static void DrawBigBarrelValidation(EnemyData data)
+    {
+        ValidateBossAction(data, EnemyActionType.ExplosiveThrow, "폭탄 투척");
+        ValidateBossAction(data, EnemyActionType.ShotgunAttack, "산탄 사격");
+        ValidateBossAction(data, EnemyActionType.Reload, "재장전");
+
+        BigBarrelSettings settings = data.BigBarrel;
+
+        if (settings.BossBombPrefab == null)
+        {
+            Warning("BossBomb 프리팹이 연결되지 않았습니다.");
+        }
+        else if (settings.BossBombPrefab.GetComponent<BossBomb>() == null)
+        {
+            Warning("BossBomb 프리팹 루트에 BossBomb 컴포넌트가 필요합니다.");
+        }
+
+        if (settings.BombTelegraphMaterial == null)
+        {
+            Warning("폭탄 Telegraph Material이 연결되지 않았습니다.");
+        }
+
+        if (settings.ShotgunTelegraphMaterial == null)
+        {
+            Warning("산탄 Telegraph Material이 연결되지 않았습니다.");
+        }
+
+        if (settings.ConfiguredBombDamage <= 0)
+        {
+            Warning("폭탄 피해량은 0보다 커야 합니다.");
+        }
+
+        if (settings.ConfiguredBombExplosionRadius <= 0)
+        {
+            Warning("폭발 범위는 0보다 커야 합니다.");
+        }
+
+        if (settings.ConfiguredBombFuseTurns < 1
+            || settings.ConfiguredBombFuseTurns > 3
+            || settings.ConfiguredPhaseTwoBombFuseTurns < 1
+            || settings.ConfiguredPhaseTwoBombFuseTurns > 3)
+        {
+            Warning("모든 폭탄 퓨즈는 1에서 3 사이여야 합니다.");
+        }
+
+        if (settings.ConfiguredPhaseTwoHealthRatio <= 0f
+            || settings.ConfiguredPhaseTwoHealthRatio >= 1f)
+        {
+            Warning("2페이즈 체력 비율은 0과 1 사이여야 합니다.");
+        }
+    }
+
+    private static void ValidateBossAction(
+        EnemyData data,
+        EnemyActionType actionType,
+        string label)
+    {
+        if (!HasAction(data, actionType, false))
+        {
+            Warning($"{label} Action이 연결되지 않았습니다.");
+        }
+    }
+
+    private static void Warning(string message)
+    {
+        EditorGUILayout.HelpBox(message, MessageType.Warning);
     }
 
     private static bool HasAction(

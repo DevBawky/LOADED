@@ -43,7 +43,7 @@ public class PlayerInventory : MonoBehaviour
         {
             ItemData startingItem = startingItems[index];
 
-            if (startingItem != null && !Contains(startingItem))
+            if (startingItem != null)
             {
                 items[index] = startingItem;
             }
@@ -86,7 +86,7 @@ public class PlayerInventory : MonoBehaviour
 
     public bool CanAdd(ItemData item)
     {
-        return item != null && !Contains(item) && FindEmptySlotIndex() >= 0;
+        return item != null && FindEmptySlotIndex() >= 0;
     }
 
     public bool Contains(ItemData item)
