@@ -15,9 +15,9 @@ public class ShopVideoController : MonoBehaviour
     [SerializeField] private ShopManager shopManager;
     [SerializeField] private VideoPlayer videoPlayer;
 
-    [Header("Clips")]
-    [SerializeField] private VideoClip idleClip;
-    [SerializeField] private VideoClip purchaseClip;
+    [Header("Streaming Assets Videos")]
+    [SerializeField] private string idleVideoPath = "Videos/Shop_Idle.mp4";
+    [SerializeField] private string purchaseVideoPath = "Videos/Shop_Purchase.mp4";
 
     [Header("Playback Speed")]
     [Min(0.01f)]
@@ -127,7 +127,7 @@ public class ShopVideoController : MonoBehaviour
     {
         PlayClip(
             PlaybackState.Idle,
-            idleClip,
+            idleVideoPath,
             Mathf.Max(0.01f, idlePlaybackSpeed),
             true);
     }
@@ -136,28 +136,30 @@ public class ShopVideoController : MonoBehaviour
     {
         PlayClip(
             PlaybackState.Purchase,
-            purchaseClip,
+            purchaseVideoPath,
             Mathf.Max(0.01f, purchasePlaybackSpeed),
             false);
     }
 
     private void PlayClip(
         PlaybackState nextState,
-        VideoClip clip,
+        string videoPath,
         float playbackSpeed,
         bool loop)
     {
-        if (videoPlayer == null || clip == null)
+        if (videoPlayer == null || string.IsNullOrWhiteSpace(videoPath))
         {
             Debug.LogWarning(
-                $"Shop video clip for {nextState} is not assigned.",
+                $"Shop video path for {nextState} is not assigned.",
                 this);
             return;
         }
 
         playbackState = nextState;
         videoPlayer.Stop();
-        videoPlayer.clip = clip;
+        videoPlayer.clip = null;
+        videoPlayer.source = VideoSource.Url;
+        videoPlayer.url = StreamingVideoPlayer.GetStreamingAssetsUrl(videoPath);
         videoPlayer.playbackSpeed = playbackSpeed;
         videoPlayer.isLooping = loop;
         videoPlayer.Prepare();

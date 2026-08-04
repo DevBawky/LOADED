@@ -6597,7 +6597,7 @@ VideoPlayer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5119801171180425293}
   m_Enabled: 1
-  m_VideoClip: {fileID: 32900000, guid: 7b48f8369ddfd264f9307f893d1f1e30, type: 3}
+  m_VideoClip: {fileID: 0}
   m_TargetCameraAlpha: 1
   m_TargetCamera3DLayout: 0
   m_TargetCamera: {fileID: 0}
@@ -6607,7 +6607,7 @@ VideoPlayer:
   m_TargetMaterialProperty: <noninit>
   m_RenderMode: 2
   m_AspectRatio: 2
-  m_DataSource: 0
+  m_DataSource: 1
   m_TimeUpdateMode: 2
   m_PlaybackSpeed: 1
   m_AudioOutputMode: 0
@@ -6639,8 +6639,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::ShopVideoController
   shopManager: {fileID: 0}
   videoPlayer: {fileID: 5326779710147945461}
-  idleClip: {fileID: 32900000, guid: 7b48f8369ddfd264f9307f893d1f1e30, type: 3}
-  purchaseClip: {fileID: 32900000, guid: 94a05b86f8ffbae41a48515d62d24b5e, type: 3}
+  idleVideoPath: Videos/Shop_Idle.mp4
+  purchaseVideoPath: Videos/Shop_Purchase.mp4
   idlePlaybackSpeed: 1
   purchasePlaybackSpeed: 2
 --- !u!1 &5160530878660592987
