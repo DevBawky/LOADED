@@ -661,7 +661,7 @@ public class WaveManager : MonoBehaviour
 
         if (rewardManager != null)
         {
-            rewardManager.GrantEnemyDrop(enemy.Data);
+            rewardManager.SpawnEnemyDrop(enemy.Data, enemy.transform.position);
         }
 
         enemy.Defeated -= HandleEnemyDefeated;
@@ -738,6 +738,7 @@ public class WaveManager : MonoBehaviour
 
         isBattleCompleted = true;
         bossBombManager?.ClearAll();
+        rewardManager?.CollectAndDestroyAllDroppedItems();
         isWaitingForNextWave = false;
         remainingSpawnTurns = 0;
         ClearSpawnWarnings();

@@ -126,9 +126,15 @@ public class EnemyData : ScriptableObject
     [SerializeField] private int maxHealth = 1;
 
     [Header("Defeat Drops")]
+    [Min(1)]
+    [Tooltip("적 처치 시 항상 지급되는 최소 골드입니다.")]
+    [SerializeField] private int minimumGoldDrop = 1;
+    [Min(1)]
+    [Tooltip("적 처치 시 항상 지급되는 최대 골드입니다.")]
+    [SerializeField] private int maximumGoldDrop = 1;
     [Range(0f, 100f)]
-    [Tooltip("적 처치 시 보상 자체가 등장할 확률입니다.")]
-    [SerializeField] private float dropChance = 100f;
+    [Tooltip("적 처치 시 아이템이 바닥에 드롭될 확률입니다.")]
+    [SerializeField] private float dropChance = 10f;
     [Tooltip("보상이 등장했을 때 가중치에 따라 선택될 후보 목록입니다.")]
     [SerializeField] private List<EnemyDropItemData> dropItems =
         new List<EnemyDropItemData>();
@@ -173,9 +179,7 @@ public class EnemyData : ScriptableObject
     [SerializeField] private float supportHealThreshold = 0.5f;
 
     [Header("Thrower Projectile")]
-    [Tooltip("투척병이 포물선으로 던질 투사체 프리팹입니다. 비어 있으면 스프라이트 투척물을 자동 생성합니다.")]
-    [SerializeField] private GameObject thrownProjectilePrefab;
-    [Tooltip("투척물 프리팹이 없을 때 표시할 스프라이트입니다. 비어 있으면 기본 원형 이미지를 사용합니다.")]
+    [Tooltip("런타임에 생성되는 투척물에 표시할 스프라이트입니다. 비어 있으면 기본 원형 이미지를 사용합니다.")]
     [SerializeField] private Sprite thrownProjectileSprite;
     [Tooltip("자동 생성되는 투척 스프라이트의 색상입니다.")]
     [SerializeField] private Color thrownProjectileColor = Color.white;
@@ -228,6 +232,8 @@ public class EnemyData : ScriptableObject
     public string Description => description;
     public GameObject Avatar => avatar;
     public int MaxHealth => maxHealth;
+    public int MinimumGoldDrop => Mathf.Max(1, minimumGoldDrop);
+    public int MaximumGoldDrop => Mathf.Max(MinimumGoldDrop, maximumGoldDrop);
     public float DropChance => Mathf.Clamp(dropChance, 0f, 100f);
     public IReadOnlyList<EnemyDropItemData> DropItems =>
         dropItems ?? (IReadOnlyList<EnemyDropItemData>)Array.Empty<EnemyDropItemData>();
@@ -247,7 +253,6 @@ public class EnemyData : ScriptableObject
     public int SupportHealAmount => Mathf.Max(1, supportHealAmount);
     public int SupportShieldAmount => Mathf.Max(1, supportShieldAmount);
     public float SupportHealThreshold => Mathf.Clamp01(supportHealThreshold);
-    public GameObject ThrownProjectilePrefab => thrownProjectilePrefab;
     public Sprite ThrownProjectileSprite => thrownProjectileSprite;
     public Color ThrownProjectileColor => thrownProjectileColor;
     public float ThrownProjectileSize => Mathf.Max(0.01f, thrownProjectileSize);
@@ -321,9 +326,28 @@ public class EnemyData : ScriptableObject
         return false;
     }
 
+    public int RollGuaranteedGoldDrop()
+    {
+        int minimum = MinimumGoldDrop;
+        int maximum = MaximumGoldDrop;
+
+        if (minimum == maximum)
+        {
+            return minimum;
+        }
+
+        long valueCount = (long)maximum - minimum + 1L;
+        long offset = Math.Min(
+            valueCount - 1L,
+            (long)(UnityEngine.Random.value * valueCount));
+        return (int)(minimum + offset);
+    }
+
     private void OnValidate()
     {
         maxHealth = Mathf.Max(1, maxHealth);
+        minimumGoldDrop = Mathf.Max(1, minimumGoldDrop);
+        maximumGoldDrop = Mathf.Max(minimumGoldDrop, maximumGoldDrop);
         dropChance = Mathf.Clamp(dropChance, 0f, 100f);
         preferredDistance = Mathf.Max(0, preferredDistance);
         maxQueuedAttacks = Mathf.Max(1, maxQueuedAttacks);
