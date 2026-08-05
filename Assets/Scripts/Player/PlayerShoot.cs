@@ -883,6 +883,7 @@ public class PlayerShoot : MonoBehaviour
         }
         RecordSuccessfulShot();
         BulletFired?.Invoke(bulletData);
+        GameStatistics.RecordBulletFired(bulletData);
         combatPresentation?.PlayShot(
             firePoint,
             bulletData,

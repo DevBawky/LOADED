@@ -127,6 +127,7 @@ public class BulletManagementUI : MonoBehaviour
             return;
         }
 
+        GameStatistics.RecordGoldSpent(cost);
         deckManager.RegisterPaidBulletRemoval();
         selectedBullet = null;
         RefreshOwnedBullets();
@@ -154,6 +155,7 @@ public class BulletManagementUI : MonoBehaviour
             return;
         }
 
+        GameStatistics.RecordGoldSpent(cost);
         RefreshOwnedBullets();
     }
 

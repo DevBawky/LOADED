@@ -704,6 +704,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (appliedDamage > 0)
         {
             DamageApplied?.Invoke(appliedDamage, enemyData.MaxHealth);
+            GameStatistics.RecordDamage(appliedDamage);
         }
 
         if (currentHealth != previousHealth)
@@ -714,6 +715,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (currentHealth == 0)
         {
+            GameStatistics.RecordKill();
             PlayDeathSfx();
             ClearAttackQueue();
             StopAllCoroutines();

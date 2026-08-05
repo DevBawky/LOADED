@@ -316,6 +316,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     public void BeginCylinder()
     {
+        GameStatistics.BeginCylinder();
         cylinderActive = true;
 
         if (comboCount <= 0)
@@ -349,6 +350,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     public void EndCylinder()
     {
+        GameStatistics.EndCylinder();
         cylinderActive = false;
         damageHoldRemaining = cylinderDamage > 0 ? 1.35f : 0.3f;
         ResetFiringSequenceFeedback();
@@ -526,6 +528,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         comboCount = comboCount >= int.MaxValue
             ? int.MaxValue
             : comboCount + 1;
+        GameStatistics.RecordComboKills(comboCount);
         firingSequenceDefeatCount = firingSequenceDefeatCount >= int.MaxValue
             ? int.MaxValue
             : firingSequenceDefeatCount + 1;

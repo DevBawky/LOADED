@@ -233,6 +233,7 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
+        GameStatistics.RecordGoldSpent(currentRefreshCost);
         StartCoroutine(RefreshOffersSequence());
         RefreshRefreshButton();
         return true;
@@ -513,6 +514,7 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
+        GameStatistics.RecordGoldSpent(bulletData.Price);
         purchasedBulletOffers[slotIndex] = true;
         RefreshSlots();
         OffersChanged?.Invoke();
@@ -546,6 +548,7 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
+        GameStatistics.RecordGoldSpent(itemData.Price);
         purchasedItemOffers[slotIndex] = true;
         slot.Button.interactable = false;
         OffersChanged?.Invoke();

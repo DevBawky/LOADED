@@ -110,6 +110,8 @@ public class StateManager : MonoBehaviour
 
     private void Start()
     {
+        GameStatistics.BeginRun();
+
         if (!ValidateReferences()
             || !TryFindNextStageIndex(
                 Mathf.Max(0, startingStageIndex),
@@ -174,6 +176,7 @@ public class StateManager : MonoBehaviour
             return;
         }
 
+        GameStatistics.SaveCheckpoint();
         currentState = GameFlowState.Shop;
         SetPanels(false, false, true);
         SetInputLocked(true);
@@ -199,6 +202,7 @@ public class StateManager : MonoBehaviour
             return;
         }
 
+        GameStatistics.SaveCheckpoint();
         SetInputLocked(true);
         LoadingTransitionController.RunTransition(ContinueToBattle);
     }
@@ -365,6 +369,7 @@ public class StateManager : MonoBehaviour
         }
 
         waveManager.StopBattle();
+        GameStatistics.EndRun(false);
         currentState = GameFlowState.RunFailed;
         SetPanels(false, true, false);
         SetInputLocked(true);
@@ -385,6 +390,12 @@ public class StateManager : MonoBehaviour
     private void ShowRunComplete(string label)
     {
         StopBattleStartPresentation();
+
+        if (label == "RUN COMPLETE")
+        {
+            GameStatistics.EndRun(true);
+        }
+
         currentState = GameFlowState.RunComplete;
         SetPanels(false, true, false);
         SetInputLocked(true);
