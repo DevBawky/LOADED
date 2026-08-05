@@ -270,6 +270,17 @@ public class PlayerShoot : MonoBehaviour
         currentConsumedBullet = null;
     }
 
+    private void OnEnable()
+    {
+        EnemyController.PlayerIndirectDamageDealt +=
+            HandlePlayerIndirectDamageDealt;
+
+        if (waveManager != null)
+        {
+            waveManager.BattleCompleted += HandleBattleCompleted;
+        }
+    }
+
     private void Start()
     {
         if (cylinderUI != null)
@@ -280,6 +291,13 @@ public class PlayerShoot : MonoBehaviour
 
     private void OnDisable()
     {
+        EnemyController.PlayerIndirectDamageDealt -=
+            HandlePlayerIndirectDamageDealt;
+
+        if (waveManager != null)
+        {
+            waveManager.BattleCompleted -= HandleBattleCompleted;
+        }
         ClearLoadedBulletDamagePreview();
         isFiring = false;
 
@@ -308,6 +326,22 @@ public class PlayerShoot : MonoBehaviour
         ResetBulletFeedback();
         ResetCameraRecoil();
         reservedDamageByEnemy.Clear();
+    }
+
+    private void HandlePlayerIndirectDamageDealt(int damage)
+    {
+        if (damage <= 0)
+        {
+            return;
+        }
+
+        DamageDealt?.Invoke(damage);
+        combatFeedback?.RecordDamage(damage);
+    }
+
+    private void HandleBattleCompleted()
+    {
+        combatFeedback?.ResetCombo();
     }
 
     private void Update()
@@ -1794,18 +1828,19 @@ public class PlayerShoot : MonoBehaviour
                 continue;
             }
 
+            int reportedDamage = enemy.PredictAttackDamage(attackDamage);
             int appliedDamage = enemy.ApplyAttackDamage(
                 attackDamage,
                 isCritical);
             if (appliedDamage > 0)
             {
-                DamageDealt?.Invoke(appliedDamage);
+                DamageDealt?.Invoke(reportedDamage);
             }
             bool defeatedByAttack = healthBeforeHit > 0
                 && enemy.CurrentHealth <= 0;
             combatFeedback?.RecordDamage(
-                appliedDamage,
-                attackDamage > appliedDamage);
+                reportedDamage,
+                reportedDamage > appliedDamage);
             combatPresentation?.PlayImpact(
                 enemySnapshot,
                 horizontalDirection,
@@ -1819,7 +1854,7 @@ public class PlayerShoot : MonoBehaviour
                 combatFeedback?.RecordDefeat(
                     enemySnapshot.Position,
                     horizontalDirection,
-                    appliedDamage,
+                    reportedDamage,
                     targetMaxHealth,
                     isCritical,
                     waveManager != null && waveManager.ActiveEnemies.Count <= 1,
@@ -1830,7 +1865,7 @@ public class PlayerShoot : MonoBehaviour
                 combatFeedback?.RecordHit(
                     enemySnapshot.Position,
                     horizontalDirection,
-                    appliedDamage,
+                    reportedDamage,
                     targetMaxHealth,
                     isCritical,
                     GetCurrentCylinderBuild());
@@ -2023,10 +2058,8 @@ public class PlayerShoot : MonoBehaviour
                 int poisonTargetMaxHealth = enemy.MaxHealth;
                 Vector3 poisonImpactPosition = enemy.transform.position;
                 int appliedPoisonDamage = enemy.ApplyStatusDamageAmount(
-                    poisonDamage);
-                combatFeedback?.RecordDamage(
-                    appliedPoisonDamage,
-                    poisonDamage > appliedPoisonDamage);
+                    poisonDamage,
+                    true);
                 defeated = healthBeforePoison > 0
                     && enemy.CurrentHealth <= 0;
 
@@ -2035,7 +2068,7 @@ public class PlayerShoot : MonoBehaviour
                     combatFeedback?.RecordDefeat(
                         poisonImpactPosition,
                         horizontalDirection,
-                        appliedPoisonDamage,
+                        poisonDamage,
                         poisonTargetMaxHealth,
                         false,
                         waveManager != null
@@ -2047,7 +2080,7 @@ public class PlayerShoot : MonoBehaviour
                     combatFeedback?.RecordHit(
                         poisonImpactPosition,
                         horizontalDirection,
-                        appliedPoisonDamage,
+                        poisonDamage,
                         poisonTargetMaxHealth,
                         false,
                         GetCurrentCylinderBuild());
@@ -2059,7 +2092,8 @@ public class PlayerShoot : MonoBehaviour
             {
                 enemy.AddStatusEffect(
                     StatusEffectType.Poison,
-                    venomBurstEffect.KnockbackDistance);
+                    venomBurstEffect.KnockbackDistance,
+                    true);
             }
         }
 
@@ -2248,17 +2282,20 @@ public class PlayerShoot : MonoBehaviour
             case BulletEffectType.Poison:
                 applied = enemy.AddStatusEffect(
                     StatusEffectType.Poison,
-                    effect.StackCount);
+                    effect.StackCount,
+                    true);
                 break;
             case BulletEffectType.Stun:
                 applied = enemy.AddStatusEffect(
                     StatusEffectType.Stun,
-                    effect.StackCount);
+                    effect.StackCount,
+                    true);
                 break;
             case BulletEffectType.Mark:
                 applied = enemy.AddStatusEffect(
                     StatusEffectType.Mark,
-                    effect.StackCount);
+                    effect.StackCount,
+                    true);
                 break;
             case BulletEffectType.Knockback:
                 applied = true;
@@ -2274,7 +2311,8 @@ public class PlayerShoot : MonoBehaviour
             case BulletEffectType.Weakness:
                 applied = enemy.AddStatusEffect(
                     StatusEffectType.Weakness,
-                    effect.StackCount);
+                    effect.StackCount,
+                    true);
                 break;
         }
 

@@ -13,7 +13,7 @@ public enum StatusEffectType
 public interface IStatusEffectTarget
 {
     int CurrentHealth { get; }
-    bool ApplyStatusDamage(int damage);
+    bool ApplyStatusDamage(int damage, bool creditedToPlayer);
 }
 
 public class StatusEffectController : MonoBehaviour
@@ -35,6 +35,8 @@ public class StatusEffectController : MonoBehaviour
     [SerializeField] private int stunStacks;
     [Min(0)]
     [SerializeField] private int weaknessStacks;
+
+    private bool poisonCreditedToPlayer;
 
     private IStatusEffectTarget target;
     private readonly Dictionary<StatusEffectType, DebuffIconUI> icons =
@@ -169,7 +171,10 @@ public class StatusEffectController : MonoBehaviour
         return changed;
     }
 
-    public bool Add(StatusEffectType type, int stacks)
+    public bool Add(
+        StatusEffectType type,
+        int stacks,
+        bool creditedToPlayer = false)
     {
         if (stacks <= 0)
         {
@@ -178,6 +183,12 @@ public class StatusEffectController : MonoBehaviour
 
         long combinedStacks = (long)GetStacks(type) + stacks;
         SetStacks(type, (int)Math.Min(int.MaxValue, combinedStacks));
+
+        if (type == StatusEffectType.Poison && creditedToPlayer)
+        {
+            poisonCreditedToPlayer = true;
+        }
+
         return true;
     }
 
@@ -246,7 +257,7 @@ public class StatusEffectController : MonoBehaviour
             return;
         }
 
-        target.ApplyStatusDamage(poisonStacks);
+        target.ApplyStatusDamage(poisonStacks, poisonCreditedToPlayer);
     }
 
     private void SetStacks(StatusEffectType type, int stacks)
@@ -260,6 +271,12 @@ public class StatusEffectController : MonoBehaviour
                 break;
             case StatusEffectType.Poison:
                 poisonStacks = clampedStacks;
+
+                if (poisonStacks == 0)
+                {
+                    poisonCreditedToPlayer = false;
+                }
+
                 break;
             case StatusEffectType.Stun:
                 stunStacks = clampedStacks;

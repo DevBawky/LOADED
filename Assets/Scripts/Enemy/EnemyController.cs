@@ -105,6 +105,8 @@ public class EnemyRandomSfxSettings
 
 public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
+    public static event Action<int> PlayerIndirectDamageDealt;
+
     private const int MaxBigBarrelPostShotgunRecoveryTurns = 2;
 
     private const int InitialFacingDirection = -1;
@@ -507,13 +509,20 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         healthBarFeedback?.ClearDamagePreview();
     }
 
-    public bool ApplyStatusDamage(int damage)
+    public bool ApplyStatusDamage(int damage, bool creditedToPlayer)
     {
-        return ApplyStatusDamageAmount(damage) > 0;
+        return ApplyStatusDamageAmount(damage, creditedToPlayer) > 0;
     }
 
-    public int ApplyStatusDamageAmount(int damage)
+    public int ApplyStatusDamageAmount(
+        int damage,
+        bool creditedToPlayer = false)
     {
+        if (creditedToPlayer && damage > 0 && currentHealth > 0)
+        {
+            PlayerIndirectDamageDealt?.Invoke(damage);
+        }
+
         int appliedDamage = ApplyDamageInternal(damage, false, 0.45f);
 
         // Status damage popups show the effect's full damage, even when the
@@ -528,8 +537,18 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyCollisionDamage(int damage)
     {
+        if (damage > 0 && currentHealth > 0)
+        {
+            PlayerIndirectDamageDealt?.Invoke(damage);
+        }
+
         int appliedDamage = ApplyDamageInternal(damage, false, 1.2f);
-        damageNumberDisplay?.ShowAttackDamage(appliedDamage, false);
+
+        if (appliedDamage > 0)
+        {
+            damageNumberDisplay?.ShowAttackDamage(damage, false);
+        }
+
         return appliedDamage > 0;
     }
 
@@ -543,7 +562,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(appliedDamage, false);
+            damageNumberDisplay?.ShowAttackDamage(damage, false);
         }
 
         return appliedDamage;
@@ -555,7 +574,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(appliedDamage, false);
+            damageNumberDisplay?.ShowAttackDamage(damage, false);
         }
 
         return appliedDamage;
@@ -593,10 +612,13 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         ApplyCanvasOrientation();
     }
 
-    public bool AddStatusEffect(StatusEffectType type, int stacks)
+    public bool AddStatusEffect(
+        StatusEffectType type,
+        int stacks,
+        bool creditedToPlayer = false)
     {
         bool applied = currentHealth > 0 && statusEffects != null
-            && statusEffects.Add(type, stacks);
+            && statusEffects.Add(type, stacks, creditedToPlayer);
 
         if (applied)
         {

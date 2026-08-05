@@ -236,11 +236,15 @@ public sealed class CombatFeedbackController : MonoBehaviour
     public void BeginCylinder()
     {
         cylinderActive = true;
-        cylinderDamage = 0;
-        displayedCylinderDamage = 0f;
-        damageHoldRemaining = 0f;
-        overkillFlashRemaining = 0f;
-        UpdateDamageText(false);
+
+        if (comboCount <= 0)
+        {
+            cylinderDamage = 0;
+            displayedCylinderDamage = 0f;
+            damageHoldRemaining = 0f;
+            overkillFlashRemaining = 0f;
+            UpdateDamageText(false);
+        }
 
         if (damageCanvasGroup != null)
         {
@@ -252,6 +256,41 @@ public sealed class CombatFeedbackController : MonoBehaviour
     {
         cylinderActive = false;
         damageHoldRemaining = cylinderDamage > 0 ? 1.35f : 0.3f;
+    }
+
+    public void ResetCombo()
+    {
+        comboCount = 0;
+        comboRemaining = 0f;
+        cylinderDamage = 0;
+        displayedCylinderDamage = 0f;
+        damageHoldRemaining = 0f;
+        comboPunchRemaining = 0f;
+        damagePunchRemaining = 0f;
+        overkillFlashRemaining = 0f;
+        cylinderActive = false;
+        UpdateComboText();
+        UpdateDamageText(false);
+
+        if (comboTimer != null)
+        {
+            comboTimer.fillAmount = 0f;
+        }
+
+        if (comboCanvasGroup != null)
+        {
+            comboCanvasGroup.alpha = 0f;
+        }
+
+        if (comboTimerCanvasGroup != null)
+        {
+            comboTimerCanvasGroup.alpha = 0f;
+        }
+
+        if (damageCanvasGroup != null)
+        {
+            damageCanvasGroup.alpha = 0f;
+        }
     }
 
     public void RecordDamage(int appliedDamage, bool wasOverkill = false)
@@ -391,7 +430,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         if (comboRemaining <= 0f)
         {
             comboCount = 0;
+            cylinderDamage = 0;
+            displayedCylinderDamage = 0f;
+            damageHoldRemaining = 0f;
             comboPunchRemaining = 0.22f;
+            UpdateDamageText(false);
         }
     }
 
@@ -433,7 +476,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         }
 
         float comboTargetAlpha = comboCount > 0 ? 1f : 0f;
-        float damageTargetAlpha = cylinderActive || damageHoldRemaining > 0f
+        float damageTargetAlpha = comboCount > 0
+            || cylinderActive || damageHoldRemaining > 0f
             ? 1f
             : 0f;
         comboCanvasGroup.alpha = Mathf.MoveTowards(

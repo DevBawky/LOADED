@@ -55,7 +55,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
-    public bool ApplyStatusDamage(int damage)
+    public bool ApplyStatusDamage(int damage, bool creditedToPlayer)
     {
         if (damage <= 0 || IsDefeated)
         {
