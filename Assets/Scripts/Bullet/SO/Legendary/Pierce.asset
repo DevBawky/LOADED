@@ -38,7 +38,7 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
   removeCost: 5
-  upgradeCost: 60
+  upgradeCost: 50
   upgradeLevels:
   - description: "3\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
     damage: 75
@@ -57,7 +57,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     removeCost: 5
-    upgradeCost: 120
+    upgradeCost: 100
   - description: "4\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n\uC7AC\uC7A5\uC804 \uC2DC
       \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 100
