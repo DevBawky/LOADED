@@ -1308,6 +1308,7 @@ MonoBehaviour:
   remainingSpawnTurns: 0
   isWaitingForNextWave: 0
   isBattleCompleted: 0
+  isBattleCompletionPending: 0
 --- !u!114 &1635157207 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5559595891291689823, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
@@ -1890,6 +1891,14 @@ PrefabInstance:
       value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: rgbSplitStrength
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: shockwaveStrength
+      value: 1.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: killComboTextScale
       value: 1
       objectReference: {fileID: 0}
@@ -1921,6 +1930,14 @@ PrefabInstance:
       propertyPath: secondKillTextColor.r
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: maximumDamageShakeDuration
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: maximumDamageShakeStrength
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_Name
       value: Player
@@ -1933,10 +1950,6 @@ PrefabInstance:
       propertyPath: eventSystem
       value: 
       objectReference: {fileID: 501680681}
-    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
-      propertyPath: recoilNoise
-      value: 
-      objectReference: {fileID: 519420037}
     - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: waveManager
       value: 
@@ -1961,10 +1974,6 @@ PrefabInstance:
       propertyPath: normalShotSfx.volume
       value: 0.5
       objectReference: {fileID: 0}
-    - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
-      propertyPath: recoilCameraTransform
-      value: 
-      objectReference: {fileID: 519420032}
     - target: {fileID: 4183098370449869801, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: criticalShotSfx.volume
       value: 0.7
@@ -2995,6 +3004,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 58027665752101708, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 281832381289160403, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_Pivot.x
       value: 0

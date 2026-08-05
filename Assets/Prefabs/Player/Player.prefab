@@ -471,8 +471,6 @@ MonoBehaviour:
   waveManager: {fileID: 0}
   firePoint: {fileID: 1546687425952665600}
   bulletLinePrefab: {fileID: 6585112541486572157, guid: c60b717d5afabb641a126316109fd44c, type: 3}
-  recoilNoise: {fileID: 0}
-  recoilCameraTransform: {fileID: 0}
   eventSystem: {fileID: 0}
   cylinderUI: {fileID: 6842197531604829375}
   bulletFeedbackImage: {fileID: 0}
@@ -513,11 +511,6 @@ MonoBehaviour:
     minPitch: 0.9
     maxPitch: 1.1
   maxRandomShotAngle: 5
-  cameraRecoilScale: 1.6
-  recoilFrequencyGain: 1.2
-  recoilAttackDuration: 0.15
-  recoilRecoveryDuration: 0.6
-  cameraRestPosition: {x: 0, y: 0, z: -10}
 --- !u!114 &700000000000000020
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -573,7 +566,9 @@ MonoBehaviour:
   killSlowMotionScale: 0.3
   killSlowMotionHold: 0.18
   killSlowMotionRecovery: 0.18
-  killCameraShake: 0.055
+  maximumDamageShakeStrength: 0.055
+  maximumDamageShakeDuration: 0.18
+  emptyShotShakeRatio: 0.4
   volumePulseDuration: 0.8
   chromaticBoost: 1
   bloomBoost: 3
@@ -589,7 +584,6 @@ MonoBehaviour:
   fullscreenImpactColor: {r: 1, g: 0.3, b: 0.06, a: 1}
   hitFullscreenDuration: 0.14
   minimumHitIntensity: 0.18
-  hitCameraShake: 0.018
   hitAccentClip: {fileID: 0}
   criticalAccentClip: {fileID: 0}
   killAccentClip: {fileID: 0}

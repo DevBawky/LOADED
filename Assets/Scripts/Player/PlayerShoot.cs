@@ -6,7 +6,6 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
-using Unity.Cinemachine;
 
 public class PlayerShoot : MonoBehaviour
 {
@@ -153,8 +152,6 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private Transform firePoint;
     [FormerlySerializedAs("projectilePrefab")]
     [SerializeField] private BulletLine bulletLinePrefab;
-    [SerializeField] private CinemachineBasicMultiChannelPerlin recoilNoise;
-    [SerializeField] private Transform recoilCameraTransform;
     [SerializeField] private EventSystem eventSystem;
     [SerializeField] private PlayerCylinderUI cylinderUI;
     [SerializeField] private Image bulletFeedbackImage;
@@ -178,20 +175,8 @@ public class PlayerShoot : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float maxRandomShotAngle = 5f;
 
-    [Header("Camera Recoil")]
-    [Min(0f)]
-    [SerializeField] private float cameraRecoilScale = 0.02f;
-    [Min(0f)]
-    [SerializeField] private float recoilFrequencyGain = 0.8f;
-    [Min(0f)]
-    [SerializeField] private float recoilAttackDuration = 0.1f;
-    [Min(0f)]
-    [SerializeField] private float recoilRecoveryDuration = 0.45f;
-    [SerializeField] private Vector3 cameraRestPosition = new Vector3(0f, 0f, -10f);
-
     private int lastActionFrame = -1;
     private bool isFiring;
-    private Coroutine cameraRecoilCoroutine;
     private Coroutine bulletFeedbackCoroutine;
     private readonly List<EnemyController> targetBuffer =
         new List<EnemyController>();
@@ -266,7 +251,6 @@ public class PlayerShoot : MonoBehaviour
 
         InitializeSfxAudioSource();
         ResetBulletFeedback();
-        ResetCameraRecoil();
         reservedDamageByEnemy.Clear();
         currentConsumedBullet = null;
     }
@@ -307,12 +291,6 @@ public class PlayerShoot : MonoBehaviour
             playerMove.SetShooting(false);
         }
 
-        if (cameraRecoilCoroutine != null)
-        {
-            StopCoroutine(cameraRecoilCoroutine);
-            cameraRecoilCoroutine = null;
-        }
-
         if (bulletFeedbackCoroutine != null)
         {
             StopCoroutine(bulletFeedbackCoroutine);
@@ -325,7 +303,6 @@ public class PlayerShoot : MonoBehaviour
         }
 
         ResetBulletFeedback();
-        ResetCameraRecoil();
         reservedDamageByEnemy.Clear();
     }
 
@@ -885,7 +862,10 @@ public class PlayerShoot : MonoBehaviour
 
         ShowBulletFeedback(bulletData);
         PlayRandomSfx(isCritical ? criticalShotSfx : normalShotSfx);
-        GenerateRecoil(bulletData);
+        if (!hasEnemyTarget)
+        {
+            combatFeedback?.RecordEmptyShotRecoil();
+        }
         RecordSuccessfulShot();
         BulletFired?.Invoke(bulletData);
         combatPresentation?.PlayShot(
@@ -4036,122 +4016,6 @@ public class PlayerShoot : MonoBehaviour
         bulletFeedbackImage.raycastTarget = false;
         bulletFeedbackImage.color = feedbackColor;
         bulletFeedbackImage.gameObject.SetActive(false);
-    }
-
-    private void GenerateRecoil(BulletInstance bulletData)
-    {
-        if (bulletData.RecoilStrength <= 0f || cameraRecoilScale <= 0f)
-        {
-            return;
-        }
-
-        if (recoilNoise == null || recoilCameraTransform == null)
-        {
-            Debug.LogError(
-                "Recoil Noise and Recoil Camera Transform must be assigned in the Inspector.",
-                this);
-            return;
-        }
-
-        if (cameraRecoilCoroutine != null)
-        {
-            StopCoroutine(cameraRecoilCoroutine);
-        }
-
-        float targetAmplitudeGain = bulletData.RecoilStrength * cameraRecoilScale;
-        cameraRecoilCoroutine = StartCoroutine(
-            PlayCameraRecoil(targetAmplitudeGain));
-    }
-
-    private IEnumerator PlayCameraRecoil(float targetAmplitudeGain)
-    {
-        float currentAmplitudeGain = recoilNoise.AmplitudeGain;
-        recoilNoise.FrequencyGain = recoilFrequencyGain;
-
-        yield return ChangeAmplitudeGain(
-            currentAmplitudeGain,
-            targetAmplitudeGain,
-            recoilAttackDuration);
-        yield return ChangeAmplitudeGain(
-            targetAmplitudeGain,
-            0f,
-            recoilRecoveryDuration,
-            true);
-
-        ResetCameraRecoil();
-        cameraRecoilCoroutine = null;
-    }
-
-    private IEnumerator ChangeAmplitudeGain(
-        float startGain,
-        float targetGain,
-        float duration,
-        bool returnCameraToRestPosition = false)
-    {
-        Vector3 startCameraPosition = recoilCameraTransform.position;
-
-        if (duration <= 0f)
-        {
-            recoilNoise.AmplitudeGain = targetGain;
-
-            if (returnCameraToRestPosition)
-            {
-                recoilCameraTransform.position = cameraRestPosition;
-            }
-
-            yield break;
-        }
-
-        float elapsedTime = 0f;
-
-        while (elapsedTime < duration)
-        {
-            yield return null;
-            elapsedTime += Time.deltaTime;
-            float progress = Mathf.Clamp01(elapsedTime / duration);
-            float smoothProgress = GetSmootherStep(progress);
-            recoilNoise.AmplitudeGain = Mathf.Lerp(
-                startGain,
-                targetGain,
-                smoothProgress);
-
-            if (returnCameraToRestPosition)
-            {
-                recoilCameraTransform.position = Vector3.Lerp(
-                    startCameraPosition,
-                    cameraRestPosition,
-                    smoothProgress);
-            }
-        }
-
-        recoilNoise.AmplitudeGain = targetGain;
-
-        if (returnCameraToRestPosition)
-        {
-            recoilCameraTransform.position = cameraRestPosition;
-        }
-    }
-
-    private float GetSmootherStep(float progress)
-    {
-        progress = Mathf.Clamp01(progress);
-        return progress * progress * progress
-            * (progress * (progress * 6f - 15f) + 10f);
-    }
-
-    private void ResetCameraRecoil()
-    {
-        if (recoilNoise != null)
-        {
-            recoilNoise.AmplitudeGain = 0f;
-            recoilNoise.FrequencyGain = 0f;
-        }
-
-        if (recoilCameraTransform != null)
-        {
-            recoilCameraTransform.position = cameraRestPosition;
-            recoilCameraTransform.localRotation = Quaternion.identity;
-        }
     }
 
     private bool TryBeginAction()
