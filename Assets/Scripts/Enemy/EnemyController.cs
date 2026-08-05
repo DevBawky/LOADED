@@ -201,6 +201,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
     public event Action<EnemyController, int, int> HealthChanged;
     public event Action<EnemyController, int> ShieldChanged;
+    public static event Action<int, int> DamageApplied;
     public event Action<EnemyController> Defeated;
 
     public EnemyData Data => enemyData;
@@ -695,6 +696,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int previousHealth = currentHealth;
         currentHealth = Mathf.Max(0, currentHealth - healthDamage);
         int appliedDamage = absorbedDamage + previousHealth - currentHealth;
+
+        if (appliedDamage > 0)
+        {
+            DamageApplied?.Invoke(appliedDamage, enemyData.MaxHealth);
+        }
 
         if (currentHealth != previousHealth)
         {

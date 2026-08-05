@@ -78,9 +78,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float killSlowMotionHold = 0.09f;
     [Min(0.01f)]
     [SerializeField] private float killSlowMotionRecovery = 0.18f;
-    [Min(0f)]
-    [SerializeField] private float killCameraShake = 0.055f;
-
     [Header("Critical Hit")]
     [Range(0.05f, 1f)]
     [SerializeField] private float criticalSlowMotionScale = 0.62f;
@@ -88,8 +85,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float criticalSlowMotionHold = 0.025f;
     [Min(0.01f)]
     [SerializeField] private float criticalSlowMotionRecovery = 0.075f;
-    [Min(0f)]
-    [SerializeField] private float criticalCameraShake = 0.025f;
     [Range(0f, 1f)]
     [SerializeField] private float criticalVolumeStrength = 0.48f;
 
@@ -100,8 +95,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float devastatingSlowMotionHold = 0.045f;
     [Min(0.01f)]
     [SerializeField] private float devastatingSlowMotionRecovery = 0.11f;
-    [Min(0f)]
-    [SerializeField] private float devastatingCameraShake = 0.035f;
     [Range(0f, 1f)]
     [SerializeField] private float devastatingVolumeStrength = 0.72f;
 
@@ -118,6 +111,14 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float kickVolumeStrength = 0.82f;
     [Min(0.05f)]
     [SerializeField] private float kickFullscreenDuration = 0.2f;
+
+    [Header("Unified Camera Shake")]
+    [Min(0f)]
+    [SerializeField] private float maximumDamageShakeStrength = 0.055f;
+    [Min(0f)]
+    [SerializeField] private float maximumDamageShakeDuration = 0.18f;
+    [Range(0f, 1f)]
+    [SerializeField] private float emptyShotShakeRatio = 0.4f;
 
     [Header("Volume Pulse")]
     [Min(0.01f)]
@@ -153,9 +154,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float hitFullscreenDuration = 0.14f;
     [Range(0f, 1f)]
     [SerializeField] private float minimumHitIntensity = 0.18f;
-    [Min(0f)]
-    [SerializeField] private float hitCameraShake = 0.018f;
-
     [Header("Audio")]
     [SerializeField] private AudioClip hitAccentClip;
     [SerializeField] private AudioClip criticalAccentClip;
@@ -255,6 +253,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         RefreshUiImmediate();
     }
 
+    private void OnEnable()
+    {
+        EnemyController.DamageApplied += HandleEnemyDamageApplied;
+    }
+
     private void Update()
     {
         if (!uiBound)
@@ -271,6 +274,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void OnDisable()
     {
+        EnemyController.DamageApplied -= HandleEnemyDamageApplied;
         CancelSlowMotionAndRestore();
         RestoreVolume();
         RestoreAudioFilter();
@@ -415,14 +419,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
             intensity = Mathf.Max(0.82f, intensity);
         }
 
-        float shakeStrength = impactTier switch
-        {
-            CombatImpactTier.Devastating => devastatingCameraShake,
-            CombatImpactTier.Critical => criticalCameraShake,
-            _ => hitCameraShake
-        };
-        CombatCameraShake.Play(
-            shakeStrength * Mathf.Lerp(0.75f, 1.75f, intensity));
         PlayHitAccent(
             worldPosition,
             intensity,
@@ -488,6 +484,14 @@ public sealed class CombatFeedbackController : MonoBehaviour
             false);
     }
 
+    public void RecordEmptyShotRecoil()
+    {
+        float ratio = Mathf.Clamp01(emptyShotShakeRatio);
+        CombatCameraShake.Play(
+            maximumDamageShakeStrength * ratio,
+            maximumDamageShakeDuration * ratio);
+    }
+
     public void RecordDefeat(
         Vector3 worldPosition,
         int horizontalDirection,
@@ -529,7 +533,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
             + specialBoost);
         intensity *= Mathf.Lerp(0.95f, 1.15f, Mathf.Clamp01(cylinderBuild));
 
-        CombatCameraShake.Play(killCameraShake * Mathf.Lerp(0.85f, 1.65f, intensity));
         PlayKillAccent(
             worldPosition,
             tier,
@@ -550,6 +553,20 @@ public sealed class CombatFeedbackController : MonoBehaviour
             fullscreenImpactDuration * (wasFinalEnemy ? 1.3f : 1f),
             wasCritical,
             wasFinalEnemy);
+    }
+
+    private void HandleEnemyDamageApplied(int appliedDamage, int targetMaxHealth)
+    {
+        if (appliedDamage <= 0 || targetMaxHealth <= 0)
+        {
+            return;
+        }
+
+        float damageRatio = Mathf.Clamp01(
+            (float)appliedDamage / targetMaxHealth);
+        CombatCameraShake.Play(
+            maximumDamageShakeStrength * damageRatio,
+            maximumDamageShakeDuration * damageRatio);
     }
 
     private void SpawnKillComboText(Vector3 worldPosition)
