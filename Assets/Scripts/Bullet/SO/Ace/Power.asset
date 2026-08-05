@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_power
   displayName: "\uAC15\uD654\uD0C4"
-  description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\r\n\uBC1C\uC0AC
-    \uC2DC 5% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4."
+  description: "강력한 탄환입니다.\n발사 시 파괴 (5%)"
   cylinderIcon: {fileID: -1511212471940627665, guid: 642dc24acacca0c419a6cb6d26f207f6, type: 3}
   price: 10
   grade: 2
@@ -42,12 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
-  removeCost: 5
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
-      \uC2DC 5% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4.\n20%
-      \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+  - description: "강력한 탄환입니다.\n발사 시 파괴 (5%)\n관통 1회 (20%)"
     damage: 85
     maxRange: 3
     criticalChance: 60
@@ -67,11 +63,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 50
-  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
-      \uC2DC 3% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4.\n40%
-      \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+  - description: "강력한 탄환입니다.\n발사 시 파괴 (3%)\n관통 1회 (40%)"
     damage: 120
     maxRange: 4
     criticalChance: 70
@@ -91,11 +84,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 100
-  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
-      \uC2DC 1% \uD655\uB960\uB85C \uD0C4\uC774 \uD30C\uAD34\uB429\uB2C8\uB2E4.\n40%
-      \uD655\uB960\uB85C \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+  - description: "강력한 탄환입니다.\n발사 시 파괴 (1%)\n연속 관통 (40%)"
     damage: 150
     maxRange: 4
     criticalChance: 85
@@ -118,5 +108,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 0

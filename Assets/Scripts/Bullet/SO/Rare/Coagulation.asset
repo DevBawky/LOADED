@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_coagulation
   displayName: "\uC751\uACE0\uD0C4"
-  description: "\uC783\uC740 \uCCB4\uB825 1%\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960
-    +0.5%p"
+  description: "잃은 체력 1%당 치명타 확률 +0.5%p"
   cylinderIcon: {fileID: 8499059365894075233, guid: c3e1f9e0cefefeb4aa92aff766e0c54f, type: 3}
   price: 6
   grade: 1
@@ -42,11 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
-  removeCost: 8
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uC783\uC740 \uCCB4\uB825 1%\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960
-      +1%p"
+  - description: "잃은 체력 1%당 치명타 확률 +1%p"
     damage: 17
     maxRange: 4
     criticalChance: 14
@@ -65,10 +62,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 20
-  - description: "\uC783\uC740 \uCCB4\uB825 1%\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960
-      +2%p"
+  - description: "잃은 체력 1%당 치명타 확률 +2%p"
     damage: 20
     maxRange: 5
     criticalChance: 18
@@ -87,10 +82,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 40
-  - description: "\uC783\uC740 \uCCB4\uB825 1%\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960
-      +3%p\n50% \uD655\uB960\uB85C \uD53C\uD574\uB9CC\uD07C \uD761\uD608\uD569\uB2C8\uB2E4."
+  - description: "잃은 체력 1%당 치명타 확률 +3%p\n피해량만큼 흡혈 (50%)"
     damage: 25
     maxRange: 5
     criticalChance: 22
@@ -116,5 +109,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 0

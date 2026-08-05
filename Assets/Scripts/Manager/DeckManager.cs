@@ -21,6 +21,8 @@ public class DeckManager : MonoBehaviour
     [SerializeField] private List<BulletInstance> graveyard =
         new List<BulletInstance>();
     [SerializeField] private int nextAcquisitionOrder;
+    [Min(0)]
+    [SerializeField] private int paidBulletRemovalCount;
 
     public event Action StateChanged;
     public event Action LoadedBulletsCleared;
@@ -36,6 +38,8 @@ public class DeckManager : MonoBehaviour
         + CountOwnedBullets(graveyard);
     public bool CanRemoveOwnedBullet =>
         OwnedBulletCount > MinimumOwnedBulletCount;
+    public int CurrentBulletRemovalCost =>
+        CalculateBulletRemovalCost(paidBulletRemovalCount);
 
     private void Awake()
     {
@@ -171,6 +175,16 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public void RegisterPaidBulletRemoval()
+    {
+        if (paidBulletRemovalCount < int.MaxValue)
+        {
+            paidBulletRemovalCount++;
+        }
+
+        StateChanged?.Invoke();
+    }
+
     public bool CanRemoveBullet(BulletInstance bullet)
     {
         return bullet != null
@@ -259,6 +273,7 @@ public class DeckManager : MonoBehaviour
         loadedBullets.Clear();
         graveyard.Clear();
         nextAcquisitionOrder = 0;
+        paidBulletRemovalCount = 0;
 
         foreach (BulletData bulletData in startingBullets)
         {
@@ -272,6 +287,34 @@ public class DeckManager : MonoBehaviour
 
         ShuffleDeck();
         StateChanged?.Invoke();
+    }
+
+    private static int CalculateBulletRemovalCost(int removalCount)
+    {
+        int normalizedCount = Mathf.Max(0, removalCount);
+
+        if (normalizedCount <= 1)
+        {
+            return 1;
+        }
+
+        int previous = 1;
+        int current = 1;
+
+        for (int index = 2; index <= normalizedCount; index++)
+        {
+            long next = (long)previous + current;
+
+            if (next >= int.MaxValue)
+            {
+                return int.MaxValue;
+            }
+
+            previous = current;
+            current = (int)next;
+        }
+
+        return current;
     }
 
     private void EnsureMinimumStartingBulletCount()

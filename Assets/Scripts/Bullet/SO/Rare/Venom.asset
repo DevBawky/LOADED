@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_venom
   displayName: "\uBCA0\uB188"
-  description: "\uB3C5\uC744 3 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  description: "독 +3"
   cylinderIcon: {fileID: -7888405720569401456, guid: cadb44fc37a6a8642923b53918727dd0, type: 3}
   price: 6
   grade: 1
@@ -41,10 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
-  removeCost: 5
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uB3C5\uC744 5 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  - description: "독 +5"
     damage: 6
     maxRange: 3
     criticalChance: 30
@@ -63,11 +62,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 20
-  - description: "\uB3C5\uC744 7 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC \uCD94\uAC00\uB85C \uB3C5\uC744 3 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n50%
-      \uD655\uB960\uB85C \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uB429\uB2C8\uB2E4."
+  - description: "독 +7\n치명타 시 추가로 독 +3\n연속 관통 (50%)"
     damage: 8
     maxRange: 4
     criticalChance: 50
@@ -98,11 +94,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 40
-  - description: "\uB3C5\uC744 10 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC \uCD94\uAC00\uB85C \uB3C5\uC744 5 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n70%
-      \uD655\uB960\uB85C \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uB429\uB2C8\uB2E4.\r\n"
+  - description: "독 +10\n치명타 시 추가로 독 +5\n연속 관통 (70%)"
     damage: 10
     maxRange: 5
     criticalChance: 65
@@ -134,5 +127,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 0

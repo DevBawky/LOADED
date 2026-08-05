@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_shell_collector
   displayName: "\uD0C4\uD53C \uC218\uC9D1\uD0C4"
-  description: "\uB2E4\uB978 \uC0AC\uACA9\uC5D0\uC11C \uD0C4\uD53C \uC800\uC7A5.\n\uD0C4\uD53C
-    2\uAC1C\uB2F9 50% \uC704\uB825\uC73C\uB85C \uCD94\uAC00 \uC0AC\uACA9\uD558\uBA70
-    \uCD5C\uB300 2\uD68C \uBC1C\uC0AC."
+  description: "다른 사격에서 탄피 저장.\n탄피 2개당 50% 위력으로 추가 사격하며 최대 2회 발사."
   cylinderIcon: {fileID: 8246226265278136234, guid: b84d059f65143994e9167873d4daf159, type: 3}
   price: 6
   grade: 1
@@ -43,12 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
-  removeCost: 8
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uB2E4\uB978 \uC0AC\uACA9\uC5D0\uC11C \uD0C4\uD53C \uC800\uC7A5.\n\uD0C4\uD53C
-      2\uAC1C\uB2F9 60% \uC704\uB825\uC73C\uB85C \uCD94\uAC00 \uC0AC\uACA9\uD558\uBA70
-      \uCD5C\uB300 3\uD68C \uBC1C\uC0AC."
+  - description: "다른 사격에서 탄피 저장.\n탄피 2개당 60% 위력으로 추가 사격하며 최대 3회 발사."
     damage: 23
     maxRange: 4
     criticalChance: 18
@@ -67,11 +62,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 20
-  - description: "\uB2E4\uB978 \uC0AC\uACA9\uC5D0\uC11C \uD0C4\uD53C \uC800\uC7A5.\n\uD0C4\uD53C
-      2\uAC1C\uB2F9 70% \uC704\uB825\uC73C\uB85C \uCD94\uAC00 \uC0AC\uACA9\uD558\uBA70
-      \uCD5C\uB300 5\uD68C \uBC1C\uC0AC."
+  - description: "다른 사격에서 탄피 저장.\n탄피 2개당 70% 위력으로 추가 사격하며 최대 5회 발사."
     damage: 26
     maxRange: 5
     criticalChance: 22
@@ -90,11 +82,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 40
-  - description: "\uB2E4\uB978 \uC0AC\uACA9\uC5D0\uC11C \uD0C4\uD53C \uC800\uC7A5.\n\uD0C4\uD53C
-      2\uAC1C\uB2F9 100% \uC704\uB825\uC73C\uB85C \uCD94\uAC00 \uC0AC\uACA9\uD558\uBA70
-      \uCD5C\uB300 5\uD68C \uBC1C\uC0AC."
+  - description: "다른 사격에서 탄피 저장.\n탄피 2개당 100% 위력으로 추가 사격하며 최대 5회 발사."
     damage: 30
     maxRange: 5
     criticalChance: 28
@@ -113,5 +102,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 0

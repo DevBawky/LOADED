@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_quick_draw
   displayName: "\uD035\uB4DC\uB85C\uC6B0\uD0C4"
-  description: "3\uBC1C \uC774\uD558\uB85C \uC7A5\uC804\uB41C \uC2E4\uB9B0\uB354\uC5D0
-    \uD3EC\uD568\uB418\uBA74 \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744
-    \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  description: "3발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
   cylinderIcon: {fileID: 6895671342812299232, guid: 2ba24d181d8b0e744ab0e56d44b8e03d, type: 3}
   price: 10
   grade: 2
@@ -43,12 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
-  removeCost: 12
   upgradeCost: 20
   upgradeLevels:
-  - description: "4\uBC1C \uC774\uD558\uB85C \uC7A5\uC804\uB41C \uC2E4\uB9B0\uB354\uC5D0
-      \uD3EC\uD568\uB418\uBA74 \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744
-      \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "4발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
     damage: 18
     maxRange: 4
     criticalChance: 28
@@ -67,11 +62,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 12
     upgradeCost: 50
-  - description: "5\uBC1C \uC774\uD558\uB85C \uC7A5\uC804\uB41C \uC2E4\uB9B0\uB354\uC5D0
-      \uD3EC\uD568\uB418\uBA74 \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744
-      \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "5발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
     damage: 23
     maxRange: 5
     criticalChance: 32
@@ -90,11 +82,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 12
     upgradeCost: 100
-  - description: "6\uBC1C \uC774\uD558\uB85C \uC7A5\uC804\uB41C \uC2E4\uB9B0\uB354\uC5D0
-      \uD3EC\uD568\uB418\uBA74 \uC774\uBC88 \uBC1C\uC0AC \uD589\uB3D9\uC740 \uD134\uC744
-      \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "6발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
     damage: 30
     maxRange: 5
     criticalChance: 38
@@ -114,5 +103,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 12
     upgradeCost: 0

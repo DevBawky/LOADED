@@ -180,7 +180,6 @@ public sealed class BulletInstance
     public float RecoilStrength => data == null
         ? 0f
         : data.GetRecoilStrength(Level);
-    public int RemoveCost => data == null ? 0 : data.GetRemoveCost(Level);
     public int UpgradeCost => data == null ? 0 : data.GetUpgradeCost(Level);
 
     public string GetDetailedDescription(BulletTooltipContext context)

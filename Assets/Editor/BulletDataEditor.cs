@@ -98,7 +98,6 @@ public class BulletDataEditor : Editor
             Draw("doesNotConsumeTurn");
             Draw("recoilStrength");
             EditorGUILayout.Space(2f);
-            Draw("removeCost", "Remove Cost at Level 0");
             Draw("upgradeCost", "Upgrade Cost: 0 -> +1");
         }
     }

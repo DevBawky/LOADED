@@ -114,8 +114,6 @@ public class BulletLevelData
     [Min(0f)]
     [SerializeField] private float recoilStrength;
     [Min(0)]
-    [SerializeField] private int removeCost = 5;
-    [Min(0)]
     [Tooltip("Cost to upgrade from this level to the next level.")]
     [SerializeField] private int upgradeCost = 10;
 
@@ -138,7 +136,6 @@ public class BulletLevelData
     public Color SecondaryLineColor => secondaryLineColor;
     public bool DoesNotConsumeTurn => doesNotConsumeTurn;
     public float RecoilStrength => Mathf.Max(0f, recoilStrength);
-    public int RemoveCost => Mathf.Max(0, removeCost);
     public int UpgradeCost => Mathf.Max(0, upgradeCost);
 
     public BulletLevelData()
@@ -159,7 +156,6 @@ public class BulletLevelData
         Color secondaryLineColor,
         bool doesNotConsumeTurn,
         float recoilStrength,
-        int removeCost,
         int upgradeCost)
     {
         this.description = description;
@@ -176,7 +172,6 @@ public class BulletLevelData
         this.secondaryLineColor = secondaryLineColor;
         this.doesNotConsumeTurn = doesNotConsumeTurn;
         this.recoilStrength = recoilStrength;
-        this.removeCost = removeCost;
         this.upgradeCost = upgradeCost;
     }
 
@@ -405,8 +400,6 @@ public class BulletData : ScriptableObject
 
     [Header("Level 0 Costs")]
     [Min(0)]
-    [SerializeField] private int removeCost = 5;
-    [Min(0)]
     [Tooltip("Cost to upgrade from level 0 to level 1.")]
     [SerializeField] private int upgradeCost = 10;
 
@@ -443,7 +436,6 @@ public class BulletData : ScriptableObject
     public Color GradeNameColor => useCustomGradeNameColor
         ? customGradeNameColor
         : GetDefaultGradeColor(grade);
-    public int RemoveCost => Mathf.Max(0, removeCost);
     public int UpgradeCost => Mathf.Max(0, upgradeCost);
     public IReadOnlyList<BulletLevelData> UpgradeLevels => upgradeLevels;
 
@@ -710,12 +702,6 @@ public class BulletData : ScriptableObject
             : levelData.RecoilStrength;
     }
 
-    public int GetRemoveCost(int level)
-    {
-        BulletLevelData levelData = GetUpgradeLevelData(level);
-        return levelData == null ? RemoveCost : levelData.RemoveCost;
-    }
-
     public int GetUpgradeCost(int level)
     {
         BulletLevelData levelData = GetUpgradeLevelData(level);
@@ -784,7 +770,6 @@ public class BulletData : ScriptableObject
             secondaryLineColor,
             doesNotConsumeTurn,
             recoilStrength,
-            removeCost,
             upgradeCost);
     }
 

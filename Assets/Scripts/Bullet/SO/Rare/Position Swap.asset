@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uC704\uCE58 \uBCC0\uACBD \uD0C4"
-  description: "\uC801\uACFC \uC704\uCE58\uB97C \uBCC0\uACBD\uD569\uB2C8\uB2E4."
+  description: "대상과 위치 교환"
   cylinderIcon: {fileID: -1611615653400164907, guid: 96884931d179a6f4f83b01b601888336, type: 3}
   price: 6
   grade: 1
@@ -41,11 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
-  removeCost: 5
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uC801\uACFC \uC704\uCE58\uB97C \uBCC0\uACBD\uD569\uB2C8\uB2E4.\r\n30%
-      \uD655\uB960\uB85C \uAE30\uC808\uC744 1 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  - description: "대상과 위치 교환\n기절 +1 (30%)"
     damage: 7
     maxRange: 3
     criticalChance: 40
@@ -70,11 +68,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 20
-  - description: "\uC801\uACFC \uC704\uCE58\uB97C \uBCC0\uACBD\uD569\uB2C8\uB2E4.\r\n50%
-      \uD655\uB960\uB85C \uAE30\uC808\uC744 1 \uBD80\uC5EC\uD569\uB2C8\uB2E4\r\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC \uCDE8\uC57D\uC744 2 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  - description: "대상과 위치 교환\n기절 +1 (50%)\n치명타 시 약화 +2"
     damage: 10
     maxRange: 4
     criticalChance: 55
@@ -107,12 +102,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 40
-  - description: "\uC801\uACFC \uC704\uCE58\uB97C \uBCC0\uACBD\uD569\uB2C8\uB2E4.\r\n70%
-      \uD655\uB960\uB85C \uAE30\uC808\uC744 1 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\r\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC \uCDE8\uC57D\uC744 3 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\r\n\uC7AC\uC7A5\uC804
-      \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "대상과 위치 교환\n기절 +1 (70%)\n치명타 시 약화 +3\n재장전 시 턴을 소모하지 않습니다."
     damage: 13
     maxRange: 5
     criticalChance: 70
@@ -145,5 +136,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.35
-    removeCost: 5
     upgradeCost: 0

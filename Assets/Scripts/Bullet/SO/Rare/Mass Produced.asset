@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_mass_produced
   displayName: "\uC591\uC0B0\uD0C4"
-  description: "\uBCF4\uC720\uD55C \uB178\uBA40\xB7\uB808\uC5B4 \uD0C4\uD658 \uD558\uB098\uB2F9
-    \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 13% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  description: "보유한 일반·레어 탄환 하나당 최종대미지 +13%"
   cylinderIcon: {fileID: 717467629373744656, guid: bc354602cb3f4404ab5aa5b6c9e503db, type: 3}
   price: 6
   grade: 1
@@ -42,11 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
-  removeCost: 8
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uBCF4\uC720\uD55C \uB178\uBA40\xB7\uB808\uC5B4 \uD0C4\uD658 \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +15%"
+  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +15%"
     damage: 18
     maxRange: 4
     criticalChance: 18
@@ -65,10 +62,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 20
-  - description: "\uBCF4\uC720\uD55C \uB178\uBA40\xB7\uB808\uC5B4 \uD0C4\uD658 \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +18%\n30% \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5"
+  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +18%\n관통 1회 (30%)"
     damage: 22
     maxRange: 5
     criticalChance: 22
@@ -88,11 +83,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 40
-  - description: "\uBCF4\uC720\uD55C \uB178\uBA40\xB7\uB808\uC5B4 \uD0C4\uD658 \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +23%\n50% \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\n\uC7A5\uC804\uC2DC
-      \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +23%\n관통 1회 (50%)\n재장전 시 턴을 소모하지 않습니다."
     damage: 28
     maxRange: 5
     criticalChance: 28
@@ -112,5 +104,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 0
