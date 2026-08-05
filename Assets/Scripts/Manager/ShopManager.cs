@@ -189,6 +189,7 @@ public class ShopManager : MonoBehaviour
 
     public void OpenShop()
     {
+        currencyManager?.FlushPendingMoney();
         ResetOfferButtonsForNewVisit();
         GenerateOffers();
         GenerateItemOffers();

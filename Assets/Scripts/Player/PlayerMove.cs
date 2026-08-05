@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 public class PlayerMove : MonoBehaviour
 {
@@ -15,12 +16,15 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private ActorMotion actorMotion;
     [SerializeField] private Animator playerAnimator;
     [SerializeField] private Transform pushVisualTransform;
+    [SerializeField] private CombatFeedbackController combatFeedback;
 
     [Header("Push")]
     [Range(0f, 1f)]
     [SerializeField] private float pushCollisionDamageRatio = 0.1f;
     [Min(0f)]
-    [SerializeField] private float pushTileDuration = 0.1f;
+    [FormerlySerializedAs("pushTileDuration")]
+    [Tooltip("Time for the enemy to complete the entire push, regardless of distance.")]
+    [SerializeField] private float pushFlightDuration = 0.1f;
     [Range(0f, 1f)]
     [SerializeField] private float pushCollisionImpactRatio = 0.5f;
     [Min(0f)]
@@ -82,6 +86,7 @@ public class PlayerMove : MonoBehaviour
     {
         statusEffects = GetComponent<StatusEffectController>();
         playerAnimator ??= GetComponent<Animator>();
+        combatFeedback ??= GetComponent<CombatFeedbackController>();
     }
 
     public void SetWaveManager(WaveManager assignedWaveManager)
@@ -366,6 +371,11 @@ public class PlayerMove : MonoBehaviour
 
             yield return WaitForKickImpact();
 
+            combatFeedback?.RecordKickImpact(
+                pushPlan.PushedEnemy.transform.position,
+                pushPlan.Direction,
+                pushPlan.CollidedEnemy != null ? 1f : 0.88f);
+
             if (playerImpactRoutine != null)
             {
                 StopCoroutine(playerImpactRoutine);
@@ -512,16 +522,14 @@ public class PlayerMove : MonoBehaviour
         Vector3 restingPosition = vacatesStartingTile
             ? pushPathBuffer[pushPathBuffer.Count - 1]
             : pushedEnemy.transform.position;
-        int flightTileCount = pushPathBuffer.Count
-            + (collidedEnemy == null ? 0 : 1);
-        float flightDuration = Mathf.Max(0f, pushTileDuration)
-            * flightTileCount;
+        float flightDuration = Mathf.Max(0f, pushFlightDuration);
 
         pushPlan = new EnemyPushPlan(
             pushedEnemy,
             collidedEnemy,
             restingPosition,
             vacatesStartingTile,
+            direction,
             flightDuration);
         return true;
     }
@@ -752,12 +760,14 @@ public class PlayerMove : MonoBehaviour
             EnemyController collidedEnemy,
             Vector3 restingPosition,
             bool vacatesStartingTile,
+            int direction,
             float flightDuration)
         {
             PushedEnemy = pushedEnemy;
             CollidedEnemy = collidedEnemy;
             RestingPosition = restingPosition;
             VacatesStartingTile = vacatesStartingTile;
+            Direction = direction;
             FlightDuration = flightDuration;
         }
 
@@ -765,6 +775,7 @@ public class PlayerMove : MonoBehaviour
         public EnemyController CollidedEnemy { get; }
         public Vector3 RestingPosition { get; }
         public bool VacatesStartingTile { get; }
+        public int Direction { get; }
         public float FlightDuration { get; }
     }
 }

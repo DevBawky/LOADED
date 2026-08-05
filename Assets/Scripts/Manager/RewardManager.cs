@@ -35,7 +35,11 @@ public class RewardManager : MonoBehaviour
         }
 
         bool grantedGold = currencyManager != null
-            && currencyManager.AddMoney(enemyData.RollGuaranteedGoldDrop());
+            && currencyManager.AddMoneyFromWorld(
+                enemyData.RollGuaranteedGoldDrop(),
+                playerMove == null
+                    ? transform.position
+                    : playerMove.transform.position);
         bool grantedItem = enemyData.TryRollDrop(
                 out EnemyDropItemData dropItem)
             && GrantDrop(dropItem);
@@ -50,7 +54,9 @@ public class RewardManager : MonoBehaviour
         }
 
         bool grantedGold = currencyManager != null
-            && currencyManager.AddMoney(enemyData.RollGuaranteedGoldDrop());
+            && currencyManager.AddMoneyFromWorld(
+                enemyData.RollGuaranteedGoldDrop(),
+                defeatedPosition);
 
         if (!enemyData.TryRollDrop(out EnemyDropItemData dropItem))
         {
@@ -59,7 +65,7 @@ public class RewardManager : MonoBehaviour
 
         if (dropItem.DropType != EnemyDropType.InventoryItem)
         {
-            return GrantDrop(dropItem) || grantedGold;
+            return GrantDrop(dropItem, defeatedPosition) || grantedGold;
         }
 
         if (dropItem.ItemData == null || boardManager == null
@@ -102,6 +108,16 @@ public class RewardManager : MonoBehaviour
 
     public bool GrantDrop(EnemyDropItemData dropItem)
     {
+        Vector3 sourcePosition = playerMove == null
+            ? transform.position
+            : playerMove.transform.position;
+        return GrantDrop(dropItem, sourcePosition);
+    }
+
+    private bool GrantDrop(
+        EnemyDropItemData dropItem,
+        Vector3 sourcePosition)
+    {
         if (dropItem == null || !dropItem.IsConfigured)
         {
             return false;
@@ -110,7 +126,9 @@ public class RewardManager : MonoBehaviour
         return dropItem.DropType switch
         {
             EnemyDropType.Gold => currencyManager != null
-                && currencyManager.AddMoney(dropItem.Amount),
+                && currencyManager.AddMoneyFromWorld(
+                    dropItem.Amount,
+                    sourcePosition),
             EnemyDropType.InventoryItem => GrantInventoryItems(dropItem),
             EnemyDropType.Bullet => GrantBullets(dropItem),
             _ => false

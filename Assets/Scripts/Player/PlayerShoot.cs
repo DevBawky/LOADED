@@ -519,6 +519,7 @@ public class PlayerShoot : MonoBehaviour
         criticalShotsThisCylinder = 0;
         bulletDestroyedThisCylinder = false;
         pendingSaverGold = 0;
+        combatFeedback?.BeginFiringSequence();
         combatFeedback?.BeginCylinder();
         bool saverRefundsTurn = false;
         int quickDrawThreshold = GetLoadedEffectMaximumStackCount(
@@ -753,7 +754,9 @@ public class PlayerShoot : MonoBehaviour
         if (!bulletDestroyedThisCylinder && pendingSaverGold > 0)
         {
             currencyManager ??= FindFirstObjectByType<CurrencyManager>();
-            currencyManager?.AddMoney(pendingSaverGold);
+            currencyManager?.AddMoneyFromWorld(
+                pendingSaverGold,
+                transform.position);
         }
 
         if (stackedDamageBonus > 0f
@@ -1629,7 +1632,9 @@ public class PlayerShoot : MonoBehaviour
             if (rebateEffect != null && rebateEffect.RollActivation())
             {
                 currencyManager ??= FindFirstObjectByType<CurrencyManager>();
-                currencyManager?.AddMoney(rebateEffect.Amount);
+                currencyManager?.AddMoneyFromWorld(
+                    rebateEffect.Amount,
+                    transform.position);
             }
         }
 
@@ -1823,7 +1828,8 @@ public class PlayerShoot : MonoBehaviour
                     BulletConditionalTrigger.EnemyDefeated,
                     enemy,
                     horizontalDirection,
-                    0);
+                    0,
+                    enemySnapshot.Position);
                 GrantDevourerStack(bulletData);
                 continue;
             }
@@ -1934,6 +1940,15 @@ public class PlayerShoot : MonoBehaviour
                         horizontalDirection,
                         bulletData,
                         CombatImpactTier.Defeat);
+                    combatFeedback?.RecordDefeat(
+                        enemySnapshot.Position,
+                        horizontalDirection,
+                        appliedDamage,
+                        targetMaxHealth,
+                        isCritical,
+                        waveManager != null
+                            && waveManager.ActiveEnemies.Count <= 1,
+                        GetCurrentCylinderBuild());
                 }
 
                 yield return ApplyConditionalEvents(
@@ -1941,7 +1956,8 @@ public class PlayerShoot : MonoBehaviour
                     BulletConditionalTrigger.EnemyDefeated,
                     enemy,
                     horizontalDirection,
-                    appliedDamage);
+                    appliedDamage,
+                    enemySnapshot.Position);
 
                 if (defeatedByAttack || defeatedByManagedEffect)
                 {
@@ -2065,19 +2081,7 @@ public class PlayerShoot : MonoBehaviour
                 defeated = healthBeforePoison > 0
                     && enemy.CurrentHealth <= 0;
 
-                if (defeated)
-                {
-                    combatFeedback?.RecordDefeat(
-                        poisonImpactPosition,
-                        horizontalDirection,
-                        poisonDamage,
-                        poisonTargetMaxHealth,
-                        false,
-                        waveManager != null
-                            && waveManager.ActiveEnemies.Count <= 1,
-                        GetCurrentCylinderBuild());
-                }
-                else if (appliedPoisonDamage > 0)
+                if (!defeated && appliedPoisonDamage > 0)
                 {
                     combatFeedback?.RecordHit(
                         poisonImpactPosition,
@@ -2152,7 +2156,8 @@ public class PlayerShoot : MonoBehaviour
         EnemyController enemy,
         int horizontalDirection,
         int appliedDamage,
-        Action<bool> onCompleted)
+        Action<bool> onCompleted,
+        Vector3? sourceWorldPosition = null)
     {
         if (effect == null)
         {
@@ -2196,7 +2201,12 @@ public class PlayerShoot : MonoBehaviour
             case BulletEffectType.GainGold:
                 currencyManager ??= FindFirstObjectByType<CurrencyManager>();
                 applied = currencyManager != null
-                    && currencyManager.AddMoney(effect.Amount);
+                    && currencyManager.AddMoneyFromWorld(
+                        effect.Amount,
+                        sourceWorldPosition
+                        ?? (enemy != null
+                            ? enemy.transform.position
+                            : transform.position));
                 break;
         }
 
@@ -2327,7 +2337,8 @@ public class PlayerShoot : MonoBehaviour
         BulletConditionalTrigger trigger,
         EnemyController enemy,
         int horizontalDirection,
-        int appliedDamage)
+        int appliedDamage,
+        Vector3? sourceWorldPosition = null)
     {
         if (sourceBullet == null)
         {
@@ -2359,7 +2370,8 @@ public class PlayerShoot : MonoBehaviour
                     enemy,
                     horizontalDirection,
                     appliedDamage,
-                    null);
+                    null,
+                    sourceWorldPosition);
             }
         }
     }
