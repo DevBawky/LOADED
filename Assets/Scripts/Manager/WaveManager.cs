@@ -59,6 +59,7 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private bool isWaitingForNextWave;
     [FormerlySerializedAs("isStageCleared")]
     [SerializeField] private bool isBattleCompleted;
+    [SerializeField] private bool isBattleCompletionPending;
 
     private EnemyWave[] waves = Array.Empty<EnemyWave>();
     private int spawnTerm;
@@ -99,6 +100,7 @@ public class WaveManager : MonoBehaviour
         remainingSpawnTurns = 0;
         isWaitingForNextWave = false;
         isBattleCompleted = false;
+        isBattleCompletionPending = false;
     }
 
     private void OnEnable()
@@ -684,6 +686,16 @@ public class WaveManager : MonoBehaviour
 
         if (waves == null || currentWaveIndex >= waves.Length - 1)
         {
+            if (playerMove != null && playerMove.IsShooting)
+            {
+                isBattleCompletionPending = true;
+                isWaitingForNextWave = false;
+                remainingSpawnTurns = 0;
+                ClearSpawnWarnings();
+                StateChanged?.Invoke();
+                return;
+            }
+
             CompleteBattle();
             return;
         }
@@ -736,6 +748,7 @@ public class WaveManager : MonoBehaviour
             return;
         }
 
+        isBattleCompletionPending = false;
         isBattleCompleted = true;
         bossBombManager?.ClearAll();
         rewardManager?.CollectAndDestroyAllDroppedItems();
@@ -746,6 +759,22 @@ public class WaveManager : MonoBehaviour
         BattleCompleted?.Invoke();
     }
 
+    public void NotifyFiringSequenceCompleted()
+    {
+        if (!isBattleCompletionPending || isBattleCompleted)
+        {
+            return;
+        }
+
+        if (activeEnemies.Count > 0)
+        {
+            isBattleCompletionPending = false;
+            return;
+        }
+
+        CompleteBattle();
+    }
+
     private void FailBattle(string message)
     {
         if (isBattleCompleted)
@@ -754,6 +783,7 @@ public class WaveManager : MonoBehaviour
         }
 
         Debug.LogError(message, this);
+        isBattleCompletionPending = false;
         isBattleCompleted = true;
         bossBombManager?.ClearAll();
         isWaitingForNextWave = false;
@@ -791,6 +821,7 @@ public class WaveManager : MonoBehaviour
         currentWaveIndex = -1;
         remainingSpawnTurns = 0;
         isWaitingForNextWave = false;
+        isBattleCompletionPending = false;
         isBattleCompleted = false;
         isResolvingTurn = false;
         currentEnemyTurnCycle = 0;
