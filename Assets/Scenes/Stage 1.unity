@@ -1815,7 +1815,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::CurrencyManager
   startingMoney: 0
   currentMoneyText: {fileID: 1766732963}
+  flyingGoldPrefab: {fileID: 0}
+  goldSpawnInterval: 0.045
+  goldFlightDuration: 0.65
+  goldWaveAmplitudeRange: {x: 18, y: 52}
+  goldWaveCycleRange: {x: 0.75, y: 1.5}
   currentMoney: 0
+  pendingAnimatedMoney: 0
 --- !u!114 &2400001006
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1846,6 +1852,42 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: comboGoldPerKill
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: killComboTextScale
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: highComboTextColor.b
+      value: 0.9856514
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: highComboTextColor.g
+      value: 0.058823526
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: highComboTextColor.r
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: killComboTextDuration
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: secondKillTextColor.b
+      value: 0.100815535
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: secondKillTextColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: secondKillTextColor.r
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_Name
       value: Player

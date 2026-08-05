@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -55,6 +56,21 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private Color timerDangerColor =
         new Color(1f, 0.18f, 0.08f, 1f);
 
+    [Header("Kill Combo Bonus")]
+    [SerializeField] private TextMeshPro killComboTextPrefab;
+    [Min(0)]
+    [SerializeField] private int comboGoldPerKill = 10;
+    [Min(0.1f)]
+    [SerializeField] private float killComboTextDuration = 0.85f;
+    [Min(0.01f)]
+    [SerializeField] private float killComboTextScale = 0.13f;
+    [Range(0f, 0.5f)]
+    [SerializeField] private float maximumComboTextScaleBonus = 0.2f;
+    [SerializeField] private Color secondKillTextColor =
+        new Color(1f, 0.46f, 0.08f, 1f);
+    [SerializeField] private Color highComboTextColor =
+        new Color(1f, 0.12f, 0.06f, 1f);
+
     [Header("Kill Motion")]
     [Range(0.05f, 1f)]
     [SerializeField] private float killSlowMotionScale = 0.32f;
@@ -88,6 +104,20 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float devastatingCameraShake = 0.035f;
     [Range(0f, 1f)]
     [SerializeField] private float devastatingVolumeStrength = 0.72f;
+
+    [Header("Kick Impact")]
+    [Range(0.05f, 1f)]
+    [SerializeField] private float kickSlowMotionScale = 0.42f;
+    [Min(0f)]
+    [SerializeField] private float kickSlowMotionHold = 0.045f;
+    [Min(0.01f)]
+    [SerializeField] private float kickSlowMotionRecovery = 0.13f;
+    [Min(0f)]
+    [SerializeField] private float kickCameraShake = 0.045f;
+    [Range(0f, 1f)]
+    [SerializeField] private float kickVolumeStrength = 0.82f;
+    [Min(0.05f)]
+    [SerializeField] private float kickFullscreenDuration = 0.2f;
 
     [Header("Volume Pulse")]
     [Min(0.01f)]
@@ -204,12 +234,16 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private float lowPassBaseCutoff = 22000f;
     private float slowMotionBaseScale = 1f;
     private bool ownsTimeScale;
+    private CurrencyManager currencyManager;
+    private readonly List<GameObject> spawnedComboTexts =
+        new List<GameObject>();
 
     public int ComboCount => comboCount;
     public int CylinderDamage => cylinderDamage;
 
     private void Awake()
     {
+        currencyManager = FindFirstObjectByType<CurrencyManager>();
         BindUi();
         BindVolume();
         InitializeAudio();
@@ -242,6 +276,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         RestoreAudioFilter();
         ResetFullscreenImpact();
         ResetUiTransforms();
+        ClearComboKillTexts();
     }
 
     private void OnDestroy()
@@ -273,6 +308,19 @@ public sealed class CombatFeedbackController : MonoBehaviour
         if (damageCanvasGroup != null)
         {
             damageCanvasGroup.alpha = 1f;
+        }
+    }
+
+    public void BeginFiringSequence()
+    {
+        comboCount = 0;
+        comboRemaining = 0f;
+        comboPunchRemaining = 0f;
+        UpdateComboText();
+
+        if (comboTimer != null)
+        {
+            comboTimer.fillAmount = 0f;
         }
     }
 
@@ -414,6 +462,32 @@ public sealed class CombatFeedbackController : MonoBehaviour
             false);
     }
 
+    public void RecordKickImpact(
+        Vector3 worldPosition,
+        int horizontalDirection,
+        float strength = 1f)
+    {
+        float intensity = Mathf.Clamp01(strength);
+        CombatCameraShake.Play(
+            kickCameraShake * Mathf.Lerp(0.8f, 1.25f, intensity));
+        StartVolumePulse(intensity * kickVolumeStrength);
+        StartSlowMotion(
+            intensity,
+            kickSlowMotionScale,
+            kickSlowMotionHold,
+            kickSlowMotionRecovery);
+        StartAudioDuck(
+            Mathf.Lerp(5200f, 2600f, intensity),
+            kickSlowMotionHold + kickSlowMotionRecovery);
+        QueueFullscreenImpact(
+            worldPosition,
+            horizontalDirection,
+            intensity,
+            kickFullscreenDuration,
+            true,
+            false);
+    }
+
     public void RecordDefeat(
         Vector3 worldPosition,
         int horizontalDirection,
@@ -429,6 +503,18 @@ public sealed class CombatFeedbackController : MonoBehaviour
         comboRemaining = comboDuration;
         comboPunchRemaining = 0.3f;
         UpdateComboText();
+        SpawnKillComboText(worldPosition);
+
+        if (comboCount > 1 && comboGoldPerKill > 0)
+        {
+            currencyManager ??= FindFirstObjectByType<CurrencyManager>();
+            long calculatedBonus = (long)(comboCount - 1)
+                * comboGoldPerKill;
+            int comboBonus = calculatedBonus >= int.MaxValue
+                ? int.MaxValue
+                : (int)calculatedBonus;
+            currencyManager?.AddMoneyFromWorld(comboBonus, worldPosition);
+        }
 
         float tier = GetComboTier();
         float specialBoost = (wasCritical ? 0.12f : 0f)
@@ -466,6 +552,136 @@ public sealed class CombatFeedbackController : MonoBehaviour
             wasFinalEnemy);
     }
 
+    private void SpawnKillComboText(Vector3 worldPosition)
+    {
+        TextMeshPro text;
+        GameObject textObject;
+        Vector3 prefabScale;
+
+        if (killComboTextPrefab != null)
+        {
+            text = Instantiate(killComboTextPrefab);
+            textObject = text.gameObject;
+            prefabScale = textObject.transform.localScale;
+        }
+        else
+        {
+            textObject = new GameObject(
+                "Text | Kill Combo",
+                typeof(TextMeshPro));
+            text = textObject.GetComponent<TextMeshPro>();
+            text.alignment = TextAlignmentOptions.Center;
+            text.fontStyle = FontStyles.Bold;
+            text.fontSize = 6f;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.outlineColor = new Color(0.08f, 0.02f, 0.01f, 0.95f);
+            text.outlineWidth = 0.18f;
+            text.sortingOrder = short.MaxValue - 8;
+            prefabScale = Vector3.one * killComboTextScale;
+        }
+
+        text.text = comboCount <= 1
+            ? "적 처치!"
+            : $"{comboCount}연속 처치!";
+        text.color = comboCount switch
+        {
+            1 => Color.white,
+            2 => secondKillTextColor,
+            _ => highComboTextColor
+        };
+        textObject.transform.position = worldPosition
+            + new Vector3(0f, 0.72f, -1f);
+        float comboGrowth = 1f + Mathf.Min(
+            maximumComboTextScaleBonus,
+            Mathf.Max(0, comboCount - 1) * 0.025f);
+        Vector3 targetScale = prefabScale * comboGrowth;
+        textObject.transform.localScale = targetScale * 0.12f;
+        spawnedComboTexts.Add(textObject);
+        StartCoroutine(AnimateKillComboText(
+            textObject,
+            text,
+            targetScale));
+    }
+
+    private IEnumerator AnimateKillComboText(
+        GameObject textObject,
+        TextMeshPro text,
+        Vector3 targetScale)
+    {
+        Vector3 startPosition = textObject.transform.position;
+        Quaternion startRotation = textObject.transform.rotation;
+        Color startColor = text.color;
+        float horizontalDrift = Random.Range(-0.12f, 0.12f);
+        float rotationDirection = Random.value < 0.5f ? -1f : 1f;
+        float elapsed = 0f;
+
+        while (elapsed < killComboTextDuration && textObject != null)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(
+                elapsed / killComboTextDuration);
+            float entrance = Mathf.Clamp01(progress / 0.22f);
+            float entranceEase = 1f - Mathf.Pow(1f - entrance, 3f);
+            float pop = Mathf.Sin(entrance * Mathf.PI) * 0.42f;
+            float settleProgress = Mathf.Clamp01(
+                (progress - 0.22f) / 0.38f);
+            float settle = Mathf.Sin(settleProgress * Mathf.PI * 4f)
+                * (1f - settleProgress)
+                * 0.09f;
+            float scale = Mathf.Lerp(0.12f, 1f, entranceEase)
+                + pop + settle;
+            textObject.transform.localScale = targetScale * scale;
+            float rotationEnvelope = 1f - Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(progress / 0.55f));
+            float rotation = rotationDirection
+                * Mathf.Sin(progress * Mathf.PI * 7f)
+                * 9f
+                * rotationEnvelope;
+            textObject.transform.rotation = startRotation
+                * Quaternion.Euler(0f, 0f, rotation);
+            float entranceShake = Mathf.Sin(progress * Mathf.PI * 10f)
+                * rotationEnvelope
+                * 0.055f;
+            textObject.transform.position = startPosition + new Vector3(
+                horizontalDrift * progress
+                    + entranceShake * rotationDirection,
+                Mathf.SmoothStep(0f, 0.5f, progress),
+                0f);
+            Color color = startColor;
+            color.a = 1f - Mathf.SmoothStep(0.58f, 1f, progress);
+            text.color = color;
+        }
+
+        spawnedComboTexts.Remove(textObject);
+
+        if (textObject != null)
+        {
+            Destroy(textObject);
+        }
+    }
+
+    private void ClearComboKillTexts()
+    {
+        foreach (GameObject textObject in spawnedComboTexts)
+        {
+            if (textObject != null)
+            {
+                Destroy(textObject);
+            }
+        }
+
+        spawnedComboTexts.Clear();
+    }
+
     private void UpdateCombo(float deltaTime)
     {
         if (comboCount <= 0)
@@ -478,7 +694,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             return;
         }
 
-        if (!GamePauseController.IsPaused)
+        if (!cylinderActive && !GamePauseController.IsPaused)
         {
             comboRemaining = Mathf.Max(0f, comboRemaining - deltaTime);
         }

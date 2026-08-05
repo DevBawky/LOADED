@@ -569,6 +569,7 @@ MonoBehaviour:
   comboLowColor: {r: 1, g: 1, b: 1, a: 1}
   comboHighColor: {r: 1, g: 0.42, b: 0.12, a: 1}
   timerDangerColor: {r: 1, g: 0.18, b: 0.08, a: 1}
+  killComboTextPrefab: {fileID: 6304521783619051883, guid: e42db836b5444fe59470033ca0bc92a1, type: 3}
   killSlowMotionScale: 0.3
   killSlowMotionHold: 0.18
   killSlowMotionRecovery: 0.18
