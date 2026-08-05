@@ -488,7 +488,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0.3247412, g: 0.8962264, b: 0, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -564,7 +564,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
   m_Color: {r: 0, g: 0, b: 0, a: 1}
-  m_RaycastTarget: 1
+  m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
@@ -676,6 +676,13 @@ MonoBehaviour:
   preparedSupportType: 0
   lastTurnAction: 0
   isActing: 0
+  bigBarrelStep: 0
+  isBigBarrelPhaseTwo: 0
+  bigBarrelActionUsesPhaseTwo: 0
+  preparedBigBarrelFuse: 0
+  bigBarrelReloadTurnsRemaining: 0
+  preparedBombTargetTileIndices: 
+  preparedShotgunTileIndices: 
 --- !u!114 &1235869742036814597
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -749,6 +756,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyDamageNumberDisplay
   normalDamagePrefab: {fileID: 7093171668410684382, guid: 69d3740759199d243aba77143fcdc2b4, type: 3}
   criticalDamagePrefab: {fileID: 7093171668410684382, guid: d687fa0addb64b544a8b80246de4d981, type: 3}
+  devastatingDamagePrefab: {fileID: 0}
   poisonDamagePrefab: {fileID: 7093171668410684382, guid: a49e2b552cb04934d89ca44805ae4a77, type: 3}
   markBonusDamagePrefab: {fileID: 7093171668410684382, guid: 0f2a5a8123d65b74ba098d0fc562e6de, type: 3}
   poisonStatusPrefab: {fileID: 8736109667816764904, guid: 6498f7e1513ff5549baa1df8ebdf4240, type: 3}
@@ -764,6 +772,12 @@ MonoBehaviour:
   damageOffset: {x: 0, y: 0.75, z: -1}
   statusOffset: {x: 0, y: 1, z: -1}
   followTarget: 1
+  criticalDamageColor: {r: 1, g: 0.86, b: 0.28, a: 1}
+  devastatingDamageColor: {r: 1, g: 0.32, b: 0.08, a: 1}
+  defeatDamageColor: {r: 1, g: 0.92, b: 0.78, a: 1}
+  criticalDamageScale: 1.18
+  devastatingDamageScale: 1.42
+  defeatDamageScale: 1.58
 --- !u!114 &700000000000000003
 MonoBehaviour:
   m_ObjectHideFlags: 0
