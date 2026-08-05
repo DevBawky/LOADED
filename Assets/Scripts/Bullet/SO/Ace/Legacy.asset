@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_legacy
   displayName: "\uC720\uC0B0\uD0C4"
-  description: "다른 탄환이 영구 파괴될 때마다 유산 +1\n유산 하나당 최종대미지 +30%"
+  description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420 \uB54C\uB9C8\uB2E4
+    \uC720\uC0B0 +1\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+    +30%"
   cylinderIcon: {fileID: -9192586164993529986, guid: 81c43afc203a57d4dbadd0567903f9e7, type: 3}
   price: 10
   grade: 2
@@ -43,7 +45,9 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 +1\n유산 하나당 최종대미지 +40%"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 +1\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+      +40%"
     damage: 25
     maxRange: 4
     criticalChance: 24
@@ -63,7 +67,9 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 +1\n유산 하나당 최종대미지 +60%"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 +1\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+      +60%"
     damage: 21
     maxRange: 5
     criticalChance: 28
@@ -84,7 +90,9 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 +2\n유산 하나당 최종대미지 +50%"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 +2\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+      +60%"
     damage: 28
     maxRange: 5
     criticalChance: 35
@@ -95,7 +103,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 2
       knockbackDistance: 1
-      amount: 50
+      amount: 60
     conditionalEvents: []
     penetrationChances:
     - chance: 50
