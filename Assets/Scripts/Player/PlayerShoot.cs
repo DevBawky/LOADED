@@ -1797,7 +1797,9 @@ public class PlayerShoot : MonoBehaviour
                     enemySnapshot,
                     horizontalDirection,
                     bulletData,
-                    CombatImpactTier.Defeat);
+                    CombatImpactTier.Defeat,
+                    combatFeedback?.NextFiringSequenceDefeatFeedbackMultiplier
+                        ?? 1f);
                 combatFeedback?.RecordDefeat(
                     enemySnapshot.Position,
                     horizontalDirection,
@@ -1838,7 +1840,11 @@ public class PlayerShoot : MonoBehaviour
                     isCritical,
                     reportedDamage,
                     targetMaxHealth,
-                    defeatedByAttack));
+                    defeatedByAttack),
+                defeatedByAttack
+                    ? combatFeedback
+                        ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f
+                    : 1f);
             defeatPresented = defeatedByAttack;
 
             if (defeatedByAttack)
@@ -1922,7 +1928,9 @@ public class PlayerShoot : MonoBehaviour
                         enemySnapshot,
                         horizontalDirection,
                         bulletData,
-                        CombatImpactTier.Defeat);
+                        CombatImpactTier.Defeat,
+                        combatFeedback
+                            ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f);
                     combatFeedback?.RecordDefeat(
                         enemySnapshot.Position,
                         horizontalDirection,

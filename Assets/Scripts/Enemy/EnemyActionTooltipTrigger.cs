@@ -42,7 +42,8 @@ internal static class EnemyActionTooltipView
     private const string ActionNameTextName = "Text | Action Name";
     private const string ActionDescriptionTextName =
         "Text | Action Description";
-    private static readonly Vector2 PointerOffset = new Vector2(18f, -18f);
+    private const float PointerGap = 12f;
+    private const float ScreenPadding = 8f;
     private static readonly Vector3[] WorldCorners = new Vector3[4];
 
     private static RectTransform tooltip;
@@ -183,19 +184,12 @@ internal static class EnemyActionTooltipView
             ? null
             : rootCanvas.worldCamera;
         RectTransform canvasRect = rootCanvas.transform as RectTransform;
-        Vector2 targetPosition = pointerPosition + PointerOffset;
-
-        if (canvasRect == null
-            || !RectTransformUtility.ScreenPointToWorldPointInRectangle(
-                canvasRect,
-                targetPosition,
-                eventCamera,
-                out Vector3 worldPosition))
+        if (canvasRect == null)
         {
             return;
         }
 
-        tooltip.position = worldPosition;
+        Canvas.ForceUpdateCanvases();
         tooltip.GetWorldCorners(WorldCorners);
         Vector2 bottomLeft = RectTransformUtility.WorldToScreenPoint(
             eventCamera,
@@ -203,32 +197,40 @@ internal static class EnemyActionTooltipView
         Vector2 topRight = RectTransformUtility.WorldToScreenPoint(
             eventCamera,
             WorldCorners[2]);
-        Vector2 correction = Vector2.zero;
+        Vector2 tooltipSize = topRight - bottomLeft;
+        Rect screenRect = rootCanvas.pixelRect;
+        float minimumX = screenRect.xMin + ScreenPadding;
+        float minimumY = screenRect.yMin + ScreenPadding;
+        float maximumX = Mathf.Max(
+            minimumX,
+            screenRect.xMax - ScreenPadding - tooltipSize.x);
+        float maximumY = Mathf.Max(
+            minimumY,
+            screenRect.yMax - ScreenPadding - tooltipSize.y);
+        float availableRight = screenRect.xMax - ScreenPadding
+            - pointerPosition.x - PointerGap;
+        float availableLeft = pointerPosition.x - PointerGap
+            - screenRect.xMin - ScreenPadding;
+        bool placeOnRight = tooltipSize.x <= availableRight
+            || tooltipSize.x > availableLeft && availableRight >= availableLeft;
+        float preferredX = placeOnRight
+            ? pointerPosition.x + PointerGap
+            : pointerPosition.x - PointerGap - tooltipSize.x;
+        Vector2 desiredBottomLeft = new Vector2(
+            Mathf.Clamp(preferredX, minimumX, maximumX),
+            Mathf.Clamp(
+                pointerPosition.y + PointerGap,
+                minimumY,
+                maximumY));
+        Vector2 targetPivotPosition = desiredBottomLeft + new Vector2(
+            tooltipSize.x * tooltip.pivot.x,
+            tooltipSize.y * tooltip.pivot.y);
 
-        if (bottomLeft.x < 0f)
-        {
-            correction.x -= bottomLeft.x;
-        }
-        else if (topRight.x > Screen.width)
-        {
-            correction.x += Screen.width - topRight.x;
-        }
-
-        if (bottomLeft.y < 0f)
-        {
-            correction.y -= bottomLeft.y;
-        }
-        else if (topRight.y > Screen.height)
-        {
-            correction.y += Screen.height - topRight.y;
-        }
-
-        if (correction != Vector2.zero
-            && RectTransformUtility.ScreenPointToWorldPointInRectangle(
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle(
                 canvasRect,
-                targetPosition + correction,
+                targetPivotPosition,
                 eventCamera,
-                out worldPosition))
+                out Vector3 worldPosition))
         {
             tooltip.position = worldPosition;
         }

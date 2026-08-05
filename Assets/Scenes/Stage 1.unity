@@ -432,6 +432,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 893394818801154479, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: m_Camera
+      value: 
+      objectReference: {fileID: 519420031}
+    - target: {fileID: 893394818801154479, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: m_RenderMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 893394818801154479, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: m_SortingLayerID
+      value: -1905864227
+      objectReference: {fileID: 0}
     - target: {fileID: 1821563660449303458, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
       propertyPath: m_Name
       value: Canvas _ Loading Transition
@@ -918,7 +930,7 @@ MonoBehaviour:
   m_Intensity: 1
   m_LightVolumeIntensity: 1
   m_LightVolumeEnabled: 0
-  m_ApplyToSortingLayers: 00000000e313d6d421781c12
+  m_ApplyToSortingLayers: 00000000e313d6d421781c12ddd1668e
   m_LightCookieSprite: {fileID: 0}
   m_DeprecatedPointLightCookieSprite: {fileID: 0}
   m_LightOrder: 0
@@ -2195,6 +2207,18 @@ PrefabInstance:
       propertyPath: m_fontSize
       value: 38.25
       objectReference: {fileID: 0}
+    - target: {fileID: 815631796892624267, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: m_Camera
+      value: 
+      objectReference: {fileID: 519420031}
+    - target: {fileID: 815631796892624267, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: m_RenderMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 815631796892624267, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: m_SortingLayerID
+      value: -1905864227
+      objectReference: {fileID: 0}
     - target: {fileID: 900000000000000001, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: stateManager
       value: 
@@ -3087,6 +3111,18 @@ PrefabInstance:
     - target: {fileID: 281832381289160403, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4064423382310575712, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_Camera
+      value: 
+      objectReference: {fileID: 519420031}
+    - target: {fileID: 4064423382310575712, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_RenderMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4064423382310575712, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_SortingLayerID
+      value: -1905864227
       objectReference: {fileID: 0}
     - target: {fileID: 4528167826451698447, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_Name
