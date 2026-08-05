@@ -520,6 +520,39 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4281101729208790151, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: tips.Array.size
+      value: 6
+      objectReference: {fileID: 0}
+    - target: {fileID: 4281101729208790151, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: 'tips.Array.data[0]'
+      value: "\uD0C4\uD658\uC758 \uC21C\uC11C\uB294 \uB300\uBBF8\uC9C0 \uCC28\uC774\uC5D0
+        \uC720\uC758\uBBF8\uD55C \uACB0\uACFC\uB97C \uC90D\uB2C8\uB2E4. "
+      objectReference: {fileID: 0}
+    - target: {fileID: 4281101729208790151, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: 'tips.Array.data[1]'
+      value: "\uC6D0\uAC70\uB9AC \uC801\uC744 \uC870\uC2EC\uD558\uC138\uC694."
+      objectReference: {fileID: 0}
+    - target: {fileID: 4281101729208790151, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: 'tips.Array.data[2]'
+      value: "\uD0C4\uD658 \uC21C\uC11C \uC870\uD569\uC774 \uC804\uD22C\uC758 \uD750\uB984\uC744
+        \uBC14\uAFC9\uB2C8\uB2E4."
+      objectReference: {fileID: 0}
+    - target: {fileID: 4281101729208790151, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: 'tips.Array.data[3]'
+      value: "\uD30C\uAD34\uAC00 \uAC00\uB2A5\uD55C \uD0C4\uD658\uC740 \uB371 \uD06C\uAE30\uC5D0
+        \uC601\uD5A5\uC744 \uC8FC\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+      objectReference: {fileID: 0}
+    - target: {fileID: 4281101729208790151, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: 'tips.Array.data[4]'
+      value: "\uD0C4\uD658\uC758 \uC0AC\uAC70\uB9AC\uC5D0 \uC720\uC758\uD558\uBA70
+        \uC0AC\uACA9\uD558\uC138\uC694."
+      objectReference: {fileID: 0}
+    - target: {fileID: 4281101729208790151, guid: 5a02099686ecc5e49b87c08ae71af9e7, type: 3}
+      propertyPath: 'tips.Array.data[5]'
+      value: "\uD0C4\uD658\uC740 \uCD5C\uC18C 7\uAC1C, \uCD5C\uB300 15\uAC1C\uB97C
+        \uBCF4\uC720\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4."
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
