@@ -183,7 +183,10 @@ public static class TooltipTextFormatter
 public enum ItemEffectType
 {
     Heal = 0,
-    ReshuffleDeck = 1
+    ReshuffleDeck = 1,
+    SwapWithFrontEnemy = 2,
+    PoisonAllEnemies = 3,
+    StunAllEnemies = 4
 }
 
 [CreateAssetMenu(fileName = "New Item", menuName = "Loaded/Item")]
@@ -209,7 +212,11 @@ public class ItemData : ScriptableObject
     public ItemEffectType EffectType => effectType;
     public int EffectAmount => Mathf.Max(0, effectAmount);
 
-    public bool TryApply(PlayerHealth playerHealth, DeckManager deckManager)
+    public bool TryApply(
+        PlayerHealth playerHealth,
+        DeckManager deckManager,
+        PlayerMove playerMove,
+        WaveManager waveManager)
     {
         return effectType switch
         {
@@ -217,7 +224,68 @@ public class ItemData : ScriptableObject
                 && playerHealth.Heal(EffectAmount),
             ItemEffectType.ReshuffleDeck => deckManager != null
                 && deckManager.ReshuffleDeck(),
+            ItemEffectType.SwapWithFrontEnemy =>
+                TrySwapWithFrontEnemy(playerMove, waveManager),
+            ItemEffectType.PoisonAllEnemies => ApplyStatusToAllEnemies(
+                waveManager,
+                StatusEffectType.Poison,
+                EffectAmount),
+            ItemEffectType.StunAllEnemies => ApplyStatusToAllEnemies(
+                waveManager,
+                StatusEffectType.Stun,
+                EffectAmount),
             _ => false
         };
+    }
+
+    private static bool TrySwapWithFrontEnemy(
+        PlayerMove playerMove,
+        WaveManager waveManager)
+    {
+        if (playerMove == null || waveManager == null
+            || !playerMove.CanStartAction)
+        {
+            return false;
+        }
+
+        int direction = playerMove.transform.localScale.x >= 0f ? 1 : -1;
+        List<EnemyController> targets = new List<EnemyController>();
+        waveManager.GetEnemiesInDirection(
+            playerMove.transform.position,
+            direction,
+            int.MaxValue,
+            targets);
+
+        if (targets.Count == 0 || targets[0] == null)
+        {
+            return false;
+        }
+
+        playerMove.StartCoroutine(
+            playerMove.SwapPositionWithEnemy(targets[0]));
+        return true;
+    }
+
+    private static bool ApplyStatusToAllEnemies(
+        WaveManager waveManager,
+        StatusEffectType statusType,
+        int stacks)
+    {
+        if (waveManager == null || stacks <= 0)
+        {
+            return false;
+        }
+
+        bool appliedAny = false;
+
+        foreach (EnemyController enemy in waveManager.ActiveEnemies)
+        {
+            if (enemy != null && enemy.CurrentHealth > 0)
+            {
+                appliedAny |= enemy.AddStatusEffect(statusType, stacks);
+            }
+        }
+
+        return appliedAny;
     }
 }

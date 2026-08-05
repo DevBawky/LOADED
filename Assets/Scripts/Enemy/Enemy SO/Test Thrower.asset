@@ -17,12 +17,24 @@ MonoBehaviour:
   description: 
   avatar: {fileID: 1233976601806711513, guid: 6718b6967c22ff54490cf76113040c67, type: 3}
   maxHealth: 10
-  dropChance: 100
+  minimumGoldDrop: 20
+  maximumGoldDrop: 20
+  dropChance: 10
   dropItems:
-  - dropType: 0
-    amount: 20
+  - dropType: 1
+    amount: 1
     selectionWeight: 1
-    itemData: {fileID: 0}
+    itemData: {fileID: 11400000, guid: 9d333057caa04b4488526d9103463201, type: 2}
+    bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
+    bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 1c726a25a24e426a8b770796f000af19, type: 2}
     bulletData: {fileID: 0}
   behaviorType: 2
   preferredDistance: 2
@@ -36,8 +48,7 @@ MonoBehaviour:
   supportHealAmount: 10
   supportShieldAmount: 10
   supportHealThreshold: 0.5
-  thrownProjectilePrefab: {fileID: 0}
-  thrownProjectileSprite: {fileID: 0}
+  thrownProjectileSprite: {fileID: 2621594590084429933, guid: 1a9826fbb8e645f4681f8d9409f83106, type: 3}
   thrownProjectileColor: {r: 1, g: 1, b: 1, a: 1}
   thrownProjectileSize: 0.35
   thrownProjectileDuration: 0.5

@@ -19,12 +19,24 @@ MonoBehaviour:
     1 \uBCF4\uC2A4."
   avatar: {fileID: 1233976601806711513, guid: 681bb752688943b41b903f4b80db2c5b, type: 3}
   maxHealth: 2000
-  dropChance: 100
+  minimumGoldDrop: 500
+  maximumGoldDrop: 500
+  dropChance: 10
   dropItems:
-  - dropType: 0
-    amount: 500
-    selectionWeight: 0
-    itemData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 9d333057caa04b4488526d9103463201, type: 2}
+    bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
+    bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 1c726a25a24e426a8b770796f000af19, type: 2}
     bulletData: {fileID: 0}
   behaviorType: 4
   preferredDistance: 2
@@ -38,7 +50,6 @@ MonoBehaviour:
   supportHealAmount: 10
   supportShieldAmount: 10
   supportHealThreshold: 0.5
-  thrownProjectilePrefab: {fileID: 0}
   thrownProjectileSprite: {fileID: 21300000, guid: a069b69aaf6538944912b5fd98e64eff, type: 3}
   thrownProjectileColor: {r: 0.16, g: 0.12, b: 0.08, a: 1}
   thrownProjectileSize: 0.35

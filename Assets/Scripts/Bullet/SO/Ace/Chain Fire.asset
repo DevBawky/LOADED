@@ -17,7 +17,7 @@ MonoBehaviour:
   description: "\uBC1C\uC0AC \uD6C4 100%, 80%, 60%, 40%, 20% \uD655\uB960\uB85C \uC5F0\uC18D
     \uC0AC\uACA9\uD569\uB2C8\uB2E4. \uD0C4\uD658\uC740 \uCD94\uAC00\uB85C \uC18C\uBAA8\uD558\uC9C0
     \uC54A\uC2B5\uB2C8\uB2E4."
-  cylinderIcon: {fileID: 9112154179431215879, guid: b964c48982b5b5c4189196291744795d, type: 3}
+  cylinderIcon: {fileID: 9112154179431215879, guid: 910ba590abb509945b70ef8e23821d91, type: 3}
   price: 26
   grade: 2
   useCustomGradeNameColor: 0

@@ -61,6 +61,7 @@ public class PlayerMove : MonoBehaviour
     private readonly List<Vector3> pushPathBuffer = new List<Vector3>();
 
     public event Action TurnCompleted;
+    public event Action PositionChanged;
     public event Action<int> PushCooldownChanged;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
 
@@ -323,6 +324,9 @@ public class PlayerMove : MonoBehaviour
             yield break;
         }
 
+        bool wasActing = isActing;
+        isActing = true;
+
         Vector3 playerPositionOffset = transform.position - playerTilePosition;
         Vector3 enemyPositionOffset = enemy.transform.position - enemyTilePosition;
         Vector3 playerTargetPosition = enemyTilePosition + playerPositionOffset;
@@ -337,6 +341,9 @@ public class PlayerMove : MonoBehaviour
         {
             yield return enemySwapRoutine;
         }
+
+        PositionChanged?.Invoke();
+        isActing = wasActing;
     }
 
     private IEnumerator ExecuteEnemyPush(
@@ -689,6 +696,7 @@ public class PlayerMove : MonoBehaviour
     {
         isActing = true;
         yield return actorMotion.MoveTo(targetPosition);
+        PositionChanged?.Invoke();
         CompleteTurn();
         isActing = false;
     }

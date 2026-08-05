@@ -1780,6 +1780,9 @@ MonoBehaviour:
   itemPool:
   - {fileID: 11400000, guid: 63f9ffcefb944fc8bbeb16e419249663, type: 2}
   - {fileID: 11400000, guid: 593c3c05f9ee62842a3f0279f6b5a844, type: 2}
+  - {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
+  - {fileID: 11400000, guid: 9d333057caa04b4488526d9103463201, type: 2}
+  - {fileID: 11400000, guid: 1c726a25a24e426a8b770796f000af19, type: 2}
   itemSlots:
   - button: {fileID: 490631709}
     itemIcon: {fileID: 1865599837}
@@ -1828,6 +1831,13 @@ MonoBehaviour:
   currencyManager: {fileID: 2400001005}
   deckManager: {fileID: 396869080}
   playerInventory: {fileID: 2023230409}
+  playerMove: {fileID: 0}
+  boardManager: {fileID: 0}
+  itemDropDuration: 0.45
+  itemDropArcHeight: 0.8
+  itemDropSpriteSize: 0.75
+  itemLandingOffset: {x: 0, y: 0.12, z: 0}
+  itemSortingOrder: 25
 --- !u!1001 &350554640947637847
 PrefabInstance:
   m_ObjectHideFlags: 0

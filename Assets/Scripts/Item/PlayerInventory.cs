@@ -8,6 +8,8 @@ public class PlayerInventory : MonoBehaviour
     [Header("References")]
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private DeckManager deckManager;
+    [SerializeField] private PlayerMove playerMove;
+    [SerializeField] private WaveManager waveManager;
 
     [Header("Inventory")]
     [SerializeField, Range(1, MaximumSlotCount)] private int slotCount =
@@ -34,6 +36,9 @@ public class PlayerInventory : MonoBehaviour
         {
             deckManager = FindFirstObjectByType<DeckManager>();
         }
+
+        playerMove ??= GetComponent<PlayerMove>();
+        waveManager ??= FindFirstObjectByType<WaveManager>();
 
         items = new ItemData[slotCount];
 
@@ -111,7 +116,11 @@ public class PlayerInventory : MonoBehaviour
     {
         ItemData item = GetItem(slotIndex);
 
-        if (item == null || !item.TryApply(playerHealth, deckManager))
+        if (item == null || !item.TryApply(
+                playerHealth,
+                deckManager,
+                playerMove,
+                waveManager))
         {
             return false;
         }

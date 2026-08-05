@@ -9,6 +9,8 @@ public class EnemyDataEditor : Editor
     private SerializedProperty description;
     private SerializedProperty avatar;
     private SerializedProperty maxHealth;
+    private SerializedProperty minimumGoldDrop;
+    private SerializedProperty maximumGoldDrop;
     private SerializedProperty dropChance;
     private SerializedProperty dropItems;
     private SerializedProperty behaviorType;
@@ -21,7 +23,6 @@ public class EnemyDataEditor : Editor
     private SerializedProperty supportHealAmount;
     private SerializedProperty supportShieldAmount;
     private SerializedProperty supportHealThreshold;
-    private SerializedProperty thrownProjectilePrefab;
     private SerializedProperty thrownProjectileSprite;
     private SerializedProperty thrownProjectileColor;
     private SerializedProperty thrownProjectileSize;
@@ -46,6 +47,8 @@ public class EnemyDataEditor : Editor
         description = Find("description");
         avatar = Find("avatar");
         maxHealth = Find("maxHealth");
+        minimumGoldDrop = Find("minimumGoldDrop");
+        maximumGoldDrop = Find("maximumGoldDrop");
         dropChance = Find("dropChance");
         dropItems = Find("dropItems");
         behaviorType = Find("behaviorType");
@@ -58,7 +61,6 @@ public class EnemyDataEditor : Editor
         supportHealAmount = Find("supportHealAmount");
         supportShieldAmount = Find("supportShieldAmount");
         supportHealThreshold = Find("supportHealThreshold");
-        thrownProjectilePrefab = Find("thrownProjectilePrefab");
         thrownProjectileSprite = Find("thrownProjectileSprite");
         thrownProjectileColor = Find("thrownProjectileColor");
         thrownProjectileSize = Find("thrownProjectileSize");
@@ -125,7 +127,6 @@ public class EnemyDataEditor : Editor
                     "사거리는 보드 전체입니다. 준비 순간의 플레이어 타일을 고정한 뒤 투척합니다.",
                     MessageType.Info);
                 EditorGUILayout.PropertyField(recoveryTurns);
-                EditorGUILayout.PropertyField(thrownProjectilePrefab);
                 EditorGUILayout.PropertyField(thrownProjectileSprite);
                 EditorGUILayout.PropertyField(thrownProjectileColor);
                 EditorGUILayout.PropertyField(thrownProjectileSize);
@@ -157,7 +158,6 @@ public class EnemyDataEditor : Editor
                     MessageType.Info);
                 EditorGUILayout.PropertyField(preferredDistance);
                 EditorGUILayout.PropertyField(recoveryTurns);
-                EditorGUILayout.PropertyField(thrownProjectilePrefab);
                 EditorGUILayout.PropertyField(thrownProjectileSprite);
                 EditorGUILayout.PropertyField(thrownProjectileColor);
                 EditorGUILayout.PropertyField(thrownProjectileSize);
@@ -170,7 +170,7 @@ public class EnemyDataEditor : Editor
 
         EditorGUILayout.EndVertical();
         DrawSection("행동 목록", actions);
-        DrawSection("처치 보상", dropChance, dropItems);
+        DrawDropSection();
 
         serializedObject.ApplyModifiedProperties();
         DrawValidationMessages((EnemyData)target);
@@ -188,6 +188,19 @@ public class EnemyDataEditor : Editor
         EditorGUILayout.PropertyField(telegraphLineWidth);
         EditorGUILayout.PropertyField(telegraphVerticalOffset);
         EditorGUILayout.PropertyField(telegraphSortingOrder);
+    }
+
+    private void DrawDropSection()
+    {
+        EditorGUILayout.Space(6f);
+        EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+        EditorGUILayout.LabelField("처치 보상", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("골드는 처치 시 항상 지급됩니다.");
+        EditorGUILayout.PropertyField(minimumGoldDrop);
+        EditorGUILayout.PropertyField(maximumGoldDrop);
+        EditorGUILayout.PropertyField(dropChance);
+        EditorGUILayout.PropertyField(dropItems, true);
+        EditorGUILayout.EndVertical();
     }
 
     private static void DrawSection(

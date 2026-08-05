@@ -372,6 +372,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
+            if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
+            {
+                RotateToward(directionToPlayer);
+                return;
+            }
+
             TakeThrowerTurn();
             return;
         }
@@ -1229,12 +1235,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     {
         Vector3 startPosition = transform.position;
         float duration = enemyData.ThrownProjectileDuration;
-        GameObject projectile = enemyData.ThrownProjectilePrefab == null
-            ? CreateDefaultThrownProjectile(startPosition)
-            : Instantiate(
-                enemyData.ThrownProjectilePrefab,
-                startPosition,
-                Quaternion.identity);
+        GameObject projectile = CreateDefaultThrownProjectile(startPosition);
 
         float elapsed = 0f;
 
@@ -2153,12 +2154,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         Vector3 startPosition = transform.position;
         float duration = enemyData.ThrownProjectileDuration;
         float arcHeight = enemyData.ThrownProjectileArcHeight;
-        GameObject projectile = enemyData.ThrownProjectilePrefab == null
-            ? CreateDefaultThrownProjectile(startPosition)
-            : Instantiate(
-                enemyData.ThrownProjectilePrefab,
-                startPosition,
-                Quaternion.identity);
+        GameObject projectile = CreateDefaultThrownProjectile(startPosition);
 
         if (duration <= 0f)
         {
@@ -2362,11 +2358,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             && (!playerInAttackLine
                 || closestEnemyDistance < distanceToPlayer))
         {
-            if (enemyData.BehaviorType == EnemyBehaviorType.Gunner)
-            {
-                return false;
-            }
-
             enemyTarget = closestEnemy;
             targetPosition = closestEnemy.transform.position;
             return true;
