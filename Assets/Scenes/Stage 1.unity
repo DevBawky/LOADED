@@ -2968,6 +2968,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 43.399994
       objectReference: {fileID: 0}
+    - target: {fileID: 2837176957877659090, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_fontSize
+      value: 134.7
+      objectReference: {fileID: 0}
     - target: {fileID: 4064423382310575712, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_Camera
       value: 
@@ -2975,6 +2979,26 @@ PrefabInstance:
     - target: {fileID: 4528167826451698447, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_Name
       value: Canvas | Game Start
+      objectReference: {fileID: 0}
+    - target: {fileID: 7275382222220098665, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_fontSize
+      value: 65.05
+      objectReference: {fileID: 0}
+    - target: {fileID: 7413258921714967167, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_UiScaleMode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7413258921714967167, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_MatchWidthOrHeight
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 7413258921714967167, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_ReferenceResolution.x
+      value: 1920
+      objectReference: {fileID: 0}
+    - target: {fileID: 7413258921714967167, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_ReferenceResolution.y
+      value: 1080
       objectReference: {fileID: 0}
     - target: {fileID: 7533821384826531738, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: gameplayCanvas
@@ -2988,6 +3012,10 @@ PrefabInstance:
       propertyPath: playerTrackingTarget
       value: 
       objectReference: {fileID: 2023230414}
+    - target: {fileID: 9052629717908933865, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
+      propertyPath: m_fontSize
+      value: 72
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
