@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_rebate
   displayName: "\uD658\uAE09\uD0C4"
-  description: "\uCE58\uBA85\uD0C0 \uBC1C\uC0DD \uC2DC \uACE8\uB4DC +1"
+  description: "치명타 시 골드 +1"
   cylinderIcon: {fileID: -2931169152607838512, guid: 5609f010aca98ca438dd8092c77b5192, type: 3}
   price: 6
   grade: 1
@@ -41,10 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
-  removeCost: 8
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uCE58\uBA85\uD0C0 \uBC1C\uC0DD \uC2DC \uACE8\uB4DC +2"
+  - description: "치명타 시 골드 +2"
     damage: 13
     maxRange: 4
     criticalChance: 55
@@ -63,10 +62,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 20
-  - description: "\uCE58\uBA85\uD0C0 \uBC1C\uC0DD \uC2DC \uACE8\uB4DC +3\n\uAC01
-      30% \uD655\uB960\uB85C \uCD5C\uB300 3\uD68C \uAD00\uD1B5"
+  - description: "치명타 시 골드 +3\n관통 최대 3회 (각 30%)"
     damage: 16
     maxRange: 5
     criticalChance: 60
@@ -88,10 +85,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 40
-  - description: "\uCE58\uBA85\uD0C0 \uBC1C\uC0DD \uC2DC \uACE8\uB4DC +5\n\uAC01
-      50% \uD655\uB960\uB85C \uCD5C\uB300 3\uD68C \uAD00\uD1B5"
+  - description: "치명타 시 골드 +5\n관통 최대 3회 (각 50%)\n재장전 시 턴을 소모하지 않습니다."
     damage: 21
     maxRange: 5
     criticalChance: 70
@@ -113,5 +108,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 0

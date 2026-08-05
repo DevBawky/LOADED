@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uCCB4\uB825 \uD0C4"
-  description: "\uC801 \uCC98\uCE58 \uC2DC 50% \uD655\uB960\uB85C \uCD5C\uB300 \uCCB4\uB825\uC774
-    1 \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  description: "적 처치 시 최대 체력 +1 (50%)"
   cylinderIcon: {fileID: -213895607114171709, guid: a6deae905e16fff478ead0ecb5eb5a1f, type: 3}
   price: 10
   grade: 2
@@ -44,11 +43,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.4962173, g: 1, b: 0.23113209, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
-  removeCost: 5
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uC801 \uCC98\uCE58 \uC2DC 80% \uD655\uB960\uB85C \uCD5C\uB300
-      \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  - description: "적 처치 시 최대 체력 +1 (80%)"
     damage: 17
     maxRange: 3
     criticalChance: 33
@@ -69,11 +66,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 50
-  - description: "\uC801 \uCC98\uCE58 \uC2DC 100% \uD655\uB960\uB85C \uCD5C\uB300
-      \uCCB4\uB825\uC774 1 \uC99D\uAC00\uD569\uB2C8\uB2E4.\n30% \uD655\uB960\uB85C
-      \uCD5C\uB300 2\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+  - description: "적 처치 시 최대 체력 +1\n관통 최대 2회 (30%)"
     damage: 22
     maxRange: 4
     criticalChance: 41
@@ -96,12 +90,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 100
-  - description: "\uC801 \uCC98\uCE58 \uC2DC 100% \uD655\uB960\uB85C \uCD5C\uB300
-      \uCCB4\uB825\uC774 2 \uC99D\uAC00\uD569\uB2C8\uB2E4.\n30% \uD655\uB960\uB85C
-      \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uD569\uB2C8\uB2E4.\n\uC7AC\uC7A5\uC804
-      \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "적 처치 시 최대 체력 +2\n연속 관통 (30%)\n재장전 시 턴을 소모하지 않습니다."
     damage: 30
     maxRange: 4
     criticalChance: 50
@@ -126,5 +116,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.35
-    removeCost: 5
     upgradeCost: 0

@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uD669\uAE08 \uD0C4"
-  description: "\uC801 \uBA85\uC911 \uC2DC 30% \uD655\uB960\uB85C $ 1 \uC744 \uD68D\uB4DD\uD569\uB2C8\uB2E4.\n\uD06C\uB9AC\uD2F0\uCEEC
-    \uBC1C\uB3D9 \uC2DC 50% \uD655\uB960\uB85C $ 1\uC744 \uD68D\uB4DD\uD569\uB2C8\uB2E4.\r\n"
+  description: "적 명중 시 골드 +1 (30%)\n치명타 시 골드 +1 (50%)"
   cylinderIcon: {fileID: 21300000, guid: 9f3da703d3a3228458471a1253b1a404, type: 3}
   price: 3
   grade: 0
@@ -50,11 +49,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 1, g: 0.8564266, b: 0, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
-  removeCost: 5
   upgradeCost: 5
   upgradeLevels:
-  - description: "\uC801 \uBA85\uC911 \uC2DC 70% \uD655\uB960\uB85C $1\uC744 \uD68D\uB4DD\uD569\uB2C8\uB2E4.\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC 70% \uD655\uB960\uB85C $ 1\uC744 \uD68D\uB4DD\uD569\uB2C8\uB2E4."
+  - description: "적 명중 시 70% 확률로 골드 +1\n치명타 시 골드 +1 (70%)"
     damage: 5
     maxRange: 3
     criticalChance: 25
@@ -81,11 +78,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 10
-  - description: "\uC801 \uBA85\uC911 \uC2DC 100% \uD655\uB960\uB85C $1\uC744 \uD68D\uB4DD\uD569\uB2C8\uB2E4.\r\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC 80% \uD655\uB960\uB85C $2\uB97C \uD68D\uB4DD\uD569\uB2C8\uB2E4.\r\n30%
-      \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+  - description: "적 명중 시 골드 +1\n치명타 시 골드 +2 (80%)\n관통 1회 (30%)"
     damage: 7
     maxRange: 3
     criticalChance: 32
@@ -113,12 +107,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 15
-  - description: "\uC801 \uBA85\uC911 \uC2DC 100% \uD655\uB960\uB85C $2\uB97C \uD68D\uB4DD\uD569\uB2C8\uB2E4.\r\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC 70% \uD655\uB960\uB85C $3\uC744 \uD68D\uB4DD\uD569\uB2C8\uB2E4.\r\n50%
-      \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uB418\uBA70, \uC801 \uCC98\uCE58 \uC2DC
-      $2\uB97C \uCD94\uAC00 \uD68D\uB4DD\uD569\uB2C8\uB2E4."
+  - description: "적 명중 시 골드 +2\n치명타 시 골드 +3 (70%)\n관통 1회 (50%)\n적 처치 시 골드 +2"
     damage: 10
     maxRange: 4
     criticalChance: 40
@@ -154,5 +144,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.35
-    removeCost: 5
     upgradeCost: 0

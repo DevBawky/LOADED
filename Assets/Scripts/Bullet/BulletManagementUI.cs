@@ -113,7 +113,7 @@ public class BulletManagementUI : MonoBehaviour
             return;
         }
 
-        int cost = selectedBullet.RemoveCost;
+        int cost = deckManager.CurrentBulletRemovalCost;
 
         if (!currencyManager.TrySpendMoney(cost))
         {
@@ -127,6 +127,7 @@ public class BulletManagementUI : MonoBehaviour
             return;
         }
 
+        deckManager.RegisterPaidBulletRemoval();
         selectedBullet = null;
         RefreshOwnedBullets();
     }
@@ -287,11 +288,14 @@ public class BulletManagementUI : MonoBehaviour
             && deckManager.Contains(selectedBullet);
         bool canRemoveSelectedBullet = canManageSelectedBullet
             && deckManager.CanRemoveBullet(selectedBullet);
+        int removeCost = deckManager == null
+            ? 1
+            : deckManager.CurrentBulletRemovalCost;
 
         if (removeButton != null)
         {
             removeButton.interactable = canRemoveSelectedBullet
-                && currentMoney >= selectedBullet.RemoveCost;
+                && currentMoney >= removeCost;
         }
 
         if (removeButtonText != null)
@@ -299,7 +303,7 @@ public class BulletManagementUI : MonoBehaviour
             removeButtonText.text = canManageSelectedBullet
                 && !canRemoveSelectedBullet
                     ? $"Minimum {DeckManager.MinimumOwnedBulletCount} Bullets"
-                    : $"Remove  ${selectedBullet.RemoveCost}";
+                    : $"Remove  ${removeCost}";
         }
 
         if (upgradeButton != null)

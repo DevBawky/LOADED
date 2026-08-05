@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_collection
   displayName: "\uCEEC\uB809\uC158\uD0C4"
-  description: "\uBCF4\uC720\uD55C \uC11C\uB85C \uB2E4\uB978 \uD0C4\uD658 \uC885\uB958
-    \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 30% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  description: "보유한 서로 다른 탄환 종류 하나당 최종대미지 +30%"
   cylinderIcon: {fileID: 2488322337734155805, guid: c4f85a45bb7b3174b835771d8b0ecc19, type: 3}
   price: 20
   grade: 3
@@ -42,11 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
-  removeCost: 20
   upgradeCost: 50
   upgradeLevels:
-  - description: "\uBCF4\uC720\uD55C \uC11C\uB85C \uB2E4\uB978 \uD0C4\uD658 \uC885\uB958
-      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 50% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  - description: "보유한 서로 다른 탄환 종류 하나당 최종대미지 +50%"
     damage: 15
     maxRange: 5
     criticalChance: 30
@@ -65,10 +62,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 20
     upgradeCost: 100
-  - description: "\uBCF4\uC720\uD55C \uC11C\uB85C \uB2E4\uB978 \uD0C4\uD658 \uC885\uB958
-      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 75% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  - description: "보유한 서로 다른 탄환 종류 하나당 최종대미지 +75%"
     damage: 22
     maxRange: 6
     criticalChance: 35
@@ -88,10 +83,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 20
     upgradeCost: 200
-  - description: "\uBCF4\uC720\uD55C \uC11C\uB85C \uB2E4\uB978 \uD0C4\uD658 \uC885\uB958
-      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 100% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  - description: "보유한 서로 다른 탄환 종류 하나당 최종대미지 +100%"
     damage: 30
     maxRange: 6
     criticalChance: 45
@@ -111,5 +104,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 20
     upgradeCost: 0

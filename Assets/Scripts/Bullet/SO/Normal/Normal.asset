@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: Normal
-  description: "\uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  description: "일반적인 탄환입니다."
   cylinderIcon: {fileID: 21300000, guid: ff771df025c71e04c9c634cbc6ec431b, type: 3}
   price: 3
   grade: 0
@@ -35,11 +35,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
-  removeCost: 5
   upgradeCost: 5
   upgradeLevels:
-  - description: "\uC870\uAE08 \uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
-      \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  - description: "조금 더 강력해진 일반적인 탄환입니다."
     damage: 22
     maxRange: 3
     criticalChance: 20
@@ -52,9 +50,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 10
-  - description: "\uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  - description: "더 강력해진 일반적인 탄환입니다."
     damage: 25
     maxRange: 3
     criticalChance: 27
@@ -67,10 +64,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 15
-  - description: "\uB354 \uB9CE\uC774 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
-      \uD0C4\uD658\uC785\uB2C8\uB2E4.\n80% \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uB429\uB2C8\uB2E4."
+  - description: "더 많이 강력해진 일반적인 탄환입니다.\n관통 1회 (80%)"
     damage: 30
     maxRange: 4
     criticalChance: 35
@@ -84,5 +79,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.35
-    removeCost: 5
     upgradeCost: 0

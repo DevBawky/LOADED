@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uD45C\uC2DD \uD0C4\uD658"
-  description: "\uC801\uC5D0\uAC8C \uD45C\uC2DD\uC744 3 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  description: "표식 +3"
   cylinderIcon: {fileID: 1595270075398747777, guid: 8c1eef77076d12243ba0b1858c78e94a, type: 3}
   price: 6
   grade: 1
@@ -42,10 +42,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
-  removeCost: 5
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uC801\uC5D0\uAC8C \uD45C\uC2DD\uC744 5 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  - description: "표식 +5"
     damage: 8
     maxRange: 3
     criticalChance: 26
@@ -64,10 +63,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 20
-  - description: "\uC801\uC5D0\uAC8C \uD45C\uC2DD\uC744 5 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\r\n30%
-      \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uB429\uB2C8\uB2E4."
+  - description: "표식 +5\n관통 1회 (30%)"
     damage: 10
     maxRange: 4
     criticalChance: 34
@@ -87,10 +84,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 40
-  - description: "\uC801\uC5D0\uAC8C \uD45C\uC2DD\uC744 5 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\r\n50%
-      \uD655\uB960\uB85C \uACC4\uC18D\uD574\uC11C \uAD00\uD1B5\uB429\uB2C8\uB2E4."
+  - description: "표식 +5\n연속 관통 (50%)"
     damage: 15
     maxRange: 5
     criticalChance: 41
@@ -113,5 +108,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.35
-    removeCost: 5
     upgradeCost: 0

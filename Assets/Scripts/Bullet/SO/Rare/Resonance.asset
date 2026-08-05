@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_resonance
   displayName: "\uACF5\uBA85\uD0C4"
-  description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978 \uACF5\uBA85\uD0C4
-    \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +25%"
+  description: "실린더에 남아 있는 다른 공명탄 하나당 최종대미지 +25%"
   cylinderIcon: {fileID: 7042858435584613796, guid: 7b79d6a48f71d2f44bc1338af5e892f5, type: 3}
   price: 6
   grade: 1
@@ -42,11 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.2, g: 0.1, b: 0.55, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
-  removeCost: 8
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +30%"
+  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종대미지 +30%"
     damage: 35
     maxRange: 3
     criticalChance: 21
@@ -65,10 +62,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.2, g: 0.1, b: 0.55, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
-    removeCost: 8
     upgradeCost: 20
-  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +40%"
+  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종대미지 +40%"
     damage: 40
     maxRange: 4
     criticalChance: 29
@@ -87,10 +82,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.2, g: 0.1, b: 0.55, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.15
-    removeCost: 8
     upgradeCost: 40
-  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +50%"
+  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종대미지 +50%"
     damage: 50
     maxRange: 5
     criticalChance: 40
@@ -110,5 +103,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.2, g: 0.1, b: 0.55, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.18
-    removeCost: 8
     upgradeCost: 0

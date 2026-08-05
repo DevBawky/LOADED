@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_stun
   displayName: Stun
-  description: "\uAE30\uC808\uC744 1 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  description: "기절 +1"
   cylinderIcon: {fileID: 1695419753724365386, guid: 214810496b6e64b4aafeb20294d44b99, type: 3}
   price: 6
   grade: 1
@@ -41,11 +41,9 @@ MonoBehaviour:
   secondaryLineColor: {r: 0.16617921, g: 0, b: 0.34901962, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
-  removeCost: 5
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uAE30\uC808\uC744 1 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC \uCD94\uAC00\uB85C \uAE30\uC808\uC744 1 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\r\n"
+  - description: "기절 +1\n치명타 시 추가로 기절 +1"
     damage: 5
     maxRange: 3
     criticalChance: 35
@@ -72,11 +70,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.16617921, g: 0, b: 0.34901962, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 20
-  - description: "\uAE30\uC808\uC744 2 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC \uCD94\uAC00\uB85C \uAE30\uC808\uC744 1 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n\uC7AC\uC7A5\uC804
-      \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.\r\n"
+  - description: "기절 +2\n치명타 시 추가로 기절 +1\n재장전 시 턴을 소모하지 않습니다."
     damage: 7
     maxRange: 4
     criticalChance: 50
@@ -103,13 +98,8 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.16617921, g: 0, b: 0.34901962, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 40
-  - description: "\uAE30\uC808\uC744 2 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n\uD06C\uB9AC\uD2F0\uCEEC
-      \uBC1C\uB3D9 \uC2DC \uCD94\uAC00\uB85C \uAE30\uC808\uC744 1 \uBD80\uC5EC\uD558\uBA70,
-      $2\uB97C \uD68D\uB4DD\uD569\uB2C8\uB2E4.\n50% \uD655\uB960\uB85C \uACC4\uC18D\uD574\uC11C
-      \uAD00\uD1B5\uB429\uB2C8\uB2E4.\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
-      \uC54A\uC2B5\uB2C8\uB2E4.\""
+  - description: "기절 +2\n치명타 시 추가로 기절 +1, 골드 +2\n연속 관통 (50%)\n재장전 시 턴을 소모하지 않습니다."
     damage: 10
     maxRange: 5
     criticalChance: 60
@@ -147,5 +137,4 @@ MonoBehaviour:
     secondaryLineColor: {r: 0.16617921, g: 0, b: 0.34901962, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
-    removeCost: 5
     upgradeCost: 0
