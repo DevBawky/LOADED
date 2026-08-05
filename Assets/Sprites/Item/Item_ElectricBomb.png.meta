@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: a36d8bfe9a805e4408464f0caf7221f6
+guid: faba2ea31c5a42d498eeb6d14c3a5667
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -7045340985220011445
-    second: Item_PocketWatch_0
+      213: -8686482276077758445
+    second: Item_ElectricBomb_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -74,7 +74,7 @@ TextureImporter:
     buildTarget: DefaultTexturePlatform
     maxTextureSize: 2048
     resizeAlgorithm: 0
-    textureFormat: 4
+    textureFormat: -1
     textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Item_PocketWatch_0
+      name: Item_ElectricBomb_0
       rect:
         serializedVersion: 2
-        x: 158
-        y: 6
-        width: 876
-        height: 1243
+        x: 8
+        y: 2
+        width: 47
+        height: 61
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: b4ae576a3bbe93e90800000000000000
-      internalID: -7045340985220011445
+      spriteID: 31898a2946a637780800000000000000
+      internalID: -8686482276077758445
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Item_PocketWatch_0: -7045340985220011445
+      Item_ElectricBomb_0: -8686482276077758445
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
