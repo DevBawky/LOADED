@@ -33,6 +33,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
 
     private void Awake()
     {
+        StatisticsPanelController.EnsureExists();
         ResolvePlayGameButton();
         ResolveButtonsCanvasGroup();
         videoPlayer = GetComponent<VideoPlayer>();
@@ -92,6 +93,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
         }
 
         gameStartRequested = true;
+        GameStatistics.BeginRun();
         if (playGameButton != null)
         {
             playGameButton.interactable = false;
