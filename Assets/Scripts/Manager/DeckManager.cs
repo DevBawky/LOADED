@@ -60,7 +60,7 @@ public class DeckManager : MonoBehaviour
             return false;
         }
 
-        RecycleGraveyardBeforeDeckRunsOut();
+        RecycleGraveyardIfDeckEmpty();
 
         if (deck.Count == 0)
         {
@@ -72,7 +72,7 @@ public class DeckManager : MonoBehaviour
         loadedBullet?.BeginCylinderShotTracking();
         loadedBullets.Add(loadedBullet);
         deck.RemoveAt(topIndex);
-        RecycleGraveyardBeforeDeckRunsOut();
+        RecycleGraveyardIfDeckEmpty();
         StateChanged?.Invoke();
         return true;
     }
@@ -450,9 +450,12 @@ public class DeckManager : MonoBehaviour
         ShuffleDeck();
     }
 
-    private void RecycleGraveyardBeforeDeckRunsOut()
+    private void RecycleGraveyardIfDeckEmpty()
     {
-        if (deck.Count <= 1)
+        // Keep the current top card stable until it is loaded. UI elements
+        // expose that exact instance through PeekNextBullet(), so recycling
+        // while one card remains would shuffle the advertised card away.
+        if (deck.Count == 0)
         {
             RecycleGraveyard();
         }
