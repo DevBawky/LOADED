@@ -65,6 +65,30 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float killCameraShake = 0.055f;
 
+    [Header("Critical Hit")]
+    [Range(0.05f, 1f)]
+    [SerializeField] private float criticalSlowMotionScale = 0.62f;
+    [Min(0f)]
+    [SerializeField] private float criticalSlowMotionHold = 0.025f;
+    [Min(0.01f)]
+    [SerializeField] private float criticalSlowMotionRecovery = 0.075f;
+    [Min(0f)]
+    [SerializeField] private float criticalCameraShake = 0.025f;
+    [Range(0f, 1f)]
+    [SerializeField] private float criticalVolumeStrength = 0.48f;
+
+    [Header("Devastating Hit (60% Max Health)")]
+    [Range(0.05f, 1f)]
+    [SerializeField] private float devastatingSlowMotionScale = 0.5f;
+    [Min(0f)]
+    [SerializeField] private float devastatingSlowMotionHold = 0.045f;
+    [Min(0.01f)]
+    [SerializeField] private float devastatingSlowMotionRecovery = 0.11f;
+    [Min(0f)]
+    [SerializeField] private float devastatingCameraShake = 0.035f;
+    [Range(0f, 1f)]
+    [SerializeField] private float devastatingVolumeStrength = 0.72f;
+
     [Header("Volume Pulse")]
     [Min(0.01f)]
     [SerializeField] private float volumePulseDuration = 0.34f;
@@ -320,29 +344,73 @@ public sealed class CombatFeedbackController : MonoBehaviour
         int appliedDamage,
         int targetMaxHealth,
         bool wasCritical,
-        float cylinderBuild)
+        float cylinderBuild,
+        bool canTriggerDevastatingFeedback = true)
     {
         float damageRatio = targetMaxHealth <= 0
             ? 0f
             : Mathf.Clamp01((float)appliedDamage / targetMaxHealth);
+        bool wasDevastating = canTriggerDevastatingFeedback
+            && damageRatio >= CombatImpactTierUtility.DevastatingDamageRatio;
+        CombatImpactTier impactTier = wasDevastating
+            ? CombatImpactTier.Devastating
+            : wasCritical
+                ? CombatImpactTier.Critical
+                : CombatImpactTier.Normal;
         float intensity = Mathf.Clamp01(
             minimumHitIntensity
             + Mathf.Sqrt(damageRatio) * 0.58f
             + (wasCritical ? 0.2f : 0f));
         intensity *= Mathf.Lerp(0.9f, 1.16f, Mathf.Clamp01(cylinderBuild));
+        if (impactTier == CombatImpactTier.Devastating)
+        {
+            intensity = Mathf.Max(0.82f, intensity);
+        }
+
+        float shakeStrength = impactTier switch
+        {
+            CombatImpactTier.Devastating => devastatingCameraShake,
+            CombatImpactTier.Critical => criticalCameraShake,
+            _ => hitCameraShake
+        };
         CombatCameraShake.Play(
-            hitCameraShake * Mathf.Lerp(0.75f, 1.75f, intensity));
+            shakeStrength * Mathf.Lerp(0.75f, 1.75f, intensity));
         PlayHitAccent(
             worldPosition,
             intensity,
-            wasCritical,
+            impactTier,
             cylinderBuild);
+
+        if (impactTier == CombatImpactTier.Devastating)
+        {
+            StartVolumePulse(intensity * devastatingVolumeStrength);
+            StartSlowMotion(
+                intensity,
+                devastatingSlowMotionScale,
+                devastatingSlowMotionHold,
+                devastatingSlowMotionRecovery);
+        }
+        else if (impactTier == CombatImpactTier.Critical)
+        {
+            StartVolumePulse(intensity * criticalVolumeStrength);
+            StartSlowMotion(
+                intensity,
+                criticalSlowMotionScale,
+                criticalSlowMotionHold,
+                criticalSlowMotionRecovery);
+        }
+
         QueueFullscreenImpact(
             worldPosition,
             horizontalDirection,
             intensity,
-            hitFullscreenDuration * (wasCritical ? 1.25f : 1f),
-            wasCritical,
+            hitFullscreenDuration * (impactTier switch
+            {
+                CombatImpactTier.Devastating => 1.65f,
+                CombatImpactTier.Critical => 1.25f,
+                _ => 1f
+            }),
+            impactTier >= CombatImpactTier.Critical,
             false);
     }
 
@@ -383,7 +451,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
             wasFinalEnemy,
             cylinderBuild);
         StartVolumePulse(intensity);
-        StartSlowMotion(intensity, wasFinalEnemy);
+        float durationMultiplier = wasFinalEnemy ? 1.65f : 1f;
+        StartSlowMotion(
+            intensity,
+            killSlowMotionScale,
+            killSlowMotionHold * durationMultiplier,
+            killSlowMotionRecovery * durationMultiplier);
         QueueFullscreenImpact(
             worldPosition,
             horizontalDirection,
@@ -765,6 +838,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void StartVolumePulse(float intensity)
     {
+        intensity *= CombatAccessibilitySettings.FlashMultiplier;
+
         if (cameraVolume == null)
         {
             BindVolume();
@@ -849,20 +924,28 @@ public sealed class CombatFeedbackController : MonoBehaviour
         colorAdjustments.active = colorBaseActive;
     }
 
-    private void StartSlowMotion(float intensity, bool wasFinalEnemy)
+    private void StartSlowMotion(
+        float intensity,
+        float strongestScale,
+        float holdDuration,
+        float recoveryDuration)
     {
+        if (CombatAccessibilitySettings.TimeEffectMultiplier <= 0f)
+        {
+            return;
+        }
+
         if (slowMotionCoroutine != null)
         {
             StopCoroutine(slowMotionCoroutine);
             slowMotionCoroutine = null;
         }
 
-        float scale = Mathf.Lerp(0.52f, killSlowMotionScale, intensity);
-        float durationMultiplier = wasFinalEnemy ? 1.65f : 1f;
+        float scale = Mathf.Lerp(0.72f, strongestScale, intensity);
         slowMotionCoroutine = StartCoroutine(SlowMotionRoutine(
             scale,
-            killSlowMotionHold * durationMultiplier,
-            killSlowMotionRecovery * durationMultiplier));
+            holdDuration,
+            recoveryDuration));
     }
 
     private IEnumerator SlowMotionRoutine(
@@ -947,6 +1030,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         bool wasCritical,
         bool wasFinalEnemy)
     {
+        intensity *= CombatAccessibilitySettings.FlashMultiplier;
+
         if (!fullscreenImpactEnabled || duration <= 0f || intensity <= 0f)
         {
             return;
@@ -1167,7 +1252,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private void PlayHitAccent(
         Vector3 worldPosition,
         float intensity,
-        bool wasCritical,
+        CombatImpactTier impactTier,
         float cylinderBuild)
     {
         if (audioSource == null)
@@ -1188,12 +1273,19 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 hitAccentVolume * Mathf.Lerp(0.62f, 1f, intensity));
         }
 
-        if (wasCritical && criticalAccentClip != null)
+        if (impactTier >= CombatImpactTier.Critical
+            && criticalAccentClip != null)
         {
             audioSource.PlayOneShot(
                 criticalAccentClip,
                 criticalAccentVolume * Mathf.Lerp(0.82f, 1f, intensity));
-            StartAudioDuck(4300f, 0.14f);
+            float cutoff = impactTier == CombatImpactTier.Devastating
+                ? 2400f
+                : 4300f;
+            float duration = impactTier == CombatImpactTier.Devastating
+                ? 0.2f
+                : 0.14f;
+            StartAudioDuck(cutoff, duration);
         }
         else
         {

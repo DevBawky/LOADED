@@ -478,7 +478,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         // Damage popups communicate the attack's full power, not the amount
         // clamped by the enemy's remaining health.
-        damageNumberDisplay?.ShowAttackDamage(damage, isCritical);
+        damageNumberDisplay?.ShowAttackDamage(
+            damage,
+            CombatImpactTierUtility.Resolve(
+                isCritical,
+                modifiedDamage,
+                MaxHealth,
+                currentHealth <= 0),
+            isCritical);
         damageNumberDisplay?.ShowMarkBonusDamage(markBonusDamage);
         return appliedDamage;
     }
@@ -546,7 +553,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(damage, false);
+            damageNumberDisplay?.ShowAttackDamage(
+                damage,
+                currentHealth <= 0
+                    ? CombatImpactTier.Defeat
+                    : CombatImpactTier.Normal);
         }
 
         return appliedDamage > 0;
@@ -562,7 +573,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(damage, false);
+            damageNumberDisplay?.ShowAttackDamage(
+                damage,
+                currentHealth <= 0
+                    ? CombatImpactTier.Defeat
+                    : CombatImpactTier.Normal);
         }
 
         return appliedDamage;
@@ -574,7 +589,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(damage, false);
+            damageNumberDisplay?.ShowAttackDamage(
+                damage,
+                currentHealth <= 0
+                    ? CombatImpactTier.Defeat
+                    : CombatImpactTier.Normal);
         }
 
         return appliedDamage;
