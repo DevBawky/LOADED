@@ -772,16 +772,19 @@ public class PlayerShoot : MonoBehaviour
             consumesTurn = false;
         }
 
-        if (firedAnyBullet && consumesTurn)
-        {
-            playerMove.CompleteTurn();
-        }
-
+        bool shouldCompleteTurn = firedAnyBullet && consumesTurn;
         isFiring = false;
         playerMove.SetShooting(false);
         combatFeedback?.EndCylinder();
         currentConsumedBullet = null;
         reservedDamageByEnemy.Clear();
+        waveManager?.NotifyFiringSequenceCompleted();
+
+        if (shouldCompleteTurn
+            && (waveManager == null || !waveManager.IsBattleCompleted))
+        {
+            playerMove.CompleteTurn();
+        }
     }
 
     private IEnumerator FireSingleShot(
