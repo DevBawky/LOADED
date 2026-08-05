@@ -1715,7 +1715,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8c5f2d1e74b4a73b6f9103e5c2d8a11, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CurrencyManager
-  startingMoney: 20
+  startingMoney: 1000
   currentMoneyText: {fileID: 1766732963}
   flyingGoldPrefab: {fileID: 0}
   goldSpawnInterval: 0.045
