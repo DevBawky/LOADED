@@ -254,16 +254,16 @@ public class BulletEffectData
     [Min(1)]
     [Tooltip("Maximum travel tiles for Knockback. Has no effect on Poison or other effect types.")]
     [SerializeField] private int knockbackDistance = 1;
-    [Min(1)]
+    [Min(0f)]
     [Tooltip("Numeric value used by effects. Special bullets use this as a multiplier or percentage depending on their effect type.")]
-    [SerializeField] private int amount = 1;
+    [SerializeField] private float amount = 1f;
 
     public BulletEffectType EffectType => effectType;
     public BulletEffectTarget Target => target;
     public float ActivationChance => activationChance;
     public int StackCount => stackCount;
     public int KnockbackDistance => knockbackDistance;
-    public int Amount => Mathf.Max(1, amount);
+    public float Amount => Mathf.Max(0f, amount);
 
     public BulletEffectData()
     {

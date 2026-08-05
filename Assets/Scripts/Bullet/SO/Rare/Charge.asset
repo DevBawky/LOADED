@@ -14,9 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_charge
   displayName: "\uCDA9\uC804\uD0C4"
-  description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9 \uCDA9\uC804
-    1\uC744 \uC5BB\uC740 \uAC83\uC73C\uB85C \uACC4\uC0B0\uD558\uC5EC \uCD5C\uC885
-    \uB300\uBBF8\uC9C0\uAC00 25% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCD5C\uB300 5\uCDA9\uC804\uC785\uB2C8\uB2E4."
+  description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885
+    \uB300\uBBF8\uC9C0 +25%\n\uCD5C\uB300 \uCDA9\uC804 \uC2A4\uD0DD: 10"
   cylinderIcon: {fileID: 1639023946578512397, guid: a81c8bca0cd6ecb4da0dbfdb79980f87, type: 3}
   price: 18
   grade: 1
@@ -25,15 +24,15 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
-  damage: 12
+  damage: 15
   maxRange: 4
   criticalChance: 15
-  criticalDamageMultiplier: 1.7
+  criticalDamageMultiplier: 2
   effects:
   - effectType: 31
     target: 1
     activationChance: 100
-    stackCount: 5
+    stackCount: 10
     knockbackDistance: 1
     amount: 25
   conditionalEvents: []
@@ -47,17 +46,17 @@ MonoBehaviour:
   upgradeCost: 20
   upgradeLevels:
   - description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 30% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCD5C\uB300
-      5\uCDA9\uC804\uC785\uB2C8\uB2E4."
-    damage: 15
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +30%\n\uCD5C\uB300 \uCDA9\uC804 \uC2A4\uD0DD:
+      15"
+    damage: 18
     maxRange: 4
     criticalChance: 18
-    criticalDamageMultiplier: 1.8
+    criticalDamageMultiplier: 2.2
     effects:
     - effectType: 31
       target: 1
       activationChance: 100
-      stackCount: 5
+      stackCount: 15
       knockbackDistance: 1
       amount: 30
     conditionalEvents: []
@@ -70,20 +69,28 @@ MonoBehaviour:
     removeCost: 8
     upgradeCost: 35
   - description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 35% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCD5C\uB300
-      6\uCDA9\uC804\uC785\uB2C8\uB2E4."
-    damage: 19
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +35%\n\uCD5C\uB300 \uCDA9\uC804 \uC2A4\uD0DD:
+      20"
+    damage: 20
     maxRange: 5
     criticalChance: 22
-    criticalDamageMultiplier: 2
+    criticalDamageMultiplier: 2.3
     effects:
     - effectType: 31
       target: 1
       activationChance: 100
-      stackCount: 6
+      stackCount: 20
       knockbackDistance: 1
       amount: 35
-    conditionalEvents: []
+    conditionalEvents:
+    - trigger: 3
+      events:
+      - effectType: 1
+        target: 0
+        activationChance: 100
+        stackCount: 2
+        knockbackDistance: 0
+        amount: 0
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
@@ -93,17 +100,17 @@ MonoBehaviour:
     removeCost: 8
     upgradeCost: 60
   - description: "\uC55E\uC11C \uBC1C\uC0AC\uB41C \uD0C4\uD658 \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 45% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCD5C\uB300
-      6\uCDA9\uC804\uC785\uB2C8\uB2E4."
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +45%\n\uCD5C\uB300 \uCDA9\uC804 \uC2A4\uD0DD:
+      30"
     damage: 25
     maxRange: 5
     criticalChance: 28
-    criticalDamageMultiplier: 2.2
+    criticalDamageMultiplier: 2.5
     effects:
     - effectType: 31
       target: 1
       activationChance: 100
-      stackCount: 6
+      stackCount: 30
       knockbackDistance: 1
       amount: 45
     conditionalEvents: []

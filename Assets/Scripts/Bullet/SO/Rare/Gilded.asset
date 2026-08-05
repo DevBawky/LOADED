@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_gilded
   displayName: "\uB3C4\uAE08\uD0C4"
-  description: "\uBCF4\uC720 \uACE8\uB4DC 5\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
-    1% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  description: "\uBCF4\uC720 \uACE8\uB4DC 2\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0
+    +1%"
   cylinderIcon: {fileID: 8207180785050344417, guid: 728a2de427860fc40a06dc391a5d689d, type: 3}
   price: 15
   grade: 1
@@ -32,7 +32,7 @@ MonoBehaviour:
   - effectType: 16
     target: 1
     activationChance: 100
-    stackCount: 5
+    stackCount: 2
     knockbackDistance: 1
     amount: 1
   conditionalEvents: []
@@ -45,8 +45,8 @@ MonoBehaviour:
   removeCost: 8
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uBCF4\uC720 \uACE8\uB4DC 4\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
-      1% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  - description: "\uBCF4\uC720 \uACE8\uB4DC 1\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0
+      +1%"
     damage: 15
     maxRange: 4
     criticalChance: 18
@@ -55,7 +55,7 @@ MonoBehaviour:
     - effectType: 16
       target: 1
       activationChance: 100
-      stackCount: 4
+      stackCount: 1
       knockbackDistance: 1
       amount: 1
     conditionalEvents: []
@@ -67,10 +67,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 35
-  - description: "\uBCF4\uC720 \uACE8\uB4DC 3\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
-      1% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCE58\uBA85\uD0C0 \uC2DC 30% \uD655\uB960\uB85C
-      \uACE8\uB4DC 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4."
-    damage: 19
+  - description: "\uBCF4\uC720 \uACE8\uB4DC 1\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0
+      +2%\n\uCE58\uBA85\uD0C0 \uC2DC 30% \uD655\uB960\uB85C \uACE8\uB4DC +1"
+    damage: 18
     maxRange: 5
     criticalChance: 22
     criticalDamageMultiplier: 1.8
@@ -78,9 +77,9 @@ MonoBehaviour:
     - effectType: 16
       target: 1
       activationChance: 100
-      stackCount: 3
+      stackCount: 1
       knockbackDistance: 1
-      amount: 1
+      amount: 2
     - effectType: 28
       target: 1
       activationChance: 30
@@ -96,10 +95,9 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 8
     upgradeCost: 60
-  - description: "\uBCF4\uC720 \uACE8\uB4DC 2\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
-      1% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uCE58\uBA85\uD0C0 \uC2DC 50% \uD655\uB960\uB85C
-      \uACE8\uB4DC 2\uB97C \uC5BB\uC2B5\uB2C8\uB2E4."
-    damage: 24
+  - description: "\uBCF4\uC720 \uACE8\uB4DC 1\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0
+      +3%\n\uCE58\uBA85\uD0C0 \uC2DC 50% \uD655\uB960\uB85C \uACE8\uB4DC +2"
+    damage: 20
     maxRange: 5
     criticalChance: 28
     criticalDamageMultiplier: 2
@@ -117,8 +115,7 @@ MonoBehaviour:
       knockbackDistance: 1
       amount: 2
     conditionalEvents: []
-    penetrationChances:
-    - chance: 40
+    penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}

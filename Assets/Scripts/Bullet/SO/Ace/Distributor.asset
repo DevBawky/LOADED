@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_distributor
   displayName: "\uBD84\uBC30\uD0C4"
-  description: "\uB204\uC801\uB41C \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 100%
-    \uD6A8\uC728\uB85C \uC601\uAD6C \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740 \uD0C4\uD658
-    \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4."
+  description: "\uB300\uBBF8\uC9C0 \uCD95\uC801 \uD6A8\uACFC\uB85C \uB204\uC801\uB41C
+    \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 100% \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
+    \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4.\n10% \uD655\uB960\uB85C
+    \uD30C\uAD34\uB429\uB2C8\uB2E4."
   cylinderIcon: {fileID: -7739501655344588281, guid: 7d3fc1b93195ee14bacbc5ac1bbf6b5a, type: 3}
   price: 30
   grade: 2
@@ -36,6 +37,12 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 1
     amount: 100
+  - effectType: 8
+    target: 1
+    activationChance: 10
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 1
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -46,9 +53,10 @@ MonoBehaviour:
   removeCost: 12
   upgradeCost: 30
   upgradeLevels:
-  - description: "\uB204\uC801\uB41C \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C
-      110% \uD6A8\uC728\uB85C \uC601\uAD6C \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
-      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4."
+  - description: "\uB300\uBBF8\uC9C0 \uCD95\uC801 \uD6A8\uACFC\uB85C \uB204\uC801\uB41C
+      \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 110% \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
+      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4.\n6% \uD655\uB960\uB85C
+      \uD30C\uAD34\uB429\uB2C8\uB2E4."
     damage: 14
     maxRange: 4
     criticalChance: 18
@@ -60,6 +68,12 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 110
+    - effectType: 8
+      target: 1
+      activationChance: 6
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -69,9 +83,10 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 55
-  - description: "\uB204\uC801\uB41C \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C
-      125% \uD6A8\uC728\uB85C \uC800\uC7A5\xB7\uBD84\uBC30\uD558\uACE0 \uB2E4\uC74C
-      \uD0C4\uD658\uC758 \uB300\uBBF8\uC9C0\uB97C \uCD94\uAC00\uB85C 10% \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4."
+  - description: "\uB300\uBBF8\uC9C0 \uCD95\uC801 \uD6A8\uACFC\uB85C \uB204\uC801\uB41C
+      \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 100% \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
+      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4.\n3% \uD655\uB960\uB85C
+      \uD30C\uAD34\uB429\uB2C8\uB2E4."
     damage: 18
     maxRange: 5
     criticalChance: 22
@@ -83,12 +98,12 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 125
-    - effectType: 12
+    - effectType: 8
       target: 1
-      activationChance: 100
+      activationChance: 3
       stackCount: 1
       knockbackDistance: 1
-      amount: 10
+      amount: 1
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -98,10 +113,11 @@ MonoBehaviour:
     recoilStrength: 0.12
     removeCost: 12
     upgradeCost: 90
-  - description: "\uB204\uC801\uB41C \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C
-      150% \uD6A8\uC728\uB85C \uC800\uC7A5\xB7\uBD84\uBC30\uD558\uACE0 \uB2E4\uC74C
-      \uD0C4\uD658\uC758 \uB300\uBBF8\uC9C0\uB97C \uCD94\uAC00\uB85C 20% \uC99D\uAC00\uC2DC\uD0B5\uB2C8\uB2E4.
-      \uD134\uC744 \uC18C\uBE44\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "\uB300\uBBF8\uC9C0 \uCD95\uC801 \uD6A8\uACFC\uB85C \uB204\uC801\uB41C
+      \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 150% \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
+      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4. 1% \uD655\uB960\uB85C
+      \uD30C\uAD34\uB429\uB2C8\uB2E4.\n\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
+      \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 24
     maxRange: 5
     criticalChance: 28
@@ -113,15 +129,15 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 150
-    - effectType: 12
+    - effectType: 8
       target: 1
-      activationChance: 100
+      activationChance: 1
       stackCount: 1
       knockbackDistance: 1
-      amount: 20
+      amount: 1
     conditionalEvents: []
     penetrationChances:
-    - chance: 30
+    - chance: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}

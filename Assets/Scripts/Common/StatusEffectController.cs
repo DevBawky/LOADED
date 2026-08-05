@@ -48,6 +48,17 @@ public class StatusEffectController : MonoBehaviour
     public int PoisonStacks => poisonStacks;
     public int StunStacks => stunStacks;
     public int WeaknessStacks => weaknessStacks;
+    public int TotalStatusStackCount
+    {
+        get
+        {
+            long total = (long)markStacks
+                + poisonStacks
+                + stunStacks
+                + weaknessStacks;
+            return total >= int.MaxValue ? int.MaxValue : (int)total;
+        }
+    }
     public bool IsMarked => markStacks > 0;
     public bool IsStunned => stunStacks > 0;
     public bool IsWeakened => weaknessStacks > 0;
