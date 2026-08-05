@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34a12ef1c8e64b0d9cddfdb4e581a6e9, type: 3}
   m_Name: PoisonAll
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  displayName: "\uB3C5\uAC00\uC2A4"
+  displayName: "\uBC40 \uB3C5"
   description: "\uBAA8\uB4E0 \uC801\uC5D0\uAC8C \uB3C5 5\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
-  icon: {fileID: -1315491441430481407, guid: e2a18c0158fc2044289377353ace6c0c, type: 3}
+  icon: {fileID: -8553478991234563697, guid: 48fdf3bfc81c4d44ba1ba39bce6ae4ea, type: 3}
   price: 5
   effectType: 3
   effectAmount: 5

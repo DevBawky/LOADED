@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 34a12ef1c8e64b0d9cddfdb4e581a6e9, type: 3}
   m_Name: StunAll
   m_EditorClassIdentifier: Assembly-CSharp::ItemData
-  displayName: "\uC12C\uAD11\uD0C4"
+  displayName: "\uC804\uAE30\uCDA9\uACA9"
   description: "\uBAA8\uB4E0 \uC801\uC5D0\uAC8C \uAE30\uC808 3\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
-  icon: {fileID: 1695419753724365386, guid: 214810496b6e64b4aafeb20294d44b99, type: 3}
+  icon: {fileID: -8686482276077758445, guid: faba2ea31c5a42d498eeb6d14c3a5667, type: 3}
   price: 5
   effectType: 4
   effectAmount: 3
