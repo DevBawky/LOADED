@@ -17,7 +17,7 @@ MonoBehaviour:
   description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
     \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +30%p "
   cylinderIcon: {fileID: -7456226695306883464, guid: e4a881bd99bdb5a41a4d95fd6e40581c, type: 3}
-  price: 2
+  price: 6
   grade: 1
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
@@ -43,7 +43,7 @@ MonoBehaviour:
   doesNotConsumeTurn: 0
   recoilStrength: 0
   removeCost: 8
-  upgradeCost: 3
+  upgradeCost: 10
   upgradeLevels:
   - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
       \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +40%p "
@@ -66,7 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0
     removeCost: 5
-    upgradeCost: 5
+    upgradeCost: 20
   - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
       \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +50%p "
     damage: 0
@@ -88,7 +88,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0
     removeCost: 5
-    upgradeCost: 7
+    upgradeCost: 40
   - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
       \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +100%p "
     damage: 0
