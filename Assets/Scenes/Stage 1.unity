@@ -284,6 +284,7 @@ MonoBehaviour:
   loadedBullets: []
   graveyard: []
   nextAcquisitionOrder: 0
+  paidBulletRemovalCount: 0
 --- !u!114 &490631709 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 937656375197925349, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
@@ -1754,6 +1755,7 @@ MonoBehaviour:
   currencyManager: {fileID: 2400001005}
   deckManager: {fileID: 396869080}
   playerInventory: {fileID: 2023230409}
+  stateManager: {fileID: 0}
   myBulletCountText: {fileID: 0}
   bulletPool:
   - {fileID: 11400000, guid: 4f93775b5e4e7a841a79e7507aa3e636, type: 2}
@@ -1859,7 +1861,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a8c5f2d1e74b4a73b6f9103e5c2d8a11, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CurrencyManager
-  startingMoney: 0
+  startingMoney: 50000
   currentMoneyText: {fileID: 1766732963}
   flyingGoldPrefab: {fileID: 0}
   goldSpawnInterval: 0.045
