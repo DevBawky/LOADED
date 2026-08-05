@@ -7,6 +7,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     [Header("Damage Number Prefabs")]
     [SerializeField] private DamageNumber normalDamagePrefab;
     [SerializeField] private DamageNumber criticalDamagePrefab;
+    [SerializeField] private DamageNumber devastatingDamagePrefab;
     [SerializeField] private DamageNumber poisonDamagePrefab;
     [SerializeField] private DamageNumber markBonusDamagePrefab;
 
@@ -36,22 +37,56 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         new Vector3(0f, 1f, -1f);
     [SerializeField] private bool followTarget;
 
-    public void ShowAttackDamage(int damage, bool isCritical)
+    [Header("Impact Tier Styling")]
+    [SerializeField] private Color criticalDamageColor =
+        new Color(1f, 0.86f, 0.28f, 1f);
+    [SerializeField] private Color devastatingDamageColor =
+        new Color(1f, 0.32f, 0.08f, 1f);
+    [SerializeField] private Color defeatDamageColor =
+        new Color(1f, 0.92f, 0.78f, 1f);
+    [SerializeField] private float criticalDamageScale = 1.18f;
+    [SerializeField] private float devastatingDamageScale = 1.42f;
+    [SerializeField] private float defeatDamageScale = 1.58f;
+
+    public void ShowAttackDamage(
+        int damage,
+        CombatImpactTier impactTier,
+        bool isCritical = false)
     {
+        DamageNumber preferredPrefab = impactTier switch
+        {
+            CombatImpactTier.Defeat => isCritical
+                ? criticalDamagePrefab
+                : normalDamagePrefab,
+            CombatImpactTier.Devastating => devastatingDamagePrefab != null
+                ? devastatingDamagePrefab
+                : criticalDamagePrefab,
+            CombatImpactTier.Critical => criticalDamagePrefab,
+            _ => normalDamagePrefab
+        };
         SpawnNumber(
-            isCritical ? criticalDamagePrefab : normalDamagePrefab,
+            preferredPrefab,
             damage,
-            normalDamagePrefab);
+            normalDamagePrefab,
+            impactTier);
     }
 
     public void ShowPoisonDamage(int damage)
     {
-        SpawnNumber(poisonDamagePrefab, damage, normalDamagePrefab);
+        SpawnNumber(
+            poisonDamagePrefab,
+            damage,
+            normalDamagePrefab,
+            CombatImpactTier.Normal);
     }
 
     public void ShowMarkBonusDamage(int damage)
     {
-        SpawnNumber(markBonusDamagePrefab, damage, normalDamagePrefab);
+        SpawnNumber(
+            markBonusDamagePrefab,
+            damage,
+            normalDamagePrefab,
+            CombatImpactTier.Normal);
     }
 
     public void ShowStatus(StatusEffectType type)
@@ -81,7 +116,8 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     private void SpawnNumber(
         DamageNumber preferredPrefab,
         int damage,
-        DamageNumber fallbackPrefab)
+        DamageNumber fallbackPrefab,
+        CombatImpactTier impactTier)
     {
         if (damage <= 0)
         {
@@ -98,13 +134,36 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         }
 
         Vector3 position = transform.position + damageOffset;
-        if (followTarget)
+        DamageNumber number = followTarget
+            ? prefab.Spawn(position, damage, transform)
+            : prefab.Spawn(position, damage);
+        ApplyTierStyle(number, impactTier);
+    }
+
+    private void ApplyTierStyle(
+        DamageNumber number,
+        CombatImpactTier impactTier)
+    {
+        if (number == null || impactTier == CombatImpactTier.Normal)
         {
-            prefab.Spawn(position, damage, transform);
             return;
         }
 
-        prefab.Spawn(position, damage);
+        switch (impactTier)
+        {
+            case CombatImpactTier.Critical:
+                number.SetColor(criticalDamageColor);
+                number.SetScale(criticalDamageScale);
+                break;
+            case CombatImpactTier.Devastating:
+                number.SetColor(devastatingDamageColor);
+                number.SetScale(devastatingDamageScale);
+                break;
+            case CombatImpactTier.Defeat:
+                number.SetColor(defeatDamageColor);
+                number.SetScale(defeatDamageScale);
+                break;
+        }
     }
 
     private void SpawnStatus(DamageNumber prefab, string statusText)

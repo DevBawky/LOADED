@@ -244,6 +244,7 @@ public class PlayerShoot : MonoBehaviour
 
     private void Awake()
     {
+        CombatAccessibilitySettings.Ensure(gameObject);
         currencyManager ??= FindFirstObjectByType<CurrencyManager>();
         combatPresentation ??= GetComponent<CombatPresentation>();
         combatFeedback ??= GetComponent<CombatFeedbackController>();
@@ -1808,8 +1809,7 @@ public class PlayerShoot : MonoBehaviour
                     enemySnapshot,
                     horizontalDirection,
                     bulletData,
-                    isCritical,
-                    true);
+                    CombatImpactTier.Defeat);
                 combatFeedback?.RecordDefeat(
                     enemySnapshot.Position,
                     horizontalDirection,
@@ -1845,8 +1845,11 @@ public class PlayerShoot : MonoBehaviour
                 enemySnapshot,
                 horizontalDirection,
                 bulletData,
-                isCritical,
-                defeatedByAttack);
+                CombatImpactTierUtility.Resolve(
+                    isCritical,
+                    reportedDamage,
+                    targetMaxHealth,
+                    defeatedByAttack));
             defeatPresented = defeatedByAttack;
 
             if (defeatedByAttack)
@@ -1930,8 +1933,7 @@ public class PlayerShoot : MonoBehaviour
                         enemySnapshot,
                         horizontalDirection,
                         bulletData,
-                        isCritical,
-                        true);
+                        CombatImpactTier.Defeat);
                 }
 
                 yield return ApplyConditionalEvents(
@@ -2083,7 +2085,8 @@ public class PlayerShoot : MonoBehaviour
                         poisonDamage,
                         poisonTargetMaxHealth,
                         false,
-                        GetCurrentCylinderBuild());
+                        GetCurrentCylinderBuild(),
+                        false);
                 }
             }
 

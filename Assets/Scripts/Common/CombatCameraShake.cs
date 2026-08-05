@@ -1,6 +1,99 @@
 using System.Collections;
 using UnityEngine;
 
+public enum CombatImpactTier
+{
+    Normal = 0,
+    Critical = 1,
+    Devastating = 2,
+    Defeat = 3
+}
+
+public static class CombatImpactTierUtility
+{
+    public const float DevastatingDamageRatio = 0.6f;
+
+    public static CombatImpactTier Resolve(
+        bool isCritical,
+        int damage,
+        int targetMaxHealth,
+        bool isDefeated)
+    {
+        if (isDefeated)
+        {
+            return CombatImpactTier.Defeat;
+        }
+
+        if (targetMaxHealth > 0
+            && (float)damage / targetMaxHealth >= DevastatingDamageRatio)
+        {
+            return CombatImpactTier.Devastating;
+        }
+
+        return isCritical
+            ? CombatImpactTier.Critical
+            : CombatImpactTier.Normal;
+    }
+}
+
+[DisallowMultipleComponent]
+public sealed class CombatAccessibilitySettings : MonoBehaviour
+{
+    private static CombatAccessibilitySettings instance;
+
+    [Header("Combat Presentation Accessibility")]
+    [SerializeField] private bool reduceScreenFlashes;
+    [SerializeField] private bool reduceCameraShake;
+    [SerializeField] private bool reduceTimeEffects;
+    [SerializeField] private bool reduceParticleDensity;
+
+    public static float FlashMultiplier =>
+        instance != null && instance.reduceScreenFlashes ? 0.28f : 1f;
+    public static float CameraShakeMultiplier =>
+        instance != null && instance.reduceCameraShake ? 0f : 1f;
+    public static float TimeEffectMultiplier =>
+        instance != null && instance.reduceTimeEffects ? 0f : 1f;
+    public static float ParticleDensityMultiplier =>
+        instance != null && instance.reduceParticleDensity ? 0.45f : 1f;
+
+    private void Awake()
+    {
+        instance = this;
+    }
+
+    private void OnDestroy()
+    {
+        if (instance == this)
+        {
+            instance = null;
+        }
+    }
+
+    public static void Ensure(GameObject host)
+    {
+        if (instance != null || host == null)
+        {
+            return;
+        }
+
+        instance = host.GetComponent<CombatAccessibilitySettings>();
+
+        if (instance == null)
+        {
+            instance = host.AddComponent<CombatAccessibilitySettings>();
+        }
+    }
+
+    public void SetReduceScreenFlashes(bool value) =>
+        reduceScreenFlashes = value;
+    public void SetReduceCameraShake(bool value) =>
+        reduceCameraShake = value;
+    public void SetReduceTimeEffects(bool value) =>
+        reduceTimeEffects = value;
+    public void SetReduceParticleDensity(bool value) =>
+        reduceParticleDensity = value;
+}
+
 public sealed class CombatCameraShake : MonoBehaviour
 {
     private static CombatCameraShake instance;
@@ -9,6 +102,8 @@ public sealed class CombatCameraShake : MonoBehaviour
 
     public static void Play(float strength)
     {
+        strength *= CombatAccessibilitySettings.CameraShakeMultiplier;
+
         if (strength <= 0f || Camera.main == null)
         {
             return;
