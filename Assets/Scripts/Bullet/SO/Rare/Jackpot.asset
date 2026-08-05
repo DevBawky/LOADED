@@ -27,7 +27,7 @@ MonoBehaviour:
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   damage: 12
   maxRange: 3
-  criticalChance: 15
+  criticalChance: 30
   criticalDamageMultiplier: 1.5
   effects:
   - effectType: 10
@@ -51,7 +51,7 @@ MonoBehaviour:
       3.5\uBC30\uAC00 \uB429\uB2C8\uB2E4."
     damage: 15
     maxRange: 3
-    criticalChance: 20
+    criticalChance: 40
     criticalDamageMultiplier: 1.6
     effects:
     - effectType: 10
@@ -74,7 +74,7 @@ MonoBehaviour:
       4\uBC30\uAC00 \uB429\uB2C8\uB2E4."
     damage: 19
     maxRange: 4
-    criticalChance: 27
+    criticalChance: 50
     criticalDamageMultiplier: 1.8
     effects:
     - effectType: 10
@@ -97,7 +97,7 @@ MonoBehaviour:
       5\uBC30\uAC00 \uB429\uB2C8\uB2E4."
     damage: 24
     maxRange: 5
-    criticalChance: 35
+    criticalChance: 60
     criticalDamageMultiplier: 2
     effects:
     - effectType: 10

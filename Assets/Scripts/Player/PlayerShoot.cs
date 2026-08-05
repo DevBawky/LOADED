@@ -141,6 +141,21 @@ public class PlayerShoot : MonoBehaviour
                 return count;
             }
         }
+
+        public int TotalStatusStackCount
+        {
+            get
+            {
+                long total = 0;
+
+                foreach (int stacks in StatusStacks)
+                {
+                    total += stacks;
+                }
+
+                return total >= int.MaxValue ? int.MaxValue : (int)total;
+            }
+        }
     }
 
     [SerializeField] private DeckManager deckManager;
@@ -709,7 +724,7 @@ public class PlayerShoot : MonoBehaviour
 
             if (saverEffect != null)
             {
-                pendingSaverGold += saverEffect.Amount;
+                pendingSaverGold += Mathf.RoundToInt(saverEffect.Amount);
                 saverRefundsTurn |= saverEffect.StackCount >= 2;
             }
 
@@ -1616,7 +1631,7 @@ public class PlayerShoot : MonoBehaviour
             {
                 currencyManager ??= FindFirstObjectByType<CurrencyManager>();
                 currencyManager?.AddMoneyFromWorld(
-                    rebateEffect.Amount,
+                    Mathf.RoundToInt(rebateEffect.Amount),
                     transform.position);
             }
         }
@@ -1983,7 +1998,7 @@ public class PlayerShoot : MonoBehaviour
 
         if (judgmentEffect != null)
         {
-            multiplier *= 1f + enemy.ActiveStatusTypeCount
+            multiplier *= 1f + enemy.TotalStatusStackCount
                 * judgmentEffect.Amount / 100f;
         }
 
@@ -2038,7 +2053,7 @@ public class PlayerShoot : MonoBehaviour
         if (amplifierEffect != null && amplifierEffect.RollActivation())
         {
             enemy.MultiplyActiveStatusStacks(
-                Mathf.Max(2, amplifierEffect.Amount));
+                Mathf.Max(2, Mathf.RoundToInt(amplifierEffect.Amount)));
         }
 
         bool defeated = false;
@@ -2055,13 +2070,11 @@ public class PlayerShoot : MonoBehaviour
             {
                 long remainingPoisonDamage =
                     (long)poisonStacks * ((long)poisonStacks + 1) / 2;
-                long scaledPoisonDamage = remainingPoisonDamage
-                    >= int.MaxValue
-                    ? int.MaxValue
-                    : Math.Min(
-                        int.MaxValue,
-                        (remainingPoisonDamage * venomBurstEffect.Amount + 99)
-                        / 100);
+                double scaledPoisonDamage = Math.Min(
+                    int.MaxValue,
+                    Math.Ceiling(
+                        remainingPoisonDamage
+                        * venomBurstEffect.Amount / 100d));
                 int poisonDamage = (int)scaledPoisonDamage;
                 int healthBeforePoison = enemy.CurrentHealth;
                 int poisonTargetMaxHealth = enemy.MaxHealth;
@@ -2176,7 +2189,8 @@ public class PlayerShoot : MonoBehaviour
                 }
                 break;
             case BulletEffectType.IncreaseMaxHealth:
-                applied = playerHealth.IncreaseMaxHealth(effect.Amount);
+                applied = playerHealth.IncreaseMaxHealth(
+                    Mathf.RoundToInt(effect.Amount));
                 break;
             case BulletEffectType.DestroyBullet:
                 BulletInstance destroyedBullet =
@@ -2193,7 +2207,7 @@ public class PlayerShoot : MonoBehaviour
                 currencyManager ??= FindFirstObjectByType<CurrencyManager>();
                 applied = currencyManager != null
                     && currencyManager.AddMoneyFromWorld(
-                        effect.Amount,
+                        Mathf.RoundToInt(effect.Amount),
                         sourceWorldPosition
                         ?? (enemy != null
                             ? enemy.transform.position
@@ -3199,7 +3213,7 @@ public class PlayerShoot : MonoBehaviour
 
         if (effect != null)
         {
-            multiplier *= 1f + enemyState.ActiveStatusTypeCount
+            multiplier *= 1f + enemyState.TotalStatusStackCount
                 * effect.Amount / 100f;
         }
 
@@ -3592,7 +3606,9 @@ public class PlayerShoot : MonoBehaviour
         if (amplifierEffect != null
             && amplifierEffect.ActivationChance >= 100f)
         {
-            int multiplier = Mathf.Max(2, amplifierEffect.Amount);
+            int multiplier = Mathf.Max(
+                2,
+                Mathf.RoundToInt(amplifierEffect.Amount));
 
             for (int index = 0; index < state.StatusStacks.Length; index++)
             {
@@ -3621,9 +3637,10 @@ public class PlayerShoot : MonoBehaviour
         {
             long remainingPoisonDamage =
                 (long)poisonStacks * (poisonStacks + 1L) / 2L;
-            long scaledDamage = Math.Min(
+            double scaledDamage = Math.Min(
                 int.MaxValue,
-                (remainingPoisonDamage * venomEffect.Amount + 99L) / 100L);
+                Math.Ceiling(
+                    remainingPoisonDamage * venomEffect.Amount / 100d));
             ApplyPreviewDamage(
                 state,
                 (int)scaledDamage,

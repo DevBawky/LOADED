@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_resonance
   displayName: "\uACF5\uBA85\uD0C4"
   description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978 \uACF5\uBA85\uD0C4
-    \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 25% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+    \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +25%"
   cylinderIcon: {fileID: 7042858435584613796, guid: 7b79d6a48f71d2f44bc1338af5e892f5, type: 3}
   price: 16
   grade: 1
@@ -24,7 +24,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
-  damage: 14
+  damage: 30
   maxRange: 3
   criticalChance: 15
   criticalDamageMultiplier: 1.5
@@ -46,9 +46,8 @@ MonoBehaviour:
   upgradeCost: 20
   upgradeLevels:
   - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
-      30% \uC99D\uAC00\uD569\uB2C8\uB2E4."
-    damage: 18
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +30%"
+    damage: 35
     maxRange: 3
     criticalChance: 21
     criticalDamageMultiplier: 1.7
@@ -69,9 +68,8 @@ MonoBehaviour:
     removeCost: 8
     upgradeCost: 35
   - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
-      40% \uC99D\uAC00\uD569\uB2C8\uB2E4."
-    damage: 24
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +40%"
+    damage: 40
     maxRange: 4
     criticalChance: 29
     criticalDamageMultiplier: 2
@@ -92,9 +90,8 @@ MonoBehaviour:
     removeCost: 8
     upgradeCost: 60
   - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00
-      50% \uC99D\uAC00\uD569\uB2C8\uB2E4."
-    damage: 32
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0 +50%"
+    damage: 50
     maxRange: 5
     criticalChance: 40
     criticalDamageMultiplier: 2.3

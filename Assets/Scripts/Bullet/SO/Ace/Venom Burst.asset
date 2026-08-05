@@ -47,7 +47,7 @@ MonoBehaviour:
   upgradeLevels:
   - description: "\uB3C5\uC744 \uBAA8\uB450 \uC18C\uBE44\uD574 \uB0A8\uC740 \uB3C5
       \uD53C\uD574\uC758 110%\uB97C \uC989\uC2DC \uC801\uC6A9\uD558\uACE0 \uB3C5
-      2\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+      5\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
     damage: 16
     maxRange: 4
     criticalChance: 24
@@ -57,7 +57,7 @@ MonoBehaviour:
       target: 1
       activationChance: 100
       stackCount: 1
-      knockbackDistance: 2
+      knockbackDistance: 5
       amount: 110
     conditionalEvents: []
     penetrationChances: []
@@ -69,8 +69,8 @@ MonoBehaviour:
     removeCost: 12
     upgradeCost: 55
   - description: "\uB3C5\uC744 \uBAA8\uB450 \uC18C\uBE44\uD574 \uB0A8\uC740 \uB3C5
-      \uD53C\uD574\uC758 125%\uB97C \uC989\uC2DC \uC801\uC6A9\uD558\uACE0 \uB3C5
-      4\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+      \uD53C\uD574\uC758 150%\uB97C \uC989\uC2DC \uC801\uC6A9\uD558\uACE0 \uB3C5
+      10\uB97C \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n50% \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
     damage: 21
     maxRange: 5
     criticalChance: 28
@@ -80,11 +80,11 @@ MonoBehaviour:
       target: 1
       activationChance: 100
       stackCount: 1
-      knockbackDistance: 4
-      amount: 125
+      knockbackDistance: 10
+      amount: 150
     conditionalEvents: []
     penetrationChances:
-    - chance: 30
+    - chance: 50
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
@@ -93,8 +93,9 @@ MonoBehaviour:
     removeCost: 12
     upgradeCost: 90
   - description: "\uB3C5\uC744 \uBAA8\uB450 \uC18C\uBE44\uD574 \uB0A8\uC740 \uB3C5
-      \uD53C\uD574\uC758 150%\uB97C \uC989\uC2DC \uC801\uC6A9\uD558\uACE0 \uB3C5
-      6\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+      \uD53C\uD574\uC758 200%\uB97C \uC989\uC2DC \uC801\uC6A9\uD558\uACE0 \uB3C5
+      20\uC744 \uBD80\uC5EC\uD569\uB2C8\uB2E4.\n\uAC01 50% \uD655\uB960\uB85C \uCD5C\uB300
+      3\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
     damage: 28
     maxRange: 5
     criticalChance: 35
@@ -104,10 +105,12 @@ MonoBehaviour:
       target: 1
       activationChance: 100
       stackCount: 1
-      knockbackDistance: 6
-      amount: 150
+      knockbackDistance: 20
+      amount: 200
     conditionalEvents: []
     penetrationChances:
+    - chance: 50
+    - chance: 50
     - chance: 50
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}

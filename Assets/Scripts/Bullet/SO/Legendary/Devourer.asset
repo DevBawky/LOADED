@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_devourer
   displayName: "\uD3EC\uC2DD\uD0C4"
-  description: "\uC774 \uD0C4\uD658\uC73C\uB85C \uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4
-    \uC601\uAD6C \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4. \uD3EC\uC2DD \uD558\uB098\uB2F9
-    \uCD5C\uC885 \uB300\uBBF8\uC9C0 +5%, \uC81C\uD55C\uC740 \uC5C6\uC2B5\uB2C8\uB2E4."
+  description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C \uD3EC\uC2DD
+    1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9 \uCD5C\uC885
+    \uB300\uBBF8\uC9C0 +15%"
   cylinderIcon: {fileID: 7299877752034667788, guid: 94e5d446387ed6e41a9824ac2a861afe, type: 3}
   price: 45
   grade: 3
@@ -25,7 +25,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
-  damage: 8
+  damage: 20
   maxRange: 4
   criticalChance: 30
   criticalDamageMultiplier: 2
@@ -35,7 +35,7 @@ MonoBehaviour:
     activationChance: 100
     stackCount: 1
     knockbackDistance: 1
-    amount: 5
+    amount: 15
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -47,9 +47,9 @@ MonoBehaviour:
   upgradeCost: 60
   upgradeLevels:
   - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
-      \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4. \uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +6%, \uC81C\uD55C\uC740 \uC5C6\uC2B5\uB2C8\uB2E4."
-    damage: 12
+      \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +20%"
+    damage: 30
     maxRange: 4
     criticalChance: 35
     criticalDamageMultiplier: 2.2
@@ -59,7 +59,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 6
+      amount: 20
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -70,9 +70,9 @@ MonoBehaviour:
     removeCost: 20
     upgradeCost: 120
   - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
-      \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4. \uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +8%, \uC81C\uD55C\uC740 \uC5C6\uC2B5\uB2C8\uB2E4."
-    damage: 18
+      \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +30%\n40% \uD655\uB960\uB85C 1\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 40
     maxRange: 5
     criticalChance: 40
     criticalDamageMultiplier: 2.5
@@ -82,7 +82,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 8
+      amount: 30
     conditionalEvents: []
     penetrationChances:
     - chance: 40
@@ -94,9 +94,10 @@ MonoBehaviour:
     removeCost: 20
     upgradeCost: 200
   - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
-      \uD3EC\uC2DD 2\uB97C \uC5BB\uC2B5\uB2C8\uB2E4. \uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +10%, \uC81C\uD55C\uC740 \uC5C6\uC2B5\uB2C8\uB2E4."
-    damage: 26
+      \uD3EC\uC2DD 2\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
+      \uCD5C\uC885 \uB300\uBBF8\uC9C0 +35%\n\uAC01\uAC01 70% \uD655\uB960\uB85C \uCD5C\uB300
+      2\uD68C \uAD00\uD1B5\uD569\uB2C8\uB2E4."
+    damage: 55
     maxRange: 6
     criticalChance: 50
     criticalDamageMultiplier: 3
@@ -106,9 +107,10 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 2
       knockbackDistance: 1
-      amount: 10
+      amount: 35
     conditionalEvents: []
     penetrationChances:
+    - chance: 70
     - chance: 70
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}

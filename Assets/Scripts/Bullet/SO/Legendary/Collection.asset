@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_collection
   displayName: "\uCEEC\uB809\uC158\uD0C4"
   description: "\uBCF4\uC720\uD55C \uC11C\uB85C \uB2E4\uB978 \uD0C4\uD658 \uC885\uB958
-    \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 5% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+    \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 30% \uC99D\uAC00\uD569\uB2C8\uB2E4."
   cylinderIcon: {fileID: 2488322337734155805, guid: c4f85a45bb7b3174b835771d8b0ecc19, type: 3}
   price: 42
   grade: 3
@@ -34,7 +34,7 @@ MonoBehaviour:
     activationChance: 100
     stackCount: 1
     knockbackDistance: 1
-    amount: 5
+    amount: 30
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -46,7 +46,7 @@ MonoBehaviour:
   upgradeCost: 60
   upgradeLevels:
   - description: "\uBCF4\uC720\uD55C \uC11C\uB85C \uB2E4\uB978 \uD0C4\uD658 \uC885\uB958
-      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 6% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 50% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 15
     maxRange: 5
     criticalChance: 30
@@ -57,7 +57,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 6
+      amount: 50
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -68,7 +68,7 @@ MonoBehaviour:
     removeCost: 20
     upgradeCost: 120
   - description: "\uBCF4\uC720\uD55C \uC11C\uB85C \uB2E4\uB978 \uD0C4\uD658 \uC885\uB958
-      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 8% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 75% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 22
     maxRange: 6
     criticalChance: 35
@@ -79,7 +79,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 8
+      amount: 75
     conditionalEvents: []
     penetrationChances:
     - chance: 40
@@ -91,7 +91,7 @@ MonoBehaviour:
     removeCost: 20
     upgradeCost: 200
   - description: "\uBCF4\uC720\uD55C \uC11C\uB85C \uB2E4\uB978 \uD0C4\uD658 \uC885\uB958
-      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 10% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+      \uD558\uB098\uB2F9 \uCD5C\uC885 \uB300\uBBF8\uC9C0\uAC00 100% \uC99D\uAC00\uD569\uB2C8\uB2E4."
     damage: 30
     maxRange: 6
     criticalChance: 45
@@ -102,7 +102,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 10
+      amount: 100
     conditionalEvents: []
     penetrationChances:
     - chance: 70

@@ -652,6 +652,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         ? 0
         : statusEffects.ActiveStatusTypeCount;
 
+    public int TotalStatusStackCount => statusEffects == null
+        ? 0
+        : statusEffects.TotalStatusStackCount;
+
     public int GetStatusStacks(StatusEffectType type)
     {
         return statusEffects == null ? 0 : statusEffects.GetStacks(type);
