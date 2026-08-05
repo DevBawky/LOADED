@@ -47,5 +47,8 @@ TagManager:
   - name: Damage UI
     uniqueID: 303855649
     locked: 0
+  - name: Loading
+    uniqueID: 2389103069
+    locked: 0
   m_RenderingLayers:
   - Default

@@ -50,12 +50,30 @@ public class InventoryUI : MonoBehaviour
             if (slot != null && playerInventory.GetItem(index) != null
                 && RectTransformUtility.RectangleContainsScreenPoint(
                     slot,
-                    pointerPosition))
+                    pointerPosition,
+                    GetCanvasCamera(slot)))
             {
                 playerInventory.TryUse(index);
                 return;
             }
         }
+    }
+
+    private static Camera GetCanvasCamera(RectTransform target)
+    {
+        Canvas canvas = target == null
+            ? null
+            : target.GetComponentInParent<Canvas>();
+
+        if (canvas == null)
+        {
+            return null;
+        }
+
+        Canvas rootCanvas = canvas.rootCanvas;
+        return rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : rootCanvas.worldCamera;
     }
 
     private void Refresh()

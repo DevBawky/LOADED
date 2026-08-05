@@ -245,7 +245,8 @@ public sealed class CombatPresentation : MonoBehaviour
         EnemySnapshot snapshot,
         int horizontalDirection,
         BulletInstance bullet,
-        CombatImpactTier impactTier)
+        CombatImpactTier impactTier,
+        float feedbackMultiplier = 1f)
     {
         if (!presentationEnabled || !snapshot.IsValid)
         {
@@ -254,7 +255,10 @@ public sealed class CombatPresentation : MonoBehaviour
 
         EnsureRuntimeResources();
         Color accent = GetAccentColor(bullet);
-        SpawnHitFlash(snapshot, accent, impactTier);
+        float impactMultiplier = impactTier == CombatImpactTier.Defeat
+            ? Mathf.Max(0f, feedbackMultiplier)
+            : 1f;
+        SpawnHitFlash(snapshot, accent, impactTier, impactMultiplier);
         int sparkCount = impactTier switch
         {
             CombatImpactTier.Defeat => defeatSparkCount,
@@ -269,7 +273,8 @@ public sealed class CombatPresentation : MonoBehaviour
             sparkCount,
             snapshot.SortingLayerId,
             snapshot.SortingOrder + 2,
-            impactTier);
+            impactTier,
+            impactMultiplier);
 
         if (impactTier >= CombatImpactTier.Critical)
         {
@@ -286,16 +291,21 @@ public sealed class CombatPresentation : MonoBehaviour
                 streakCount,
                 snapshot.SortingLayerId,
                 snapshot.SortingOrder + 3,
-                impactTier);
+                impactTier,
+                impactMultiplier);
         }
 
         if (impactTier == CombatImpactTier.Defeat)
         {
-            SpawnDefeatAfterimage(snapshot, horizontalDirection, accent);
-            PlayHitStop(defeatHitStopDuration);
+            SpawnDefeatAfterimage(
+                snapshot,
+                horizontalDirection,
+                accent,
+                impactMultiplier);
+            PlayHitStop(defeatHitStopDuration * impactMultiplier);
             PlayScreenFlash(
                 Color.Lerp(Color.white, accent, 0.5f),
-                defeatScreenFlashAlpha * ScaledIntensity,
+                defeatScreenFlashAlpha * ScaledIntensity * impactMultiplier,
                 defeatAfterimageDuration * 0.55f);
         }
         else if (impactTier == CombatImpactTier.Devastating)
@@ -640,7 +650,8 @@ public sealed class CombatPresentation : MonoBehaviour
     private void SpawnHitFlash(
         EnemySnapshot snapshot,
         Color accent,
-        CombatImpactTier impactTier)
+        CombatImpactTier impactTier,
+        float feedbackMultiplier)
     {
         float tierStrength = (float)impactTier / (float)CombatImpactTier.Defeat;
         GameObject flash = CreateSnapshotObject(
@@ -652,10 +663,13 @@ public sealed class CombatPresentation : MonoBehaviour
             Color.white,
             accent,
             Mathf.Lerp(0.12f, 0.38f, tierStrength));
+        float basePeakScale = Mathf.Lerp(1.08f, 1.32f, tierStrength);
+        float peakScale = 1f
+            + (basePeakScale - 1f) * Mathf.Max(0f, feedbackMultiplier);
         StartCoroutine(AnimateSnapshotFlash(
             flash,
             renderer,
-            Mathf.Lerp(1.08f, 1.32f, tierStrength),
+            peakScale,
             hitFlashDuration * Mathf.Lerp(1f, 1.65f, tierStrength),
             tierStrength));
     }
@@ -663,7 +677,8 @@ public sealed class CombatPresentation : MonoBehaviour
     private void SpawnDefeatAfterimage(
         EnemySnapshot snapshot,
         int horizontalDirection,
-        Color accent)
+        Color accent,
+        float feedbackMultiplier)
     {
         const int echoCount = 3;
 
@@ -683,7 +698,8 @@ public sealed class CombatPresentation : MonoBehaviour
                 renderer,
                 horizontalDirection,
                 echoIndex * 0.035f,
-                1f - echoIndex * 0.16f));
+                1f - echoIndex * 0.16f,
+                feedbackMultiplier));
         }
     }
 
@@ -694,9 +710,13 @@ public sealed class CombatPresentation : MonoBehaviour
         int count,
         int sortingLayerId,
         int sortingOrder,
-        CombatImpactTier impactTier)
+        CombatImpactTier impactTier,
+        float feedbackMultiplier = 1f)
     {
         bool isDefeated = impactTier == CombatImpactTier.Defeat;
+        float effectMultiplier = isDefeated
+            ? Mathf.Max(0f, feedbackMultiplier)
+            : 1f;
         int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
         int scaledCount = Mathf.Max(1, Mathf.RoundToInt(
             count * ScaledIntensity
@@ -727,10 +747,13 @@ public sealed class CombatPresentation : MonoBehaviour
                 velocity.x *= -0.35f;
             }
 
+            velocity *= effectMultiplier;
+
             spark.transform.localScale = new Vector3(
                 Random.Range(0.045f, 0.13f),
                 Random.Range(0.018f, 0.045f),
-                1f) * Mathf.Lerp(0.75f, 1.25f, ScaledIntensity * 0.5f);
+                1f) * Mathf.Lerp(0.75f, 1.25f, ScaledIntensity * 0.5f)
+                * effectMultiplier;
             spark.transform.rotation = Quaternion.Euler(
                 0f,
                 0f,
@@ -750,12 +773,16 @@ public sealed class CombatPresentation : MonoBehaviour
         int count,
         int sortingLayerId,
         int sortingOrder,
-        CombatImpactTier impactTier)
+        CombatImpactTier impactTier,
+        float feedbackMultiplier = 1f)
     {
         int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
         int scaledCount = Mathf.Max(1, Mathf.RoundToInt(
             count * CombatAccessibilitySettings.ParticleDensityMultiplier));
         float tierScale = 1f + (int)impactTier * 0.22f;
+        float effectMultiplier = impactTier == CombatImpactTier.Defeat
+            ? Mathf.Max(0f, feedbackMultiplier)
+            : 1f;
 
         for (int streakIndex = 0; streakIndex < scaledCount; streakIndex++)
         {
@@ -771,8 +798,8 @@ public sealed class CombatPresentation : MonoBehaviour
                 Random.Range(-0.16f, 0.16f),
                 0f);
             streak.transform.localScale = new Vector3(
-                Random.Range(0.28f, 0.62f) * tierScale,
-                Random.Range(0.012f, 0.03f) * tierScale,
+                Random.Range(0.28f, 0.62f) * tierScale * effectMultiplier,
+                Random.Range(0.012f, 0.03f) * tierScale * effectMultiplier,
                 1f);
             streak.transform.rotation = Quaternion.Euler(
                 0f,
@@ -780,7 +807,7 @@ public sealed class CombatPresentation : MonoBehaviour
                 Random.Range(-9f, 9f));
             Vector2 velocity = new Vector2(
                 direction * Random.Range(1.6f, 3.4f) * tierScale,
-                Random.Range(-0.3f, 0.3f));
+                Random.Range(-0.3f, 0.3f)) * effectMultiplier;
             StartCoroutine(AnimateSpark(
                 streak,
                 renderer,
@@ -917,7 +944,8 @@ public sealed class CombatPresentation : MonoBehaviour
         SpriteRenderer renderer,
         int horizontalDirection,
         float delay,
-        float distanceScale)
+        float distanceScale,
+        float feedbackMultiplier)
     {
         Vector3 startPosition = afterimage.transform.position;
         Vector3 startScale = afterimage.transform.localScale;
@@ -939,15 +967,21 @@ public sealed class CombatPresentation : MonoBehaviour
             float eased = 1f - Mathf.Pow(1f - progress, 3f);
             Vector3 position = startPosition;
             position.x += direction * defeatKnockbackDistance
-                * ScaledIntensity * distanceScale * eased;
+                * ScaledIntensity * distanceScale * feedbackMultiplier * eased;
             position.y += Mathf.Sin(progress * Mathf.PI)
-                * defeatLiftHeight * ScaledIntensity;
+                * defeatLiftHeight * ScaledIntensity * feedbackMultiplier;
             afterimage.transform.position = position;
             afterimage.transform.rotation = startRotation
                 * Quaternion.Euler(0f, 0f, -direction * 14f * eased);
             afterimage.transform.localScale = new Vector3(
-                startScale.x * Mathf.Lerp(1f, 1.12f, eased),
-                startScale.y * Mathf.Lerp(1f, 0.68f, eased),
+                startScale.x * Mathf.Lerp(
+                    1f,
+                    1f + 0.12f * feedbackMultiplier,
+                    eased),
+                startScale.y * Mathf.Lerp(
+                    1f,
+                    1f - 0.32f * feedbackMultiplier,
+                    eased),
                 startScale.z);
             Color color = renderer.color;
             color.a = 1f - Mathf.SmoothStep(0.18f, 1f, progress);
@@ -1083,13 +1117,23 @@ public sealed class CombatPresentation : MonoBehaviour
         if (flashCoroutine != null)
         {
             StopCoroutine(flashCoroutine);
+            flashCoroutine = null;
         }
 
+        Color currentColor = flashImage != null
+            ? flashImage.color
+            : Color.clear;
         color.a = Mathf.Clamp01(alpha);
-        flashCoroutine = StartCoroutine(FadeScreenFlash(color, duration));
+        flashCoroutine = StartCoroutine(FadeScreenFlash(
+            currentColor,
+            color,
+            duration));
     }
 
-    private IEnumerator FadeScreenFlash(Color startColor, float duration)
+    private IEnumerator FadeScreenFlash(
+        Color currentColor,
+        Color peakColor,
+        float duration)
     {
         float elapsed = 0f;
 
@@ -1098,8 +1142,27 @@ public sealed class CombatPresentation : MonoBehaviour
             yield return null;
             elapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
-            Color color = startColor;
-            color.a *= 1f - Mathf.SmoothStep(0f, 1f, progress);
+            const float attackPortion = 0.12f;
+            Color color;
+
+            if (progress < attackPortion)
+            {
+                float attack = Mathf.SmoothStep(
+                    0f,
+                    1f,
+                    progress / attackPortion);
+                color = Color.Lerp(currentColor, peakColor, attack);
+            }
+            else
+            {
+                float release = Mathf.InverseLerp(
+                    attackPortion,
+                    1f,
+                    progress);
+                color = peakColor;
+                color.a *= 1f - Mathf.SmoothStep(0f, 1f, release);
+            }
+
             flashImage.color = color;
         }
 
@@ -1121,7 +1184,7 @@ public sealed class CombatPresentation : MonoBehaviour
             return;
         }
 
-        hitStopRemaining = Mathf.Max(hitStopRemaining, duration);
+        hitStopRemaining = duration;
 
         if (hitStopCoroutine == null)
         {

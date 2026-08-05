@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 [DisallowMultipleComponent]
@@ -14,6 +15,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private const string ComboTextName = "Text | Combo";
     private const string ComboTimerName = "Image | Combo Timer";
     private const string CurrentDamageTextName = "Text | Current Damage";
+    private const float BaseKillTier = 0.12f;
     private static readonly int FullscreenCentersId =
         Shader.PropertyToID("_KillImpactCenters");
     private static readonly int FullscreenDirectionsId =
@@ -43,6 +45,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
         public float Elapsed;
         public float Duration;
         public float Intensity;
+        public float FeedbackMultiplier;
+        public float StartStrength;
+        public bool Restartable;
         public bool Critical;
         public bool FinalKill;
     }
@@ -55,6 +60,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
         new Color(1f, 0.42f, 0.12f, 1f);
     [SerializeField] private Color timerDangerColor =
         new Color(1f, 0.18f, 0.08f, 1f);
+    [Min(0f)]
+    [FormerlySerializedAs("comboFeedbackStrengthPerAdditionalKill")]
+    [SerializeField] private float firingSequenceFeedbackStrengthPerKill = 0.2f;
 
     [Header("Kill Combo Bonus")]
     [SerializeField] private TextMeshPro killComboTextPrefab;
@@ -181,6 +189,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private Color timerBaseColor = Color.white;
 
     private int comboCount;
+    private int firingSequenceDefeatCount;
+    private float firingSequenceFeedbackMultiplier = 1f;
+    private float firingSequenceBaseIntensity;
     private int cylinderDamage;
     private float displayedCylinderDamage;
     private float comboRemaining;
@@ -213,6 +224,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private bool lensBaseOverride;
     private bool contrastBaseOverride;
     private Coroutine volumePulseCoroutine;
+    private float currentVolumePulseStrength;
     private Coroutine slowMotionCoroutine;
     private Coroutine audioFilterCoroutine;
     private readonly FullscreenImpactState[] fullscreenImpacts =
@@ -237,6 +249,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         new List<GameObject>();
 
     public int ComboCount => comboCount;
+    public float NextFiringSequenceDefeatFeedbackMultiplier =>
+        GetFiringSequenceFeedbackMultiplier(
+            firingSequenceDefeatCount >= int.MaxValue
+                ? int.MaxValue
+                : firingSequenceDefeatCount + 1);
     public int CylinderDamage => cylinderDamage;
 
     private void Awake()
@@ -275,6 +292,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private void OnDisable()
     {
         EnemyController.DamageApplied -= HandleEnemyDamageApplied;
+        ResetFiringSequenceFeedback();
         CancelSlowMotionAndRestore();
         RestoreVolume();
         RestoreAudioFilter();
@@ -317,6 +335,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     public void BeginFiringSequence()
     {
+        ResetFiringSequenceFeedback();
         comboCount = 0;
         comboRemaining = 0f;
         comboPunchRemaining = 0f;
@@ -332,11 +351,14 @@ public sealed class CombatFeedbackController : MonoBehaviour
     {
         cylinderActive = false;
         damageHoldRemaining = cylinderDamage > 0 ? 1.35f : 0.3f;
+        ResetFiringSequenceFeedback();
     }
 
     public void ResetCombo()
     {
+        RestoreActiveKillFeedback();
         comboCount = 0;
+        ResetFiringSequenceFeedback();
         comboRemaining = 0f;
         cylinderDamage = 0;
         displayedCylinderDamage = 0f;
@@ -504,6 +526,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         comboCount = comboCount >= int.MaxValue
             ? int.MaxValue
             : comboCount + 1;
+        firingSequenceDefeatCount = firingSequenceDefeatCount >= int.MaxValue
+            ? int.MaxValue
+            : firingSequenceDefeatCount + 1;
+        firingSequenceFeedbackMultiplier =
+            GetFiringSequenceFeedbackMultiplier(firingSequenceDefeatCount);
         comboRemaining = comboDuration;
         comboPunchRemaining = 0.3f;
         UpdateComboText();
@@ -520,39 +547,53 @@ public sealed class CombatFeedbackController : MonoBehaviour
             currencyManager?.AddMoneyFromWorld(comboBonus, worldPosition);
         }
 
-        float tier = GetComboTier();
         float specialBoost = (wasCritical ? 0.12f : 0f)
             + (wasFinalEnemy ? 0.22f : 0f);
         float damageRatio = targetMaxHealth <= 0
             ? 0f
             : Mathf.Clamp01((float)appliedDamage / targetMaxHealth);
-        float intensity = Mathf.Clamp01(
+        float calculatedBaseIntensity = Mathf.Clamp01(
             0.68f
             + Mathf.Sqrt(damageRatio) * 0.2f
-            + tier * 0.2f
+            + BaseKillTier * 0.2f
             + specialBoost);
-        intensity *= Mathf.Lerp(0.95f, 1.15f, Mathf.Clamp01(cylinderBuild));
+        calculatedBaseIntensity *= Mathf.Lerp(
+            0.95f,
+            1.15f,
+            Mathf.Clamp01(cylinderBuild));
+        if (firingSequenceDefeatCount == 1)
+        {
+            firingSequenceBaseIntensity = calculatedBaseIntensity;
+        }
+
+        float baseIntensity = firingSequenceBaseIntensity;
+        float amplifiedIntensity = baseIntensity
+            * firingSequenceFeedbackMultiplier;
 
         PlayKillAccent(
             worldPosition,
-            tier,
+            BaseKillTier,
             wasCritical,
             wasFinalEnemy,
-            cylinderBuild);
-        StartVolumePulse(intensity);
+            cylinderBuild,
+            firingSequenceFeedbackMultiplier);
+        StartVolumePulse(amplifiedIntensity);
         float durationMultiplier = wasFinalEnemy ? 1.65f : 1f;
         StartSlowMotion(
-            intensity,
+            baseIntensity,
             killSlowMotionScale,
             killSlowMotionHold * durationMultiplier,
-            killSlowMotionRecovery * durationMultiplier);
+            killSlowMotionRecovery * durationMultiplier,
+            firingSequenceFeedbackMultiplier);
         QueueFullscreenImpact(
             worldPosition,
             horizontalDirection,
-            intensity,
+            baseIntensity,
             fullscreenImpactDuration * (wasFinalEnemy ? 1.3f : 1f),
             wasCritical,
-            wasFinalEnemy);
+            wasFinalEnemy,
+            firingSequenceFeedbackMultiplier,
+            true);
     }
 
     private void HandleEnemyDamageApplied(int appliedDamage, int targetMaxHealth)
@@ -635,6 +676,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         while (elapsed < killComboTextDuration && textObject != null)
         {
             yield return null;
+
+            if (textObject == null || text == null)
+            {
+                yield break;
+            }
 
             if (GamePauseController.IsPaused)
             {
@@ -904,6 +950,34 @@ public sealed class CombatFeedbackController : MonoBehaviour
         return 0.12f;
     }
 
+    private float GetFiringSequenceFeedbackMultiplier(int killCount)
+    {
+        return 1f + Mathf.Max(0, killCount - 1)
+            * Mathf.Max(0f, firingSequenceFeedbackStrengthPerKill);
+    }
+
+    private void ResetFiringSequenceFeedback()
+    {
+        firingSequenceDefeatCount = 0;
+        firingSequenceFeedbackMultiplier = 1f;
+        firingSequenceBaseIntensity = 0f;
+    }
+
+    private void RestoreActiveKillFeedback()
+    {
+        if (volumePulseCoroutine != null)
+        {
+            StopCoroutine(volumePulseCoroutine);
+            volumePulseCoroutine = null;
+        }
+
+        RestoreVolume();
+        CancelSlowMotionAndRestore();
+        ResetFullscreenImpact();
+        RestoreAudioFilter();
+        ClearComboKillTexts();
+    }
+
     private void BindUi()
     {
         Transform feedbackPanel = FindFeedbackPanel();
@@ -1086,13 +1160,15 @@ public sealed class CombatFeedbackController : MonoBehaviour
         if (volumePulseCoroutine != null)
         {
             StopCoroutine(volumePulseCoroutine);
-            RestoreVolume();
+            volumePulseCoroutine = null;
         }
 
-        volumePulseCoroutine = StartCoroutine(VolumePulseRoutine(intensity));
+        volumePulseCoroutine = StartCoroutine(VolumePulseRoutine(
+            currentVolumePulseStrength,
+            intensity));
     }
 
-    private IEnumerator VolumePulseRoutine(float intensity)
+    private IEnumerator VolumePulseRoutine(float startStrength, float intensity)
     {
         chromaticAberration.active = true;
         bloom.active = true;
@@ -1111,9 +1187,28 @@ public sealed class CombatFeedbackController : MonoBehaviour
             yield return null;
             elapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsed / volumePulseDuration);
-            float attack = Mathf.Clamp01(progress / 0.16f);
-            float release = 1f - Mathf.SmoothStep(0f, 1f, progress);
-            float pulse = Mathf.Min(attack, release) * intensity;
+            const float attackPortion = 0.16f;
+            float pulse;
+
+            if (progress < attackPortion)
+            {
+                float attack = Mathf.SmoothStep(
+                    0f,
+                    1f,
+                    progress / attackPortion);
+                pulse = Mathf.Lerp(startStrength, intensity, attack);
+            }
+            else
+            {
+                float release = Mathf.InverseLerp(
+                    attackPortion,
+                    1f,
+                    progress);
+                pulse = intensity
+                    * (1f - Mathf.SmoothStep(0f, 1f, release));
+            }
+
+            currentVolumePulseStrength = pulse;
             chromaticAberration.intensity.value = Mathf.Clamp01(
                 chromaticBase + chromaticBoost * pulse);
             bloom.intensity.value = bloomBase + bloomBoost * pulse;
@@ -1130,11 +1225,14 @@ public sealed class CombatFeedbackController : MonoBehaviour
         }
 
         RestoreVolume();
+        currentVolumePulseStrength = 0f;
         volumePulseCoroutine = null;
     }
 
     private void RestoreVolume()
     {
+        currentVolumePulseStrength = 0f;
+
         if (chromaticAberration == null)
         {
             return;
@@ -1161,7 +1259,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float intensity,
         float strongestScale,
         float holdDuration,
-        float recoveryDuration)
+        float recoveryDuration,
+        float strengthMultiplier = 1f)
     {
         if (CombatAccessibilitySettings.TimeEffectMultiplier <= 0f)
         {
@@ -1174,7 +1273,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
             slowMotionCoroutine = null;
         }
 
-        float scale = Mathf.Lerp(0.72f, strongestScale, intensity);
+        float baseScale = Mathf.Lerp(0.72f, strongestScale, intensity);
+        float scale = Mathf.Clamp(
+            1f - (1f - baseScale) * Mathf.Max(0f, strengthMultiplier),
+            0.05f,
+            1f);
         slowMotionCoroutine = StartCoroutine(SlowMotionRoutine(
             scale,
             holdDuration,
@@ -1196,7 +1299,29 @@ public sealed class CombatFeedbackController : MonoBehaviour
             slowMotionBaseScale = Time.timeScale;
             ownsTimeScale = true;
         }
+
+        float startScale = Time.timeScale;
+        float attackDuration = Mathf.Min(0.035f, recoveryDuration * 0.25f);
         float elapsed = 0f;
+
+        while (elapsed < attackDuration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused || Time.timeScale <= 0f)
+            {
+                continue;
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / attackDuration);
+            Time.timeScale = Mathf.Lerp(
+                startScale,
+                targetScale,
+                Mathf.SmoothStep(0f, 1f, progress));
+        }
+
+        elapsed = 0f;
 
         while (elapsed < holdDuration)
         {
@@ -1261,7 +1386,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float intensity,
         float duration,
         bool wasCritical,
-        bool wasFinalEnemy)
+        bool wasFinalEnemy,
+        float feedbackMultiplier = 1f,
+        bool restartExisting = false)
     {
         intensity *= CombatAccessibilitySettings.FlashMultiplier;
 
@@ -1277,11 +1404,32 @@ public sealed class CombatFeedbackController : MonoBehaviour
             return;
         }
 
-        int selectedIndex = 0;
+        int selectedIndex = -1;
+        float startStrength = 0f;
+
+        if (restartExisting)
+        {
+            for (int impactIndex = 0;
+                 impactIndex < fullscreenImpacts.Length;
+                 impactIndex++)
+            {
+                FullscreenImpactState candidate = fullscreenImpacts[impactIndex];
+
+                if (!candidate.Active || !candidate.Restartable)
+                {
+                    continue;
+                }
+
+                selectedIndex = impactIndex;
+                startStrength = EvaluateFullscreenImpactStrength(candidate);
+                break;
+            }
+        }
+
         float oldestProgress = -1f;
 
         for (int impactIndex = 0;
-             impactIndex < fullscreenImpacts.Length;
+             selectedIndex < 0 && impactIndex < fullscreenImpacts.Length;
              impactIndex++)
         {
             FullscreenImpactState candidate = fullscreenImpacts[impactIndex];
@@ -1317,6 +1465,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
             Elapsed = 0f,
             Duration = duration,
             Intensity = Mathf.Clamp01(intensity),
+            FeedbackMultiplier = Mathf.Max(0f, feedbackMultiplier),
+            StartStrength = startStrength,
+            Restartable = restartExisting,
             Critical = wasCritical,
             FinalKill = wasFinalEnemy
         };
@@ -1369,11 +1520,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             float progress = impact.Active && impact.Duration > 0f
                 ? Mathf.Clamp01(impact.Elapsed / impact.Duration)
                 : 1f;
-            float attack = Mathf.Clamp01(progress / 0.08f);
-            float release = 1f - Mathf.SmoothStep(0f, 1f, progress);
-            float strength = impact.Active
-                ? impact.Intensity * Mathf.Min(attack, release)
-                : 0f;
+            float strength = EvaluateFullscreenImpactStrength(impact);
             fullscreenCenters[impactIndex] = new Vector4(
                 impact.Center.x,
                 impact.Center.y,
@@ -1407,6 +1554,32 @@ public sealed class CombatFeedbackController : MonoBehaviour
         Shader.SetGlobalFloat(FullscreenRadialZoomId, radialZoomStrength);
         Shader.SetGlobalFloat(FullscreenTearId, directionalTearStrength);
         Shader.SetGlobalFloat(FullscreenIntensityId, maximumStrength);
+    }
+
+    private static float EvaluateFullscreenImpactStrength(
+        FullscreenImpactState impact)
+    {
+        if (!impact.Active || impact.Duration <= 0f)
+        {
+            return 0f;
+        }
+
+        const float attackPortion = 0.1f;
+        float progress = Mathf.Clamp01(impact.Elapsed / impact.Duration);
+        float targetStrength = impact.Intensity * impact.FeedbackMultiplier;
+
+        if (progress < attackPortion)
+        {
+            float attack = Mathf.SmoothStep(
+                0f,
+                1f,
+                progress / attackPortion);
+            return Mathf.Lerp(impact.StartStrength, targetStrength, attack);
+        }
+
+        float release = Mathf.InverseLerp(attackPortion, 1f, progress);
+        return targetStrength
+            * (1f - Mathf.SmoothStep(0f, 1f, release));
     }
 
     private void ResetFullscreenImpact()
@@ -1531,7 +1704,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float tier,
         bool wasCritical,
         bool wasFinalEnemy,
-        float cylinderBuild)
+        float cylinderBuild,
+        float feedbackMultiplier)
     {
         if (audioSource == null || accentAudioSource == null)
         {
@@ -1540,19 +1714,22 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         float pan = GetImpactPan(worldPosition);
         float build = Mathf.Clamp01(cylinderBuild);
+        float audioMultiplier = Mathf.Max(0f, feedbackMultiplier);
         audioSource.panStereo = pan;
         audioSource.pitch = 1f + build * 0.08f + tier * 0.08f;
 
         if (hitAccentClip != null)
         {
-            audioSource.PlayOneShot(hitAccentClip, hitAccentVolume);
+            audioSource.PlayOneShot(
+                hitAccentClip,
+                hitAccentVolume * audioMultiplier);
         }
 
         if (wasCritical && criticalAccentClip != null)
         {
             audioSource.PlayOneShot(
                 criticalAccentClip,
-                criticalAccentVolume);
+                criticalAccentVolume * audioMultiplier);
         }
 
         accentAudioSource.panStereo = pan * 0.65f;
@@ -1563,7 +1740,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
         {
             accentAudioSource.PlayOneShot(
                 killAccentClip,
-                killAccentVolume * (wasFinalEnemy ? 1f : 0.9f));
+                killAccentVolume
+                    * (wasFinalEnemy ? 1f : 0.9f)
+                    * audioMultiplier);
         }
 
         float cutoff = wasFinalEnemy

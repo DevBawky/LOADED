@@ -6,6 +6,14 @@ using UnityEngine.UI;
 
 public class InventoryTooltipUI : MonoBehaviour
 {
+    private enum TooltipPointerAnchor
+    {
+        LeftCenter,
+        TopLeft,
+        BottomLeft,
+        BottomRight
+    }
+
     [Header("Data Sources")]
     [SerializeField] private PlayerInventory playerInventory;
     [SerializeField] private ShopManager shopManager;
@@ -16,7 +24,8 @@ public class InventoryTooltipUI : MonoBehaviour
 
     [Header("Canvas")]
     [SerializeField] private RectTransform canvasRect;
-    [SerializeField] private Vector2 pointerOffset = new Vector2(20f, -20f);
+    [Min(0f)]
+    [SerializeField] private float pointerGap = 12f;
     [Min(0f)]
     [SerializeField] private float screenPadding = 8f;
 
@@ -133,7 +142,10 @@ public class InventoryTooltipUI : MonoBehaviour
 
             if (item != null && IsHovered(itemSlots[index], pointerPosition))
             {
-                ShowItem(item, pointerPosition);
+                ShowItem(
+                    item,
+                    pointerPosition,
+                    TooltipPointerAnchor.BottomLeft);
                 return true;
             }
         }
@@ -155,7 +167,10 @@ public class InventoryTooltipUI : MonoBehaviour
             if (item != null
                 && IsHovered(shopItemSlots[index], pointerPosition))
             {
-                ShowItem(item, pointerPosition);
+                ShowItem(
+                    item,
+                    pointerPosition,
+                    TooltipPointerAnchor.TopLeft);
                 return true;
             }
         }
@@ -177,7 +192,10 @@ public class InventoryTooltipUI : MonoBehaviour
             if (bullet != null
                 && IsHovered(shopBulletSlots[index], pointerPosition))
             {
-                ShowBullet(bullet, pointerPosition);
+                ShowBullet(
+                    bullet,
+                    pointerPosition,
+                    TooltipPointerAnchor.TopLeft);
                 return true;
             }
         }
@@ -198,7 +216,11 @@ public class InventoryTooltipUI : MonoBehaviour
             return false;
         }
 
-        ShowCylinderBullet(bullet, loadedBulletIndex, pointerPosition);
+        ShowCylinderBullet(
+            bullet,
+            loadedBulletIndex,
+            pointerPosition,
+            TooltipPointerAnchor.BottomRight);
         return true;
     }
 
@@ -216,11 +238,17 @@ public class InventoryTooltipUI : MonoBehaviour
             return false;
         }
 
-        ShowBullet(bullet, pointerPosition);
+        ShowBullet(
+            bullet,
+            pointerPosition,
+            TooltipPointerAnchor.LeftCenter);
         return true;
     }
 
-    private void ShowItem(ItemData item, Vector2 pointerPosition)
+    private void ShowItem(
+        ItemData item,
+        Vector2 pointerPosition,
+        TooltipPointerAnchor pointerAnchor)
     {
         HideBulletTooltip();
         HideCylinderBulletTooltip();
@@ -238,33 +266,38 @@ public class InventoryTooltipUI : MonoBehaviour
         ApplyIcon(itemIcon, item.Icon);
         tooltip.gameObject.SetActive(true);
         tooltip.SetAsLastSibling();
-        PositionInsideScreen(tooltip, pointerPosition);
+        PositionInsideScreen(tooltip, pointerPosition, pointerAnchor);
     }
 
-    private void ShowBullet(BulletData bullet, Vector2 pointerPosition)
+    private void ShowBullet(
+        BulletData bullet,
+        Vector2 pointerPosition,
+        TooltipPointerAnchor pointerAnchor)
     {
-        ShowBullet(bullet, 0, pointerPosition);
+        ShowBullet(bullet, 0, pointerPosition, pointerAnchor);
     }
 
     private void ShowBullet(
         BulletInstance bullet,
-        Vector2 pointerPosition)
+        Vector2 pointerPosition,
+        TooltipPointerAnchor pointerAnchor)
     {
         if (bullet == null || bullet.Data == null)
         {
             return;
         }
 
-        ShowBullet(bullet.Data, bullet.Level, pointerPosition);
+        ShowBullet(bullet.Data, bullet.Level, pointerPosition, pointerAnchor);
         bulletDescriptionText.text = bullet.GetDetailedDescription(
             CreateBulletTooltipContext());
-        PositionInsideScreen(bulletTooltip, pointerPosition);
+        PositionInsideScreen(bulletTooltip, pointerPosition, pointerAnchor);
     }
 
     private void ShowBullet(
         BulletData bullet,
         int level,
-        Vector2 pointerPosition)
+        Vector2 pointerPosition,
+        TooltipPointerAnchor pointerAnchor)
     {
         HideItemTooltip();
         HideCylinderBulletTooltip();
@@ -291,13 +324,14 @@ public class InventoryTooltipUI : MonoBehaviour
         ApplyIcon(bulletCylinderIcon, bullet.CylinderIcon);
         bulletTooltip.gameObject.SetActive(true);
         bulletTooltip.SetAsLastSibling();
-        PositionInsideScreen(bulletTooltip, pointerPosition);
+        PositionInsideScreen(bulletTooltip, pointerPosition, pointerAnchor);
     }
 
     private void ShowCylinderBullet(
         BulletInstance bullet,
         int loadedBulletIndex,
-        Vector2 pointerPosition)
+        Vector2 pointerPosition,
+        TooltipPointerAnchor pointerAnchor)
     {
         HideItemTooltip();
         HideBulletTooltip();
@@ -326,7 +360,10 @@ public class InventoryTooltipUI : MonoBehaviour
             CreateBulletTooltipContext());
         cylinderBulletTooltip.gameObject.SetActive(true);
         cylinderBulletTooltip.SetAsLastSibling();
-        PositionInsideScreen(cylinderBulletTooltip, pointerPosition);
+        PositionInsideScreen(
+            cylinderBulletTooltip,
+            pointerPosition,
+            pointerAnchor);
 
         if (!ReferenceEquals(previewedCylinderBullet, bullet)
             || previewedCylinderBulletIndex != loadedBulletIndex)
@@ -352,7 +389,8 @@ public class InventoryTooltipUI : MonoBehaviour
 
     private void PositionInsideScreen(
         RectTransform targetTooltip,
-        Vector2 pointerPosition)
+        Vector2 pointerPosition,
+        TooltipPointerAnchor pointerAnchor)
     {
         if (canvasRect == null || targetTooltip == null)
         {
@@ -360,16 +398,6 @@ public class InventoryTooltipUI : MonoBehaviour
         }
 
         Canvas.ForceUpdateCanvases();
-        Vector3 tooltipScale = targetTooltip.lossyScale;
-        Vector2 tooltipScreenSize = new Vector2(
-            targetTooltip.rect.width * Mathf.Abs(tooltipScale.x),
-            targetTooltip.rect.height * Mathf.Abs(tooltipScale.y));
-        Vector2 pivotOffset = new Vector2(
-            tooltipScreenSize.x * targetTooltip.pivot.x,
-            -tooltipScreenSize.y * (1f - targetTooltip.pivot.y));
-        Vector2 targetScreenPosition = pointerPosition + pointerOffset
-            + pivotOffset;
-        SetScreenPosition(targetTooltip, targetScreenPosition);
         targetTooltip.GetWorldCorners(tooltipCorners);
 
         Camera canvasCamera = GetCanvasCamera();
@@ -382,27 +410,59 @@ public class InventoryTooltipUI : MonoBehaviour
         Vector2 upperRight = RectTransformUtility.WorldToScreenPoint(
             canvasCamera,
             tooltipCorners[2]);
-        Vector2 correction = Vector2.zero;
+        Vector2 tooltipScreenSize = upperRight - lowerLeft;
 
-        if (lowerLeft.x < screenRect.xMin + screenPadding)
-        {
-            correction.x = screenRect.xMin + screenPadding - lowerLeft.x;
-        }
-        else if (upperRight.x > screenRect.xMax - screenPadding)
-        {
-            correction.x = screenRect.xMax - screenPadding - upperRight.x;
-        }
+        // Keep the cursor at the middle of the tooltip's left edge whenever
+        // the available screen space allows it. Only move away from that
+        // preferred position far enough to keep the whole tooltip visible.
+        Vector2 desiredLowerLeft = GetPreferredLowerLeft(
+            pointerPosition,
+            tooltipScreenSize,
+            pointerAnchor);
+        float minimumX = screenRect.xMin + screenPadding;
+        float minimumY = screenRect.yMin + screenPadding;
+        float maximumX = Mathf.Max(
+            minimumX,
+            screenRect.xMax - screenPadding - tooltipScreenSize.x);
+        float maximumY = Mathf.Max(
+            minimumY,
+            screenRect.yMax - screenPadding - tooltipScreenSize.y);
+        desiredLowerLeft.x = Mathf.Clamp(desiredLowerLeft.x, minimumX, maximumX);
+        desiredLowerLeft.y = Mathf.Clamp(desiredLowerLeft.y, minimumY, maximumY);
 
-        if (lowerLeft.y < screenRect.yMin + screenPadding)
-        {
-            correction.y = screenRect.yMin + screenPadding - lowerLeft.y;
-        }
-        else if (upperRight.y > screenRect.yMax - screenPadding)
-        {
-            correction.y = screenRect.yMax - screenPadding - upperRight.y;
-        }
+        Vector2 targetPivotPosition = desiredLowerLeft + new Vector2(
+            tooltipScreenSize.x * targetTooltip.pivot.x,
+            tooltipScreenSize.y * targetTooltip.pivot.y);
+        SetScreenPosition(targetTooltip, targetPivotPosition);
+    }
 
-        SetScreenPosition(targetTooltip, targetScreenPosition + correction);
+    private Vector2 GetPreferredLowerLeft(
+        Vector2 pointerPosition,
+        Vector2 tooltipSize,
+        TooltipPointerAnchor pointerAnchor)
+    {
+        switch (pointerAnchor)
+        {
+            case TooltipPointerAnchor.TopLeft:
+                return new Vector2(
+                    pointerPosition.x + pointerGap,
+                    pointerPosition.y - pointerGap - tooltipSize.y);
+
+            case TooltipPointerAnchor.BottomLeft:
+                return new Vector2(
+                    pointerPosition.x + pointerGap,
+                    pointerPosition.y + pointerGap);
+
+            case TooltipPointerAnchor.BottomRight:
+                return new Vector2(
+                    pointerPosition.x - pointerGap - tooltipSize.x,
+                    pointerPosition.y + pointerGap);
+
+            default:
+                return new Vector2(
+                    pointerPosition.x + pointerGap,
+                    pointerPosition.y - tooltipSize.y * 0.5f);
+        }
     }
 
     private void SetScreenPosition(
@@ -427,14 +487,15 @@ public class InventoryTooltipUI : MonoBehaviour
             : rootCanvas.worldCamera;
     }
 
-    private static bool IsHovered(
+    private bool IsHovered(
         RectTransform target,
         Vector2 pointerPosition)
     {
         return target != null && target.gameObject.activeInHierarchy
             && RectTransformUtility.RectangleContainsScreenPoint(
                 target,
-                pointerPosition);
+                pointerPosition,
+                GetCanvasCamera());
     }
 
     private static string GetDisplayName(string displayName, string fallback)

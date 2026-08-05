@@ -8,6 +8,8 @@ using UnityEngine.UI;
 public class BulletManagementUI : MonoBehaviour
 {
     private const int BulletsPerRow = 5;
+    private const float TooltipPointerGap = 12f;
+    private const float TooltipScreenPadding = 8f;
 
     [Header("Managers")]
     [SerializeField] private DeckManager deckManager;
@@ -45,6 +47,7 @@ public class BulletManagementUI : MonoBehaviour
     private readonly List<Button> spawnedButtons = new List<Button>();
     private readonly List<UnityAction> spawnedClickActions =
         new List<UnityAction>();
+    private readonly Vector3[] tooltipWorldCorners = new Vector3[4];
     private BulletInstance selectedBullet;
     private bool wasShopActive;
 
@@ -543,6 +546,69 @@ public class BulletManagementUI : MonoBehaviour
             selectedBullet.Data.GetDetailedDescription(nextLevel);
         upgradeTooltip.gameObject.SetActive(true);
         upgradeTooltip.SetAsLastSibling();
+        PositionUpgradeTooltip(mouse.position.ReadValue());
+    }
+
+    private void PositionUpgradeTooltip(Vector2 pointerPosition)
+    {
+        if (upgradeTooltip == null)
+        {
+            return;
+        }
+
+        Canvas canvas = upgradeTooltip.GetComponentInParent<Canvas>();
+        Canvas rootCanvas = canvas == null ? null : canvas.rootCanvas;
+        RectTransform canvasRect = rootCanvas == null
+            ? null
+            : rootCanvas.transform as RectTransform;
+
+        if (canvasRect == null)
+        {
+            return;
+        }
+
+        Camera eventCamera = rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : rootCanvas.worldCamera;
+        Canvas.ForceUpdateCanvases();
+        upgradeTooltip.GetWorldCorners(tooltipWorldCorners);
+        Vector2 bottomLeft = RectTransformUtility.WorldToScreenPoint(
+            eventCamera,
+            tooltipWorldCorners[0]);
+        Vector2 topRight = RectTransformUtility.WorldToScreenPoint(
+            eventCamera,
+            tooltipWorldCorners[2]);
+        Vector2 tooltipSize = topRight - bottomLeft;
+        Rect screenRect = rootCanvas.pixelRect;
+        float minimumX = screenRect.xMin + TooltipScreenPadding;
+        float minimumY = screenRect.yMin + TooltipScreenPadding;
+        float maximumX = Mathf.Max(
+            minimumX,
+            screenRect.xMax - TooltipScreenPadding - tooltipSize.x);
+        float maximumY = Mathf.Max(
+            minimumY,
+            screenRect.yMax - TooltipScreenPadding - tooltipSize.y);
+        Vector2 desiredBottomLeft = new Vector2(
+            Mathf.Clamp(
+                pointerPosition.x + TooltipPointerGap,
+                minimumX,
+                maximumX),
+            Mathf.Clamp(
+                pointerPosition.y - tooltipSize.y * 0.5f,
+                minimumY,
+                maximumY));
+        Vector2 targetPivotPosition = desiredBottomLeft + new Vector2(
+            tooltipSize.x * upgradeTooltip.pivot.x,
+            tooltipSize.y * upgradeTooltip.pivot.y);
+
+        if (RectTransformUtility.ScreenPointToWorldPointInRectangle(
+                canvasRect,
+                targetPivotPosition,
+                eventCamera,
+                out Vector3 worldPosition))
+        {
+            upgradeTooltip.position = worldPosition;
+        }
     }
 
     private void HideUpgradeTooltip()

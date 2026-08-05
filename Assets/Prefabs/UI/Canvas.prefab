@@ -11346,7 +11346,7 @@ MonoBehaviour:
   playerHealth: {fileID: 0}
   playerShoot: {fileID: 0}
   canvasRect: {fileID: 1966009966771444852}
-  pointerOffset: {x: 20, y: -20}
+  pointerGap: 12
   screenPadding: 8
   inventoryPanel: {fileID: 4671586221056446528}
   itemSlots:
