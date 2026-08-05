@@ -145,7 +145,9 @@ public class InventoryTooltipUI : MonoBehaviour
                 ShowItem(
                     item,
                     pointerPosition,
-                    TooltipPointerAnchor.BottomLeft);
+                    TooltipPointerAnchor.BottomLeft,
+                    shopManager != null
+                        && shopManager.CanSellInventoryItems);
                 return true;
             }
         }
@@ -170,7 +172,8 @@ public class InventoryTooltipUI : MonoBehaviour
                 ShowItem(
                     item,
                     pointerPosition,
-                    TooltipPointerAnchor.TopLeft);
+                    TooltipPointerAnchor.TopLeft,
+                    false);
                 return true;
             }
         }
@@ -248,7 +251,8 @@ public class InventoryTooltipUI : MonoBehaviour
     private void ShowItem(
         ItemData item,
         Vector2 pointerPosition,
-        TooltipPointerAnchor pointerAnchor)
+        TooltipPointerAnchor pointerAnchor,
+        bool showSellHint)
     {
         HideBulletTooltip();
         HideCylinderBulletTooltip();
@@ -261,8 +265,18 @@ public class InventoryTooltipUI : MonoBehaviour
 
         itemNameText.text = GetDisplayName(item.DisplayName, item.name);
         itemDescriptionText.richText = true;
-        itemDescriptionText.text = TooltipTextFormatter.Format(
-            item.Description);
+        string description = item.Description == null
+            ? string.Empty
+            : item.Description.TrimEnd();
+
+        if (showSellHint)
+        {
+            string separator = description.Length == 0 ? string.Empty : "\n\n";
+            description += separator
+                + $"우클릭을 통해 판매: ${ShopManager.InventoryItemSellPrice}";
+        }
+
+        itemDescriptionText.text = TooltipTextFormatter.Format(description);
         ApplyIcon(itemIcon, item.Icon);
         tooltip.gameObject.SetActive(true);
         tooltip.SetAsLastSibling();

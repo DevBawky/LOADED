@@ -130,6 +130,18 @@ public class PlayerInventory : MonoBehaviour
         return true;
     }
 
+    public bool TryRemove(int slotIndex)
+    {
+        if (GetItem(slotIndex) == null)
+        {
+            return false;
+        }
+
+        items[slotIndex] = null;
+        Changed?.Invoke();
+        return true;
+    }
+
     private int FindEmptySlotIndex()
     {
         if (items == null)

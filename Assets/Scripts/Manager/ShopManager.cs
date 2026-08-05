@@ -54,10 +54,13 @@ public class ShopItemSlot
 
 public class ShopManager : MonoBehaviour
 {
+    public const int InventoryItemSellPrice = 3;
+
     [Header("References")]
     [SerializeField] private CurrencyManager currencyManager;
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private PlayerInventory playerInventory;
+    [SerializeField] private StateManager stateManager;
     [SerializeField] private TMP_Text myBulletCountText;
 
     [Header("Bullet Offers")]
@@ -136,6 +139,8 @@ public class ShopManager : MonoBehaviour
     public IReadOnlyList<ItemData> CurrentItemOffers => currentItemOffers;
     public int CurrentRefreshCost => currentRefreshCost;
     public bool IsRefreshing => isRefreshing;
+    public bool CanSellInventoryItems => stateManager != null
+        && stateManager.CurrentState == GameFlowState.Shop;
 
     private void Awake()
     {
@@ -195,6 +200,19 @@ public class ShopManager : MonoBehaviour
         GenerateItemOffers();
         RefreshRefreshButton();
         RefreshOwnedBulletCount();
+    }
+
+    public bool TrySellInventoryItem(int slotIndex)
+    {
+        if (!CanSellInventoryItems || playerInventory == null
+            || currencyManager == null
+            || !playerInventory.TryRemove(slotIndex))
+        {
+            return false;
+        }
+
+        currencyManager.AddMoney(InventoryItemSellPrice);
+        return true;
     }
 
     public bool TryRefreshOffers()
@@ -953,6 +971,7 @@ public class ShopManager : MonoBehaviour
         currencyManager ??= FindSceneObject<CurrencyManager>();
         deckManager ??= FindSceneObject<DeckManager>();
         playerInventory ??= FindSceneObject<PlayerInventory>();
+        stateManager ??= FindSceneObject<StateManager>();
 
         ResolveRefreshButton();
         ResolveBulletCountText();

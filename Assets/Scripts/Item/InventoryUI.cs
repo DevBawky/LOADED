@@ -5,10 +5,18 @@ using UnityEngine.UI;
 public class InventoryUI : MonoBehaviour
 {
     [SerializeField] private PlayerInventory playerInventory;
+    [SerializeField] private ShopManager shopManager;
     [SerializeField] private Image[] itemImages;
+
+    private void Awake()
+    {
+        ResolveReferences();
+    }
 
     private void OnEnable()
     {
+        ResolveReferences();
+
         if (playerInventory != null)
         {
             playerInventory.Changed += Refresh;
@@ -28,11 +36,17 @@ public class InventoryUI : MonoBehaviour
     private void Update()
     {
         Mouse mouse = Mouse.current;
+        bool useRequested = mouse != null
+            && mouse.leftButton.wasPressedThisFrame;
+        bool sellRequested = mouse != null
+            && mouse.rightButton.wasPressedThisFrame
+            && shopManager != null
+            && shopManager.CanSellInventoryItems;
 
         if (GamePauseController.IsPaused
             || LoadingTransitionController.IsTransitioning
             || mouse == null
-            || !mouse.leftButton.wasPressedThisFrame
+            || !useRequested && !sellRequested
             || playerInventory == null || itemImages == null)
         {
             return;
@@ -53,10 +67,26 @@ public class InventoryUI : MonoBehaviour
                     pointerPosition,
                     GetCanvasCamera(slot)))
             {
-                playerInventory.TryUse(index);
+                if (sellRequested)
+                {
+                    shopManager.TrySellInventoryItem(index);
+                }
+                else
+                {
+                    playerInventory.TryUse(index);
+                }
+
                 return;
             }
         }
+    }
+
+    private void ResolveReferences()
+    {
+        playerInventory ??= FindFirstObjectByType<PlayerInventory>(
+            FindObjectsInactive.Include);
+        shopManager ??= FindFirstObjectByType<ShopManager>(
+            FindObjectsInactive.Include);
     }
 
     private static Camera GetCanvasCamera(RectTransform target)
