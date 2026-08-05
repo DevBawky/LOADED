@@ -282,7 +282,10 @@ public class ItemData : ScriptableObject
         {
             if (enemy != null && enemy.CurrentHealth > 0)
             {
-                appliedAny |= enemy.AddStatusEffect(statusType, stacks);
+                appliedAny |= enemy.AddStatusEffect(
+                    statusType,
+                    stacks,
+                    true);
             }
         }
 
