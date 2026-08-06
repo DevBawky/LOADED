@@ -17,7 +17,7 @@ MonoBehaviour:
   description: "\uC2DC\uD55C\uD3ED\uD0C4\uACFC \uC591\uC606 \uC0B0\uD0C4 \uC0AC\uACA9\uC744
     \uACE0\uC815 \uC21C\uC11C\uB85C \uC0AC\uC6A9\uD558\uB294 \uC2A4\uD14C\uC774\uC9C0
     1 \uBCF4\uC2A4."
-  avatar: {fileID: 1233976601806711513, guid: 681bb752688943b41b903f4b80db2c5b, type: 3}
+  avatar: {fileID: 1233976601806711513, guid: 1df5961b6c231c845973c37e6e51ce28, type: 3}
   maxHealth: 2000
   minimumGoldDrop: 500
   maximumGoldDrop: 500

@@ -114,6 +114,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         Animator.StringToHash("Base Layer.Idle");
     private static readonly int AttackAnimationStateHash =
         Animator.StringToHash("Base Layer.Attack");
+    private static readonly int BigBarrelPhaseOneAttackAnimationStateHash =
+        Animator.StringToHash("Base Layer.Phase1_Attack_1");
+    private static readonly int BigBarrelPhaseTwoAttackAnimationStateHash =
+        Animator.StringToHash("Base Layer.Phase2_Attack_1");
+    private static readonly int BigBarrelShotgunAnimationStateHash =
+        Animator.StringToHash("Base Layer.Attack_2");
     private static readonly int IsReloadedAnimationParameterHash =
         Animator.StringToHash("isReloaded");
     private static readonly int BaseColorId =
@@ -959,6 +965,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
+        if (distanceToPlayer > enemyData.FiringRange)
+        {
+            MoveTowardPlayer(directionToPlayer);
+            return;
+        }
+
         CompleteAction(EnemyTurnActionType.Wait);
     }
 
@@ -999,6 +1011,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 out int distanceToPlayer))
         {
             CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
+        {
+            RotateToward(directionToPlayer);
             return;
         }
 
@@ -1207,7 +1225,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private IEnumerator FireBigBarrelBombs()
     {
         EnemyActionData action = PopFirstQueuedAction();
-        yield return PlayAvatarAttackAnimation();
+        int animationStateHash = bigBarrelActionUsesPhaseTwo
+            ? BigBarrelPhaseTwoAttackAnimationStateHash
+            : BigBarrelPhaseOneAttackAnimationStateHash;
+        yield return PlayAvatarAnimation(animationStateHash);
 
         foreach (int targetTileIndex in preparedBombTargetTileIndices)
         {
@@ -1242,7 +1263,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private IEnumerator FireBigBarrelShotgun()
     {
         EnemyActionData action = PopFirstQueuedAction();
-        yield return PlayAvatarAttackAnimation();
+        yield return PlayAvatarAnimation(BigBarrelShotgunAnimationStateHash);
 
         foreach (int targetTileIndex in preparedShotgunTileIndices)
         {
@@ -1658,9 +1679,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
-        int endTileIndex = attackDirection > 0
-            ? boardManager.BoardCount - 1
-            : 0;
+        int endTileIndex = Mathf.Clamp(
+            attackerTileIndex + attackDirection * enemyData.FiringRange,
+            0,
+            boardManager.BoardCount - 1);
 
         if (endTileIndex == attackerTileIndex
             || !boardManager.TryGetTilePosition(
@@ -1890,7 +1912,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         int directionToPlayer,
         int distanceToPlayer)
     {
-        if (directionToPlayer == 0 || distanceToPlayer <= 0)
+        if (directionToPlayer == 0 || distanceToPlayer <= 0
+            || distanceToPlayer > enemyData.FiringRange
+            || !IsFacing(directionToPlayer))
         {
             return false;
         }
@@ -2377,9 +2401,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
-        int attackRange = enemyData.BehaviorType == EnemyBehaviorType.Melee
-            ? attackData.Range
-            : boardManager.BoardCount;
+        int attackRange = enemyData.BehaviorType switch
+        {
+            EnemyBehaviorType.Melee => attackData.Range,
+            EnemyBehaviorType.Gunner => enemyData.FiringRange,
+            _ => boardManager.BoardCount
+        };
         int playerOffset = playerIndex - attackerIndex;
         int distanceToPlayer = Mathf.Abs(playerOffset);
         bool playerInAttackLine = playerOffset * attackDirection > 0
@@ -2679,8 +2706,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private bool CanTakeFrontlineTurn()
     {
         if (enemyData == null
-            || enemyData.BehaviorType != EnemyBehaviorType.Melee
-            && enemyData.BehaviorType != EnemyBehaviorType.Gunner)
+            || enemyData.BehaviorType != EnemyBehaviorType.Melee)
         {
             return true;
         }
@@ -2848,7 +2874,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                     avatarAnimator);
             }
 
-            if (!avatarAnimator.HasState(0, AttackAnimationStateHash))
+            if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
+            {
+                ValidateBigBarrelAnimatorStates();
+            }
+            else if (!avatarAnimator.HasState(0, AttackAnimationStateHash))
             {
                 Debug.LogWarning(
                     $"Enemy Avatar '{enemyData.Avatar.name}' has no Base Layer.Attack state.",
@@ -2862,15 +2892,20 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private IEnumerator PlayAvatarAttackAnimation()
     {
+        yield return PlayAvatarAnimation(AttackAnimationStateHash);
+    }
+
+    private IEnumerator PlayAvatarAnimation(int animationStateHash)
+    {
         if (avatarAnimator == null
             || avatarAnimator.runtimeAnimatorController == null
-            || !avatarAnimator.HasState(0, AttackAnimationStateHash))
+            || !avatarAnimator.HasState(0, animationStateHash))
         {
             yield break;
         }
 
         int animationSequence = ++avatarAnimationSequence;
-        avatarAnimator.Play(AttackAnimationStateHash, 0, 0f);
+        avatarAnimator.Play(animationStateHash, 0, 0f);
         avatarAnimator.Update(0f);
         AnimatorStateInfo attackState =
             avatarAnimator.GetCurrentAnimatorStateInfo(0);
@@ -2893,6 +2928,29 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (animationSequence == avatarAnimationSequence)
         {
             PlayAvatarIdle();
+        }
+    }
+
+    private void ValidateBigBarrelAnimatorStates()
+    {
+        ValidateBigBarrelAnimatorState(
+            BigBarrelPhaseOneAttackAnimationStateHash,
+            "Phase1_Attack_1");
+        ValidateBigBarrelAnimatorState(
+            BigBarrelPhaseTwoAttackAnimationStateHash,
+            "Phase2_Attack_1");
+        ValidateBigBarrelAnimatorState(
+            BigBarrelShotgunAnimationStateHash,
+            "Attack_2");
+    }
+
+    private void ValidateBigBarrelAnimatorState(int stateHash, string stateName)
+    {
+        if (!avatarAnimator.HasState(0, stateHash))
+        {
+            Debug.LogWarning(
+                $"Big Barrel Avatar '{enemyData.Avatar.name}' has no Base Layer.{stateName} state.",
+                avatarAnimator);
         }
     }
 

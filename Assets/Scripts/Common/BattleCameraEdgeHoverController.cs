@@ -28,11 +28,14 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
     [Header("Hover Area Feedback")]
     [Range(0f, 1f)]
+    [SerializeField] private float minimumAreaAlpha = 0.1f;
+    [Range(0f, 1f)]
     [SerializeField] private float maximumAreaAlpha = 0.5f;
     [Range(0.5f, 1f)]
     [SerializeField] private float maximumAlphaScreenPosition = 0.9f;
 
     private BoardManager boardManager;
+    private PlayerMove playerMove;
     private Camera targetCamera;
     private CinemachineCamera cinemachineCamera;
     private Canvas rootCanvas;
@@ -49,11 +52,21 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
     private void Update()
     {
-        if (!ResolveReferences() || Mouse.current == null)
+        if (!ResolveReferences())
         {
             RestorePlayerFocus();
-            SetImageAlpha(leftAreaImage, 0f);
-            SetImageAlpha(rightAreaImage, 0f);
+            SetImageAlpha(leftAreaImage, minimumAreaAlpha);
+            SetImageAlpha(rightAreaImage, minimumAreaAlpha);
+            return;
+        }
+
+        UpdateAreaAvailability();
+
+        if (Mouse.current == null)
+        {
+            RestorePlayerFocus();
+            SetImageAlpha(leftAreaImage, minimumAreaAlpha);
+            SetImageAlpha(rightAreaImage, minimumAreaAlpha);
             return;
         }
 
@@ -96,8 +109,10 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
     private void OnDisable()
     {
         RestorePlayerFocus();
-        SetImageAlpha(leftAreaImage, 0f);
-        SetImageAlpha(rightAreaImage, 0f);
+        SetImageAlpha(leftAreaImage, minimumAreaAlpha);
+        SetImageAlpha(rightAreaImage, minimumAreaAlpha);
+        SetAreaActive(leftArea, true);
+        SetAreaActive(rightArea, true);
     }
 
     private void OnDestroy()
@@ -127,6 +142,7 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
         rootCanvas ??= GetComponentInParent<Canvas>();
         boardManager ??= FindFirstObjectByType<BoardManager>();
+        playerMove ??= FindFirstObjectByType<PlayerMove>();
         targetCamera ??= Camera.main;
 
         if (cinemachineCamera == null && targetCamera != null)
@@ -137,8 +153,68 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
         return leftArea != null
             && rightArea != null
             && boardManager != null
+            && playerMove != null
             && targetCamera != null
             && cinemachineCamera != null;
+    }
+
+    private void UpdateAreaAvailability()
+    {
+        if (boardManager.BoardCount <= 0
+            || !boardManager.TryGetTilePosition(
+                0,
+                out Vector3 firstTilePosition)
+            || !boardManager.TryGetTilePosition(
+                boardManager.BoardCount - 1,
+                out Vector3 lastTilePosition))
+        {
+            SetAreaActive(leftArea, true);
+            SetAreaActive(rightArea, true);
+            return;
+        }
+
+        Vector3 leftTilePosition = firstTilePosition.x <= lastTilePosition.x
+            ? firstTilePosition
+            : lastTilePosition;
+        Vector3 rightTilePosition = firstTilePosition.x >= lastTilePosition.x
+            ? firstTilePosition
+            : lastTilePosition;
+
+        SetAreaActive(
+            leftArea,
+            !IsTileVisibleFromPlayer(leftTilePosition));
+        SetAreaActive(
+            rightArea,
+            !IsTileVisibleFromPlayer(rightTilePosition));
+    }
+
+    private bool IsTileVisibleFromPlayer(Vector3 tilePosition)
+    {
+        if (!targetCamera.orthographic)
+        {
+            return false;
+        }
+
+        float halfViewWidth = targetCamera.orthographicSize
+            * targetCamera.aspect;
+
+        if (halfViewWidth <= 0f)
+        {
+            return false;
+        }
+
+        float viewportX = 0.5f
+            + (tilePosition.x - playerMove.transform.position.x)
+            / (halfViewWidth * 2f);
+        return viewportX >= 0f && viewportX <= 1f;
+    }
+
+    private static void SetAreaActive(RectTransform area, bool isActive)
+    {
+        if (area != null && area.gameObject.activeSelf != isActive)
+        {
+            area.gameObject.SetActive(isActive);
+        }
     }
 
     private void UpdateAreaAlpha(float pointerX)
@@ -147,24 +223,28 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
         if (halfScreenWidth <= 0f)
         {
-            SetImageAlpha(leftAreaImage, 0f);
-            SetImageAlpha(rightAreaImage, 0f);
+            SetImageAlpha(leftAreaImage, minimumAreaAlpha);
+            SetImageAlpha(rightAreaImage, minimumAreaAlpha);
             return;
         }
 
         float directionalDistance = Mathf.Abs(pointerX - halfScreenWidth)
             / halfScreenWidth;
-        float alpha = Mathf.InverseLerp(
+        float hoverStrength = Mathf.InverseLerp(
             0f,
             maximumAlphaScreenPosition,
-            directionalDistance) * maximumAreaAlpha;
+            directionalDistance);
+        float alpha = Mathf.Lerp(
+            minimumAreaAlpha,
+            Mathf.Max(minimumAreaAlpha, maximumAreaAlpha),
+            hoverStrength);
 
         SetImageAlpha(
             leftAreaImage,
-            pointerX < halfScreenWidth ? alpha : 0f);
+            pointerX < halfScreenWidth ? alpha : minimumAreaAlpha);
         SetImageAlpha(
             rightAreaImage,
-            pointerX > halfScreenWidth ? alpha : 0f);
+            pointerX > halfScreenWidth ? alpha : minimumAreaAlpha);
     }
 
     private static Image EnsureAreaImage(RectTransform area)
