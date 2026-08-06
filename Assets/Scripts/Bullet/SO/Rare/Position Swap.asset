@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Position Swap
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
-  displayName: "\uC704\uCE58 \uBCC0\uACBD \uD0C4"
-  description: "대상과 위치 교환"
+  displayName: "\uC704\uCE58\uBCC0\uACBD\uD0C4"
+  description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658"
   cylinderIcon: {fileID: -1611615653400164907, guid: 96884931d179a6f4f83b01b601888336, type: 3}
   price: 6
   grade: 1
@@ -34,6 +34,8 @@ MonoBehaviour:
     stackCount: 0
     knockbackDistance: 0
     amount: 0
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -43,7 +45,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "대상과 위치 교환\n기절 +1 (30%)"
+  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (30%)"
     damage: 7
     maxRange: 3
     criticalChance: 40
@@ -55,12 +57,16 @@ MonoBehaviour:
       stackCount: 0
       knockbackDistance: 0
       amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 1
       target: 0
       activationChance: 100
       stackCount: 1
       knockbackDistance: 0
       amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -69,7 +75,8 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "대상과 위치 교환\n기절 +1 (50%)\n치명타 시 약화 +2"
+  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (50%)\n\uCE58\uBA85\uD0C0
+      \uC2DC \uC57D\uD654 +2"
     damage: 10
     maxRange: 4
     criticalChance: 55
@@ -81,12 +88,16 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 0
       amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 1
       target: 0
       activationChance: 50
       stackCount: 1
       knockbackDistance: 0
       amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -96,6 +107,8 @@ MonoBehaviour:
         stackCount: 2
         knockbackDistance: 0
         amount: 0
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
@@ -103,7 +116,9 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "대상과 위치 교환\n기절 +1 (70%)\n치명타 시 약화 +3\n재장전 시 턴을 소모하지 않습니다."
+  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (70%)\n\uCE58\uBA85\uD0C0
+      \uC2DC \uC57D\uD654 +3\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
+      \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 13
     maxRange: 5
     criticalChance: 70
@@ -115,12 +130,16 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 0
       amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 1
       target: 0
       activationChance: 70
       stackCount: 1
       knockbackDistance: 0
       amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -130,6 +149,8 @@ MonoBehaviour:
         stackCount: 3
         knockbackDistance: 0
         amount: 0
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
