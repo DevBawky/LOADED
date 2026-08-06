@@ -567,9 +567,12 @@ MonoBehaviour:
   killSlowMotionScale: 0.3
   killSlowMotionHold: 0.18
   killSlowMotionRecovery: 0.18
-  maximumDamageShakeStrength: 0.055
-  maximumDamageShakeDuration: 0.18
-  emptyShotShakeRatio: 0.4
+  cameraShakeStrength: 0.055
+  cameraShakeDuration: 0.18
+  shotShakeMultiplier: 0.5
+  killShakeMultiplier: 1
+  secondComboKillShakeMultiplier: 1.3
+  laterComboKillShakeMultiplier: 1.5
   volumePulseDuration: 0.8
   chromaticBoost: 1
   bloomBoost: 3

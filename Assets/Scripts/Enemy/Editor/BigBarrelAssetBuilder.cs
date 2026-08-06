@@ -169,10 +169,6 @@ public static class BigBarrelAssetBuilder
             .objectReferenceValue = bombMaterial;
         settings.FindPropertyRelative("shotgunTelegraphMaterial")
             .objectReferenceValue = shotgunMaterial;
-        settings.FindPropertyRelative("explosionCameraShake").floatValue =
-            0.2f;
-        settings.FindPropertyRelative("bossHitCameraShake").floatValue =
-            0.12f;
         serialized.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(data);
         return data;

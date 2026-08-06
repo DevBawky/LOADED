@@ -514,10 +514,6 @@ public class PlayerShoot : MonoBehaviour
         combatFeedback?.BeginFiringSequence();
         combatFeedback?.BeginCylinder();
         bool saverRefundsTurn = false;
-        int quickDrawThreshold = GetLoadedEffectMaximumStackCount(
-            BulletEffectType.QuickDraw);
-        bool quickDrawActive = quickDrawThreshold > 0
-            && initialLoadedBulletCount <= quickDrawThreshold;
         int initialBulletIndex = deckManager.LoadedBullets.Count - 1;
         BulletInstance initialResolvedBullet = ResolveShotBullet(
             deckManager.LoadedBullets[initialBulletIndex],
@@ -578,8 +574,7 @@ public class PlayerShoot : MonoBehaviour
 
             firedAnyBullet = true;
             currentConsumedBullet = firedBullet;
-            consumesTurn |= !quickDrawActive
-                && !resolvedBullet.DoesNotConsumeTurn;
+            consumesTurn |= !resolvedBullet.DoesNotConsumeTurn;
 
             bool clonedPreviousShot = resolvedBullet != firedBullet;
 
@@ -799,11 +794,14 @@ public class PlayerShoot : MonoBehaviour
         bool hasEnemyTarget = RefreshViableTargets(
             bulletData,
             horizontalDirection);
-        bool hasBulletBlocker = waveManager.TryGetFirstBulletBlocker(
-            transform.position,
-            horizontalDirection,
-            bulletData.MaxRange,
-            out IPlayerBulletBlocker bulletBlocker);
+        bool isBoardWideShot = IsBoardWideShot(bulletData);
+        IPlayerBulletBlocker bulletBlocker = null;
+        bool hasBulletBlocker = !isBoardWideShot
+            && waveManager.TryGetFirstBulletBlocker(
+                transform.position,
+                horizontalDirection,
+                bulletData.MaxRange,
+                out bulletBlocker);
 
         if (hasBulletBlocker)
         {
@@ -879,10 +877,7 @@ public class PlayerShoot : MonoBehaviour
 
         ShowBulletFeedback(bulletData);
         PlayRandomSfx(isCritical ? criticalShotSfx : normalShotSfx);
-        if (!hasEnemyTarget)
-        {
-            combatFeedback?.RecordEmptyShotRecoil();
-        }
+        combatFeedback?.RecordShotCameraShake();
         RecordSuccessfulShot();
         BulletFired?.Invoke(bulletData);
         GameStatistics.RecordBulletFired(bulletData);
@@ -1036,6 +1031,20 @@ public class PlayerShoot : MonoBehaviour
             return false;
         }
 
+        if (IsBoardWideShot(bullet))
+        {
+            foreach (EnemyController enemy in waveManager.ActiveEnemies)
+            {
+                if (HasProjectedDurability(enemy))
+                {
+                    targetBuffer.Add(enemy);
+                }
+            }
+
+            SortTargetsByTileIndex(targetBuffer);
+            return targetBuffer.Count > 0;
+        }
+
         waveManager.GetEnemiesInDirection(
             transform.position,
             horizontalDirection,
@@ -1062,6 +1071,11 @@ public class PlayerShoot : MonoBehaviour
         if (RefreshViableTargets(bullet, horizontalDirection))
         {
             return true;
+        }
+
+        if (IsBoardWideShot(bullet))
+        {
+            return false;
         }
 
         return bullet != null && waveManager != null
@@ -1345,17 +1359,6 @@ public class PlayerShoot : MonoBehaviour
                 deckManager.MaxReloadAmount - initialLoadedBulletCount);
             multiplier *= 1f
                 + emptyChambers * loaderEffect.Amount / 100f;
-        }
-
-        BulletEffectData crescendoEffect = FindSpecialEffect(
-            resolvedBullet,
-            BulletEffectType.Crescendo);
-
-        if (crescendoEffect != null)
-        {
-            multiplier *= 1f
-                + criticalShotsThisCylinder
-                * crescendoEffect.Amount / 100f;
         }
 
         BulletEffectData chargeEffect = FindSpecialEffect(
@@ -1670,28 +1673,6 @@ public class PlayerShoot : MonoBehaviour
         }
     }
 
-    private int GetLoadedEffectMaximumStackCount(
-        BulletEffectType effectType)
-    {
-        int maximumStackCount = 0;
-
-        foreach (BulletInstance loadedBullet in deckManager.LoadedBullets)
-        {
-            BulletEffectData effect = FindSpecialEffect(
-                loadedBullet,
-                effectType);
-
-            if (effect != null)
-            {
-                maximumStackCount = Mathf.Max(
-                    maximumStackCount,
-                    effect.StackCount);
-            }
-        }
-
-        return maximumStackCount;
-    }
-
     private static bool RollChainFire(
         BulletEffectData chainEffect,
         int additionalShotCount)
@@ -1735,6 +1716,13 @@ public class PlayerShoot : MonoBehaviour
     private void BuildHitTargets(BulletInstance bulletData)
     {
         hitBuffer.Clear();
+
+        if (IsBoardWideShot(bulletData))
+        {
+            hitBuffer.AddRange(targetBuffer);
+            return;
+        }
+
         hitBuffer.Add(targetBuffer[0]);
         int hitCount = 1;
 
@@ -1789,7 +1777,7 @@ public class PlayerShoot : MonoBehaviour
                 isCritical,
                 damageMultiplier * targetDamageMultiplier);
 
-            if (hitIndex > 0)
+            if (hitIndex > 0 && !IsBoardWideShot(bulletData))
             {
                 yield return ApplyConditionalEvents(
                     bulletData,
@@ -2609,8 +2597,7 @@ public class PlayerShoot : MonoBehaviour
                 resolvedBullet,
                 bulletIndex,
                 initialLoadedCount,
-                previewBulletsFired,
-                previewCriticalShots);
+                previewBulletsFired);
             bool isStackingShot = FindSpecialEffect(
                 resolvedBullet,
                 BulletEffectType.StackNextShot) != null;
@@ -2791,7 +2778,7 @@ public class PlayerShoot : MonoBehaviour
                 guaranteedCritical,
                 damageMultiplier * targetMultiplier);
 
-            if (hitIndex > 0)
+            if (hitIndex > 0 && !IsBoardWideShot(resolvedBullet))
             {
                 ApplyGuaranteedPreviewConditionalEffects(
                     resolvedBullet,
@@ -2881,6 +2868,12 @@ public class PlayerShoot : MonoBehaviour
             return false;
         }
 
+        if (IsBoardWideShot(bullet))
+        {
+            hitBuffer.AddRange(targetBuffer);
+            return hitBuffer.Count > 0;
+        }
+
         hitBuffer.Add(targetBuffer[0]);
 
         for (int targetIndex = 1;
@@ -2916,7 +2909,27 @@ public class PlayerShoot : MonoBehaviour
     {
         targetBuffer.Clear();
 
-        if (bullet == null || previewPlayerTileIndex < 0)
+        if (bullet == null)
+        {
+            return false;
+        }
+
+        if (IsBoardWideShot(bullet))
+        {
+            foreach (DamagePreviewEnemyState state
+                     in damagePreviewStates.Values)
+            {
+                if (state.Enemy != null && state.RemainingHealth > 0)
+                {
+                    targetBuffer.Add(state.Enemy);
+                }
+            }
+
+            SortTargetsByTileIndex(targetBuffer);
+            return targetBuffer.Count > 0;
+        }
+
+        if (previewPlayerTileIndex < 0)
         {
             return false;
         }
@@ -3011,8 +3024,7 @@ public class PlayerShoot : MonoBehaviour
         BulletInstance resolvedBullet,
         int firedBulletIndex,
         int initialLoadedCount,
-        int previewBulletsFired,
-        int previewCriticalShots)
+        int previewBulletsFired)
     {
         float multiplier = 1f;
         BulletEffectData effect = FindSpecialEffect(
@@ -3082,14 +3094,6 @@ public class PlayerShoot : MonoBehaviour
                 deckManager.MaxReloadAmount - initialLoadedCount);
             multiplier *= 1f
                 + emptyChambers * effect.Amount / 100f;
-        }
-
-        effect = FindSpecialEffect(resolvedBullet, BulletEffectType.Crescendo);
-
-        if (effect != null)
-        {
-            multiplier *= 1f
-                + previewCriticalShots * effect.Amount / 100f;
         }
 
         effect = FindSpecialEffect(resolvedBullet, BulletEffectType.Charge);
@@ -3905,7 +3909,7 @@ public class PlayerShoot : MonoBehaviour
             return 0;
         }
 
-        int damage = bulletData.Damage;
+        int damage = GetEffectiveBaseDamage(bulletData);
 
         if (isCritical)
         {
@@ -3916,6 +3920,56 @@ public class PlayerShoot : MonoBehaviour
         int modifiedDamage = playerHealth.ModifyOutgoingAttackDamage(damage);
         return Mathf.CeilToInt(
             modifiedDamage * Mathf.Max(0f, damageMultiplier));
+    }
+
+    private int GetEffectiveBaseDamage(BulletInstance bullet)
+    {
+        BulletEffectData crescendoEffect = FindSpecialEffect(
+            bullet,
+            BulletEffectType.Crescendo);
+
+        if (crescendoEffect == null || deckManager == null)
+        {
+            return bullet.Damage;
+        }
+
+        return Mathf.Max(
+            0,
+            Mathf.CeilToInt(
+                bullet.Damage
+                - deckManager.TotalBulletCount * crescendoEffect.Amount));
+    }
+
+    private static bool IsBoardWideShot(BulletInstance bullet)
+    {
+        return FindSpecialEffect(bullet, BulletEffectType.QuickDraw) != null;
+    }
+
+    private void SortTargetsByTileIndex(List<EnemyController> targets)
+    {
+        if (boardManager == null)
+        {
+            return;
+        }
+
+        targets.Sort((first, second) =>
+        {
+            int firstIndex = 0;
+            int secondIndex = 0;
+            bool hasFirst = first != null && boardManager.TryGetTileIndex(
+                first.transform.position,
+                out firstIndex);
+            bool hasSecond = second != null && boardManager.TryGetTileIndex(
+                second.transform.position,
+                out secondIndex);
+
+            if (!hasFirst || !hasSecond)
+            {
+                return hasFirst == hasSecond ? 0 : hasFirst ? -1 : 1;
+            }
+
+            return firstIndex.CompareTo(secondIndex);
+        });
     }
 
     private Vector3 GetMissEndPoint(int horizontalDirection, int maxRange)

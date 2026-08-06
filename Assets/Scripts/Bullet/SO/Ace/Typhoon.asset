@@ -10,11 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
-  m_Name: Quick Draw
+  m_Name: Typhoon
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_quick_draw
-  displayName: "\uD035\uB4DC\uB85C\uC6B0\uD0C4"
-  description: "3발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
+  displayName: "\uD0DC\uD48D"
+  description: "\uBAA8\uB4E0 \uCE78\uC758 \uC801\uC5D0\uAC8C \uB300\uBBF8\uC9C0\uB97C
+    \uC90D\uB2C8\uB2E4.\n80% \uD655\uB960\uB85C \uC774 \uD0C4\uD658\uC744 \uD30C\uAD34\uD569\uB2C8\uB2E4."
   cylinderIcon: {fileID: 6895671342812299232, guid: 2ba24d181d8b0e744ab0e56d44b8e03d, type: 3}
   price: 10
   grade: 2
@@ -23,82 +24,108 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
-  damage: 14
+  damage: 20
   maxRange: 4
-  criticalChance: 25
+  criticalChance: 80
   criticalDamageMultiplier: 1.8
   effects:
   - effectType: 20
     target: 1
     activationChance: 100
-    stackCount: 3
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 1
+  - effectType: 8
+    target: 1
+    activationChance: 80
+    stackCount: 1
     knockbackDistance: 1
     amount: 1
   conditionalEvents: []
   penetrationChances: []
-  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  lineMaterial: {fileID: 2100000, guid: 629c9f3f5a4e72e45ae345692bc398c7, type: 2}
   primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
   secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
   doesNotConsumeTurn: 0
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "4발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
-    damage: 18
+  - description: "\uBAA8\uB4E0 \uCE78\uC758 \uC801\uC5D0\uAC8C \uB300\uBBF8\uC9C0\uB97C
+      \uC90D\uB2C8\uB2E4.\n70% \uD655\uB960\uB85C \uC774 \uD0C4\uD658\uC744 \uD30C\uAD34\uD569\uB2C8\uB2E4."
+    damage: 30
     maxRange: 4
-    criticalChance: 28
+    criticalChance: 85
     criticalDamageMultiplier: 2
     effects:
     - effectType: 20
       target: 1
       activationChance: 100
-      stackCount: 4
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+    - effectType: 8
+      target: 1
+      activationChance: 70
+      stackCount: 1
       knockbackDistance: 1
       amount: 1
     conditionalEvents: []
     penetrationChances: []
-    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    lineMaterial: {fileID: 2100000, guid: 629c9f3f5a4e72e45ae345692bc398c7, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "5발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
-    damage: 23
+  - description: "\uBAA8\uB4E0 \uCE78\uC758 \uC801\uC5D0\uAC8C \uB300\uBBF8\uC9C0\uB97C
+      \uC90D\uB2C8\uB2E4.\n60% \uD655\uB960\uB85C \uC774 \uD0C4\uD658\uC744 \uD30C\uAD34\uD569\uB2C8\uB2E4."
+    damage: 40
     maxRange: 5
-    criticalChance: 32
+    criticalChance: 90
     criticalDamageMultiplier: 2.2
     effects:
     - effectType: 20
       target: 1
       activationChance: 100
-      stackCount: 5
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+    - effectType: 8
+      target: 1
+      activationChance: 60
+      stackCount: 1
       knockbackDistance: 1
       amount: 1
     conditionalEvents: []
     penetrationChances: []
-    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    lineMaterial: {fileID: 2100000, guid: 629c9f3f5a4e72e45ae345692bc398c7, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "6발 이하로 장전된 실린더에 포함되면 이번 발사 행동은 턴을 소비하지 않습니다."
-    damage: 30
+  - description: "\uBAA8\uB4E0 \uCE78\uC758 \uC801\uC5D0\uAC8C \uB300\uBBF8\uC9C0\uB97C
+      \uC90D\uB2C8\uB2E4.\n50% \uD655\uB960\uB85C \uC774 \uD0C4\uD658\uC744 \uD30C\uAD34\uD569\uB2C8\uB2E4."
+    damage: 50
     maxRange: 5
-    criticalChance: 38
-    criticalDamageMultiplier: 2.5
+    criticalChance: 100
+    criticalDamageMultiplier: 3
     effects:
     - effectType: 20
       target: 1
       activationChance: 100
-      stackCount: 6
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+    - effectType: 8
+      target: 1
+      activationChance: 50
+      stackCount: 1
       knockbackDistance: 1
       amount: 1
     conditionalEvents: []
-    penetrationChances:
-    - chance: 30
-    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: 629c9f3f5a4e72e45ae345692bc398c7, type: 2}
     primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
     secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0

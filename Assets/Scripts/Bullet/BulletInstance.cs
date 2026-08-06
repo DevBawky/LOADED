@@ -294,17 +294,23 @@ public sealed class BulletInstance
                 }
                 case BulletEffectType.Crescendo:
                 {
-                    if (!isLoaded)
+                    int ownedBulletCount = context.DeckBullets.Count
+                        + context.LoadedBullets.Count
+                        + context.GraveyardBullets.Count;
+                    int effectiveBaseDamage = Mathf.Max(
+                        0,
+                        Mathf.CeilToInt(
+                            Damage
+                            - ownedBulletCount * effect.Amount));
+
+                    if (Damage > 0)
                     {
-                        break;
+                        damageMultiplier *= effectiveBaseDamage / Damage;
                     }
 
-                    float bonus = context.CriticalShots
-                        * effect.Amount / 100f;
-                    damageMultiplier *= 1f + bonus;
                     stateLines.Add(
-                        $"이번 실린더 크리티컬: {context.CriticalShots} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        $"보유 탄환: {ownedBulletCount} "
+                        + $"(기본 대미지 {effectiveBaseDamage})");
                     break;
                 }
                 case BulletEffectType.Focus:

@@ -113,8 +113,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float kickSlowMotionHold = 0.045f;
     [Min(0.01f)]
     [SerializeField] private float kickSlowMotionRecovery = 0.13f;
-    [Min(0f)]
-    [SerializeField] private float kickCameraShake = 0.045f;
     [Range(0f, 1f)]
     [SerializeField] private float kickVolumeStrength = 0.82f;
     [Min(0.05f)]
@@ -122,11 +120,19 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     [Header("Unified Camera Shake")]
     [Min(0f)]
-    [SerializeField] private float maximumDamageShakeStrength = 0.055f;
+    [FormerlySerializedAs("maximumDamageShakeStrength")]
+    [SerializeField] private float cameraShakeStrength = 0.055f;
     [Min(0f)]
-    [SerializeField] private float maximumDamageShakeDuration = 0.18f;
-    [Range(0f, 1f)]
-    [SerializeField] private float emptyShotShakeRatio = 0.4f;
+    [FormerlySerializedAs("maximumDamageShakeDuration")]
+    [SerializeField] private float cameraShakeDuration = 0.18f;
+    [Min(0f)]
+    [SerializeField] private float shotShakeMultiplier = 0.5f;
+    [Min(0f)]
+    [SerializeField] private float killShakeMultiplier = 1f;
+    [Min(0f)]
+    [SerializeField] private float secondComboKillShakeMultiplier = 1.3f;
+    [Min(0f)]
+    [SerializeField] private float laterComboKillShakeMultiplier = 1.5f;
 
     [Header("Volume Pulse")]
     [Min(0.01f)]
@@ -270,11 +276,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
         RefreshUiImmediate();
     }
 
-    private void OnEnable()
-    {
-        EnemyController.DamageApplied += HandleEnemyDamageApplied;
-    }
-
     private void Update()
     {
         if (!uiBound)
@@ -291,7 +292,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void OnDisable()
     {
-        EnemyController.DamageApplied -= HandleEnemyDamageApplied;
         ResetFiringSequenceFeedback();
         CancelSlowMotionAndRestore();
         RestoreVolume();
@@ -488,8 +488,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float strength = 1f)
     {
         float intensity = Mathf.Clamp01(strength);
-        CombatCameraShake.Play(
-            kickCameraShake * Mathf.Lerp(0.8f, 1.25f, intensity));
         StartVolumePulse(intensity * kickVolumeStrength);
         StartSlowMotion(
             intensity,
@@ -508,12 +506,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
             false);
     }
 
-    public void RecordEmptyShotRecoil()
+    public void RecordShotCameraShake()
     {
-        float ratio = Mathf.Clamp01(emptyShotShakeRatio);
         CombatCameraShake.Play(
-            maximumDamageShakeStrength * ratio,
-            maximumDamageShakeDuration * ratio);
+            cameraShakeStrength * shotShakeMultiplier,
+            cameraShakeDuration);
     }
 
     public void RecordDefeat(
@@ -538,6 +535,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
         comboPunchRemaining = 0.3f;
         UpdateComboText();
         SpawnKillComboText(worldPosition);
+        CombatCameraShake.Play(
+            cameraShakeStrength * GetKillShakeMultiplier(comboCount),
+            cameraShakeDuration);
 
         if (comboCount > 1 && comboGoldPerKill > 0)
         {
@@ -581,12 +581,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
             cylinderBuild,
             firingSequenceFeedbackMultiplier);
         StartVolumePulse(amplifiedIntensity);
-        float durationMultiplier = wasFinalEnemy ? 1.65f : 1f;
         StartSlowMotion(
             baseIntensity,
             killSlowMotionScale,
-            killSlowMotionHold * durationMultiplier,
-            killSlowMotionRecovery * durationMultiplier,
+            killSlowMotionHold,
+            killSlowMotionRecovery,
             firingSequenceFeedbackMultiplier);
         QueueFullscreenImpact(
             worldPosition,
@@ -599,18 +598,16 @@ public sealed class CombatFeedbackController : MonoBehaviour
             true);
     }
 
-    private void HandleEnemyDamageApplied(int appliedDamage, int targetMaxHealth)
+    private float GetKillShakeMultiplier(int currentComboCount)
     {
-        if (appliedDamage <= 0 || targetMaxHealth <= 0)
+        if (currentComboCount <= 1)
         {
-            return;
+            return killShakeMultiplier;
         }
 
-        float damageRatio = Mathf.Clamp01(
-            (float)appliedDamage / targetMaxHealth);
-        CombatCameraShake.Play(
-            maximumDamageShakeStrength * damageRatio,
-            maximumDamageShakeDuration * damageRatio);
+        return currentComboCount == 2
+            ? secondComboKillShakeMultiplier
+            : laterComboKillShakeMultiplier;
     }
 
     private void SpawnKillComboText(Vector3 worldPosition)
