@@ -17,15 +17,27 @@ public sealed class BattleBgmPlaylist
 }
 
 [Serializable]
+public enum SfxCategory
+{
+    General = 0,
+    Weapon = 1,
+    Impact = 2,
+    Enemy = 3,
+    Status = 4
+}
+
+[Serializable]
 public sealed class NamedSfxClip
 {
     [SerializeField] private string id;
+    [SerializeField] private SfxCategory category;
     [SerializeField] private AudioClip clip;
     [SerializeField] private List<AudioClip> variants = new List<AudioClip>();
     [Range(0f, 2f)] [SerializeField] private float volume = 1f;
     [Range(0.01f, 3f)] [SerializeField] private float minPitch = 1f;
     [Range(0.01f, 3f)] [SerializeField] private float maxPitch = 1f;
     public string Id => id;
+    public SfxCategory Category => category;
     public float Volume => Mathf.Clamp(volume, 0f, 2f);
     public float RandomPitch => UnityEngine.Random.Range(
         Mathf.Min(minPitch, maxPitch),
@@ -71,6 +83,10 @@ public sealed class SoundClipLibrary : ScriptableObject
     [SerializeField] private AudioMixerGroup bgmMixerGroup;
     [Tooltip("모든 동시 재생 SFX AudioSource가 출력될 AudioMixerGroup입니다.")]
     [SerializeField] private AudioMixerGroup sfxMixerGroup;
+    [SerializeField] private AudioMixerGroup weaponMixerGroup;
+    [SerializeField] private AudioMixerGroup impactMixerGroup;
+    [SerializeField] private AudioMixerGroup enemyMixerGroup;
+    [SerializeField] private AudioMixerGroup statusMixerGroup;
 
     [Header("BGM")]
     [Range(0f, 1f)] [SerializeField] private float bgmVolume = 1f;
@@ -137,9 +153,25 @@ public sealed class SoundClipLibrary : ScriptableObject
         out float volume,
         out float pitch)
     {
+        return TryGetSfx(
+            id,
+            out clip,
+            out volume,
+            out pitch,
+            out _);
+    }
+
+    public bool TryGetSfx(
+        string id,
+        out AudioClip clip,
+        out float volume,
+        out float pitch,
+        out AudioMixerGroup mixerGroup)
+    {
         clip = null;
         volume = 1f;
         pitch = 1f;
+        mixerGroup = sfxMixerGroup;
 
         if (sfx == null || string.IsNullOrWhiteSpace(id))
         {
@@ -156,10 +188,25 @@ public sealed class SoundClipLibrary : ScriptableObject
                 clip = entry.GetRandomClip();
                 volume = entry.Volume;
                 pitch = entry.RandomPitch;
+                mixerGroup = GetSfxMixerGroup(entry.Category);
                 return clip != null;
             }
         }
 
         return false;
+    }
+
+    private AudioMixerGroup GetSfxMixerGroup(SfxCategory category)
+    {
+        AudioMixerGroup categoryGroup = category switch
+        {
+            SfxCategory.Weapon => weaponMixerGroup,
+            SfxCategory.Impact => impactMixerGroup,
+            SfxCategory.Enemy => enemyMixerGroup,
+            SfxCategory.Status => statusMixerGroup,
+            _ => sfxMixerGroup
+        };
+
+        return categoryGroup != null ? categoryGroup : sfxMixerGroup;
     }
 }

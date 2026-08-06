@@ -55,6 +55,7 @@ public class ShopItemSlot
 public class ShopManager : MonoBehaviour
 {
     public const int InventoryItemSellPrice = 3;
+    private static readonly Color UnaffordableCostColor = Color.red;
 
     [Header("References")]
     [SerializeField] private CurrencyManager currencyManager;
@@ -518,6 +519,7 @@ public class ShopManager : MonoBehaviour
         purchasedBulletOffers[slotIndex] = true;
         RefreshSlots();
         OffersChanged?.Invoke();
+        SoundManager.PlaySfx("SFX_GainGold");
         PurchaseCompleted?.Invoke();
         return true;
     }
@@ -550,8 +552,9 @@ public class ShopManager : MonoBehaviour
 
         GameStatistics.RecordGoldSpent(itemData.Price);
         purchasedItemOffers[slotIndex] = true;
-        slot.Button.interactable = false;
+        RefreshItemSlots();
         OffersChanged?.Invoke();
+        SoundManager.PlaySfx("SFX_GainGold");
         PurchaseCompleted?.Invoke();
         return true;
     }
@@ -741,10 +744,14 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
+        bool canAfford = offer != null && currencyManager != null
+            && currencyManager.CurrentMoney >= offer.Price;
+
         if (slot.Button != null)
         {
             slot.Button.gameObject.SetActive(offer != null);
             slot.Button.interactable = offer != null && !purchased
+                && canAfford
                 && (deckManager == null || deckManager.CanAddBullet(offer));
 
             if (offer != null && slot.Button.image != null)
@@ -771,6 +778,9 @@ public class ShopManager : MonoBehaviour
         if (slot.CostText != null)
         {
             slot.CostText.text = offer == null ? string.Empty : $"${offer.Price}";
+            slot.CostText.color = offer != null && !purchased && !canAfford
+                ? UnaffordableCostColor
+                : Color.white;
         }
     }
 
@@ -807,10 +817,14 @@ public class ShopManager : MonoBehaviour
             return;
         }
 
+        bool canAfford = offer != null && currencyManager != null
+            && currencyManager.CurrentMoney >= offer.Price;
+
         if (slot.Button != null)
         {
             slot.Button.gameObject.SetActive(offer != null);
             slot.Button.interactable = offer != null && !purchased
+                && canAfford
                 && playerInventory != null && playerInventory.CanAdd(offer);
         }
 
@@ -824,6 +838,9 @@ public class ShopManager : MonoBehaviour
         if (slot.CostText != null)
         {
             slot.CostText.text = offer == null ? string.Empty : $"${offer.Price}";
+            slot.CostText.color = offer != null && !purchased && !canAfford
+                ? UnaffordableCostColor
+                : Color.white;
         }
     }
 
@@ -930,6 +947,8 @@ public class ShopManager : MonoBehaviour
     private void HandleMoneyChanged(int _)
     {
         RefreshRefreshButton();
+        RefreshSlots();
+        RefreshItemSlots();
     }
 
     private void HandleDeckStateChanged()

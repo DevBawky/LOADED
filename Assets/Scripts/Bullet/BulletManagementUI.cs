@@ -10,6 +10,7 @@ public class BulletManagementUI : MonoBehaviour
     private const int BulletsPerRow = 5;
     private const float TooltipPointerGap = 12f;
     private const float TooltipScreenPadding = 8f;
+    private const string RedCostColorTag = "#FF0000";
 
     [Header("Managers")]
     [SerializeField] private DeckManager deckManager;
@@ -129,6 +130,7 @@ public class BulletManagementUI : MonoBehaviour
 
         GameStatistics.RecordGoldSpent(cost);
         deckManager.RegisterPaidBulletRemoval();
+        SoundManager.PlaySfx("SFX_Bullet_Destroy");
         selectedBullet = null;
         RefreshOwnedBullets();
     }
@@ -156,6 +158,7 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         GameStatistics.RecordGoldSpent(cost);
+        SoundManager.PlaySfx("UI_Upgrade");
         RefreshOwnedBullets();
     }
 
@@ -247,6 +250,7 @@ public class BulletManagementUI : MonoBehaviour
         ApplyIcon(icon, GetPreferredIcon(bullet));
         UnityAction clickAction = () => SelectBullet(bullet);
         button.onClick.AddListener(clickAction);
+        SoundManager.BindUiButtonSfx(button);
         spawnedButtons.Add(button);
         spawnedClickActions.Add(clickAction);
     }
@@ -302,10 +306,11 @@ public class BulletManagementUI : MonoBehaviour
 
         if (removeButtonText != null)
         {
+            removeButtonText.richText = true;
             removeButtonText.text = canManageSelectedBullet
                 && !canRemoveSelectedBullet
                     ? "At least 1 bullet required"
-                    : $"Remove  ${removeCost}";
+                    : $"Remove  {FormatCost(removeCost, currentMoney)}";
         }
 
         if (upgradeButton != null)
@@ -317,10 +322,18 @@ public class BulletManagementUI : MonoBehaviour
 
         if (upgradeButtonText != null)
         {
+            upgradeButtonText.richText = true;
             upgradeButtonText.text = selectedBullet.CanUpgrade
-                ? $"Upgrade  ${selectedBullet.UpgradeCost}"
+                ? $"Upgrade  {FormatCost(selectedBullet.UpgradeCost, currentMoney)}"
                 : "MAX LEVEL";
         }
+    }
+
+    private static string FormatCost(int cost, int currentMoney)
+    {
+        return currentMoney >= cost
+            ? $"${cost}"
+            : $"<color={RedCostColorTag}>${cost}</color>";
     }
 
     private void ClearSelection()
