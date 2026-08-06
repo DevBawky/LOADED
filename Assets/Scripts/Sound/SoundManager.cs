@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -43,6 +44,7 @@ public sealed class SoundManager : MonoBehaviour
     private int lastKnownBgmTimeSamples;
     private StateManager observedStateManager;
     private float nextUiButtonScanTime;
+    private bool webAudioUnlocked = true;
 
     public static SoundManager Instance { get { EnsureInstance(); return instance; } }
 
@@ -60,6 +62,10 @@ public sealed class SoundManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         EnsureClipLibrary();
         EnsureAudioSources();
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // Browsers suspend Web Audio until the page receives a user gesture.
+        webAudioUnlocked = false;
+#endif
     }
 
     private void OnEnable() => SceneManager.sceneLoaded += HandleSceneLoaded;
@@ -71,6 +77,8 @@ public sealed class SoundManager : MonoBehaviour
 
     private void Update()
     {
+        TryUnlockWebAudio();
+
         if (bgmSource != null && clipLibrary != null)
         {
             // Time.timeScale must not alter the authored BGM playback pitch.
@@ -83,7 +91,7 @@ public sealed class SoundManager : MonoBehaviour
         {
             RememberBgmPlaybackPosition();
         }
-        else if (currentPlaylist != null)
+        else if (currentPlaylist != null && CanPlayAudio)
         {
             if (!TryResumeInterruptedBgm()) PlayNextBgm();
         }
@@ -259,7 +267,11 @@ public sealed class SoundManager : MonoBehaviour
         bgmSource.clip = currentPlaylist[nextIndex];
         lastKnownBgmClip = bgmSource.clip;
         lastKnownBgmTimeSamples = 0;
-        bgmSource.Play();
+        RequestAudioData(bgmSource.clip);
+        if (CanPlayAudio && bgmSource.clip.loadState == AudioDataLoadState.Loaded)
+        {
+            bgmSource.Play();
+        }
     }
 
     private void RememberBgmPlaybackPosition()
@@ -275,10 +287,17 @@ public sealed class SoundManager : MonoBehaviour
 
     private bool TryResumeInterruptedBgm()
     {
-        if (bgmSource == null || bgmSource.isPlaying || lastKnownBgmClip == null
+        if (!CanPlayAudio || bgmSource == null || bgmSource.isPlaying
+            || lastKnownBgmClip == null
             || !PlaylistContains(lastKnownBgmClip))
         {
             return false;
+        }
+
+        RequestAudioData(lastKnownBgmClip);
+        if (lastKnownBgmClip.loadState != AudioDataLoadState.Loaded)
+        {
+            return true;
         }
 
         int completionTolerance = Mathf.Max(
@@ -296,6 +315,38 @@ public sealed class SoundManager : MonoBehaviour
             Mathf.Max(0, lastKnownBgmClip.samples - 1));
         bgmSource.Play();
         return true;
+    }
+
+    private bool CanPlayAudio => webAudioUnlocked;
+
+    private void TryUnlockWebAudio()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        if (webAudioUnlocked || !ReceivedAudioUnlockInput()) return;
+
+        webAudioUnlocked = true;
+        AudioListener.pause = false;
+        TryResumeInterruptedBgm();
+#endif
+    }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    private static bool ReceivedAudioUnlockInput()
+    {
+        return Input.anyKeyDown
+            || Input.GetMouseButtonDown(0)
+            || Input.GetMouseButtonDown(1)
+            || Input.GetMouseButtonDown(2)
+            || Input.touchCount > 0;
+    }
+#endif
+
+    private static void RequestAudioData(AudioClip clip)
+    {
+        if (clip != null && clip.loadState == AudioDataLoadState.Unloaded)
+        {
+            clip.LoadAudioData();
+        }
     }
 
     private bool PlaylistContains(AudioClip clip)
@@ -343,6 +394,19 @@ public sealed class SoundManager : MonoBehaviour
         UnityEngine.Audio.AudioMixerGroup mixerGroup = null)
     {
         if (clip == null) return;
+        TryUnlockWebAudio();
+        if (!CanPlayAudio) return;
+        RequestAudioData(clip);
+        if (clip.loadState != AudioDataLoadState.Loaded)
+        {
+            StartCoroutine(PlayOneShotWhenLoaded(
+                clip,
+                pitch,
+                volumeScale,
+                mixerGroup));
+            return;
+        }
+
         AudioSource source = GetAvailableSfxSource();
         source.outputAudioMixerGroup = mixerGroup != null
             ? mixerGroup
@@ -351,6 +415,25 @@ public sealed class SoundManager : MonoBehaviour
         source.volume = sfxVolume;
         source.clip = null;
         source.PlayOneShot(clip, Mathf.Clamp(volumeScale, 0f, 2f));
+    }
+
+    private IEnumerator PlayOneShotWhenLoaded(
+        AudioClip clip,
+        float pitch,
+        float volumeScale,
+        UnityEngine.Audio.AudioMixerGroup mixerGroup)
+    {
+        float deadline = Time.realtimeSinceStartup + 5f;
+        while (clip != null && clip.loadState == AudioDataLoadState.Loading
+            && Time.realtimeSinceStartup < deadline)
+        {
+            yield return null;
+        }
+
+        if (clip != null && clip.loadState == AudioDataLoadState.Loaded)
+        {
+            PlayOneShot(clip, pitch, volumeScale, mixerGroup);
+        }
     }
 
     private AudioSource GetAvailableSfxSource()
