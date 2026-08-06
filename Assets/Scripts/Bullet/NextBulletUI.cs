@@ -145,6 +145,6 @@ public class NextBulletUI : MonoBehaviour
         int count = deckManager == null
             ? 0
             : deckManager.ReloadableBulletCount;
-        return $"장전 가능: {count}";
+        return $"덱 탄환: {count}";
     }
 }
