@@ -90,7 +90,8 @@ public class ActorMotion : MonoBehaviour
         Vector3 impactPosition,
         Vector3 restingPosition,
         float flightDuration,
-        float settleDuration)
+        float settleDuration,
+        System.Action onImpact = null)
     {
         if (actorTransform == null)
         {
@@ -101,6 +102,7 @@ public class ActorMotion : MonoBehaviour
         yield return MoveBetweenPositions(
             impactPosition,
             Mathf.Max(0f, flightDuration));
+        onImpact?.Invoke();
         yield return SettleFromImpact(
             restingPosition,
             Mathf.Max(0f, settleDuration));

@@ -16,9 +16,6 @@ namespace VolFx
         public NoInterpClampedFloatParameter m_Fps        = new NoInterpClampedFloatParameter(16, 0f, 60);
         public ColorParameter                m_Vignette   = new ColorParameter(Color.clear);
         public GrainParameter                m_GrainTex   = new GrainParameter(OldMoviePass.GrainTex.Thin_A, false);
-        public AudioParameter                m_Audio      = new AudioParameter(OldMoviePass.Audio.None, false);
-        public ClampedFloatParameter         m_Volume     = new ClampedFloatParameter(0f, 0f, 1f);
-        public ClampedFloatParameter         m_Pich       = new ClampedFloatParameter(0f, 0f, 2f);
 
         // =======================================================================
         [Serializable]
@@ -31,12 +28,6 @@ namespace VolFx
         public class NoiseParameter : VolumeParameter<OldMoviePass.Noise>
         {
             public NoiseParameter(OldMoviePass.Noise value, bool overrideState) : base(value, overrideState) { }
-        }
-        
-        [Serializable]
-        public class AudioParameter : VolumeParameter<OldMoviePass.Audio>
-        {
-            public AudioParameter(OldMoviePass.Audio value, bool overrideState) : base(value, overrideState) { }
         }
         
         // =======================================================================

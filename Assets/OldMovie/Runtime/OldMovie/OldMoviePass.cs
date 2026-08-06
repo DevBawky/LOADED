@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.Audio;
 using Random = UnityEngine.Random;
 
 //  OldMovieFx © NullTale - https://x.com/NullTale
@@ -31,9 +30,6 @@ namespace VolFx
         [Tooltip("Default frame rate of noise and vignette deviations")]
         public float     _fps = 16;
         
-        [Tooltip("Audio mixer channel for effect Audio")]
-        public AudioMixerGroup _audioChannel;
-        
         private Clip      _noiseClip;
         private Texture2D _noiseTex;
         
@@ -49,9 +45,6 @@ namespace VolFx
         [HideInInspector]
         public Texture2D[] _grains;
         
-        public AduioContent[] _audio;
-        private bool _clearAudio;
-        
         // =======================================================================
         [Serializable]
         public class Clip
@@ -59,21 +52,7 @@ namespace VolFx
             public Texture2D[] _data;
         }
         
-        [Serializable]
-        public class AduioContent
-        {
-            public AudioClip _audio;
-        }
-
         // =======================================================================
-        public enum Audio
-        {
-            None,
-            Soft,
-            Deep,
-            Heavy
-        }
-        
         public enum Noise
         {
             None,
@@ -99,40 +78,6 @@ namespace VolFx
             Thin_B,
         }
 
-        public class AudioOutput : MonoBehaviour
-        {
-            public static AudioOutput Instance
-            {
-                get
-                {
-                    if (s_Instance == null)
-                    {
-                        s_Instance = FindObjectOfType<AudioOutput>();
-                        if (s_Instance == null)
-                        {
-                            var go = new GameObject("OldMovie Audio");
-                            go.hideFlags = HideFlags.HideInInspector | HideFlags.HideInHierarchy | HideFlags.DontSave;
-                            if (Application.isPlaying)
-                                DontDestroyOnLoad(go);
-
-                            s_Instance        = go.AddComponent<AudioOutput>();
-                            
-                            s_Instance._audio = go.AddComponent<AudioSource>();
-                            s_Instance._audio.loop = true;
-                            s_Instance._audio.clip = null;
-                            s_Instance._audio.outputAudioMixerGroup = null;
-                            s_Instance._audio.Play();
-                        }
-                    }
-                    
-                    return s_Instance;
-                }
-            }
-            private static AudioOutput s_Instance;
-            
-            public AudioSource _audio;
-        }
-        
         // =======================================================================
         public override void Init()
         {
@@ -145,15 +90,6 @@ namespace VolFx
 
             if (settings.IsActive() == false)
             {
-                
-                if (_clearAudio)
-                {
-                    var audio = AudioOutput.Instance;
-                    audio._audio.clip                  = null;
-                    audio._audio.outputAudioMixerGroup = null;
-                    _clearAudio = false;
-                }
-                
                 return false;
             }
             
@@ -182,46 +118,10 @@ namespace VolFx
             mat.SetTexture(s_GrainTex, _grainTex);
             mat.SetTexture(s_NoiseTex, _noiseTex);
             
-            // audio works only in play mode os skip it in editor
-            if (Application.isPlaying)
-            {
-                var audio = AudioOutput.Instance;
-                audio._audio.outputAudioMixerGroup = _audioChannel;
-                var audioContent = settings.m_Audio.value switch
-                {
-                    Audio.None  => null,
-                    Audio.Soft  => _audio[0],
-                    Audio.Deep  => _audio[1],
-                    Audio.Heavy => _audio[2],
-                    _           => throw new ArgumentOutOfRangeException()
-                };
-
-                if (audioContent != null)
-                {
-                    audio._audio.clip                  = audioContent._audio;
-                    audio._audio.outputAudioMixerGroup = _audioChannel;
-                    audio._audio.pitch                 = settings.m_Pich.value;
-                    audio._audio.volume                = settings.m_Volume.value;
-                    if (audio._audio.isPlaying == false)
-                        audio._audio.Play();
-                    
-                    _clearAudio                        = true;
-                }
-                else
-                {
-                    if (_clearAudio)
-                    {
-                        audio._audio.clip = null;
-                        audio._audio.outputAudioMixerGroup = null;
-                        _clearAudio                        = false;
-                    }
-                }
-            }
-            
             return true;
         }
 
-        protected override bool _editorValidate => _clips == null || _clips.Length == 0 || _grains == null || _grains.Length == 0 || _grains[0] == null || _clips[1]._data[0] == null || _audio == null || _audio.Length == 0;
+        protected override bool _editorValidate => _clips == null || _clips.Length == 0 || _grains == null || _grains.Length == 0 || _grains[0] == null || _clips[1]._data[0] == null;
 
         protected override void _editorSetup(string folder, string asset)
         {
@@ -237,23 +137,11 @@ namespace VolFx
                      .Append(new Clip(){_data = texFrom($"{folder}{sep}Noise{sep}E")})
                      .ToArray();
             
-            _audio = audionFrom($"{folder}\\Audio")
-                     .Select(n => new AduioContent(){ _audio = n })
-                     .ToArray();
-            
-
             // -----------------------------------------------------------------------
             Texture2D[] texFrom(string path)
             {
                 return UnityEditor.AssetDatabase.FindAssets("t:texture", new string[] {path})
                                   .Select(n => UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(UnityEditor.AssetDatabase.GUIDToAssetPath(n)))
-                                  .Where(n => n != null)
-                                  .ToArray();
-            }
-            AudioClip[] audionFrom(string path)
-            {
-                return UnityEditor.AssetDatabase.FindAssets("t:audioclip", new string[] {path})
-                                  .Select(n => UnityEditor.AssetDatabase.LoadAssetAtPath<AudioClip>(UnityEditor.AssetDatabase.GUIDToAssetPath(n)))
                                   .Where(n => n != null)
                                   .ToArray();
             }

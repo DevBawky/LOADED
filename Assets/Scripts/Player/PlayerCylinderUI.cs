@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class PlayerCylinderUI : MonoBehaviour
@@ -101,6 +102,20 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (isDraggingBullet
+            && (draggedBulletImage == null
+                || !draggedBulletImage.gameObject.activeInHierarchy
+                || cylinderTransform == null
+                || !cylinderTransform.gameObject.activeInHierarchy
+                || Mouse.current == null
+                || !Mouse.current.leftButton.isPressed))
+        {
+            // IEndDrag is not sent when the cylinder or its parent panel is
+            // disabled mid-drag (for example while entering the shop).
+            // Clear the stale state so every tooltip is not suppressed.
+            CancelBulletDragImmediately();
+        }
+
         if (cylinderTransform != null
             && cylinderTransform.gameObject.activeInHierarchy)
         {

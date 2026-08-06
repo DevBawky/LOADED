@@ -241,6 +241,7 @@ public class BossBombManager : MonoBehaviour
             EnemyData sourceData = bomb.SourceData;
             int centerTile = bomb.TileIndex;
             int radius = sourceData.BigBarrel.BombExplosionRadius;
+            SoundManager.PlaySfx("SFX_BigBarrel_Bomb");
             QueueChainBombs(centerTile, radius, bomb);
             ApplyExplosionDamage(sourceData, centerTile, radius);
             RemoveBomb(bomb);

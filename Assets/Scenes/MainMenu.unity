@@ -4015,7 +4015,7 @@ VideoPlayer:
   m_DataSource: 0
   m_TimeUpdateMode: 2
   m_PlaybackSpeed: 1
-  m_AudioOutputMode: 2
+  m_AudioOutputMode: 0
   m_TargetAudioSources:
   - {fileID: 0}
   m_DirectAudioVolumes:
@@ -4048,7 +4048,6 @@ MonoBehaviour:
   buttonsCanvasGroup: {fileID: 1572629040}
   buttonsFadeOutDuration: 0.5
   gameSceneName: Stage 1
-  muteAudioOnWeb: 1
 --- !u!1 &926998720
 GameObject:
   m_ObjectHideFlags: 0

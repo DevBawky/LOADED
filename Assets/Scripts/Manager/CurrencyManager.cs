@@ -62,6 +62,7 @@ public class CurrencyManager : MonoBehaviour
             return false;
         }
 
+        SoundManager.PlaySfx("SFX_GainGold");
         CommitMoney(amount);
         return true;
     }
@@ -73,6 +74,7 @@ public class CurrencyManager : MonoBehaviour
             return false;
         }
 
+        SoundManager.PlaySfx("SFX_GainGold");
         BindPresentation();
 
         if (flyingGoldPrefab == null || moneyPanel == null

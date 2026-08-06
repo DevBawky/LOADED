@@ -192,6 +192,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2221169966588496682}
   - component: {fileID: 3420767442417118921}
+  - component: {fileID: 800000000000000001}
   m_Layer: 0
   m_Name: Avatar_Thief
   m_TagString: Untagged
@@ -240,6 +241,18 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &800000000000000001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1233976601806711513}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8db67078101f4d2fb27b1513aa1c9552, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
 --- !u!1 &1676641555267903466
 GameObject:
   m_ObjectHideFlags: 0

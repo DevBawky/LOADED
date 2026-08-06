@@ -6,7 +6,6 @@ using UnityEngine.Video;
 public sealed class StreamingVideoPlayer : MonoBehaviour
 {
     [SerializeField] private string streamingAssetsRelativePath;
-    [SerializeField] private bool muteAudioOnWeb = true;
 
     private VideoPlayer videoPlayer;
     private bool playWhenPrepared;
@@ -17,15 +16,9 @@ public sealed class StreamingVideoPlayer : MonoBehaviour
         playWhenPrepared = videoPlayer.playOnAwake;
 
         videoPlayer.playOnAwake = false;
+        videoPlayer.audioOutputMode = VideoAudioOutputMode.None;
         videoPlayer.prepareCompleted += HandlePrepared;
         videoPlayer.errorReceived += HandleError;
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-        if (muteAudioOnWeb)
-        {
-            videoPlayer.audioOutputMode = VideoAudioOutputMode.None;
-        }
-#endif
 
         videoPlayer.Stop();
         videoPlayer.clip = null;

@@ -40,6 +40,7 @@ public class ShopVideoController : MonoBehaviour
         {
             videoPlayer.playOnAwake = false;
             videoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
+            videoPlayer.audioOutputMode = VideoAudioOutputMode.None;
         }
     }
 

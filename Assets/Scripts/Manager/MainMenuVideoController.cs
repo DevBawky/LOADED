@@ -24,7 +24,6 @@ public sealed class MainMenuVideoController : MonoBehaviour
     [Min(0.01f)]
     [SerializeField] private float buttonsFadeOutDuration = 0.5f;
     [SerializeField] private string gameSceneName = "Stage 1";
-    [SerializeField] private bool muteAudioOnWeb = true;
 
     private VideoPlayer videoPlayer;
     private PlaybackState playbackState;
@@ -39,13 +38,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
         videoPlayer = GetComponent<VideoPlayer>();
         videoPlayer.playOnAwake = false;
         videoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-        if (muteAudioOnWeb)
-        {
-            videoPlayer.audioOutputMode = VideoAudioOutputMode.None;
-        }
-#endif
+        videoPlayer.audioOutputMode = VideoAudioOutputMode.None;
     }
 
     private void OnEnable()
