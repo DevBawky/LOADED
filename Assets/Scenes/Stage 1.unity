@@ -278,7 +278,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
   - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
   - {fileID: 11400000, guid: 295f6ef7203e5d5409755daab22d5b83, type: 2}
-  - {fileID: 11400000, guid: 4f332e9f124cc0b4b8e94b7c6a586714, type: 2}
+  - {fileID: 11400000, guid: c2010000000000000000000000000005, type: 2}
   maxReloadAmount: 6
   deck: []
   loadedBullets: []
@@ -442,6 +442,8 @@ GameObject:
   - component: {fileID: 519420030}
   - component: {fileID: 519420033}
   - component: {fileID: 519420034}
+  - component: {fileID: 519420039}
+  - component: {fileID: 519420040}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -695,6 +697,38 @@ MonoBehaviour:
     RotationDamping: {x: 1, y: 1, z: 1}
     QuaternionDamping: 1
   FollowOffset: {x: 0, y: 1, z: -10}
+--- !u!114 &519420039
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45ee63d7761d4cf488b1fd8465a2482b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OrthographicCameraRectConfiner
+  targetCamera: {fileID: 519420031}
+  boundsRect: {fileID: 2069491183}
+  padding: 0
+  confineHorizontal: 1
+  confineVertical: 1
+--- !u!114 &519420040
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 519420028}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f2a1c603c3849cdb2764783ff151fc8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CombatCameraShake
+  attackRatio: 0.1
+  rotationReturnRatio: 0.6
+  noiseFrequency: 1
 --- !u!1 &556220748 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5119801171180425293, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
@@ -1767,8 +1801,32 @@ PrefabInstance:
       value: 1.5
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: kickSlowMotionHold
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: killComboTextScale
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: cameraShakeDuration
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: cameraShakeStrength
+      value: 0.8
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: kickSlowMotionScale
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: killShakeMultiplier
+      value: 0.9
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: killSlowMotionScale
+      value: 0.1
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: highComboTextColor.b
@@ -1799,11 +1857,19 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
-      propertyPath: maximumDamageShakeDuration
-      value: 1
+      propertyPath: criticalSlowMotionScale
+      value: 0.4
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
-      propertyPath: maximumDamageShakeStrength
+      propertyPath: devastatingSlowMotionScale
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: laterComboKillShakeMultiplier
+      value: 1.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: secondComboKillShakeMultiplier
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}

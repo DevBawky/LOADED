@@ -1269,7 +1269,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             }
         }
 
-        CombatCameraShake.Play(enemyData.BigBarrel.BossHitCameraShake);
 
         if (action != null && action.AttackData != null)
         {

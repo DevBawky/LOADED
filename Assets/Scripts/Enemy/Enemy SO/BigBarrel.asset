@@ -81,5 +81,3 @@ MonoBehaviour:
     bombArcHeight: 2
     bombTelegraphMaterial: {fileID: 2100000, guid: 2a5802554d894229a660bb78a851c43a, type: 2}
     shotgunTelegraphMaterial: {fileID: 2100000, guid: 2bf3800206664361ab696b8d29eaf021, type: 2}
-    explosionCameraShake: 0.2
-    bossHitCameraShake: 0.12

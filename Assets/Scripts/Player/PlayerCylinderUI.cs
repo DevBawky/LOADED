@@ -1044,8 +1044,8 @@ public class PlayerCylinderUI : MonoBehaviour
         effect = GetEffect(bullet, BulletEffectType.Crescendo);
 
         if (effect != null && effect.Amount > 0f
-            && playerShoot != null
-            && playerShoot.CriticalShotsThisCylinder > 0)
+            && deckManager.TotalBulletCount
+                < DeckManager.MaximumOwnedBulletCount)
         {
             return true;
         }

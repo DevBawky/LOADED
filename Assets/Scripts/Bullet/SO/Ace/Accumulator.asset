@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Accumulator
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_accumulator
-  displayName: "\uCD95\uC804\uD0C4"
+  displayName: "\uCD95\uC804\uAE30"
   description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
     \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
     +20%, \uBC1C\uC0AC \uD6C4 50%\uB97C \uBCF4\uC874\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34

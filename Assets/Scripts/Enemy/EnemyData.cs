@@ -26,8 +26,6 @@ public class BigBarrelSettings
     [Min(0f)] [SerializeField] private float bombArcHeight = 2f;
     [SerializeField] private Material bombTelegraphMaterial;
     [SerializeField] private Material shotgunTelegraphMaterial;
-    [Min(0f)] [SerializeField] private float explosionCameraShake = 0.2f;
-    [Min(0f)] [SerializeField] private float bossHitCameraShake = 0.12f;
 
     public float PhaseTwoHealthRatio => Mathf.Clamp01(phaseTwoHealthRatio);
     public int BombDamage => Mathf.Max(1, bombDamage);
@@ -42,8 +40,6 @@ public class BigBarrelSettings
     public float BombArcHeight => Mathf.Max(0f, bombArcHeight);
     public Material BombTelegraphMaterial => bombTelegraphMaterial;
     public Material ShotgunTelegraphMaterial => shotgunTelegraphMaterial;
-    public float ExplosionCameraShake => Mathf.Max(0f, explosionCameraShake);
-    public float BossHitCameraShake => Mathf.Max(0f, bossHitCameraShake);
     public float ConfiguredPhaseTwoHealthRatio => phaseTwoHealthRatio;
     public int ConfiguredBombDamage => bombDamage;
     public int ConfiguredBombExplosionRadius => bombExplosionRadius;
@@ -63,8 +59,6 @@ public class BigBarrelSettings
             3);
         shotgunDamage = Mathf.Max(1, shotgunDamage);
         bombArcHeight = Mathf.Max(0f, bombArcHeight);
-        explosionCameraShake = Mathf.Max(0f, explosionCameraShake);
-        bossHitCameraShake = Mathf.Max(0f, bossHitCameraShake);
     }
 }
 

@@ -78,5 +78,3 @@ MonoBehaviour:
     bombArcHeight: 2
     bombTelegraphMaterial: {fileID: 0}
     shotgunTelegraphMaterial: {fileID: 0}
-    explosionCameraShake: 0.2
-    bossHitCameraShake: 0.12

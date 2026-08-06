@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_crescendo
   displayName: "\uACE0\uC870\uD0C4"
-  description: "앞서 발생한 치명타 하나당 최종대미지 +15%"
+  description: "\uAE30\uBCF8 \uB300\uBBF8\uC9C0 - \uBCF4\uC720 \uD0C4\uD658 \uC218
+    \xD7 1.8"
   cylinderIcon: {fileID: -2972723935435730105, guid: 43ae68553f5a1b346b45a82ee1119f64, type: 3}
   price: 6
   grade: 1
@@ -23,7 +24,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
-  damage: 30
+  damage: 50
   maxRange: 4
   criticalChance: 25
   criticalDamageMultiplier: 1.8
@@ -33,7 +34,7 @@ MonoBehaviour:
     activationChance: 100
     stackCount: 1
     knockbackDistance: 1
-    amount: 15
+    amount: 1.8
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -43,8 +44,9 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "앞서 발생한 치명타 하나당 최종대미지 +20%"
-    damage: 35
+  - description: "\uAE30\uBCF8 \uB300\uBBF8\uC9C0 - \uBCF4\uC720 \uD0C4\uD658 \uC218
+      \xD7 1.5"
+    damage: 60
     maxRange: 4
     criticalChance: 28
     criticalDamageMultiplier: 1.9
@@ -54,7 +56,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 20
+      amount: 1.5
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -63,8 +65,9 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "앞서 발생한 치명타 하나당 최종대미지 +25%\n관통 1회 (50%)"
-    damage: 40
+  - description: "\uAE30\uBCF8 \uB300\uBBF8\uC9C0 - \uBCF4\uC720 \uD0C4\uD658 \uC218
+      \xD7 1.2\n\uAD00\uD1B5 1\uD68C(50%)"
+    damage: 70
     maxRange: 5
     criticalChance: 32
     criticalDamageMultiplier: 2.1
@@ -74,7 +77,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 25
+      amount: 1.2
     conditionalEvents: []
     penetrationChances:
     - chance: 50
@@ -84,8 +87,9 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "앞서 발생한 치명타 하나당 최종대미지 +35%\n관통 최대 2회 (각 50%)"
-    damage: 50
+  - description: "\uAE30\uBCF8 \uB300\uBBF8\uC9C0 - \uBCF4\uC720 \uD0C4\uD658 \uC218
+      \xD7 1\n\uAD00\uD1B5 \uCD5C\uB300 2\uD68C(\uAC01 50%)"
+    damage: 100
     maxRange: 5
     criticalChance: 38
     criticalDamageMultiplier: 2.3
@@ -95,7 +99,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 35
+      amount: 1
     conditionalEvents: []
     penetrationChances:
     - chance: 50

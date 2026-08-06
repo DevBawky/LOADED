@@ -310,7 +310,6 @@ public class BossBombManager : MonoBehaviour
             }
         }
 
-        CombatCameraShake.Play(settings.ExplosionCameraShake);
     }
 
     private void RemoveBomb(BossBomb bomb)

@@ -95,28 +95,33 @@ public sealed class CombatAccessibilitySettings : MonoBehaviour
         reduceParticleDensity = value;
 }
 
-[DefaultExecutionOrder(10000)]
+[DefaultExecutionOrder(12000)]
 public sealed class CombatCameraShake : MonoBehaviour
 {
     private const float DefaultDuration = 0.18f;
-    private const float MinimumNoiseFrequency = 1.2f;
+    private const float StrengthComparisonTolerance = 0.0001f;
 
-    [Header("Guaranteed Smooth Return")]
-    [Min(0.1f)]
-    [SerializeField] private float minimumReturnDuration = 0.35f;
-    [Min(2)]
-    [SerializeField] private int minimumReturnFrameCount = 12;
+    [Header("Unified Shake Envelope")]
+    [Range(0f, 0.5f)]
+    [SerializeField] private float attackRatio = 0.12f;
+    [Range(0.1f, 1f)]
+    [SerializeField] private float rotationReturnRatio = 0.45f;
+    [Min(0f)]
+    [SerializeField] private float noiseFrequency = 1.2f;
 
     private static CombatCameraShake instance;
     private Coroutine shakeRoutine;
     private Vector3 baseLocalPosition;
+    private Quaternion baseLocalRotation;
     private CinemachineBasicMultiChannelPerlin cinemachineNoise;
     private float baseNoiseAmplitude;
     private float baseNoiseFrequency;
     private bool noiseBaseCaptured;
-    private bool isRotationReturning;
-    private Quaternion rotationReturnStart = Quaternion.identity;
-    private float rotationReturnProgress;
+    private float activeStrength;
+    private float activeDuration;
+    private float elapsed;
+    private float startingStrength;
+    private float noiseSeed;
 
     public static void Play(float strength)
     {
@@ -125,42 +130,10 @@ public sealed class CombatCameraShake : MonoBehaviour
 
     public static void Play(float strength, float duration)
     {
-        PlayInternal(
-            strength,
-            duration,
-            duration,
-            MinimumNoiseFrequency,
-            true,
-            true);
-    }
-
-    public static void PlayBulletRecoil(
-        float strength,
-        float attackDuration,
-        float recoveryDuration,
-        float frequency)
-    {
-        PlayInternal(
-            strength,
-            Mathf.Max(0f, attackDuration),
-            Mathf.Max(0f, recoveryDuration),
-            Mathf.Max(0f, frequency),
-            false,
-            false);
-    }
-
-    private static void PlayInternal(
-        float strength,
-        float shakeDuration,
-        float returnDuration,
-        float frequency,
-        bool startAtFullStrength,
-        bool decayDuringShake)
-    {
         strength *= CombatAccessibilitySettings.CameraShakeMultiplier;
 
         if (strength <= 0f
-            || shakeDuration <= 0f && returnDuration <= 0f
+            || duration <= 0f
             || Camera.main == null)
         {
             return;
@@ -176,212 +149,152 @@ public sealed class CombatCameraShake : MonoBehaviour
             instance = Camera.main.gameObject.AddComponent<CombatCameraShake>();
         }
 
-        instance.StartShake(
-            strength,
-            shakeDuration,
-            returnDuration,
-            frequency,
-            startAtFullStrength,
-            decayDuringShake);
+        instance.RequestShake(strength, duration);
     }
 
     private void Awake()
     {
         instance = this;
         baseLocalPosition = transform.localPosition;
+        baseLocalRotation = Quaternion.identity;
         BindCinemachineNoise();
 
         if (cinemachineNoise == null)
         {
-            transform.localRotation = Quaternion.identity;
+            transform.localRotation = baseLocalRotation;
         }
     }
 
-    private void StartShake(
-        float strength,
-        float shakeDuration,
-        float returnDuration,
-        float frequency,
-        bool startAtFullStrength,
-        bool decayDuringShake)
+    private void RequestShake(float strength, float duration)
     {
-        if (shakeRoutine != null)
-        {
-            StopCoroutine(shakeRoutine);
-            shakeRoutine = null;
-        }
-
-        isRotationReturning = false;
-
-        BindCinemachineNoise();
-
-        if (cinemachineNoise != null && startAtFullStrength)
-        {
-            cinemachineNoise.AmplitudeGain = Mathf.Max(
-                cinemachineNoise.AmplitudeGain,
-                baseNoiseAmplitude + strength);
-            cinemachineNoise.FrequencyGain = Mathf.Max(
-                baseNoiseFrequency,
-                frequency);
-        }
-
-        shakeRoutine = StartCoroutine(ShakeRoutine(
-            strength,
-            shakeDuration,
-            returnDuration,
-            frequency,
-            decayDuringShake));
-    }
-
-    private IEnumerator ShakeRoutine(
-        float strength,
-        float requestedShakeDuration,
-        float requestedReturnDuration,
-        float frequency,
-        bool decayDuringShake)
-    {
-        const float returnStartStrengthRatio = 0.2f;
-        float shakeDuration = requestedShakeDuration;
-        float returnDuration = Mathf.Max(
-            requestedReturnDuration,
-            minimumReturnDuration);
-        int requiredReturnFrames = Mathf.Max(2, minimumReturnFrameCount);
-        float startingAmplitude = cinemachineNoise == null
-            ? 0f
-            : cinemachineNoise.AmplitudeGain;
-        Vector3 startingFallbackOffset = transform.localPosition
-            - baseLocalPosition;
-        float noiseSeed = Random.Range(0f, 1000f);
-        float elapsed = 0f;
-
-        while (elapsed < shakeDuration)
-        {
-            yield return null;
-
-            if (GamePauseController.IsPaused)
-            {
-                continue;
-            }
-
-            elapsed += Time.unscaledDeltaTime;
-            float progress = shakeDuration <= 0f
-                ? 1f
-                : Mathf.Clamp01(elapsed / shakeDuration);
-            float fade = decayDuringShake
-                ? Mathf.Lerp(
-                    1f,
-                    returnStartStrengthRatio,
-                    Mathf.SmoothStep(0f, 1f, progress))
-                : 1f;
-            float attack = Mathf.SmoothStep(0f, 1f, progress);
-
-            if (cinemachineNoise != null)
-            {
-                cinemachineNoise.AmplitudeGain = Mathf.Lerp(
-                    startingAmplitude,
-                    baseNoiseAmplitude + strength * fade,
-                    attack);
-                cinemachineNoise.FrequencyGain = Mathf.Max(
-                    baseNoiseFrequency,
-                    frequency);
-            }
-            else
-            {
-                float sampleTime = elapsed * 18f;
-                float offsetX = Mathf.PerlinNoise(noiseSeed, sampleTime) * 2f - 1f;
-                float offsetY = Mathf.PerlinNoise(noiseSeed + 37.1f, sampleTime) * 2f - 1f;
-                Vector3 noiseOffset = new Vector3(offsetX, offsetY, 0f)
-                    * strength * fade;
-                transform.localPosition = baseLocalPosition
-                    + Vector3.Lerp(startingFallbackOffset, noiseOffset, attack);
-            }
-        }
-
-        Vector3 returnStartPosition = transform.localPosition;
-        Quaternion returnStartRotation = transform.localRotation;
-        float returnStartAmplitude = cinemachineNoise == null
-            ? 0f
-            : cinemachineNoise.AmplitudeGain;
-
-        if (cinemachineNoise != null)
-        {
-            cinemachineNoise.FrequencyGain = 0f;
-            rotationReturnStart = returnStartRotation;
-            rotationReturnProgress = 0f;
-            isRotationReturning = true;
-        }
-
-        elapsed = 0f;
-        int returnFrameCount = 0;
-
-        while (elapsed < returnDuration
-               || returnFrameCount < requiredReturnFrames)
-        {
-            yield return null;
-
-            if (GamePauseController.IsPaused)
-            {
-                continue;
-            }
-
-            elapsed += Time.unscaledDeltaTime;
-            returnFrameCount++;
-            float timeProgress = returnDuration <= 0f
-                ? 1f
-                : Mathf.Clamp01(elapsed / returnDuration);
-            float frameProgress = Mathf.Clamp01(
-                (float)returnFrameCount / requiredReturnFrames);
-            float progress = Mathf.Min(timeProgress, frameProgress);
-            float eased = Mathf.SmoothStep(0f, 1f, progress);
-            rotationReturnProgress = eased;
-            if (cinemachineNoise != null)
-            {
-                cinemachineNoise.AmplitudeGain = Mathf.Lerp(
-                    returnStartAmplitude,
-                    baseNoiseAmplitude,
-                    eased);
-            }
-            else
-            {
-                transform.localPosition = Vector3.Lerp(
-                    returnStartPosition,
-                    baseLocalPosition,
-                    eased);
-                transform.localRotation = Quaternion.Lerp(
-                    returnStartRotation,
-                    Quaternion.identity,
-                    eased);
-            }
-        }
-
-        RestoreCameraTransform();
-        shakeRoutine = null;
-    }
-
-    private void LateUpdate()
-    {
-        if (!isRotationReturning)
+        bool isActive = shakeRoutine != null;
+        if (isActive
+            && strength < activeStrength - StrengthComparisonTolerance)
         {
             return;
         }
 
-        transform.localRotation = Quaternion.Slerp(
-            rotationReturnStart,
-            Quaternion.identity,
-            rotationReturnProgress);
+        BindCinemachineNoise();
+        startingStrength = GetCurrentAppliedStrength();
+        activeStrength = Mathf.Max(activeStrength, strength);
+        activeDuration = duration;
+        elapsed = 0f;
 
-        if (rotationReturnProgress >= 1f)
+        if (!isActive)
         {
-            transform.localRotation = Quaternion.identity;
-            isRotationReturning = false;
+            noiseSeed = Random.Range(0f, 1000f);
+            shakeRoutine = StartCoroutine(ShakeRoutine());
         }
+    }
+
+    private IEnumerator ShakeRoutine()
+    {
+        while (elapsed < activeDuration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            float progress = activeDuration <= 0f
+                ? 1f
+                : Mathf.Clamp01(elapsed / activeDuration);
+            ApplyStrength(EvaluateEnvelope(progress));
+        }
+
+        RestoreCameraTransform();
+        activeStrength = 0f;
+        activeDuration = 0f;
+        elapsed = 0f;
+        startingStrength = 0f;
+        shakeRoutine = null;
+    }
+
+    private float EvaluateEnvelope(float progress)
+    {
+        float clampedAttackRatio = Mathf.Clamp(attackRatio, 0f, 0.5f);
+        if (clampedAttackRatio > 0f && progress < clampedAttackRatio)
+        {
+            float attackProgress = Mathf.SmoothStep(
+                0f,
+                1f,
+                progress / clampedAttackRatio);
+            return Mathf.Lerp(
+                startingStrength,
+                activeStrength,
+                attackProgress);
+        }
+
+        float releaseProgress = clampedAttackRatio >= 1f
+            ? 1f
+            : Mathf.InverseLerp(clampedAttackRatio, 1f, progress);
+        return activeStrength
+            * (1f - Mathf.SmoothStep(0f, 1f, releaseProgress));
+    }
+
+    private void ApplyStrength(float strength)
+    {
+        if (cinemachineNoise != null)
+        {
+            cinemachineNoise.AmplitudeGain = baseNoiseAmplitude + strength;
+            cinemachineNoise.FrequencyGain = Mathf.Max(0f, noiseFrequency);
+            return;
+        }
+
+        float sampleTime = Time.unscaledTime * 18f;
+        float offsetX = Mathf.PerlinNoise(noiseSeed, sampleTime) * 2f - 1f;
+        float offsetY = Mathf.PerlinNoise(noiseSeed + 37.1f, sampleTime) * 2f - 1f;
+        transform.localPosition = baseLocalPosition
+            + new Vector3(offsetX, offsetY, 0f) * strength;
+    }
+
+    private float GetCurrentAppliedStrength()
+    {
+        if (cinemachineNoise != null && noiseBaseCaptured)
+        {
+            return Mathf.Max(
+                0f,
+                cinemachineNoise.AmplitudeGain - baseNoiseAmplitude);
+        }
+
+        return Vector3.Distance(transform.localPosition, baseLocalPosition);
+    }
+
+    private void LateUpdate()
+    {
+        if (shakeRoutine == null)
+        {
+            transform.localRotation = baseLocalRotation;
+            return;
+        }
+
+        float progress = activeDuration <= 0f
+            ? 1f
+            : Mathf.Clamp01(elapsed / activeDuration);
+        float returnStart = 1f - Mathf.Clamp01(rotationReturnRatio);
+        if (progress <= returnStart)
+        {
+            return;
+        }
+
+        float returnProgress = Mathf.InverseLerp(
+            returnStart,
+            1f,
+            progress);
+        transform.localRotation = Quaternion.Slerp(
+            transform.localRotation,
+            baseLocalRotation,
+            Mathf.SmoothStep(0f, 1f, returnProgress));
     }
 
     private void OnDisable()
     {
-        isRotationReturning = false;
         RestoreCameraTransform();
         shakeRoutine = null;
+        activeStrength = 0f;
 
         if (instance == this)
         {
@@ -399,8 +312,9 @@ public sealed class CombatCameraShake : MonoBehaviour
         else
         {
             transform.localPosition = baseLocalPosition;
-            transform.localRotation = Quaternion.identity;
         }
+
+        transform.localRotation = baseLocalRotation;
     }
 
     private void BindCinemachineNoise()
