@@ -947,7 +947,7 @@ public class ShopManager : MonoBehaviour
 
         int bulletCount = deckManager == null
             ? 0
-            : deckManager.OwnedBulletCount;
+            : deckManager.TotalBulletCount;
         myBulletCountText.text = $"탄환 보유 개수: {bulletCount}/"
             + DeckManager.MaximumOwnedBulletCount;
     }

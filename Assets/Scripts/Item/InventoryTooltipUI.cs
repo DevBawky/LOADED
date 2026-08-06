@@ -279,7 +279,6 @@ public class InventoryTooltipUI : MonoBehaviour
         itemDescriptionText.text = TooltipTextFormatter.Format(description);
         ApplyIcon(itemIcon, item.Icon);
         tooltip.gameObject.SetActive(true);
-        tooltip.SetAsLastSibling();
         PositionInsideScreen(tooltip, pointerPosition, pointerAnchor);
     }
 
@@ -337,7 +336,6 @@ public class InventoryTooltipUI : MonoBehaviour
         ApplyIcon(bulletIcon, null);
         ApplyIcon(bulletCylinderIcon, bullet.CylinderIcon);
         bulletTooltip.gameObject.SetActive(true);
-        bulletTooltip.SetAsLastSibling();
         PositionInsideScreen(bulletTooltip, pointerPosition, pointerAnchor);
     }
 
@@ -373,7 +371,6 @@ public class InventoryTooltipUI : MonoBehaviour
         cylinderBulletDescriptionText.text = bullet.GetDetailedDescription(
             CreateBulletTooltipContext());
         cylinderBulletTooltip.gameObject.SetActive(true);
-        cylinderBulletTooltip.SetAsLastSibling();
         PositionInsideScreen(
             cylinderBulletTooltip,
             pointerPosition,

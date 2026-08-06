@@ -304,7 +304,7 @@ public class BulletManagementUI : MonoBehaviour
         {
             removeButtonText.text = canManageSelectedBullet
                 && !canRemoveSelectedBullet
-                    ? $"Minimum {DeckManager.MinimumOwnedBulletCount} Bullets"
+                    ? "At least 1 bullet required"
                     : $"Remove  ${removeCost}";
         }
 
@@ -477,9 +477,13 @@ public class BulletManagementUI : MonoBehaviour
             "Layout | Current Bullets",
             manageBulletsPanel);
 
-        if (bulletRows == null || bulletRows.Length == 0)
+        RectTransform[] discoveredRows = FindDirectChildren(
+            currentBullets,
+            "Layout | ");
+
+        if (discoveredRows.Length > 0)
         {
-            bulletRows = FindDirectChildren(currentBullets, "Layout | ");
+            bulletRows = discoveredRows;
         }
 
         SortBulletRows(bulletRows);
@@ -551,7 +555,6 @@ public class BulletManagementUI : MonoBehaviour
         upgradeTooltipDescriptionText.text =
             selectedBullet.Data.GetDetailedDescription(nextLevel);
         upgradeTooltip.gameObject.SetActive(true);
-        upgradeTooltip.SetAsLastSibling();
         PositionUpgradeTooltip(mouse.position.ReadValue());
     }
 

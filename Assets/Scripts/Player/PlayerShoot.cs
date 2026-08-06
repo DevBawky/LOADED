@@ -771,8 +771,10 @@ public class PlayerShoot : MonoBehaviour
         currentConsumedBullet = null;
         reservedDamageByEnemy.Clear();
         waveManager?.NotifyFiringSequenceCompleted();
+        deckManager.CompleteFiringSequence();
 
         if (shouldCompleteTurn
+            && deckManager.TotalBulletCount > 0
             && (waveManager == null || !waveManager.IsBattleCompleted))
         {
             playerMove.CompleteTurn();
