@@ -247,11 +247,17 @@ public class BulletEffectData
     [Tooltip("Poison, Stun, Mark, and Weakness stack count. Poison deals damage equal to its current stacks each turn, then loses 1 stack. Ignored by other effects.")]
     [SerializeField] private int stackCount = 1;
     [Min(1)]
-    [Tooltip("Maximum travel tiles for Knockback. Has no effect on Poison or other effect types.")]
+    [Tooltip("Maximum travel tiles for Knockback, or transfer tiles for WallImpact (clamped to 1-3).")]
     [SerializeField] private int knockbackDistance = 1;
     [Min(0f)]
     [Tooltip("Numeric value used by effects. Special bullets use this as a multiplier or percentage depending on their effect type.")]
     [SerializeField] private float amount = 1f;
+    [Range(0f, 100f)]
+    [Tooltip("Damage percentage transferred to an enemy 2 tiles behind the primary WallImpact target.")]
+    [SerializeField] private float secondTransferPercent;
+    [Range(0f, 100f)]
+    [Tooltip("Damage percentage transferred to an enemy 3 tiles behind the primary WallImpact target.")]
+    [SerializeField] private float thirdTransferPercent;
 
     public BulletEffectType EffectType => effectType;
     public BulletEffectTarget Target => target;
@@ -259,6 +265,12 @@ public class BulletEffectData
     public int StackCount => stackCount;
     public int KnockbackDistance => knockbackDistance;
     public float Amount => Mathf.Max(0f, amount);
+    public float SecondTransferPercent => Mathf.Max(
+        0f,
+        secondTransferPercent);
+    public float ThirdTransferPercent => Mathf.Max(
+        0f,
+        thirdTransferPercent);
 
     public BulletEffectData()
     {
@@ -277,6 +289,8 @@ public class BulletEffectData
         stackCount = source.stackCount;
         knockbackDistance = source.knockbackDistance;
         amount = source.amount;
+        secondTransferPercent = source.secondTransferPercent;
+        thirdTransferPercent = source.thirdTransferPercent;
     }
 
     public bool RollActivation()
@@ -549,15 +563,22 @@ public class BulletData : ScriptableObject
         int currentDamage = Mathf.Max(
             0,
             Mathf.RoundToInt(baseDamage * runtimeStats.DamageMultiplier));
-        int bonusDamage = Mathf.Max(0, currentDamage - baseDamage);
+        int damageDifference = currentDamage - baseDamage;
 
         builder.Append("대미지: ")
             .Append(baseDamage);
 
-        if (bonusDamage > 0)
+        if (damageDifference > 0)
         {
             builder.Append(" <color=#67E480>(+ ")
-                .Append(bonusDamage)
+                .Append(damageDifference)
+                .Append(")</color> = ")
+                .Append(currentDamage);
+        }
+        else if (damageDifference < 0)
+        {
+            builder.Append(" <color=#FF8066>(- ")
+                .Append(-damageDifference)
                 .Append(")</color> = ")
                 .Append(currentDamage);
         }

@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Amplifier
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_amplifier
-  displayName: "\uC99D\uD3ED\uD0C4"
-  description: "상태이상 스택 x2 (65%)"
+  displayName: "\uC5D0\uB108\uC9C0 \uC99D\uD3ED"
+  description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x2 (65%)"
   cylinderIcon: {fileID: 2641190778768216385, guid: 2c63fd166474af84597b03192c176150, type: 3}
   price: 10
   grade: 2
@@ -43,7 +43,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "상태이상 스택 x2 (80%)"
+  - description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x2 (80%)"
     damage: 14
     maxRange: 4
     criticalChance: 24
@@ -63,7 +63,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "상태이상 스택 x3\n표식 +2"
+  - description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x3\n\uD45C\uC2DD +2"
     damage: 18
     maxRange: 5
     criticalChance: 28
@@ -89,7 +89,8 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "상태이상 스택 x3\n표식 +5\n약화 +2\n재장전 시 턴을 소모하지 않습니다."
+  - description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x3\n\uD45C\uC2DD +5\n\uC57D\uD654
+      +2\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 24
     maxRange: 5
     criticalChance: 35

@@ -182,9 +182,24 @@ public sealed class CombatCameraShake : MonoBehaviour
 
         if (!isActive)
         {
-            noiseSeed = Random.Range(0f, 1000f);
+            ReseedShakePattern();
             shakeRoutine = StartCoroutine(ShakeRoutine());
         }
+    }
+
+    private void ReseedShakePattern()
+    {
+        if (cinemachineNoise != null)
+        {
+            // Give each independent shake sequence a fresh, unbiased X/Y
+            // phase. Never reseed while a shake is already visible: changing
+            // the phase at non-zero amplitude causes a one-sided camera jump,
+            // especially when a defeat shake strengthens the shot shake.
+            cinemachineNoise.ReSeed();
+            return;
+        }
+
+        noiseSeed = Random.Range(0f, 1000f);
     }
 
     private IEnumerator ShakeRoutine()

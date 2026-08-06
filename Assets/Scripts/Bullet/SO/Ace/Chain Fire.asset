@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Chain Fire
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_chain_fire
-  displayName: "\uC5F0\uC1C4\uD0C4"
-  description: "발사 후 100%, 80%, 60%, 40%, 20% 확률로 연속 사격합니다.\n탄환은 추가로 소모하지 않습니다."
+  displayName: "\uB9C1\uD06C \uCCB4\uC778"
+  description: "\uBC1C\uC0AC \uD6C4 100%, 80%, 60%, 40%, 20% \uD655\uB960\uB85C \uC5F0\uC18D
+    \uC0AC\uACA9\uD569\uB2C8\uB2E4.\n\uD0C4\uD658\uC740 \uCD94\uAC00\uB85C \uC18C\uBAA8\uD558\uC9C0
+    \uC54A\uC2B5\uB2C8\uB2E4."
   cylinderIcon: {fileID: 9112154179431215879, guid: 910ba590abb509945b70ef8e23821d91, type: 3}
   price: 10
   grade: 2
@@ -43,7 +45,9 @@ MonoBehaviour:
   recoilStrength: 0.08
   upgradeCost: 20
   upgradeLevels:
-  - description: "발사 후 100%, 85%, 70%, 55%, 40%, 25% 확률로 연속 사격합니다.\n탄환은 추가로 소모하지 않습니다."
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 85%, 70%, 55%, 40%, 25% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4.\n\uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 12
     maxRange: 3
     criticalChance: 20
@@ -63,7 +67,9 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.08
     upgradeCost: 50
-  - description: "발사 후 100%, 90%, 80%, 70%, 60%, 50% 확률로 연속 사격합니다.\n탄환은 추가로 소모하지 않습니다."
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 90%, 80%, 70%, 60%, 50% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4.\n\uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 15
     maxRange: 4
     criticalChance: 28
@@ -83,7 +89,10 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "발사 후 100%, 95%, 90%, 85%, 80%, 75%, 70% 확률로 연속 사격합니다.\n탄환은 추가로 소모하지 않습니다.\n치명타 시 골드 +1"
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 95%, 90%, 85%, 80%, 75%, 70% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4.\n\uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.\n\uCE58\uBA85\uD0C0 \uC2DC
+      \uACE8\uB4DC +1"
     damage: 20
     maxRange: 5
     criticalChance: 38

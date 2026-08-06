@@ -297,6 +297,14 @@ public sealed class BulletInstance
                     int ownedBulletCount = context.DeckBullets.Count
                         + context.LoadedBullets.Count
                         + context.GraveyardBullets.Count;
+
+                    if (ContainsReference(context.DeckBullets, this)
+                        || ContainsReference(context.LoadedBullets, this)
+                        || ContainsReference(context.GraveyardBullets, this))
+                    {
+                        ownedBulletCount = Mathf.Max(0, ownedBulletCount - 1);
+                    }
+
                     int effectiveBaseDamage = Mathf.Max(
                         0,
                         Mathf.CeilToInt(
@@ -305,7 +313,7 @@ public sealed class BulletInstance
 
                     if (Damage > 0)
                     {
-                        damageMultiplier *= effectiveBaseDamage / Damage;
+                        damageMultiplier *= effectiveBaseDamage / (float)Damage;
                     }
 
                     stateLines.Add(
