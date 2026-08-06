@@ -18,6 +18,7 @@ public class EnemyDataEditor : Editor
     private SerializedProperty maxQueuedAttacks;
     private SerializedProperty queuedActionInterval;
     private SerializedProperty queueElementRevealDuration;
+    private SerializedProperty firingRange;
     private SerializedProperty recoveryTurns;
     private SerializedProperty maxSupportCharges;
     private SerializedProperty supportHealAmount;
@@ -56,6 +57,7 @@ public class EnemyDataEditor : Editor
         maxQueuedAttacks = Find("maxQueuedAttacks");
         queuedActionInterval = Find("queuedActionInterval");
         queueElementRevealDuration = Find("queueElementRevealDuration");
+        firingRange = Find("firingRange");
         recoveryTurns = Find("recoveryTurns");
         maxSupportCharges = Find("maxSupportCharges");
         supportHealAmount = Find("supportHealAmount");
@@ -115,8 +117,9 @@ public class EnemyDataEditor : Editor
 
             case EnemyBehaviorType.Gunner:
                 EditorGUILayout.HelpBox(
-                    "사거리는 보드 전체입니다. 플레이어와 같은 쪽의 전열에 있을 때만 행동하며, 사선 앞에 다른 적이 있으면 준비하거나 사격하지 않습니다.",
+                    "공격 타일을 먼저 등록한 뒤, 설정된 사거리 안까지 접근합니다. 사선이 확보되면 공격을 준비하고 다음 턴에 사격합니다.",
                     MessageType.Info);
+                EditorGUILayout.PropertyField(firingRange);
                 EditorGUILayout.PropertyField(recoveryTurns);
                 EditorGUILayout.PropertyField(gunnerTelegraphMaterial);
                 DrawTelegraphSettings();

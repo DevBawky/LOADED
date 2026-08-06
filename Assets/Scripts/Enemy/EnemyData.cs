@@ -153,7 +153,7 @@ public class EnemyData : ScriptableObject
     [SerializeField] private float meleeAdditionalAttackChance = 0.5f;
     [Min(1)]
     [Tooltip("원거리 적이 플레이어를 공격 준비할 수 있는 최대 타일 거리입니다.")]
-    [SerializeField] private int firingRange = 5;
+    [SerializeField] private int firingRange = 3;
     [Min(0)]
     [Tooltip("A ranged enemy spends this many turns recovering after an attack.")]
     [SerializeField] private int recoveryTurns = 1;
@@ -239,9 +239,7 @@ public class EnemyData : ScriptableObject
         Mathf.Max(0f, queueElementRevealDuration);
     public float MeleeAdditionalAttackChance =>
         Mathf.Clamp01(meleeAdditionalAttackChance);
-    // Kept for older callers and serialized assets. Ranged enemies always use
-    // the full board, so this value is intentionally infinite.
-    public int FiringRange => int.MaxValue;
+    public int FiringRange => Mathf.Max(1, firingRange);
     public int RecoveryTurns => Mathf.Max(0, recoveryTurns);
     public int MaxSupportCharges => Mathf.Max(0, maxSupportCharges);
     public int SupportHealAmount => Mathf.Max(1, supportHealAmount);

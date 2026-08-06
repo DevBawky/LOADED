@@ -42,7 +42,7 @@ MonoBehaviour:
   queuedActionInterval: 0.2
   queueElementRevealDuration: 0.25
   meleeAdditionalAttackChance: 0.5
-  firingRange: 4
+  firingRange: 3
   recoveryTurns: 1
   maxSupportCharges: 2
   supportHealAmount: 10

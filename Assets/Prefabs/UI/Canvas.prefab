@@ -4656,6 +4656,7 @@ MonoBehaviour:
   leftArea: {fileID: 428767608406280388}
   rightArea: {fileID: 6070518347096970324}
   edgeTileViewportInset: 0.08
+  minimumAreaAlpha: 0.1
   maximumAreaAlpha: 0.5
   maximumAlphaScreenPosition: 0.9
 --- !u!1 &3842314934744094396
