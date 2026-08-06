@@ -1,0 +1,494 @@
+fileFormatVersion: 2
+guid: ec8337c65b3f66449be1039b518c7920
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 7248047167033949499
+    second: Big_Barrel_0
+  - first:
+      213: -5249436290069990386
+    second: Big_Barrel_1
+  - first:
+      213: 275087697025330018
+    second: Big_Barrel_2
+  - first:
+      213: 3253271091999046458
+    second: Big_Barrel_3
+  - first:
+      213: 6150596204610624850
+    second: Big_Barrel_4
+  - first:
+      213: 6097589313179547503
+    second: Big_Barrel_5
+  - first:
+      213: 9213043359098806016
+    second: Big_Barrel_6
+  - first:
+      213: -3066117425698567822
+    second: Big_Barrel_7
+  - first:
+      213: 3795116913738390665
+    second: Big_Barrel_8
+  - first:
+      213: -598477855989435797
+    second: Big_Barrel_9
+  - first:
+      213: 3003986261269596897
+    second: Big_Barrel_10
+  - first:
+      213: -7276558984734171632
+    second: Big_Barrel_11
+  - first:
+      213: -3136849406065424566
+    second: Big_Barrel_12
+  - first:
+      213: 2177527665701010692
+    second: Big_Barrel_13
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 0
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: 4
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: Big_Barrel_0
+      rect:
+        serializedVersion: 2
+        x: 5
+        y: 137
+        width: 17
+        height: 16
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b3db5522f7c369460800000000000000
+      internalID: 7248047167033949499
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_1
+      rect:
+        serializedVersion: 2
+        x: 113
+        y: 189
+        width: 69
+        height: 60
+      alignment: 9
+      pivot: {x: 0.29330134, y: 0.016203817}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: e047553c1814627b0800000000000000
+      internalID: -5249436290069990386
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_2
+      rect:
+        serializedVersion: 2
+        x: 35
+        y: 134
+        width: 17
+        height: 24
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 26b664f8dce41d300800000000000000
+      internalID: 275087697025330018
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_3
+      rect:
+        serializedVersion: 2
+        x: 60
+        y: 134
+        width: 18
+        height: 26
+      alignment: 9
+      pivot: {x: 0.89482754, y: 0.5333346}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a3b76a452d0f52d20800000000000000
+      internalID: 3253271091999046458
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_4
+      rect:
+        serializedVersion: 2
+        x: 99
+        y: 101
+        width: 100
+        height: 75
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 25d9eac29ae4b5550800000000000000
+      internalID: 6150596204610624850
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_5
+      rect:
+        serializedVersion: 2
+        x: 210
+        y: 128
+        width: 34
+        height: 34
+      alignment: 9
+      pivot: {x: 0.09724202, y: 0.7141243}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: f67f8468c2dfe9450800000000000000
+      internalID: 6097589313179547503
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_6
+      rect:
+        serializedVersion: 2
+        x: 250
+        y: 132
+        width: 18
+        height: 20
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 00f1b5f4f1e4bdf70800000000000000
+      internalID: 9213043359098806016
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_7
+      rect:
+        serializedVersion: 2
+        x: 275
+        y: 131
+        width: 19
+        height: 19
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2790a914276f275d0800000000000000
+      internalID: -3066117425698567822
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_8
+      rect:
+        serializedVersion: 2
+        x: 115
+        y: 40
+        width: 19
+        height: 9
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 98c1474c9b6faa430800000000000000
+      internalID: 3795116913738390665
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_9
+      rect:
+        serializedVersion: 2
+        x: 117
+        y: 55
+        width: 20
+        height: 14
+      alignment: 9
+      pivot: {x: 0.4901455, y: 0.8800992}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: b62ffc39f87c1b7f0800000000000000
+      internalID: -598477855989435797
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_10
+      rect:
+        serializedVersion: 2
+        x: 149
+        y: 56
+        width: 35
+        height: 15
+      alignment: 9
+      pivot: {x: 0.4887377, y: 0.92045593}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 1eac02db69d40b920800000000000000
+      internalID: 3003986261269596897
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_11
+      rect:
+        serializedVersion: 2
+        x: 109
+        y: 24
+        width: 25
+        height: 9
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 01e1ebff728740b90800000000000000
+      internalID: -7276558984734171632
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_12
+      rect:
+        serializedVersion: 2
+        x: 152
+        y: 39
+        width: 31
+        height: 11
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a47439db51ca774d0800000000000000
+      internalID: -3136849406065424566
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Big_Barrel_13
+      rect:
+        serializedVersion: 2
+        x: 159
+        y: 24
+        width: 22
+        height: 9
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 40db1baffd1283e10800000000000000
+      internalID: 2177527665701010692
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 36a06df05544ed14cb69c2ad38d65c13
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      Big_Barrel_0: 7248047167033949499
+      Big_Barrel_1: -5249436290069990386
+      Big_Barrel_10: 3003986261269596897
+      Big_Barrel_11: -7276558984734171632
+      Big_Barrel_12: -3136849406065424566
+      Big_Barrel_13: 2177527665701010692
+      Big_Barrel_2: 275087697025330018
+      Big_Barrel_3: 3253271091999046458
+      Big_Barrel_4: 6150596204610624850
+      Big_Barrel_5: 6097589313179547503
+      Big_Barrel_6: 9213043359098806016
+      Big_Barrel_7: -3066117425698567822
+      Big_Barrel_8: 3795116913738390665
+      Big_Barrel_9: -598477855989435797
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

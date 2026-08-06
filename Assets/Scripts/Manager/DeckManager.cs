@@ -4,8 +4,8 @@ using UnityEngine;
 
 public class DeckManager : MonoBehaviour
 {
-    public const int MinimumOwnedBulletCount = 7;
-    public const int MaximumOwnedBulletCount = 15;
+    public const int MinimumOwnedBulletCount = 1;
+    public const int MaximumOwnedBulletCount = 20;
 
     [Header("Deck Settings")]
     [SerializeField] private List<BulletData> startingBullets =
@@ -20,24 +20,27 @@ public class DeckManager : MonoBehaviour
         new List<BulletInstance>();
     [SerializeField] private List<BulletInstance> graveyard =
         new List<BulletInstance>();
+    private readonly List<BulletInstance> nextCycleOrder =
+        new List<BulletInstance>();
     [SerializeField] private int nextAcquisitionOrder;
     [Min(0)]
     [SerializeField] private int paidBulletRemovalCount;
 
     public event Action StateChanged;
     public event Action LoadedBulletsCleared;
+    public event Action BulletsDepleted;
 
     public IReadOnlyList<BulletInstance> Deck => deck;
     public IReadOnlyList<BulletInstance> LoadedBullets => loadedBullets;
     public IReadOnlyList<BulletInstance> Graveyard => graveyard;
+    public IReadOnlyList<BulletInstance> NextCycleOrder => nextCycleOrder;
     public int MaxReloadAmount => maxReloadAmount;
     public int TotalBulletCount => deck.Count + loadedBullets.Count
         + graveyard.Count;
-    public int OwnedBulletCount => CountOwnedBullets(deck)
-        + CountOwnedBullets(loadedBullets)
-        + CountOwnedBullets(graveyard);
+    public int OwnedBulletCount => TotalBulletCount;
+    public int ReloadableBulletCount => deck.Count + graveyard.Count;
     public bool CanRemoveOwnedBullet =>
-        OwnedBulletCount > MinimumOwnedBulletCount;
+        TotalBulletCount > MinimumOwnedBulletCount;
     public int CurrentBulletRemovalCost =>
         CalculateBulletRemovalCost(paidBulletRemovalCount);
 
@@ -73,6 +76,7 @@ public class DeckManager : MonoBehaviour
         loadedBullets.Add(loadedBullet);
         deck.RemoveAt(topIndex);
         RecycleGraveyardIfDeckEmpty();
+        CreateNextCycleOrderIfNeeded();
         StateChanged?.Invoke();
         return true;
     }
@@ -117,6 +121,7 @@ public class DeckManager : MonoBehaviour
         }
 
         deck.Add(CreateBulletInstance(bulletData));
+        nextCycleOrder.Clear();
         StateChanged?.Invoke();
         return true;
     }
@@ -124,24 +129,12 @@ public class DeckManager : MonoBehaviour
     public bool CanAddBullet(BulletData bulletData)
     {
         return bulletData != null
-            && (!CountsTowardOwnedLimit(bulletData, 0)
-                || OwnedBulletCount < MaximumOwnedBulletCount);
+            && TotalBulletCount < MaximumOwnedBulletCount;
     }
 
     public bool TryUpgradeBullet(BulletInstance bullet)
     {
         if (!Contains(bullet) || !bullet.CanUpgrade)
-        {
-            return false;
-        }
-
-        bool countsNow = CountsTowardOwnedLimit(bullet);
-        bool countsAfterUpgrade = CountsTowardOwnedLimit(
-            bullet.Data,
-            bullet.Level + 1);
-
-        if (!countsNow && countsAfterUpgrade
-            && OwnedBulletCount >= MaximumOwnedBulletCount)
         {
             return false;
         }
@@ -171,6 +164,7 @@ public class DeckManager : MonoBehaviour
             return false;
         }
 
+        nextCycleOrder.Clear();
         StateChanged?.Invoke();
         return true;
     }
@@ -189,13 +183,28 @@ public class DeckManager : MonoBehaviour
     {
         return bullet != null
             && Contains(bullet)
-            && (!CountsTowardOwnedLimit(bullet)
-                || CanRemoveOwnedBullet);
+            && CanRemoveOwnedBullet;
     }
 
     public bool TryDestroyBullet(BulletInstance bullet)
     {
-        return TryRemoveBullet(bullet);
+        if (bullet == null || !Contains(bullet))
+        {
+            return false;
+        }
+
+        bool removed = deck.Remove(bullet);
+        removed = loadedBullets.Remove(bullet) || removed;
+        removed = graveyard.Remove(bullet) || removed;
+
+        if (!removed)
+        {
+            return false;
+        }
+
+        nextCycleOrder.Remove(bullet);
+        StateChanged?.Invoke();
+        return true;
     }
 
     public bool ClearLoadedBullets()
@@ -207,6 +216,7 @@ public class DeckManager : MonoBehaviour
 
         graveyard.AddRange(loadedBullets);
         loadedBullets.Clear();
+        FinalizeNextCycle();
         StateChanged?.Invoke();
         LoadedBulletsCleared?.Invoke();
         return true;
@@ -218,6 +228,7 @@ public class DeckManager : MonoBehaviour
         deck.AddRange(graveyard);
         loadedBullets.Clear();
         graveyard.Clear();
+        nextCycleOrder.Clear();
 
         foreach (BulletInstance bullet in deck)
         {
@@ -252,19 +263,50 @@ public class DeckManager : MonoBehaviour
 
     public BulletInstance PeekNextBullet()
     {
-        return deck.Count == 0 ? null : deck[deck.Count - 1];
+        if (deck.Count > 0)
+        {
+            return deck[deck.Count - 1];
+        }
+
+        foreach (BulletInstance bullet in nextCycleOrder)
+        {
+            if (Contains(bullet))
+            {
+                return bullet;
+            }
+        }
+
+        return null;
+    }
+
+    public void CompleteFiringSequence()
+    {
+        FinalizeNextCycle();
+        StateChanged?.Invoke();
+
+        if (TotalBulletCount == 0)
+        {
+            BulletsDepleted?.Invoke();
+        }
     }
 
     public bool ReshuffleDeck()
     {
-        if (deck.Count == 0)
+        if (deck.Count > 0)
         {
-            return false;
+            ShuffleDeck();
+            StateChanged?.Invoke();
+            return true;
         }
 
-        ShuffleDeck();
-        StateChanged?.Invoke();
-        return true;
+        if (nextCycleOrder.Count > 1)
+        {
+            Shuffle(nextCycleOrder);
+            StateChanged?.Invoke();
+            return true;
+        }
+
+        return false;
     }
 
     private void InitializeDeck()
@@ -272,6 +314,7 @@ public class DeckManager : MonoBehaviour
         deck.Clear();
         loadedBullets.Clear();
         graveyard.Clear();
+        nextCycleOrder.Clear();
         nextAcquisitionOrder = 0;
         paidBulletRemovalCount = 0;
 
@@ -282,8 +325,6 @@ public class DeckManager : MonoBehaviour
                 deck.Add(CreateBulletInstance(bulletData));
             }
         }
-
-        EnsureMinimumStartingBulletCount();
 
         ShuffleDeck();
         StateChanged?.Invoke();
@@ -315,118 +356,6 @@ public class DeckManager : MonoBehaviour
         }
 
         return current;
-    }
-
-    private void EnsureMinimumStartingBulletCount()
-    {
-        if (OwnedBulletCount >= MinimumOwnedBulletCount)
-        {
-            return;
-        }
-
-        BulletData fallbackBullet = null;
-
-        foreach (BulletData bulletData in startingBullets)
-        {
-            if (bulletData != null
-                && CountsTowardOwnedLimit(bulletData, 0))
-            {
-                fallbackBullet = bulletData;
-                break;
-            }
-        }
-
-        if (fallbackBullet == null)
-        {
-            Debug.LogError(
-                $"At least {MinimumOwnedBulletCount} valid starting bullets "
-                + "are required, but no fallback BulletData is assigned.",
-                this);
-            return;
-        }
-
-        int missingBulletCount = MinimumOwnedBulletCount - OwnedBulletCount;
-
-        for (int index = 0; index < missingBulletCount; index++)
-        {
-            deck.Add(CreateBulletInstance(fallbackBullet));
-        }
-
-        Debug.LogWarning(
-            $"Starting bullet count was below {MinimumOwnedBulletCount}. "
-            + $"Added {missingBulletCount} copies of "
-            + $"'{fallbackBullet.name}' to satisfy the minimum.",
-            this);
-    }
-
-    public static bool CountsTowardOwnedLimit(BulletInstance bullet)
-    {
-        return bullet != null && !HasDestructionEffect(
-            bullet.Effects,
-            bullet.ConditionalEvents);
-    }
-
-    public static bool CountsTowardOwnedLimit(
-        BulletData bulletData,
-        int level = 0)
-    {
-        return bulletData != null && !HasDestructionEffect(
-            bulletData.GetEffects(level),
-            bulletData.GetConditionalEvents(level));
-    }
-
-    private static int CountOwnedBullets(
-        IReadOnlyList<BulletInstance> bullets)
-    {
-        int count = 0;
-
-        foreach (BulletInstance bullet in bullets)
-        {
-            if (CountsTowardOwnedLimit(bullet))
-            {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    private static bool HasDestructionEffect(
-        IReadOnlyList<BulletEffectData> effects,
-        IReadOnlyList<BulletConditionalEventData> conditionalEvents)
-    {
-        if (ContainsDestructionEffect(effects))
-        {
-            return true;
-        }
-
-        foreach (BulletConditionalEventData conditionalEvent
-                 in conditionalEvents)
-        {
-            if (conditionalEvent != null
-                && ContainsDestructionEffect(conditionalEvent.Events))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool ContainsDestructionEffect(
-        IReadOnlyList<BulletEffectData> effects)
-    {
-        foreach (BulletEffectData effect in effects)
-        {
-            if (effect != null
-                && (effect.EffectType == BulletEffectType.DestroyBullet
-                    || effect.EffectType == BulletEffectType.PowderPouch))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private BulletInstance CreateBulletInstance(BulletData bulletData)
@@ -461,14 +390,76 @@ public class DeckManager : MonoBehaviour
         }
     }
 
+    private void CreateNextCycleOrderIfNeeded()
+    {
+        if (deck.Count > 0 || graveyard.Count > 0
+            || loadedBullets.Count == 0 || nextCycleOrder.Count > 0)
+        {
+            return;
+        }
+
+        nextCycleOrder.AddRange(loadedBullets);
+        Shuffle(nextCycleOrder);
+    }
+
+    private void FinalizeNextCycle()
+    {
+        if (deck.Count > 0 || graveyard.Count == 0)
+        {
+            if (TotalBulletCount == 0)
+            {
+                nextCycleOrder.Clear();
+            }
+
+            return;
+        }
+
+        List<BulletInstance> orderedBullets = new List<BulletInstance>();
+
+        foreach (BulletInstance bullet in nextCycleOrder)
+        {
+            if (bullet != null && graveyard.Contains(bullet)
+                && !orderedBullets.Contains(bullet))
+            {
+                orderedBullets.Add(bullet);
+            }
+        }
+
+        List<BulletInstance> remainingBullets = new List<BulletInstance>();
+
+        foreach (BulletInstance bullet in graveyard)
+        {
+            if (bullet != null && !orderedBullets.Contains(bullet))
+            {
+                remainingBullets.Add(bullet);
+            }
+        }
+
+        Shuffle(remainingBullets);
+        orderedBullets.AddRange(remainingBullets);
+        graveyard.Clear();
+
+        for (int index = orderedBullets.Count - 1; index >= 0; index--)
+        {
+            deck.Add(orderedBullets[index]);
+        }
+
+        nextCycleOrder.Clear();
+    }
+
     private void ShuffleDeck()
     {
-        for (int index = deck.Count - 1; index > 0; index--)
+        Shuffle(deck);
+    }
+
+    private static void Shuffle(List<BulletInstance> bullets)
+    {
+        for (int index = bullets.Count - 1; index > 0; index--)
         {
             int randomIndex = UnityEngine.Random.Range(0, index + 1);
-            BulletInstance temporary = deck[index];
-            deck[index] = deck[randomIndex];
-            deck[randomIndex] = temporary;
+            BulletInstance temporary = bullets[index];
+            bullets[index] = bullets[randomIndex];
+            bullets[randomIndex] = temporary;
         }
     }
 }

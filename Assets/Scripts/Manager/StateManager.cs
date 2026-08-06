@@ -97,6 +97,11 @@ public class StateManager : MonoBehaviour
             playerHealth.Defeated += HandlePlayerDefeated;
         }
 
+        if (deckManager != null)
+        {
+            deckManager.BulletsDepleted += HandleBulletsDepleted;
+        }
+
         if (goToMaintenanceButton != null)
         {
             goToMaintenanceButton.onClick.AddListener(GoToMaintenance);
@@ -144,6 +149,11 @@ public class StateManager : MonoBehaviour
         if (playerHealth != null)
         {
             playerHealth.Defeated -= HandlePlayerDefeated;
+        }
+
+        if (deckManager != null)
+        {
+            deckManager.BulletsDepleted -= HandleBulletsDepleted;
         }
 
         if (goToMaintenanceButton != null)
@@ -360,6 +370,27 @@ public class StateManager : MonoBehaviour
             return;
         }
 
+        FailCurrentRun();
+    }
+
+    private void HandleBulletsDepleted()
+    {
+        if (currentState != GameFlowState.Battle
+            || waveManager != null && waveManager.IsBattleCompleted)
+        {
+            return;
+        }
+
+        FailCurrentRun();
+    }
+
+    private void FailCurrentRun()
+    {
+        if (currentState != GameFlowState.Battle)
+        {
+            return;
+        }
+
         StopBattleStartPresentation();
 
         if (battleClearCoroutine != null)
@@ -568,6 +599,8 @@ public class StateManager : MonoBehaviour
     {
         if (waveManager != null && boardManager != null
             && shopManager != null && deckManager != null
+            && deckManager.TotalBulletCount
+                >= DeckManager.MinimumOwnedBulletCount
             && playerMove != null
             && playerHealth != null
             && mainGamePanel != null && stageClearPanel != null
@@ -579,7 +612,8 @@ public class StateManager : MonoBehaviour
         }
 
         Debug.LogError(
-            "State Manager references and navigation buttons must be assigned in the Inspector.",
+            "State Manager requires valid references, navigation buttons, "
+            + "at least one starting bullet, and a valid stage configuration.",
             this);
         return false;
     }

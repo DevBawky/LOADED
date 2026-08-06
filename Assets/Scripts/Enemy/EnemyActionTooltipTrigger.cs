@@ -77,7 +77,6 @@ internal static class EnemyActionTooltipView
         actionNameText.text = actionData.DisplayName;
         actionDescriptionText.text = actionData.TooltipDescription;
         tooltip.gameObject.SetActive(true);
-        tooltip.SetAsLastSibling();
         PositionInsideScreen(pointerPosition);
     }
 
