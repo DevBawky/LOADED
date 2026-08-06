@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Weakness
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_weakness
-  displayName: Weakness
+  displayName: "\uC57D\uD654\uD0C4"
   description: "\uC57D\uD654 +3"
   cylinderIcon: {fileID: 1555538946713009086, guid: a0f23b1691353f54da65b21310560a46, type: 3}
   price: 6
@@ -34,6 +34,8 @@ MonoBehaviour:
     stackCount: 3
     knockbackDistance: 1
     amount: 1
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -55,6 +57,8 @@ MonoBehaviour:
       stackCount: 5
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -75,6 +79,8 @@ MonoBehaviour:
       stackCount: 5
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -84,6 +90,8 @@ MonoBehaviour:
         stackCount: 0
         knockbackDistance: 0
         amount: 1
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
@@ -104,6 +112,8 @@ MonoBehaviour:
       stackCount: 5
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -113,6 +123,8 @@ MonoBehaviour:
         stackCount: 2
         knockbackDistance: 0
         amount: 2
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
