@@ -44,7 +44,6 @@ public sealed class SoundManager : MonoBehaviour
     private int lastKnownBgmTimeSamples;
     private StateManager observedStateManager;
     private float nextUiButtonScanTime;
-    private bool webAudioUnlocked = true;
 
     public static SoundManager Instance { get { EnsureInstance(); return instance; } }
 
@@ -62,10 +61,6 @@ public sealed class SoundManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         EnsureClipLibrary();
         EnsureAudioSources();
-#if UNITY_WEBGL && !UNITY_EDITOR
-        // Browsers suspend Web Audio until the page receives a user gesture.
-        webAudioUnlocked = false;
-#endif
     }
 
     private void OnEnable() => SceneManager.sceneLoaded += HandleSceneLoaded;
@@ -77,8 +72,6 @@ public sealed class SoundManager : MonoBehaviour
 
     private void Update()
     {
-        TryUnlockWebAudio();
-
         if (bgmSource != null && clipLibrary != null)
         {
             // Time.timeScale must not alter the authored BGM playback pitch.
@@ -91,7 +84,7 @@ public sealed class SoundManager : MonoBehaviour
         {
             RememberBgmPlaybackPosition();
         }
-        else if (currentPlaylist != null && CanPlayAudio)
+        else if (currentPlaylist != null)
         {
             if (!TryResumeInterruptedBgm()) PlayNextBgm();
         }
@@ -268,7 +261,7 @@ public sealed class SoundManager : MonoBehaviour
         lastKnownBgmClip = bgmSource.clip;
         lastKnownBgmTimeSamples = 0;
         RequestAudioData(bgmSource.clip);
-        if (CanPlayAudio && bgmSource.clip.loadState == AudioDataLoadState.Loaded)
+        if (bgmSource.clip.loadState == AudioDataLoadState.Loaded)
         {
             bgmSource.Play();
         }
@@ -287,8 +280,7 @@ public sealed class SoundManager : MonoBehaviour
 
     private bool TryResumeInterruptedBgm()
     {
-        if (!CanPlayAudio || bgmSource == null || bgmSource.isPlaying
-            || lastKnownBgmClip == null
+        if (bgmSource == null || bgmSource.isPlaying || lastKnownBgmClip == null
             || !PlaylistContains(lastKnownBgmClip))
         {
             return false;
@@ -316,30 +308,6 @@ public sealed class SoundManager : MonoBehaviour
         bgmSource.Play();
         return true;
     }
-
-    private bool CanPlayAudio => webAudioUnlocked;
-
-    private void TryUnlockWebAudio()
-    {
-#if UNITY_WEBGL && !UNITY_EDITOR
-        if (webAudioUnlocked || !ReceivedAudioUnlockInput()) return;
-
-        webAudioUnlocked = true;
-        AudioListener.pause = false;
-        TryResumeInterruptedBgm();
-#endif
-    }
-
-#if UNITY_WEBGL && !UNITY_EDITOR
-    private static bool ReceivedAudioUnlockInput()
-    {
-        return Input.anyKeyDown
-            || Input.GetMouseButtonDown(0)
-            || Input.GetMouseButtonDown(1)
-            || Input.GetMouseButtonDown(2)
-            || Input.touchCount > 0;
-    }
-#endif
 
     private static void RequestAudioData(AudioClip clip)
     {
@@ -394,8 +362,6 @@ public sealed class SoundManager : MonoBehaviour
         UnityEngine.Audio.AudioMixerGroup mixerGroup = null)
     {
         if (clip == null) return;
-        TryUnlockWebAudio();
-        if (!CanPlayAudio) return;
         RequestAudioData(clip);
         if (clip.loadState != AudioDataLoadState.Loaded)
         {
@@ -408,9 +374,8 @@ public sealed class SoundManager : MonoBehaviour
         }
 
         AudioSource source = GetAvailableSfxSource();
-        source.outputAudioMixerGroup = mixerGroup != null
-            ? mixerGroup
-            : clipLibrary?.SfxMixerGroup;
+        source.outputAudioMixerGroup = GetWebCompatibleMixerGroup(
+            mixerGroup != null ? mixerGroup : clipLibrary?.SfxMixerGroup);
         source.pitch = Mathf.Clamp(pitch, 0.01f, 3f);
         source.volume = sfxVolume;
         source.clip = null;
@@ -444,7 +409,8 @@ public sealed class SoundManager : MonoBehaviour
         }
         AudioSource newSource = gameObject.AddComponent<AudioSource>();
         ConfigureSfxSource(newSource);
-        newSource.outputAudioMixerGroup = clipLibrary?.SfxMixerGroup;
+        newSource.outputAudioMixerGroup = GetWebCompatibleMixerGroup(
+            clipLibrary?.SfxMixerGroup);
         sfxSources.Add(newSource);
         return newSource;
     }
@@ -469,13 +435,27 @@ public sealed class SoundManager : MonoBehaviour
 
         if (bgmSource != null)
         {
-            bgmSource.outputAudioMixerGroup = clipLibrary.BgmMixerGroup;
+            bgmSource.outputAudioMixerGroup = GetWebCompatibleMixerGroup(
+                clipLibrary.BgmMixerGroup);
         }
 
         if (sfxSource != null && !sfxSource.isPlaying)
         {
-            sfxSource.outputAudioMixerGroup = clipLibrary.SfxMixerGroup;
+            sfxSource.outputAudioMixerGroup = GetWebCompatibleMixerGroup(
+                clipLibrary.SfxMixerGroup);
         }
+    }
+
+    private static UnityEngine.Audio.AudioMixerGroup GetWebCompatibleMixerGroup(
+        UnityEngine.Audio.AudioMixerGroup mixerGroup)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // Unity Web only supports mixer volume. Bypass the authored effect
+        // chains so unsupported effects cannot silence the Web Audio output.
+        return null;
+#else
+        return mixerGroup;
+#endif
     }
 
     private static void ConfigureSfxSource(AudioSource source)
