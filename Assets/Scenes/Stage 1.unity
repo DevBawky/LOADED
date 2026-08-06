@@ -673,7 +673,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 68bb026fafb42b14791938953eaace77, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Unity.Cinemachine::Unity.Cinemachine.CinemachineBasicMultiChannelPerlin
-  NoiseProfile: {fileID: 11400000, guid: 69ce8388f6785dd4c8c39915efece2f4, type: 2}
+  NoiseProfile: {fileID: 11400000, guid: 3a64abedcd244b049cb42008d3c7934d, type: 2}
   PivotOffset: {x: 0, y: 0, z: 0}
   AmplitudeGain: 0
   FrequencyGain: 0
@@ -1730,9 +1730,9 @@ MonoBehaviour:
   refreshCostText: {fileID: 0}
   initialRefreshCost: 0
   refreshCostIncrease: 0
-  refreshHideDuration: 0.12
-  refreshRevealDuration: 0.18
-  refreshRevealInterval: 0.08
+  refreshHideDuration: 0.06
+  refreshRevealDuration: 0.09
+  refreshRevealInterval: 0.04
   refreshHiddenScale: 0.75
   refreshOvershootScale: 1.08
   refreshRevealOffset: 20
@@ -1802,7 +1802,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: kickSlowMotionHold
-      value: 0.1
+      value: 0.05
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: killComboTextScale
@@ -1814,15 +1814,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: cameraShakeStrength
-      value: 0.8
+      value: 2.5
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: kickSlowMotionScale
-      value: 0.3
+      value: 0.48
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: killShakeMultiplier
-      value: 0.9
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: killSlowMotionScale
@@ -1866,11 +1866,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: laterComboKillShakeMultiplier
-      value: 1.1
+      value: 1.3
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: secondComboKillShakeMultiplier
-      value: 1
+      value: 1.15
       objectReference: {fileID: 0}
     - target: {fileID: 918824946450782430, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: m_Name

@@ -2363,7 +2363,7 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 187
+  m_fontSize: 140.25
   m_fontSizeBase: 36
   m_fontWeight: 400
   m_enableAutoSizing: 1
@@ -6230,8 +6230,8 @@ RectTransform:
   m_Children:
   - {fileID: 704134003}
   - {fileID: 721964446}
-  - {fileID: 376749389}
   - {fileID: 1883388676}
+  - {fileID: 376749389}
   m_Father: {fileID: 618552737}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.1, y: 0.01}
@@ -6974,11 +6974,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8369966277609176264, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
       propertyPath: m_text
-      value: "\uC870\uC791 & \uC815\uBCF4"
+      value: "\uB3C4\uAC10 & \uC815\uBCF4"
       objectReference: {fileID: 0}
     - target: {fileID: 8369966277609176264, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
       propertyPath: m_fontSize
-      value: 72
+      value: 58.45
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

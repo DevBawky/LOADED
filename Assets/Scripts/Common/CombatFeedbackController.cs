@@ -1459,9 +1459,14 @@ public sealed class CombatFeedbackController : MonoBehaviour
             Center = new Vector2(
                 Mathf.Clamp01(viewportPoint.x),
                 Mathf.Clamp01(viewportPoint.y)),
-            Direction = horizontalDirection == 0
-                ? Vector2.right
-                : new Vector2(Mathf.Sign(horizontalDirection), 0f),
+            // Defeat impacts restart and amplify the current fullscreen hit.
+            // Keep them radial so the post-process does not look like a
+            // one-sided camera lurch on top of the stronger defeat shake.
+            Direction = restartExisting
+                ? Vector2.zero
+                : horizontalDirection == 0
+                    ? Vector2.right
+                    : new Vector2(Mathf.Sign(horizontalDirection), 0f),
             Elapsed = 0f,
             Duration = duration,
             Intensity = Mathf.Clamp01(intensity),

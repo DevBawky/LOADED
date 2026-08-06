@@ -1765,6 +1765,10 @@ public class PlayerShoot : MonoBehaviour
                 combatPresentation == null
                     ? default
                     : combatPresentation.CaptureEnemy(enemy);
+            int sourceTileIndex = -1;
+            boardManager.TryGetTileIndex(
+                enemy.transform.position,
+                out sourceTileIndex);
             int healthBeforeHit = enemy.CurrentHealth;
             int targetMaxHealth = enemy.MaxHealth;
             bool defeatPresented = false;
@@ -1875,6 +1879,12 @@ public class PlayerShoot : MonoBehaviour
                     GetCurrentCylinderBuild());
             }
             bool defeatedByManagedEffect = false;
+
+            ApplyWallImpactDamageTransfer(
+                bulletData,
+                sourceTileIndex,
+                horizontalDirection,
+                attackDamage);
 
             IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
 
@@ -1993,36 +2003,138 @@ public class PlayerShoot : MonoBehaviour
                 * judgmentEffect.Amount / 100f;
         }
 
-        BulletEffectData wallImpactEffect = FindSpecialEffect(
-            bullet,
-            BulletEffectType.WallImpact);
-
-        if (wallImpactEffect != null
-            && IsEnemyBlocked(enemy, horizontalDirection))
-        {
-            multiplier *= 1f + wallImpactEffect.Amount / 100f;
-        }
-
         return multiplier;
     }
 
-    private bool IsEnemyBlocked(
-        EnemyController enemy,
-        int horizontalDirection)
+    private void ApplyWallImpactDamageTransfer(
+        BulletInstance bullet,
+        int sourceTileIndex,
+        int horizontalDirection,
+        int sourceAttackDamage)
     {
-        if (enemy == null || boardManager == null || waveManager == null
-            || !boardManager.TryGetTileIndex(
-                enemy.transform.position,
-                out int enemyTileIndex))
+        BulletEffectData effect = FindSpecialEffect(
+            bullet,
+            BulletEffectType.WallImpact);
+
+        if (effect == null || sourceTileIndex < 0
+            || sourceAttackDamage <= 0 || boardManager == null
+            || waveManager == null)
         {
-            return false;
+            return;
         }
 
-        int nextTileIndex = enemyTileIndex
-            + (horizontalDirection >= 0 ? 1 : -1);
-        return nextTileIndex < 0
-            || nextTileIndex >= boardManager.BoardCount
-            || waveManager.IsTileOccupied(nextTileIndex, enemy);
+        int direction = horizontalDirection >= 0 ? 1 : -1;
+
+        int maxTransferDistance = Mathf.Clamp(
+            effect.KnockbackDistance,
+            1,
+            3);
+
+        for (int distance = 1;
+             distance <= maxTransferDistance;
+             distance++)
+        {
+            float transferPercent = GetWallImpactTransferPercent(
+                effect,
+                distance);
+
+            if (transferPercent <= 0f)
+            {
+                continue;
+            }
+
+            int targetTileIndex = sourceTileIndex + direction * distance;
+
+            if (targetTileIndex < 0
+                || targetTileIndex >= boardManager.BoardCount
+                || !waveManager.TryGetEnemyAtTile(
+                    targetTileIndex,
+                    out EnemyController targetEnemy)
+                || targetEnemy == null || targetEnemy.CurrentHealth <= 0)
+            {
+                continue;
+            }
+
+            int transferDamage = Mathf.Max(
+                1,
+                Mathf.CeilToInt(
+                    sourceAttackDamage * transferPercent / 100f));
+            CombatPresentation.EnemySnapshot targetSnapshot =
+                combatPresentation == null
+                    ? default
+                    : combatPresentation.CaptureEnemy(targetEnemy);
+            int healthBeforeTransfer = targetEnemy.CurrentHealth;
+            int targetMaxHealth = targetEnemy.MaxHealth;
+            int reportedDamage = targetEnemy.PredictAttackDamage(
+                transferDamage);
+            int appliedDamage = targetEnemy.ApplyAttackDamage(
+                transferDamage,
+                false);
+
+            if (appliedDamage > 0)
+            {
+                DamageDealt?.Invoke(reportedDamage);
+            }
+
+            bool defeated = healthBeforeTransfer > 0
+                && targetEnemy.CurrentHealth <= 0;
+            combatFeedback?.RecordDamage(
+                reportedDamage,
+                reportedDamage > appliedDamage);
+            combatPresentation?.PlayImpact(
+                targetSnapshot,
+                horizontalDirection,
+                bullet,
+                CombatImpactTierUtility.Resolve(
+                    false,
+                    reportedDamage,
+                    targetMaxHealth,
+                    defeated),
+                defeated
+                    ? combatFeedback
+                        ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f
+                    : 1f);
+
+            if (defeated)
+            {
+                combatFeedback?.RecordDefeat(
+                    targetSnapshot.Position,
+                    horizontalDirection,
+                    reportedDamage,
+                    targetMaxHealth,
+                    false,
+                    waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild());
+            }
+            else if (appliedDamage > 0)
+            {
+                combatFeedback?.RecordHit(
+                    targetSnapshot.Position,
+                    horizontalDirection,
+                    reportedDamage,
+                    targetMaxHealth,
+                    false,
+                    GetCurrentCylinderBuild());
+            }
+        }
+    }
+
+    private static float GetWallImpactTransferPercent(
+        BulletEffectData effect,
+        int distance)
+    {
+        if (effect == null)
+        {
+            return 0f;
+        }
+
+        return distance switch
+        {
+            1 => effect.Amount,
+            2 => effect.SecondTransferPercent,
+            3 => effect.ThirdTransferPercent,
+            _ => 0f
+        };
     }
 
     private IEnumerator ApplyManagedTargetEffects(
@@ -2777,6 +2889,7 @@ public class PlayerShoot : MonoBehaviour
                 resolvedBullet,
                 guaranteedCritical,
                 damageMultiplier * targetMultiplier);
+            int transferBaseDamage = attackDamage;
 
             if (hitIndex > 0 && !IsBoardWideShot(resolvedBullet))
             {
@@ -2802,6 +2915,14 @@ public class PlayerShoot : MonoBehaviour
             ApplyPreviewDamage(
                 state,
                 attackDamage,
+                previewColor,
+                emphasized);
+
+            ApplyPreviewWallImpactDamageTransfer(
+                resolvedBullet,
+                state,
+                horizontalDirection,
+                transferBaseDamage,
                 previewColor,
                 emphasized);
 
@@ -3224,45 +3345,80 @@ public class PlayerShoot : MonoBehaviour
                 * effect.Amount / 100f;
         }
 
-        effect = FindSpecialEffect(bullet, BulletEffectType.WallImpact);
-
-        if (effect != null
-            && IsPreviewEnemyBlocked(enemyState, horizontalDirection))
-        {
-            multiplier *= 1f + effect.Amount / 100f;
-        }
-
         return multiplier;
     }
 
-    private bool IsPreviewEnemyBlocked(
-        DamagePreviewEnemyState enemyState,
-        int horizontalDirection)
+    private void ApplyPreviewWallImpactDamageTransfer(
+        BulletInstance bullet,
+        DamagePreviewEnemyState sourceState,
+        int horizontalDirection,
+        int sourceAttackDamage,
+        Color color,
+        bool emphasized)
     {
-        if (enemyState == null || enemyState.TileIndex < 0)
+        BulletEffectData effect = FindSpecialEffect(
+            bullet,
+            BulletEffectType.WallImpact);
+
+        if (effect == null || sourceState == null
+            || sourceState.TileIndex < 0 || sourceAttackDamage <= 0)
         {
-            return false;
+            return;
         }
 
-        int nextTileIndex = enemyState.TileIndex
-            + (horizontalDirection >= 0 ? 1 : -1);
+        int direction = horizontalDirection >= 0 ? 1 : -1;
 
-        if (nextTileIndex < 0 || nextTileIndex >= boardManager.BoardCount)
-        {
-            return true;
-        }
+        int maxTransferDistance = Mathf.Clamp(
+            effect.KnockbackDistance,
+            1,
+            3);
 
-        foreach (DamagePreviewEnemyState otherState
-                 in damagePreviewStates.Values)
+        for (int distance = 1;
+             distance <= maxTransferDistance;
+             distance++)
         {
-            if (otherState != enemyState && otherState.RemainingHealth > 0
-                && otherState.TileIndex == nextTileIndex)
+            float transferPercent = GetWallImpactTransferPercent(
+                effect,
+                distance);
+
+            if (transferPercent <= 0f)
             {
-                return true;
+                continue;
+            }
+
+            int targetTileIndex = sourceState.TileIndex
+                + direction * distance;
+
+            foreach (DamagePreviewEnemyState targetState
+                     in damagePreviewStates.Values)
+            {
+                if (targetState == sourceState
+                    || targetState.RemainingHealth <= 0
+                    || targetState.TileIndex != targetTileIndex)
+                {
+                    continue;
+                }
+
+                int transferDamage = Mathf.Max(
+                    1,
+                    Mathf.CeilToInt(
+                        sourceAttackDamage * transferPercent / 100f));
+
+                if (targetState.StatusStacks[
+                        (int)StatusEffectType.Mark] > 0)
+                {
+                    transferDamage = Mathf.CeilToInt(
+                        transferDamage * 1.5f);
+                }
+
+                ApplyPreviewDamage(
+                    targetState,
+                    transferDamage,
+                    color,
+                    emphasized);
+                break;
             }
         }
-
-        return false;
     }
 
     private void ApplyPreviewDamage(
@@ -3933,11 +4089,16 @@ public class PlayerShoot : MonoBehaviour
             return bullet.Damage;
         }
 
+        int otherOwnedBulletCount = Mathf.Max(
+            0,
+            deckManager.TotalBulletCount
+                - (deckManager.Contains(bullet) ? 1 : 0));
+
         return Mathf.Max(
             0,
             Mathf.CeilToInt(
                 bullet.Damage
-                - deckManager.TotalBulletCount * crescendoEffect.Amount));
+                - otherOwnedBulletCount * crescendoEffect.Amount));
     }
 
     private static bool IsBoardWideShot(BulletInstance bullet)
