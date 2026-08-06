@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: c47efbb67453aee41a9363eb9e0ca4fb
+guid: 984a547c75e2cda4199f4b6e673f39f3
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -2250305250062886216
-    second: Bullet_Piercing_Cylinder_0
+      213: 1299048383668103208
+    second: Bullet_Legacy_Cylinder_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,7 +113,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Bullet_Piercing_Cylinder_0
+      name: Bullet_Legacy_Cylinder_0
       rect:
         serializedVersion: 2
         x: 0
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 8ba1ec53c4f45c0e0800000000000000
-      internalID: -2250305250062886216
+      spriteID: 828259e4f95270210800000000000000
+      internalID: 1299048383668103208
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Bullet_Piercing_Cylinder_0: -2250305250062886216
+      Bullet_Legacy_Cylinder_0: 1299048383668103208
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
