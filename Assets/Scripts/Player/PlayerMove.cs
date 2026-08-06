@@ -371,6 +371,8 @@ public class PlayerMove : MonoBehaviour
 
             yield return WaitForKickImpact();
 
+            SoundManager.PlaySfx("SFX_Kick");
+
             combatFeedback?.RecordKickImpact(
                 pushPlan.PushedEnemy.transform.position,
                 pushPlan.Direction,
@@ -400,7 +402,8 @@ public class PlayerMove : MonoBehaviour
                 impactPosition,
                 pushPlan.RestingPosition,
                 pushPlan.FlightDuration,
-                pushCollisionSettleDuration);
+                pushCollisionSettleDuration,
+                () => SoundManager.PlaySfx("SFX_Kick_Impact"));
         }
         else if (pushPlan.VacatesStartingTile)
         {
@@ -703,6 +706,7 @@ public class PlayerMove : MonoBehaviour
     private IEnumerator MoveRoutine(Vector3 targetPosition)
     {
         isActing = true;
+        SoundManager.PlaySfx("SFX_Move");
         yield return actorMotion.MoveTo(targetPosition);
         PositionChanged?.Invoke();
         CompleteTurn();

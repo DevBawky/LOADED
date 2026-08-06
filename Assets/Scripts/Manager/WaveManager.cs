@@ -296,7 +296,8 @@ public class WaveManager : MonoBehaviour
         RemoveMissingEnemies();
 
         EnemyController[] enemiesThisTurn = activeEnemies.ToArray();
-        float remainingTurnDelay = enemyTurnDelay;
+        List<EnemyController> concurrentActions = new List<EnemyController>();
+        float turnStartedAt = Time.time;
 
         for (int enemyIndex = 0;
              enemyIndex < enemiesThisTurn.Length;
@@ -306,18 +307,28 @@ public class WaveManager : MonoBehaviour
 
             if (enemy != null && activeEnemies.Contains(enemy))
             {
-                enemy.TakeTurn();
-                float actionElapsedTime = 0f;
+                bool usesDedicatedMotion =
+                    enemy.WillExecuteDedicatedTurnMotion;
 
-                while (enemy != null && enemy.IsActing)
+                if (usesDedicatedMotion)
                 {
-                    yield return null;
-
-                    if (!GamePauseController.IsPaused)
-                    {
-                        actionElapsedTime += Time.deltaTime;
-                    }
+                    yield return WaitForEnemyActions(concurrentActions);
+                    concurrentActions.Clear();
                 }
+
+                enemy.TakeTurn();
+
+                if (!usesDedicatedMotion)
+                {
+                    if (enemy != null && enemy.IsActing)
+                    {
+                        concurrentActions.Add(enemy);
+                    }
+
+                    continue;
+                }
+
+                yield return WaitForEnemyAction(enemy);
 
                 if (playerHealth.IsDefeated)
                 {
@@ -327,13 +338,6 @@ public class WaveManager : MonoBehaviour
                 bool performedAttack = enemy != null
                     && enemy.LastTurnAction == EnemyTurnActionType.Fire;
 
-                if (!performedAttack)
-                {
-                    remainingTurnDelay = Mathf.Max(
-                        0f,
-                        remainingTurnDelay - actionElapsedTime);
-                }
-
                 if (performedAttack
                     && enemyIndex < enemiesThisTurn.Length - 1)
                 {
@@ -342,6 +346,11 @@ public class WaveManager : MonoBehaviour
             }
         }
 
+        yield return WaitForEnemyActions(concurrentActions);
+
+        float remainingTurnDelay = Mathf.Max(
+            0f,
+            enemyTurnDelay - (Time.time - turnStartedAt));
         yield return WaitForTurnTime(remainingTurnDelay);
 
         RemoveMissingEnemies();
@@ -369,6 +378,46 @@ public class WaveManager : MonoBehaviour
             if (!GamePauseController.IsPaused)
             {
                 elapsedTime += Time.deltaTime;
+            }
+        }
+    }
+
+    private static IEnumerator WaitForEnemyAction(EnemyController enemy)
+    {
+        while (enemy != null && enemy.IsActing)
+        {
+            yield return null;
+        }
+    }
+
+    private static IEnumerator WaitForEnemyActions(
+        IReadOnlyList<EnemyController> enemies)
+    {
+        if (enemies == null || enemies.Count == 0)
+        {
+            yield break;
+        }
+
+        bool hasRunningAction = true;
+
+        while (hasRunningAction)
+        {
+            hasRunningAction = false;
+
+            for (int index = 0; index < enemies.Count; index++)
+            {
+                EnemyController enemy = enemies[index];
+
+                if (enemy != null && enemy.IsActing)
+                {
+                    hasRunningAction = true;
+                    break;
+                }
+            }
+
+            if (hasRunningAction)
+            {
+                yield return null;
             }
         }
     }

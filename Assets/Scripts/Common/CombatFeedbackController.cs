@@ -168,17 +168,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float hitFullscreenDuration = 0.14f;
     [Range(0f, 1f)]
     [SerializeField] private float minimumHitIntensity = 0.18f;
-    [Header("Audio")]
-    [SerializeField] private AudioClip hitAccentClip;
-    [SerializeField] private AudioClip criticalAccentClip;
-    [SerializeField] private AudioClip killAccentClip;
-    [Range(0f, 1f)]
-    [SerializeField] private float hitAccentVolume = 0.72f;
-    [Range(0f, 1f)]
-    [SerializeField] private float criticalAccentVolume = 0.9f;
-    [Range(0f, 1f)]
-    [SerializeField] private float killAccentVolume = 0.95f;
-
     private TMP_Text comboText;
     private TMP_Text currentDamageText;
     private Image comboTimer;
@@ -232,7 +221,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private Coroutine volumePulseCoroutine;
     private float currentVolumePulseStrength;
     private Coroutine slowMotionCoroutine;
-    private Coroutine audioFilterCoroutine;
     private readonly FullscreenImpactState[] fullscreenImpacts =
         new FullscreenImpactState[MaxFullscreenImpacts];
     private readonly Vector4[] fullscreenCenters =
@@ -242,12 +230,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private readonly Vector4[] fullscreenParams =
         new Vector4[MaxFullscreenImpacts];
 
-    private AudioSource audioSource;
-    private AudioSource accentAudioSource;
-    private AudioLowPassFilter lowPassFilter;
-    private bool createdLowPassFilter;
-    private bool lowPassBaseEnabled;
-    private float lowPassBaseCutoff = 22000f;
     private float slowMotionBaseScale = 1f;
     private bool ownsTimeScale;
     private CurrencyManager currencyManager;
@@ -267,7 +249,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
         currencyManager = FindFirstObjectByType<CurrencyManager>();
         BindUi();
         BindVolume();
-        InitializeAudio();
     }
 
     private void Start()
@@ -295,24 +276,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
         ResetFiringSequenceFeedback();
         CancelSlowMotionAndRestore();
         RestoreVolume();
-        RestoreAudioFilter();
         ResetFullscreenImpact();
         ResetUiTransforms();
         ClearComboKillTexts();
     }
 
-    private void OnDestroy()
-    {
-        CancelSlowMotionAndRestore();
-        DestroyRuntimeClip(hitAccentClip, "Runtime Hit Accent");
-        DestroyRuntimeClip(criticalAccentClip, "Runtime Critical Accent");
-        DestroyRuntimeClip(killAccentClip, "Runtime Kill Accent");
-
-        if (createdLowPassFilter && lowPassFilter != null)
-        {
-            Destroy(lowPassFilter);
-        }
-    }
+    private void OnDestroy() => CancelSlowMotionAndRestore();
 
     public void BeginCylinder()
     {
@@ -336,6 +305,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     public void BeginFiringSequence()
     {
+        SoundManager.ResetComboPitch();
         ResetFiringSequenceFeedback();
         comboCount = 0;
         comboRemaining = 0f;
@@ -350,6 +320,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     public void EndCylinder()
     {
+        SoundManager.ResetComboPitch();
         GameStatistics.EndCylinder();
         cylinderActive = false;
         damageHoldRemaining = cylinderDamage > 0 ? 1.35f : 0.3f;
@@ -443,12 +414,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
             intensity = Mathf.Max(0.82f, intensity);
         }
 
-        PlayHitAccent(
-            worldPosition,
-            intensity,
-            impactTier,
-            cylinderBuild);
-
         if (impactTier == CombatImpactTier.Devastating)
         {
             StartVolumePulse(intensity * devastatingVolumeStrength);
@@ -494,9 +459,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
             kickSlowMotionScale,
             kickSlowMotionHold,
             kickSlowMotionRecovery);
-        StartAudioDuck(
-            Mathf.Lerp(5200f, 2600f, intensity),
-            kickSlowMotionHold + kickSlowMotionRecovery);
         QueueFullscreenImpact(
             worldPosition,
             horizontalDirection,
@@ -525,6 +487,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         comboCount = comboCount >= int.MaxValue
             ? int.MaxValue
             : comboCount + 1;
+        SoundManager.PlayComboDie(comboCount);
         GameStatistics.RecordComboKills(comboCount);
         firingSequenceDefeatCount = firingSequenceDefeatCount >= int.MaxValue
             ? int.MaxValue
@@ -573,13 +536,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float amplifiedIntensity = baseIntensity
             * firingSequenceFeedbackMultiplier;
 
-        PlayKillAccent(
-            worldPosition,
-            BaseKillTier,
-            wasCritical,
-            wasFinalEnemy,
-            cylinderBuild,
-            firingSequenceFeedbackMultiplier);
         StartVolumePulse(amplifiedIntensity);
         StartSlowMotion(
             baseIntensity,
@@ -974,7 +930,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
         RestoreVolume();
         CancelSlowMotionAndRestore();
         ResetFullscreenImpact();
-        RestoreAudioFilter();
         ClearComboKillTexts();
     }
 
@@ -1607,340 +1562,4 @@ public sealed class CombatFeedbackController : MonoBehaviour
         Shader.SetGlobalFloat(FullscreenIntensityId, 0f);
     }
 
-    private void InitializeAudio()
-    {
-        audioSource = CreateImpactAudioSource();
-        accentAudioSource = CreateImpactAudioSource();
-
-        if (hitAccentClip == null)
-        {
-            hitAccentClip = CreateRuntimeHitAccent();
-        }
-
-        if (criticalAccentClip == null)
-        {
-            criticalAccentClip = CreateRuntimeCriticalAccent();
-        }
-
-        if (killAccentClip == null)
-        {
-            killAccentClip = CreateRuntimeKillAccent();
-        }
-
-        Camera mainCamera = Camera.main;
-
-        if (mainCamera == null)
-        {
-            return;
-        }
-
-        lowPassFilter = mainCamera.GetComponent<AudioLowPassFilter>();
-
-        if (lowPassFilter == null)
-        {
-            lowPassFilter = mainCamera.gameObject.AddComponent<AudioLowPassFilter>();
-            createdLowPassFilter = true;
-            lowPassFilter.cutoffFrequency = 22000f;
-            lowPassFilter.enabled = false;
-        }
-
-        lowPassBaseEnabled = lowPassFilter.enabled;
-        lowPassBaseCutoff = lowPassFilter.cutoffFrequency;
-    }
-
-    private AudioSource CreateImpactAudioSource()
-    {
-        AudioSource source = gameObject.AddComponent<AudioSource>();
-        source.playOnAwake = false;
-        source.loop = false;
-        source.spatialBlend = 0f;
-        source.ignoreListenerPause = true;
-        source.bypassListenerEffects = true;
-        source.priority = 48;
-        return source;
-    }
-
-    private void PlayHitAccent(
-        Vector3 worldPosition,
-        float intensity,
-        CombatImpactTier impactTier,
-        float cylinderBuild)
-    {
-        if (audioSource == null)
-        {
-            return;
-        }
-
-        float pan = GetImpactPan(worldPosition);
-        audioSource.panStereo = pan;
-        audioSource.pitch = 0.96f
-            + Mathf.Clamp01(cylinderBuild) * 0.08f
-            + Mathf.Clamp01(intensity) * 0.07f;
-
-        if (hitAccentClip != null)
-        {
-            audioSource.PlayOneShot(
-                hitAccentClip,
-                hitAccentVolume * Mathf.Lerp(0.62f, 1f, intensity));
-        }
-
-        if (impactTier >= CombatImpactTier.Critical
-            && criticalAccentClip != null)
-        {
-            audioSource.PlayOneShot(
-                criticalAccentClip,
-                criticalAccentVolume * Mathf.Lerp(0.82f, 1f, intensity));
-            float cutoff = impactTier == CombatImpactTier.Devastating
-                ? 2400f
-                : 4300f;
-            float duration = impactTier == CombatImpactTier.Devastating
-                ? 0.2f
-                : 0.14f;
-            StartAudioDuck(cutoff, duration);
-        }
-        else
-        {
-            StartAudioDuck(9000f, 0.075f);
-        }
-    }
-
-    private void PlayKillAccent(
-        Vector3 worldPosition,
-        float tier,
-        bool wasCritical,
-        bool wasFinalEnemy,
-        float cylinderBuild,
-        float feedbackMultiplier)
-    {
-        if (audioSource == null || accentAudioSource == null)
-        {
-            return;
-        }
-
-        float pan = GetImpactPan(worldPosition);
-        float build = Mathf.Clamp01(cylinderBuild);
-        float audioMultiplier = Mathf.Max(0f, feedbackMultiplier);
-        audioSource.panStereo = pan;
-        audioSource.pitch = 1f + build * 0.08f + tier * 0.08f;
-
-        if (hitAccentClip != null)
-        {
-            audioSource.PlayOneShot(
-                hitAccentClip,
-                hitAccentVolume * audioMultiplier);
-        }
-
-        if (wasCritical && criticalAccentClip != null)
-        {
-            audioSource.PlayOneShot(
-                criticalAccentClip,
-                criticalAccentVolume * audioMultiplier);
-        }
-
-        accentAudioSource.panStereo = pan * 0.65f;
-        accentAudioSource.pitch = 0.88f + tier * 0.2f + build * 0.08f
-            + (wasFinalEnemy ? -0.08f : 0f);
-
-        if (killAccentClip != null)
-        {
-            accentAudioSource.PlayOneShot(
-                killAccentClip,
-                killAccentVolume
-                    * (wasFinalEnemy ? 1f : 0.9f)
-                    * audioMultiplier);
-        }
-
-        float cutoff = wasFinalEnemy
-            ? 1200f
-            : Mathf.Lerp(3100f, 1700f, tier);
-        StartAudioDuck(cutoff, volumePulseDuration);
-    }
-
-    private static float GetImpactPan(Vector3 worldPosition)
-    {
-        Camera mainCamera = Camera.main;
-
-        if (mainCamera == null)
-        {
-            return 0f;
-        }
-
-        float viewportX = mainCamera.WorldToViewportPoint(worldPosition).x;
-        return Mathf.Clamp((viewportX - 0.5f) * 1.4f, -0.7f, 0.7f);
-    }
-
-    private void StartAudioDuck(float cutoff, float duration)
-    {
-        if (lowPassFilter == null)
-        {
-            return;
-        }
-
-        lowPassFilter.enabled = true;
-        lowPassFilter.cutoffFrequency = Mathf.Clamp(cutoff, 800f, 22000f);
-
-        if (audioFilterCoroutine != null)
-        {
-            StopCoroutine(audioFilterCoroutine);
-        }
-
-        audioFilterCoroutine = StartCoroutine(
-            RestoreAudioFilterRoutine(Mathf.Max(0.01f, duration)));
-    }
-
-    private IEnumerator RestoreAudioFilterRoutine(float duration)
-    {
-        float elapsed = 0f;
-        float startCutoff = lowPassFilter == null
-            ? lowPassBaseCutoff
-            : lowPassFilter.cutoffFrequency;
-
-        while (elapsed < duration && lowPassFilter != null)
-        {
-            yield return null;
-            elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / duration);
-            lowPassFilter.cutoffFrequency = Mathf.Lerp(
-                startCutoff,
-                lowPassBaseCutoff,
-                Mathf.SmoothStep(0f, 1f, progress));
-        }
-
-        RestoreAudioFilter();
-        audioFilterCoroutine = null;
-    }
-
-    private void RestoreAudioFilter()
-    {
-        if (lowPassFilter == null)
-        {
-            return;
-        }
-
-        lowPassFilter.cutoffFrequency = lowPassBaseCutoff;
-        lowPassFilter.enabled = lowPassBaseEnabled;
-
-    }
-
-    private static AudioClip CreateRuntimeHitAccent()
-    {
-        const int sampleRate = 44100;
-        const float duration = 0.085f;
-        int sampleCount = Mathf.CeilToInt(sampleRate * duration);
-        float[] samples = new float[sampleCount];
-
-        for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++)
-        {
-            float time = (float)sampleIndex / sampleRate;
-            float progress = time / duration;
-            float body = Mathf.Sin(
-                2f * Mathf.PI * (195f - progress * 70f) * time);
-            float metallic = Mathf.Sin(2f * Mathf.PI * 1380f * time);
-            float noise = GetDeterministicNoise(sampleIndex);
-            float click = progress < 0.18f
-                ? noise * (1f - progress / 0.18f)
-                : 0f;
-            samples[sampleIndex] = Mathf.Clamp(
-                body * Mathf.Pow(1f - progress, 2.5f) * 0.56f
-                + metallic * Mathf.Pow(1f - progress, 7f) * 0.16f
-                + click * 0.32f,
-                -1f,
-                1f);
-        }
-
-        return CreateRuntimeClip("Runtime Hit Accent", samples, sampleRate);
-    }
-
-    private static AudioClip CreateRuntimeCriticalAccent()
-    {
-        const int sampleRate = 44100;
-        const float duration = 0.14f;
-        int sampleCount = Mathf.CeilToInt(sampleRate * duration);
-        float[] samples = new float[sampleCount];
-
-        for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++)
-        {
-            float time = (float)sampleIndex / sampleRate;
-            float progress = time / duration;
-            float crack = GetDeterministicNoise(sampleIndex + 941)
-                * Mathf.Pow(1f - progress, 10f);
-            float punch = Mathf.Sin(2f * Mathf.PI * 108f * time)
-                * Mathf.Pow(1f - progress, 2.2f);
-            float ring = (
-                Mathf.Sin(2f * Mathf.PI * 1720f * time)
-                + Mathf.Sin(2f * Mathf.PI * 2470f * time) * 0.6f)
-                * Mathf.Pow(1f - progress, 5.5f);
-            samples[sampleIndex] = Mathf.Clamp(
-                crack * 0.44f + punch * 0.48f + ring * 0.17f,
-                -1f,
-                1f);
-        }
-
-        return CreateRuntimeClip(
-            "Runtime Critical Accent",
-            samples,
-            sampleRate);
-    }
-
-    private static AudioClip CreateRuntimeKillAccent()
-    {
-        const int sampleRate = 44100;
-        const float duration = 0.24f;
-        int sampleCount = Mathf.CeilToInt(sampleRate * duration);
-        float[] samples = new float[sampleCount];
-
-        for (int sampleIndex = 0; sampleIndex < sampleCount; sampleIndex++)
-        {
-            float time = (float)sampleIndex / sampleRate;
-            float progress = time / duration;
-            float decay = Mathf.Pow(1f - progress, 2.15f);
-            float sub = Mathf.Sin(
-                2f * Mathf.PI * (67f - progress * 24f) * time);
-            float body = Mathf.Sin(2f * Mathf.PI * 118f * time);
-            float noise = GetDeterministicNoise(sampleIndex + 1973);
-            float click = sampleIndex < sampleRate * 0.018f
-                ? noise * (1f - time / 0.018f)
-                : 0f;
-            float chime = Mathf.Sin(2f * Mathf.PI * 520f * time)
-                * Mathf.Pow(1f - progress, 5f);
-            samples[sampleIndex] = Mathf.Clamp(
-                sub * decay * 0.68f
-                + body * Mathf.Pow(1f - progress, 3.3f) * 0.25f
-                + click * 0.24f
-                + chime * 0.14f,
-                -1f,
-                1f);
-        }
-
-        return CreateRuntimeClip("Runtime Kill Accent", samples, sampleRate);
-    }
-
-    private static float GetDeterministicNoise(int sampleIndex)
-    {
-        float noiseSeed = Mathf.Sin(sampleIndex * 12.9898f) * 43758.5453f;
-        return (noiseSeed - Mathf.Floor(noiseSeed)) * 2f - 1f;
-    }
-
-    private static AudioClip CreateRuntimeClip(
-        string clipName,
-        float[] samples,
-        int sampleRate)
-    {
-        AudioClip clip = AudioClip.Create(
-            clipName,
-            samples.Length,
-            1,
-            sampleRate,
-            false);
-        clip.SetData(samples, 0);
-        return clip;
-    }
-
-    private static void DestroyRuntimeClip(AudioClip clip, string clipName)
-    {
-        if (clip != null && clip.name == clipName)
-        {
-            Destroy(clip);
-        }
-    }
 }

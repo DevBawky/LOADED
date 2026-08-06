@@ -194,6 +194,7 @@ public class StatusEffectController : MonoBehaviour
 
         long combinedStacks = (long)GetStacks(type) + stacks;
         SetStacks(type, (int)Math.Min(int.MaxValue, combinedStacks));
+        PlayAppliedSfx(type);
 
         if (type == StatusEffectType.Poison && creditedToPlayer)
         {
@@ -268,7 +269,29 @@ public class StatusEffectController : MonoBehaviour
             return;
         }
 
-        target.ApplyStatusDamage(poisonStacks, poisonCreditedToPlayer);
+        if (target.ApplyStatusDamage(poisonStacks, poisonCreditedToPlayer))
+        {
+            SoundManager.PlaySfx("SFX_Poison");
+        }
+    }
+
+    private static void PlayAppliedSfx(StatusEffectType type)
+    {
+        switch (type)
+        {
+            case StatusEffectType.Mark:
+                SoundManager.PlaySfx("SFX_Mark");
+                break;
+            case StatusEffectType.Poison:
+                SoundManager.PlaySfx("SFX_Poison");
+                break;
+            case StatusEffectType.Stun:
+                SoundManager.PlaySfx("SFX_Stun");
+                break;
+            case StatusEffectType.Weakness:
+                SoundManager.PlaySfx("SFX_Weakness");
+                break;
+        }
     }
 
     private void SetStacks(StatusEffectType type, int stacks)

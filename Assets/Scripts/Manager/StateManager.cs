@@ -64,6 +64,8 @@ public class StateManager : MonoBehaviour
         && currentStageIndex < stages.Length
             ? stages[currentStageIndex]
             : null;
+    public BattleData CurrentBattle =>
+        TryGetCurrentBattle(out BattleData battle) ? battle : null;
 
     private void Awake()
     {

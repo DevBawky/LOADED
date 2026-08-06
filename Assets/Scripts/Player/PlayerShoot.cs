@@ -15,72 +15,6 @@ public class PlayerShoot : MonoBehaviour
 
     private const float BulletFeedbackStartAlpha = 0.2f;
 
-    [Serializable]
-    private class RandomSfxSettings
-    {
-        [Tooltip("상황이 발생할 때 무작위로 선택할 효과음 목록입니다.")]
-        [SerializeField] private List<AudioClip> clips =
-            new List<AudioClip>();
-        [Range(0f, 1f)]
-        [Tooltip("이 효과음 묶음의 재생 볼륨입니다.")]
-        [SerializeField] private float volume = 1f;
-        [Range(0.01f, 3f)]
-        [Tooltip("무작위 피치의 최솟값입니다.")]
-        [SerializeField] private float minPitch = 0.95f;
-        [Range(0.01f, 3f)]
-        [Tooltip("무작위 피치의 최댓값입니다.")]
-        [SerializeField] private float maxPitch = 1.05f;
-
-        public float Volume => Mathf.Clamp01(volume);
-        public float RandomPitch => UnityEngine.Random.Range(
-            Mathf.Min(minPitch, maxPitch),
-            Mathf.Max(minPitch, maxPitch));
-
-        public AudioClip GetRandomClip()
-        {
-            if (clips == null || clips.Count == 0)
-            {
-                return null;
-            }
-
-            int validClipCount = 0;
-
-            foreach (AudioClip clip in clips)
-            {
-                if (clip != null)
-                {
-                    validClipCount++;
-                }
-            }
-
-            if (validClipCount == 0)
-            {
-                return null;
-            }
-
-            int selectedClipIndex = UnityEngine.Random.Range(
-                0,
-                validClipCount);
-
-            foreach (AudioClip clip in clips)
-            {
-                if (clip == null)
-                {
-                    continue;
-                }
-
-                if (selectedClipIndex == 0)
-                {
-                    return clip;
-                }
-
-                selectedClipIndex--;
-            }
-
-            return null;
-        }
-    }
-
     private readonly struct DamageReservation
     {
         public DamageReservation(EnemyController enemy, int damage)
@@ -175,17 +109,6 @@ public class PlayerShoot : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.2f;
 
-    [Header("Audio")]
-    [Tooltip("효과음 출력 설정의 기준으로 사용할 AudioSource입니다. 비어 있으면 2D AudioSource를 자동 생성합니다.")]
-    [SerializeField] private AudioSource sfxAudioSource;
-    [SerializeField] private RandomSfxSettings reloadSfx =
-        new RandomSfxSettings();
-    [SerializeField] private RandomSfxSettings normalShotSfx =
-        new RandomSfxSettings();
-    [FormerlySerializedAs("shotSfx")]
-    [SerializeField] private RandomSfxSettings criticalShotSfx =
-        new RandomSfxSettings();
-
     [Header("Shot Presentation")]
     [Min(0f)]
     [SerializeField] private float maxRandomShotAngle = 5f;
@@ -203,8 +126,6 @@ public class PlayerShoot : MonoBehaviour
         new HashSet<BulletData>();
     private readonly Dictionary<EnemyController, int> reservedDamageByEnemy =
         new Dictionary<EnemyController, int>();
-    private readonly List<AudioSource> sfxAudioSourcePool =
-        new List<AudioSource>();
     private readonly int[] ownedGradeCountBuffer = new int[4];
     private readonly Dictionary<EnemyController, DamagePreviewEnemyState>
         damagePreviewStates =
@@ -264,7 +185,6 @@ public class PlayerShoot : MonoBehaviour
             playerMove.SetShooting(false);
         }
 
-        InitializeSfxAudioSource();
         ResetBulletFeedback();
         reservedDamageByEnemy.Clear();
         currentConsumedBullet = null;
@@ -310,11 +230,6 @@ public class PlayerShoot : MonoBehaviour
         {
             StopCoroutine(bulletFeedbackCoroutine);
             bulletFeedbackCoroutine = null;
-        }
-
-        foreach (AudioSource source in sfxAudioSourcePool)
-        {
-            source?.Stop();
         }
 
         ResetBulletFeedback();
@@ -397,7 +312,7 @@ public class PlayerShoot : MonoBehaviour
         if (deckManager.TryReload(out BulletInstance loadedBullet))
         {
             BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Reload);
-            PlayRandomSfx(reloadSfx);
+            SoundManager.PlaySfx("SFX_Player_Reload");
             combatPresentation?.PlayReload(loadedBullet, cylinderUI);
 
             if (loadedBullet == null || !loadedBullet.DoesNotConsumeTurn)
@@ -876,7 +791,13 @@ public class PlayerShoot : MonoBehaviour
         }
 
         ShowBulletFeedback(bulletData);
-        PlayRandomSfx(isCritical ? criticalShotSfx : normalShotSfx);
+        if (isCritical && hasViableTarget)
+        {
+            SoundManager.PlaySfx("SFX_Critical");
+        }
+        SoundManager.PlaySfx(isCritical
+            ? "SFX_Player_Critical_Shoot"
+            : "SFX_Player_Shoot");
         combatFeedback?.RecordShotCameraShake();
         RecordSuccessfulShot();
         BulletFired?.Invoke(bulletData);
@@ -931,93 +852,6 @@ public class PlayerShoot : MonoBehaviour
         return Mathf.Clamp01(
             (float)Mathf.Max(1, bulletsFiredThisCylinder)
             / initialLoadedBulletCount);
-    }
-
-    private void InitializeSfxAudioSource()
-    {
-        if (sfxAudioSource == null)
-        {
-            sfxAudioSource = GetComponent<AudioSource>();
-        }
-
-        if (sfxAudioSource == null)
-        {
-            sfxAudioSource = gameObject.AddComponent<AudioSource>();
-            sfxAudioSource.spatialBlend = 0f;
-        }
-
-        sfxAudioSource.playOnAwake = false;
-        sfxAudioSource.loop = false;
-        sfxAudioSourcePool.Clear();
-        sfxAudioSourcePool.Add(sfxAudioSource);
-    }
-
-    private void PlayRandomSfx(RandomSfxSettings settings)
-    {
-        if (settings == null)
-        {
-            return;
-        }
-
-        AudioClip clip = settings.GetRandomClip();
-
-        if (clip == null)
-        {
-            return;
-        }
-
-        AudioSource source = GetAvailableSfxAudioSource();
-        source.Stop();
-        source.clip = clip;
-        source.volume = settings.Volume;
-        source.pitch = settings.RandomPitch;
-        source.Play();
-    }
-
-    private AudioSource GetAvailableSfxAudioSource()
-    {
-        foreach (AudioSource source in sfxAudioSourcePool)
-        {
-            if (source != null && !source.isPlaying)
-            {
-                return source;
-            }
-        }
-
-        AudioSource pooledSource = gameObject.AddComponent<AudioSource>();
-        CopyAudioSourceSettings(sfxAudioSource, pooledSource);
-        pooledSource.playOnAwake = false;
-        pooledSource.loop = false;
-        sfxAudioSourcePool.Add(pooledSource);
-        return pooledSource;
-    }
-
-    private static void CopyAudioSourceSettings(
-        AudioSource source,
-        AudioSource destination)
-    {
-        if (source == null || destination == null)
-        {
-            return;
-        }
-
-        destination.outputAudioMixerGroup = source.outputAudioMixerGroup;
-        destination.mute = source.mute;
-        destination.bypassEffects = source.bypassEffects;
-        destination.bypassListenerEffects = source.bypassListenerEffects;
-        destination.bypassReverbZones = source.bypassReverbZones;
-        destination.priority = source.priority;
-        destination.panStereo = source.panStereo;
-        destination.spatialBlend = source.spatialBlend;
-        destination.reverbZoneMix = source.reverbZoneMix;
-        destination.dopplerLevel = source.dopplerLevel;
-        destination.spread = source.spread;
-        destination.rolloffMode = source.rolloffMode;
-        destination.minDistance = source.minDistance;
-        destination.maxDistance = source.maxDistance;
-        destination.ignoreListenerPause = source.ignoreListenerPause;
-        destination.ignoreListenerVolume = source.ignoreListenerVolume;
-        destination.velocityUpdateMode = source.velocityUpdateMode;
     }
 
     private bool RefreshViableTargets(
@@ -2535,6 +2369,7 @@ public class PlayerShoot : MonoBehaviour
     private void HandleBulletDestroyed(BulletInstance destroyedBullet)
     {
         bulletDestroyedThisCylinder = true;
+        SoundManager.PlaySfx("SFX_Bullet_Destroy");
 
         if (deckManager == null)
         {

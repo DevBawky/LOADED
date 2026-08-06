@@ -40,69 +40,6 @@ public enum BigBarrelStep
     Reload
 }
 
-[System.Serializable]
-public class EnemyRandomSfxSettings
-{
-    [Tooltip("상황이 발생할 때 무작위로 선택할 효과음 목록입니다.")]
-    [SerializeField] private List<AudioClip> clips = new List<AudioClip>();
-    [Range(0f, 1f)]
-    [Tooltip("이 효과음 묶음의 재생 볼륨입니다.")]
-    [SerializeField] private float volume = 1f;
-    [Range(0.01f, 3f)]
-    [Tooltip("무작위 피치의 최솟값입니다.")]
-    [SerializeField] private float minPitch = 0.95f;
-    [Range(0.01f, 3f)]
-    [Tooltip("무작위 피치의 최댓값입니다.")]
-    [SerializeField] private float maxPitch = 1.05f;
-
-    public float Volume => Mathf.Clamp01(volume);
-    public float RandomPitch => UnityEngine.Random.Range(
-        Mathf.Min(minPitch, maxPitch),
-        Mathf.Max(minPitch, maxPitch));
-
-    public AudioClip GetRandomClip()
-    {
-        if (clips == null || clips.Count == 0)
-        {
-            return null;
-        }
-
-        int validClipCount = 0;
-
-        foreach (AudioClip clip in clips)
-        {
-            if (clip != null)
-            {
-                validClipCount++;
-            }
-        }
-
-        if (validClipCount == 0)
-        {
-            return null;
-        }
-
-        int selectedClipIndex = UnityEngine.Random.Range(0, validClipCount);
-
-        foreach (AudioClip clip in clips)
-        {
-            if (clip == null)
-            {
-                continue;
-            }
-
-            if (selectedClipIndex == 0)
-            {
-                return clip;
-            }
-
-            selectedClipIndex--;
-        }
-
-        return null;
-    }
-}
-
 public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
     public static event Action<int> PlayerIndirectDamageDealt;
@@ -140,19 +77,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private EnemyActionQueueUI actionQueueUI;
     [SerializeField] private StatusEffectController statusEffects;
     [SerializeField] private EnemyDamageNumberDisplay damageNumberDisplay;
-
-    [Header("Audio")]
-    [Tooltip("출력 Mixer와 2D/3D 설정의 기준 AudioSource입니다. 비어 있으면 2D Source를 자동 생성합니다.")]
-    [SerializeField] private AudioSource sfxAudioSource;
-    [Tooltip("일반 공격에 맞았을 때 사용할 효과음 설정입니다.")]
-    [SerializeField] private EnemyRandomSfxSettings normalHitSfx =
-        new EnemyRandomSfxSettings();
-    [Tooltip("치명타 공격에 맞았을 때 사용할 효과음 설정입니다.")]
-    [SerializeField] private EnemyRandomSfxSettings criticalHitSfx =
-        new EnemyRandomSfxSettings();
-    [Tooltip("적이 죽을 때 사용할 효과음 설정입니다.")]
-    [SerializeField] private EnemyRandomSfxSettings deathSfx =
-        new EnemyRandomSfxSettings();
 
     [Header("Runtime State")]
     [SerializeField] private GameObject avatarInstance;
@@ -198,8 +122,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private Animator avatarAnimator;
     private SpriteRenderer avatarSortingRenderer;
     private int avatarAnimationSequence;
-    private readonly List<AudioSource> sfxAudioSourcePool =
-        new List<AudioSource>();
     private readonly List<LineRenderer> bigBarrelTelegraphLines =
         new List<LineRenderer>();
 
@@ -226,6 +148,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     public int PreparedTargetTileIndex => preparedTargetTileIndex;
     public EnemyTurnActionType LastTurnAction => lastTurnAction;
     public bool IsActing => isActing;
+    public bool WillExecuteDedicatedTurnMotion =>
+        isAttackPrepared
+        || (enemyData != null
+            && enemyData.BehaviorType == EnemyBehaviorType.BigBarrel
+            && (bigBarrelStep == BigBarrelStep.ExecuteBomb
+                || bigBarrelStep == BigBarrelStep.ExecuteShotgun));
 
     private void Awake()
     {
@@ -249,7 +177,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         healthBarFeedback?.Initialize(healthFillImage);
-        InitializeSfxAudioSource();
         ResetRuntimeState();
         ApplyCanvasOrientation();
     }
@@ -475,10 +402,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0 && currentHealth > 0)
         {
-            PlayRandomSfx(
-                isCritical
-                    ? criticalHitSfx
-                    : normalHitSfx);
+            SoundManager.PlaySfx(isCritical
+                ? "SFX_Enemy_Critical_Hit"
+                : "SFX_Enemy_Hit");
         }
 
         int markBonusDamage = Mathf.Max(0, modifiedDamage - damage);
@@ -623,7 +549,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         Vector3 impactPosition,
         Vector3 restingPosition,
         float flightDuration,
-        float settleDuration)
+        float settleDuration,
+        Action onImpact = null)
     {
         if (actorMotion == null)
         {
@@ -634,7 +561,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             impactPosition,
             restingPosition,
             flightDuration,
-            settleDuration);
+            settleDuration,
+            onImpact);
         ApplyCanvasOrientation();
     }
 
@@ -722,7 +650,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (currentHealth == 0)
         {
             GameStatistics.RecordKill();
-            PlayDeathSfx();
+            SoundManager.PlaySfx("SFX_Enemy_Die");
             ClearAttackQueue();
             StopAllCoroutines();
             isActing = false;
@@ -733,123 +661,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         return appliedDamage;
-    }
-
-    private void InitializeSfxAudioSource()
-    {
-        if (sfxAudioSource == null)
-        {
-            sfxAudioSource = GetComponent<AudioSource>();
-        }
-
-        if (sfxAudioSource == null)
-        {
-            sfxAudioSource = gameObject.AddComponent<AudioSource>();
-            sfxAudioSource.spatialBlend = 0f;
-        }
-
-        sfxAudioSource.playOnAwake = false;
-        sfxAudioSource.loop = false;
-        sfxAudioSourcePool.Clear();
-        sfxAudioSourcePool.Add(sfxAudioSource);
-    }
-
-    private void PlayRandomSfx(EnemyRandomSfxSettings settings)
-    {
-        if (!TryGetRandomSfx(settings, out AudioClip clip,
-                out float volume, out float pitch))
-        {
-            return;
-        }
-
-        AudioSource source = GetAvailableSfxAudioSource();
-        source.clip = clip;
-        source.volume = volume;
-        source.pitch = pitch;
-        source.Play();
-    }
-
-    private void PlayDeathSfx()
-    {
-        if (!TryGetRandomSfx(deathSfx, out AudioClip clip,
-                out float volume, out float pitch))
-        {
-            return;
-        }
-
-        GameObject audioObject = new GameObject("Enemy Death SFX");
-        audioObject.transform.position = transform.position;
-        AudioSource source = audioObject.AddComponent<AudioSource>();
-        CopyAudioSourceSettings(sfxAudioSource, source);
-        source.playOnAwake = false;
-        source.loop = false;
-        source.clip = clip;
-        source.volume = volume;
-        source.pitch = pitch;
-        source.Play();
-
-        float playbackDuration = clip.length / Mathf.Max(0.01f, Mathf.Abs(pitch));
-        Destroy(audioObject, playbackDuration + 0.1f);
-    }
-
-    private static bool TryGetRandomSfx(
-        EnemyRandomSfxSettings settings,
-        out AudioClip clip,
-        out float volume,
-        out float pitch)
-    {
-        clip = settings?.GetRandomClip();
-        volume = settings == null ? 1f : settings.Volume;
-        pitch = settings == null ? 1f : settings.RandomPitch;
-        return clip != null;
-    }
-
-    private AudioSource GetAvailableSfxAudioSource()
-    {
-        foreach (AudioSource source in sfxAudioSourcePool)
-        {
-            if (source != null && !source.isPlaying)
-            {
-                return source;
-            }
-        }
-
-        GameObject audioObject = new GameObject("Enemy SFX Source");
-        audioObject.transform.SetParent(transform, false);
-        AudioSource pooledSource = audioObject.AddComponent<AudioSource>();
-        CopyAudioSourceSettings(sfxAudioSource, pooledSource);
-        pooledSource.playOnAwake = false;
-        pooledSource.loop = false;
-        sfxAudioSourcePool.Add(pooledSource);
-        return pooledSource;
-    }
-
-    private static void CopyAudioSourceSettings(
-        AudioSource source,
-        AudioSource destination)
-    {
-        if (source == null || destination == null)
-        {
-            return;
-        }
-
-        destination.outputAudioMixerGroup = source.outputAudioMixerGroup;
-        destination.mute = source.mute;
-        destination.bypassEffects = source.bypassEffects;
-        destination.bypassListenerEffects = source.bypassListenerEffects;
-        destination.bypassReverbZones = source.bypassReverbZones;
-        destination.priority = source.priority;
-        destination.panStereo = source.panStereo;
-        destination.spatialBlend = source.spatialBlend;
-        destination.reverbZoneMix = source.reverbZoneMix;
-        destination.dopplerLevel = source.dopplerLevel;
-        destination.spread = source.spread;
-        destination.rolloffMode = source.rolloffMode;
-        destination.minDistance = source.minDistance;
-        destination.maxDistance = source.maxDistance;
-        destination.ignoreListenerPause = source.ignoreListenerPause;
-        destination.ignoreListenerVolume = source.ignoreListenerVolume;
-        destination.velocityUpdateMode = source.velocityUpdateMode;
     }
 
     public bool Heal(int amount)
@@ -1572,6 +1383,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private void PrepareCurrentAttackQueue()
     {
         isAttackPrepared = true;
+        SoundManager.PlaySfx("SFX_EnemyReady");
         actionQueueUI.SetPrepared(true);
         RefreshAttackTelegraph();
         CompleteAction(EnemyTurnActionType.PrepareAttack);
@@ -1993,6 +1805,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             yield break;
         }
 
+        if (enemyData.BehaviorType == EnemyBehaviorType.Gunner)
+        {
+            SoundManager.PlaySfx("SFX_Enemy_Shoot");
+        }
+
         if (enemyData.BehaviorType == EnemyBehaviorType.Melee)
         {
             yield return PlayAvatarAttackAnimation();
@@ -2195,6 +2012,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         PlayThrowerAttackAnimation();
         yield return PlayThrownProjectile(preparedTargetPosition);
+        SoundManager.PlaySfx("SFX_Thrower_Bomb");
 
         if (attackData.AttackEffectPrefab != null)
         {
@@ -2852,6 +2670,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         avatarAnimator = avatarInstance.GetComponentInChildren<Animator>(true);
         avatarSortingRenderer =
             avatarInstance.GetComponentInChildren<SpriteRenderer>(true);
+
+        if (avatarAnimator != null
+            && avatarAnimator.GetComponent<EnemyAnimationSfx>() == null)
+        {
+            avatarAnimator.gameObject.AddComponent<EnemyAnimationSfx>();
+        }
 
         if (avatarAnimator == null)
         {
