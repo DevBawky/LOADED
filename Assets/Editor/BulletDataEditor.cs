@@ -68,9 +68,10 @@ public class BulletDataEditor : Editor
         Draw("levelThreeColor", "Level +3 Rich Text Color");
 
         EditorGUILayout.Space(2f);
-        EditorGUILayout.LabelField("Shared Line Colors", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Shared Line Appearance", EditorStyles.boldLabel);
         Draw("primaryLineColor");
         Draw("secondaryLineColor");
+        Draw("lineWidthMultiplier", "Line Width Multiplier");
     }
 
     private void DrawBaseLevel()
