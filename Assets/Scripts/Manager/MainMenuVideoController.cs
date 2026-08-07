@@ -32,6 +32,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
     [SerializeField] private Button playGameButton;
     [SerializeField] private CanvasGroup buttonsCanvasGroup;
     [SerializeField] private CanvasGroup settingsButtonCanvasGroup;
+    [SerializeField] private CanvasGroup pilDogCanvasGroup;
     [Min(0.01f)]
     [SerializeField] private float buttonsFadeOutDuration = 0.5f;
     [SerializeField] private string gameSceneName = "Stage 1";
@@ -49,6 +50,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
         ResolvePlayGameButton();
         ResolveButtonsCanvasGroup();
         ResolveSettingsButtonCanvasGroup();
+        ResolvePilDogCanvasGroup();
         ResolveModalPanels();
         videoPlayer = GetComponent<VideoPlayer>();
         videoPlayer.playOnAwake = false;
@@ -65,6 +67,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
         ResolvePlayGameButton();
         ResolveButtonsCanvasGroup();
         ResolveSettingsButtonCanvasGroup();
+        ResolvePilDogCanvasGroup();
         ResolveModalPanels();
         hadActiveModalPanel = HasActiveModalPanel();
         if (playGameButton != null)
@@ -85,6 +88,13 @@ public sealed class MainMenuVideoController : MonoBehaviour
             settingsButtonCanvasGroup.alpha = 1f;
             settingsButtonCanvasGroup.interactable = true;
             settingsButtonCanvasGroup.blocksRaycasts = true;
+        }
+
+        if (pilDogCanvasGroup != null)
+        {
+            pilDogCanvasGroup.alpha = 1f;
+            pilDogCanvasGroup.interactable = true;
+            pilDogCanvasGroup.blocksRaycasts = true;
         }
 
         gameStartRequested = false;
@@ -196,8 +206,10 @@ public sealed class MainMenuVideoController : MonoBehaviour
     {
         ResolveButtonsCanvasGroup();
         ResolveSettingsButtonCanvasGroup();
+        ResolvePilDogCanvasGroup();
 
-        if (buttonsCanvasGroup == null && settingsButtonCanvasGroup == null)
+        if (buttonsCanvasGroup == null && settingsButtonCanvasGroup == null
+            && pilDogCanvasGroup == null)
         {
             return;
         }
@@ -214,12 +226,16 @@ public sealed class MainMenuVideoController : MonoBehaviour
     {
         SetCanvasGroupInteraction(buttonsCanvasGroup, false);
         SetCanvasGroupInteraction(settingsButtonCanvasGroup, false);
+        SetCanvasGroupInteraction(pilDogCanvasGroup, false);
         float buttonsStartAlpha = buttonsCanvasGroup == null
             ? 0f
             : buttonsCanvasGroup.alpha;
         float settingsStartAlpha = settingsButtonCanvasGroup == null
             ? 0f
             : settingsButtonCanvasGroup.alpha;
+        float pilDogStartAlpha = pilDogCanvasGroup == null
+            ? 0f
+            : pilDogCanvasGroup.alpha;
         float elapsed = 0f;
 
         while (elapsed < buttonsFadeOutDuration)
@@ -233,11 +249,53 @@ public sealed class MainMenuVideoController : MonoBehaviour
             SetCanvasGroupAlpha(
                 settingsButtonCanvasGroup,
                 Mathf.SmoothStep(settingsStartAlpha, 0f, progress));
+            SetCanvasGroupAlpha(
+                pilDogCanvasGroup,
+                Mathf.SmoothStep(pilDogStartAlpha, 0f, progress));
         }
 
         SetCanvasGroupAlpha(buttonsCanvasGroup, 0f);
         SetCanvasGroupAlpha(settingsButtonCanvasGroup, 0f);
+        SetCanvasGroupAlpha(pilDogCanvasGroup, 0f);
         buttonsFadeCoroutine = null;
+    }
+
+    private void ResolvePilDogCanvasGroup()
+    {
+        if (pilDogCanvasGroup != null)
+        {
+            return;
+        }
+
+        Transform fallback = null;
+        foreach (Transform candidate in FindObjectsByType<Transform>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (candidate.name == "Image | PilDog")
+            {
+                pilDogCanvasGroup = GetOrAddCanvasGroup(candidate);
+                return;
+            }
+
+            if (candidate.name == "Text | PilDog")
+            {
+                fallback = candidate;
+            }
+        }
+
+        if (fallback != null)
+        {
+            pilDogCanvasGroup = GetOrAddCanvasGroup(fallback);
+        }
+    }
+
+    private static CanvasGroup GetOrAddCanvasGroup(Transform target)
+    {
+        CanvasGroup canvasGroup = target.GetComponent<CanvasGroup>();
+        return canvasGroup != null
+            ? canvasGroup
+            : target.gameObject.AddComponent<CanvasGroup>();
     }
 
     private void ResolveSettingsButtonCanvasGroup()

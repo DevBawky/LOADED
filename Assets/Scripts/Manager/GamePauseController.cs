@@ -47,7 +47,8 @@ public class GamePauseController : MonoBehaviour
 
     public void TogglePause()
     {
-        if (LoadingTransitionController.IsTransitioning)
+        if (LoadingTransitionController.IsTransitioning
+            || GameOverController.IsGameOver)
         {
             return;
         }
@@ -237,6 +238,11 @@ public class GamePauseController : MonoBehaviour
 
     private bool CanOpenPauseMenu()
     {
+        if (GameOverController.IsGameOver)
+        {
+            return false;
+        }
+
         if (stateManager == null)
         {
             return true;
@@ -339,7 +345,8 @@ internal static class EscapePanelInput
 
     private static void HandleEscape(InputAction.CallbackContext _)
     {
-        if (LoadingTransitionController.IsTransitioning)
+        if (LoadingTransitionController.IsTransitioning
+            || GameOverController.IsGameOver)
         {
             return;
         }

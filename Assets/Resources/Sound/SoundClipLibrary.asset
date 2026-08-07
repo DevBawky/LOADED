@@ -28,6 +28,8 @@ MonoBehaviour:
   bossBgm:
   - {fileID: 8300000, guid: b9cd7576958f444469c4ea4fe08bd8c8, type: 3}
   - {fileID: 8300000, guid: 1fa8511452e414f49884ff881c5d7b79, type: 3}
+  gameOverBgm:
+  - {fileID: 8300000, guid: 43df88b5634da27408a2d1be0fe1f986, type: 3}
   battleBgm:
   - stageId: stage_1
     battleIndex: 0
@@ -149,6 +151,13 @@ MonoBehaviour:
   - id: SFX_BigBarrel_Throw
     category: 3
     clip: {fileID: 8300000, guid: 2e8edfcd8cf3d7242ae3b15022b69478, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_BigBarrel_ShotGun
+    category: 1
+    clip: {fileID: 8300000, guid: 49b26a8dcb2200a4b84bf3c722b3186a, type: 3}
     variants: []
     volume: 1
     minPitch: 1

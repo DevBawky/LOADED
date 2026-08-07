@@ -2,6 +2,8 @@ Shader "Loaded/Enemy Warning Flow"
 {
     Properties
     {
+        [PerRendererData] _MainTex("Sprite Texture", 2D) = "white" {}
+
         [Header(Color)]
         [HDR] _BaseColor("Base Color", Color) = (0.35, 0.02, 0.01, 0.55)
         [HDR] _GridColor("Grid Color", Color) = (1.0, 0.08, 0.01, 0.9)
