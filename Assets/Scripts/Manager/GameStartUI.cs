@@ -117,7 +117,10 @@ public sealed class GameStartUI : MonoBehaviour
         fightFadeDuration = Mathf.Max(0f, fightFadeDuration);
     }
 
-    public IEnumerator Play(BattleData battleData, Action onFightStarted)
+    public IEnumerator Play(
+        StageData stageData,
+        BattleData battleData,
+        Action onFightStarted)
     {
         FindChildReferences();
         ResolveGameplayReferences();
@@ -135,7 +138,7 @@ public sealed class GameStartUI : MonoBehaviour
         }
 
         ResetVisualState();
-        SetBattleText(battleData);
+        SetBattleText(stageData, battleData);
         stageNoticeClickText.text = "클릭하여 전투 시작";
 
         SetGameplayCanvasActive(false);
@@ -416,11 +419,13 @@ public sealed class GameStartUI : MonoBehaviour
         lastPlayerHealth = currentHealth;
     }
 
-    private void SetBattleText(BattleData battleData)
+    private void SetBattleText(
+        StageData stageData,
+        BattleData battleData)
     {
-        stageInfoText.text = battleData == null
-            ? string.Empty
-            : battleData.NoticeTitle;
+        stageInfoText.text = StageTitleFormatter.Format(
+            stageData,
+            battleData);
         stageSubTitleText.text = battleData == null
             ? string.Empty
             : battleData.NoticeDescription;

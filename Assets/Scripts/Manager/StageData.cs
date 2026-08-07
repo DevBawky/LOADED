@@ -14,3 +14,22 @@ public class StageData : ScriptableObject
     public IReadOnlyList<BattleData> Battles =>
         battles ?? (IReadOnlyList<BattleData>)System.Array.Empty<BattleData>();
 }
+
+public static class StageTitleFormatter
+{
+    public static string Format(StageData stage, BattleData battle)
+    {
+        if (stage == null || battle == null)
+        {
+            return string.Empty;
+        }
+
+        string battleName = string.IsNullOrWhiteSpace(battle.DisplayName)
+            ? battle.name
+            : battle.DisplayName;
+        string stageName = string.IsNullOrWhiteSpace(stage.DisplayName)
+            ? stage.name
+            : stage.DisplayName;
+        return $"{battleName}. {stageName}";
+    }
+}

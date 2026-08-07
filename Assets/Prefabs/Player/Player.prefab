@@ -536,6 +536,7 @@ MonoBehaviour:
   cameraShakeStrength: 0.055
   cameraShakeDuration: 0.18
   shotShakeMultiplier: 0.5
+  explosionShakeMultiplier: 1.5
   killShakeMultiplier: 1
   secondComboKillShakeMultiplier: 1.3
   laterComboKillShakeMultiplier: 1.5

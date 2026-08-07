@@ -113,6 +113,18 @@ public class BulletManagementUI : MonoBehaviour
         ClearSelection();
     }
 
+    public bool TryCloseFromEscape()
+    {
+        if (manageBulletsPanel == null
+            || !manageBulletsPanel.activeInHierarchy)
+        {
+            return false;
+        }
+
+        Close();
+        return true;
+    }
+
     public void RemoveSelectedBullet()
     {
         if (selectedBullet == null || deckManager == null

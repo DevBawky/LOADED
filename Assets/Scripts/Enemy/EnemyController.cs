@@ -120,6 +120,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private EnemyHealthBarFeedback healthBarFeedback;
     private BossHudController bossHud;
     private Animator avatarAnimator;
+    private EnemyAnimationSfx avatarEffects;
     private SpriteRenderer avatarSortingRenderer;
     private int avatarAnimationSequence;
     private readonly List<LineRenderer> bigBarrelTelegraphLines =
@@ -1836,7 +1837,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (attackData.AttackEffectPrefab != null)
         {
-            Instantiate(
+            TransientVfx.Spawn(
                 attackData.AttackEffectPrefab,
                 targetPosition,
                 Quaternion.identity);
@@ -2017,9 +2018,16 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         yield return PlayThrownProjectile(preparedTargetPosition);
         SoundManager.PlaySfx("SFX_Thrower_Bomb");
 
-        if (attackData.AttackEffectPrefab != null)
+        TransientVfx.Spawn(
+            enemyData.ExplosionVfxPrefab,
+            preparedTargetPosition,
+            Quaternion.identity,
+            enemyData.ExplosionVfxScale);
+
+        if (attackData.AttackEffectPrefab != null
+            && attackData.AttackEffectPrefab != enemyData.ExplosionVfxPrefab)
         {
-            Instantiate(
+            TransientVfx.Spawn(
                 attackData.AttackEffectPrefab,
                 preparedTargetPosition,
                 Quaternion.identity);
@@ -2655,6 +2663,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         avatarInstance = null;
         avatarAnimator = null;
+        avatarEffects = null;
         avatarSortingRenderer = null;
 
         if (enemyData == null || enemyData.Avatar == null)
@@ -2670,7 +2679,9 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         avatarInstance.transform.SetParent(transform, false);
         avatarInstance.transform.localPosition = Vector3.zero;
         avatarInstance.transform.localRotation = Quaternion.identity;
-        avatarAnimator = avatarInstance.GetComponentInChildren<Animator>(true);
+        avatarAnimator = avatarInstance.GetComponent<Animator>();
+        avatarAnimator ??=
+            avatarInstance.GetComponentInChildren<Animator>(true);
         avatarSortingRenderer =
             avatarInstance.GetComponentInChildren<SpriteRenderer>(true);
 
@@ -2678,6 +2689,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             && avatarAnimator.GetComponent<EnemyAnimationSfx>() == null)
         {
             avatarAnimator.gameObject.AddComponent<EnemyAnimationSfx>();
+        }
+
+        if (avatarAnimator != null)
+        {
+            avatarEffects = avatarAnimator.GetComponent<EnemyAnimationSfx>();
         }
 
         if (avatarAnimator == null)
@@ -2732,6 +2748,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         int animationSequence = ++avatarAnimationSequence;
+        avatarEffects?.StopEffects();
         avatarAnimator.Play(animationStateHash, 0, 0f);
         avatarAnimator.Update(0f);
         AnimatorStateInfo attackState =
@@ -2834,6 +2851,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void PlayAvatarIdle()
     {
+        avatarEffects?.StopEffects();
+
         if (avatarAnimator == null
             || avatarAnimator.runtimeAnimatorController == null
             || !avatarAnimator.HasState(0, IdleAnimationStateHash))

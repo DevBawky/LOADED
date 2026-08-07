@@ -128,6 +128,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [Min(0f)]
     [SerializeField] private float shotShakeMultiplier = 0.5f;
     [Min(0f)]
+    [SerializeField] private float explosionShakeMultiplier = 1.5f;
+    [Min(0f)]
     [SerializeField] private float killShakeMultiplier = 1f;
     [Min(0f)]
     [SerializeField] private float secondComboKillShakeMultiplier = 1.3f;
@@ -472,6 +474,13 @@ public sealed class CombatFeedbackController : MonoBehaviour
     {
         CombatCameraShake.Play(
             cameraShakeStrength * shotShakeMultiplier,
+            cameraShakeDuration);
+    }
+
+    public void RecordExplosionCameraShake()
+    {
+        CombatCameraShake.Play(
+            cameraShakeStrength * explosionShakeMultiplier,
             cameraShakeDuration);
     }
 

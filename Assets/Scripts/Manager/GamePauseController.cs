@@ -21,21 +21,6 @@ public class GamePauseController : MonoBehaviour
         SetPaused(false);
     }
 
-    private void Update()
-    {
-        if (LoadingTransitionController.IsTransitioning)
-        {
-            return;
-        }
-
-        Keyboard keyboard = Keyboard.current;
-
-        if (keyboard != null && keyboard.escapeKey.wasPressedThisFrame)
-        {
-            TogglePause();
-        }
-    }
-
     public void TogglePause()
     {
         if (LoadingTransitionController.IsTransitioning)
@@ -209,6 +194,98 @@ public class GamePauseController : MonoBehaviour
             }
 
             current = current.parent;
+        }
+
+        return false;
+    }
+}
+
+internal static class EscapePanelInput
+{
+    private static readonly string[] ClosablePanelNames =
+    {
+        "Panel | Credits",
+        "Panel | Statistics",
+        "Panel | Dict & Info"
+    };
+
+    private static InputAction escapeAction;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void Initialize()
+    {
+        if (escapeAction != null)
+        {
+            escapeAction.performed -= HandleEscape;
+            escapeAction.Disable();
+            escapeAction.Dispose();
+        }
+
+        escapeAction = new InputAction(
+            "Close Active Panel",
+            InputActionType.Button,
+            "<Keyboard>/escape");
+        escapeAction.performed += HandleEscape;
+        escapeAction.Enable();
+    }
+
+    private static void HandleEscape(InputAction.CallbackContext _)
+    {
+        if (LoadingTransitionController.IsTransitioning)
+        {
+            return;
+        }
+
+        BulletManagementUI bulletManagement =
+            Object.FindFirstObjectByType<BulletManagementUI>();
+        if (bulletManagement != null
+            && bulletManagement.TryCloseFromEscape())
+        {
+            return;
+        }
+
+        if (CloseMainMenuPanels())
+        {
+            return;
+        }
+
+        GamePauseController pauseController =
+            Object.FindFirstObjectByType<GamePauseController>();
+        if (pauseController != null)
+        {
+            pauseController.TogglePause();
+        }
+    }
+
+    private static bool CloseMainMenuPanels()
+    {
+        bool closedAny = false;
+
+        foreach (Transform candidate in Object.FindObjectsByType<Transform>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (!candidate.gameObject.activeInHierarchy
+                || !IsClosablePanel(candidate.name))
+            {
+                continue;
+            }
+
+            candidate.gameObject.SetActive(false);
+            closedAny = true;
+        }
+
+        return closedAny;
+    }
+
+    private static bool IsClosablePanel(string objectName)
+    {
+        foreach (string panelName in ClosablePanelNames)
+        {
+            if (objectName == panelName)
+            {
+                return true;
+            }
         }
 
         return false;

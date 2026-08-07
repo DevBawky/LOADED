@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PlayerInventory : MonoBehaviour
 {
@@ -17,6 +18,7 @@ public class PlayerInventory : MonoBehaviour
     [SerializeField] private ItemData[] startingItems;
 
     private ItemData[] items;
+    private InputAction useItemHotkeyAction;
 
     public event Action Changed;
 
@@ -53,6 +55,30 @@ public class PlayerInventory : MonoBehaviour
                 items[index] = startingItem;
             }
         }
+
+        CreateUseItemHotkeyAction();
+    }
+
+    private void OnEnable()
+    {
+        useItemHotkeyAction?.Enable();
+    }
+
+    private void OnDisable()
+    {
+        useItemHotkeyAction?.Disable();
+    }
+
+    private void OnDestroy()
+    {
+        if (useItemHotkeyAction == null)
+        {
+            return;
+        }
+
+        useItemHotkeyAction.performed -= HandleUseItemHotkey;
+        useItemHotkeyAction.Dispose();
+        useItemHotkeyAction = null;
     }
 
     private void OnValidate()
@@ -158,5 +184,50 @@ public class PlayerInventory : MonoBehaviour
         }
 
         return -1;
+    }
+
+    private void CreateUseItemHotkeyAction()
+    {
+        useItemHotkeyAction = new InputAction(
+            "Use Inventory Item",
+            InputActionType.Button);
+        useItemHotkeyAction.AddBinding("<Keyboard>/1");
+        useItemHotkeyAction.AddBinding("<Keyboard>/2");
+        useItemHotkeyAction.AddBinding("<Keyboard>/3");
+        useItemHotkeyAction.AddBinding("<Keyboard>/numpad1");
+        useItemHotkeyAction.AddBinding("<Keyboard>/numpad2");
+        useItemHotkeyAction.AddBinding("<Keyboard>/numpad3");
+        useItemHotkeyAction.performed += HandleUseItemHotkey;
+    }
+
+    private void HandleUseItemHotkey(InputAction.CallbackContext context)
+    {
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning)
+        {
+            return;
+        }
+
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null)
+        {
+            return;
+        }
+
+        int slotIndex = context.control == keyboard.digit1Key
+            || context.control == keyboard.numpad1Key
+                ? 0
+                : context.control == keyboard.digit2Key
+                    || context.control == keyboard.numpad2Key
+                    ? 1
+                    : context.control == keyboard.digit3Key
+                        || context.control == keyboard.numpad3Key
+                        ? 2
+                        : -1;
+
+        if (slotIndex >= 0 && slotIndex < slotCount)
+        {
+            TryUse(slotIndex);
+        }
     }
 }

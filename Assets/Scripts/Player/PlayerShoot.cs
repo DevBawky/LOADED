@@ -1448,11 +1448,11 @@ public class PlayerShoot : MonoBehaviour
             {
                 stateOwner.SetAbilityStacks(0);
             }
-            else
-            {
-                stateOwner.AddAbilityStacks(
-                    Mathf.Max(1, focusEffect.StackCount));
-            }
+        }
+
+        if (!isCritical)
+        {
+            GrantFocusStacksToRemainingLoadedBullets();
         }
 
         if (isCritical)
@@ -1482,6 +1482,31 @@ public class PlayerShoot : MonoBehaviour
                 BulletEffectType.ShellCollector,
                 1,
                 stateOwner);
+        }
+    }
+
+    private void GrantFocusStacksToRemainingLoadedBullets()
+    {
+        if (deckManager == null)
+        {
+            return;
+        }
+
+        foreach (BulletInstance bullet in deckManager.LoadedBullets)
+        {
+            if (bullet == null)
+            {
+                continue;
+            }
+
+            BulletEffectData focusEffect = FindSpecialEffect(
+                bullet,
+                BulletEffectType.Focus);
+            if (focusEffect != null)
+            {
+                bullet.AddAbilityStacks(
+                    Mathf.Max(1, focusEffect.StackCount));
+            }
         }
     }
 
@@ -2796,7 +2821,8 @@ public class PlayerShoot : MonoBehaviour
             firedBullet,
             resolvedBullet,
             guaranteedCritical,
-            generatesShells);
+            generatesShells,
+            firedBulletIndex);
 
         if (previewBulletsFired < int.MaxValue)
         {
@@ -3657,7 +3683,8 @@ public class PlayerShoot : MonoBehaviour
         BulletInstance firedBullet,
         BulletInstance resolvedBullet,
         bool guaranteedCritical,
-        bool generatesShells)
+        bool generatesShells,
+        int firedBulletIndex)
     {
         BulletEffectData focusEffect = FindSpecialEffect(
             resolvedBullet,
@@ -3665,10 +3692,15 @@ public class PlayerShoot : MonoBehaviour
 
         if (focusEffect != null)
         {
-            previewAbilityStacks[firedBullet] = guaranteedCritical
-                ? 0
-                : GetPreviewAbilityStacks(firedBullet)
-                    + Mathf.Max(1, focusEffect.StackCount);
+            if (guaranteedCritical)
+            {
+                previewAbilityStacks[firedBullet] = 0;
+            }
+        }
+
+        if (!guaranteedCritical)
+        {
+            GrantPreviewFocusStacksToRemainingBullets(firedBulletIndex);
         }
 
         if (guaranteedCritical)
@@ -3683,6 +3715,33 @@ public class PlayerShoot : MonoBehaviour
             GrantPreviewAbilityStacks(
                 BulletEffectType.ShellCollector,
                 firedBullet);
+        }
+    }
+
+    private void GrantPreviewFocusStacksToRemainingBullets(
+        int firedBulletIndex)
+    {
+        IReadOnlyList<BulletInstance> loadedBullets =
+            deckManager.LoadedBullets;
+        int remainingCount = Mathf.Min(
+            firedBulletIndex,
+            loadedBullets.Count);
+
+        for (int bulletIndex = 0;
+             bulletIndex < remainingCount;
+             bulletIndex++)
+        {
+            BulletInstance bullet = loadedBullets[bulletIndex];
+            BulletEffectData focusEffect = FindSpecialEffect(
+                bullet,
+                BulletEffectType.Focus);
+
+            if (bullet != null && focusEffect != null)
+            {
+                previewAbilityStacks[bullet] =
+                    GetPreviewAbilityStacks(bullet)
+                    + Mathf.Max(1, focusEffect.StackCount);
+            }
         }
     }
 

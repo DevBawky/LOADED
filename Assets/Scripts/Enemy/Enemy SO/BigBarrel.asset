@@ -55,6 +55,8 @@ MonoBehaviour:
   thrownProjectileSize: 0.35
   thrownProjectileDuration: 0.3
   thrownProjectileArcHeight: 2
+  explosionVfxPrefab: {fileID: 4718121390383761467, guid: d3e57e74f862aa24cb848b9f51503cd2, type: 3}
+  explosionVfxScale: 5
   gunnerTelegraphMaterial: {fileID: 0}
   throwerTelegraphMaterial: {fileID: 0}
   supportTelegraphMaterial: {fileID: 0}

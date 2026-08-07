@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_focus
   displayName: "\uC9D1\uC911\uD0C4"
-  description: "치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +20%p\n치명타 시 모두 소모"
+  description: "실린더에서 앞선 탄환이 치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +20%p\n치명타 시 모두 소모"
   cylinderIcon: {fileID: 437931843702538465, guid: c089d7c1b75375d49a10f260b93feec2, type: 3}
   price: 6
   grade: 1
@@ -43,7 +43,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +25%p\n치명타 시 모두 소모"
+  - description: "실린더에서 앞선 탄환이 치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +25%p\n치명타 시 모두 소모"
     damage: 14
     maxRange: 4
     criticalChance: 12
@@ -63,7 +63,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +30%p\n치명타 시 모두 소모"
+  - description: "실린더에서 앞선 탄환이 치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +30%p\n치명타 시 모두 소모"
     damage: 18
     maxRange: 5
     criticalChance: 15
@@ -83,7 +83,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +50%p\n치명타 시 모두 소모"
+  - description: "실린더에서 앞선 탄환이 치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +50%p\n치명타 시 모두 소모"
     damage: 23
     maxRange: 5
     criticalChance: 20
