@@ -547,23 +547,13 @@ public sealed class SoundManager : MonoBehaviour
             PlaySfxPitched(UiButtonSfxId, UiClickPitchMultiplier);
         });
 
-        EventTrigger trigger = button.GetComponent<EventTrigger>();
-        if (trigger == null) trigger = button.gameObject.AddComponent<EventTrigger>();
-        trigger.triggers ??= new List<EventTrigger.Entry>();
+        UiButtonHoverSfx hoverSfx = button.GetComponent<UiButtonHoverSfx>();
+        if (hoverSfx == null)
+        {
+            hoverSfx = button.gameObject.AddComponent<UiButtonHoverSfx>();
+        }
 
-        EventTrigger.Entry hoverEntry = new EventTrigger.Entry
-        {
-            eventID = EventTriggerType.PointerEnter,
-            callback = new EventTrigger.TriggerEvent()
-        };
-        hoverEntry.callback.AddListener(_ =>
-        {
-            if (button != null && button.IsActive() && button.IsInteractable())
-            {
-                PlaySfx(UiButtonSfxId);
-            }
-        });
-        trigger.triggers.Add(hoverEntry);
+        hoverSfx.Initialize(button);
     }
 
     private static bool IsSpecialButton(Button button)
@@ -574,5 +564,24 @@ public sealed class SoundManager : MonoBehaviour
         }
 
         return false;
+    }
+}
+
+[DisallowMultipleComponent]
+internal sealed class UiButtonHoverSfx : MonoBehaviour, IPointerEnterHandler
+{
+    private Button button;
+
+    public void Initialize(Button targetButton)
+    {
+        button = targetButton;
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (button != null && button.IsActive() && button.IsInteractable())
+        {
+            SoundManager.PlaySfx("UI_Button_Hover_Click");
+        }
     }
 }

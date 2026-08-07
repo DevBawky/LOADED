@@ -1217,7 +1217,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float recoveryDuration,
         float strengthMultiplier = 1f)
     {
-        if (CombatAccessibilitySettings.TimeEffectMultiplier <= 0f)
+        float timeEffectMultiplier =
+            CombatAccessibilitySettings.TimeEffectMultiplier;
+        if (timeEffectMultiplier <= 0f)
         {
             return;
         }
@@ -1230,7 +1232,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         float baseScale = Mathf.Lerp(0.72f, strongestScale, intensity);
         float scale = Mathf.Clamp(
-            1f - (1f - baseScale) * Mathf.Max(0f, strengthMultiplier),
+            1f - (1f - baseScale)
+            * Mathf.Max(0f, strengthMultiplier)
+            * timeEffectMultiplier,
             0.05f,
             1f);
         slowMotionCoroutine = StartCoroutine(SlowMotionRoutine(

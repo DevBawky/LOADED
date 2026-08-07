@@ -40,7 +40,12 @@ public static class CombatImpactTierUtility
 [DisallowMultipleComponent]
 public sealed class CombatAccessibilitySettings : MonoBehaviour
 {
+    private const string PresentationIntensityPreferenceKey =
+        "Combat.Presentation.Intensity";
+
     private static CombatAccessibilitySettings instance;
+    private static bool hasLoadedPresentationIntensity;
+    private static float presentationIntensity = 0.7f;
 
     [Header("Combat Presentation Accessibility")]
     [SerializeField] private bool reduceScreenFlashes;
@@ -48,18 +53,28 @@ public sealed class CombatAccessibilitySettings : MonoBehaviour
     [SerializeField] private bool reduceTimeEffects;
     [SerializeField] private bool reduceParticleDensity;
 
-    public static float FlashMultiplier =>
-        instance != null && instance.reduceScreenFlashes ? 0.28f : 1f;
-    public static float CameraShakeMultiplier =>
-        instance != null && instance.reduceCameraShake ? 0f : 1f;
-    public static float TimeEffectMultiplier =>
-        instance != null && instance.reduceTimeEffects ? 0f : 1f;
-    public static float ParticleDensityMultiplier =>
-        instance != null && instance.reduceParticleDensity ? 0.45f : 1f;
+    public static float PresentationIntensity
+    {
+        get
+        {
+            LoadPresentationIntensity();
+            return presentationIntensity;
+        }
+    }
+
+    public static float FlashMultiplier => PresentationIntensity
+        * (instance != null && instance.reduceScreenFlashes ? 0.28f : 1f);
+    public static float CameraShakeMultiplier => PresentationIntensity
+        * (instance != null && instance.reduceCameraShake ? 0f : 1f);
+    public static float TimeEffectMultiplier => PresentationIntensity
+        * (instance != null && instance.reduceTimeEffects ? 0f : 1f);
+    public static float ParticleDensityMultiplier => PresentationIntensity
+        * (instance != null && instance.reduceParticleDensity ? 0.45f : 1f);
 
     private void Awake()
     {
         instance = this;
+        LoadPresentationIntensity();
     }
 
     private void OnDestroy()
@@ -93,6 +108,29 @@ public sealed class CombatAccessibilitySettings : MonoBehaviour
         reduceTimeEffects = value;
     public void SetReduceParticleDensity(bool value) =>
         reduceParticleDensity = value;
+
+    public static void SetPresentationIntensity(float value)
+    {
+        presentationIntensity = Mathf.Clamp01(value);
+        hasLoadedPresentationIntensity = true;
+        PlayerPrefs.SetFloat(
+            PresentationIntensityPreferenceKey,
+            presentationIntensity);
+        PlayerPrefs.Save();
+    }
+
+    private static void LoadPresentationIntensity()
+    {
+        if (hasLoadedPresentationIntensity)
+        {
+            return;
+        }
+
+        presentationIntensity = Mathf.Clamp01(PlayerPrefs.GetFloat(
+            PresentationIntensityPreferenceKey,
+            0.7f));
+        hasLoadedPresentationIntensity = true;
+    }
 }
 
 [DefaultExecutionOrder(12000)]

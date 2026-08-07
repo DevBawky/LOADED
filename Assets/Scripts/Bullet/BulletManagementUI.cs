@@ -28,6 +28,11 @@ public class BulletManagementUI : MonoBehaviour
     [SerializeField] private Button myBulletButtonPrefab;
     [SerializeField] private RectTransform[] bulletRows;
 
+    [Header("Bullet Button Visual")]
+    [SerializeField] private Color hoverIndicatorColor = Color.white;
+    [SerializeField] private Color selectedIndicatorColor =
+        new Color(1f, 0.5f, 0f, 1f);
+
     [Header("Selected Bullet")]
     [SerializeField] private Image bulletIcon;
     [SerializeField] private Image cylinderIcon;
@@ -48,6 +53,10 @@ public class BulletManagementUI : MonoBehaviour
     private readonly List<Button> spawnedButtons = new List<Button>();
     private readonly List<UnityAction> spawnedClickActions =
         new List<UnityAction>();
+    private readonly List<BulletInstance> spawnedButtonBullets =
+        new List<BulletInstance>();
+    private readonly List<BulletButtonVisualState> spawnedButtonVisuals =
+        new List<BulletButtonVisualState>();
     private readonly Vector3[] tooltipWorldCorners = new Vector3[4];
     private BulletInstance selectedBullet;
     private bool wasShopActive;
@@ -244,19 +253,41 @@ public class BulletManagementUI : MonoBehaviour
             myBulletButtonPrefab,
             targetRow);
         button.name = $"Button _ My Bullet {index + 1}";
+        button.transition = Selectable.Transition.None;
         Image icon = FindNamedChild<Image>(
             button.transform,
             "Image | Bullet Sprite");
         ApplyIcon(icon, GetPreferredIcon(bullet));
+        if (icon != null)
+        {
+            icon.raycastTarget = true;
+        }
+
+        Image indicator = button.GetComponent<Image>();
+        BulletButtonVisualState visual =
+            button.GetComponent<BulletButtonVisualState>();
+        if (visual == null)
+        {
+            visual = button.gameObject.AddComponent<BulletButtonVisualState>();
+        }
+
+        visual.Initialize(
+            indicator,
+            hoverIndicatorColor,
+            selectedIndicatorColor);
         UnityAction clickAction = () => SelectBullet(bullet);
         button.onClick.AddListener(clickAction);
         SoundManager.BindUiButtonSfx(button);
         spawnedButtons.Add(button);
         spawnedClickActions.Add(clickAction);
+        spawnedButtonBullets.Add(bullet);
+        spawnedButtonVisuals.Add(visual);
     }
 
     private void RefreshSelection()
     {
+        RefreshButtonSelection();
+
         if (selectedBullet == null || selectedBullet.Data == null)
         {
             ClearSelection();
@@ -339,6 +370,7 @@ public class BulletManagementUI : MonoBehaviour
     private void ClearSelection()
     {
         selectedBullet = null;
+        RefreshButtonSelection();
         HideUpgradeTooltip();
         ApplyIcon(bulletIcon, null);
         ApplyIcon(cylinderIcon, null);
@@ -467,6 +499,24 @@ public class BulletManagementUI : MonoBehaviour
 
         spawnedButtons.Clear();
         spawnedClickActions.Clear();
+        spawnedButtonBullets.Clear();
+        spawnedButtonVisuals.Clear();
+    }
+
+    private void RefreshButtonSelection()
+    {
+        int count = Mathf.Min(
+            spawnedButtonBullets.Count,
+            spawnedButtonVisuals.Count);
+
+        for (int index = 0; index < count; index++)
+        {
+            BulletButtonVisualState visual = spawnedButtonVisuals[index];
+            if (visual != null)
+            {
+                visual.SetSelected(spawnedButtonBullets[index] == selectedBullet);
+            }
+        }
     }
 
     private void ResolveReferences()

@@ -10,6 +10,7 @@ public class GamePauseController : MonoBehaviour
     [SerializeField] private GameObject pausedPanel;
     [SerializeField] private Slider bgmVolumeSlider;
     [SerializeField] private Slider sfxVolumeSlider;
+    [SerializeField] private Slider vfxIntensitySlider;
 
     public static bool IsPaused { get; private set; }
 
@@ -119,6 +120,10 @@ public class GamePauseController : MonoBehaviour
             {
                 sfxVolumeSlider = slider;
             }
+            else if (HasAncestorNamed(slider.transform, "Layout | VFX"))
+            {
+                vfxIntensitySlider = slider;
+            }
         }
     }
 
@@ -152,6 +157,14 @@ public class GamePauseController : MonoBehaviour
         {
             sfxVolumeSlider.SetValueWithoutNotify(SoundManager.SfxVolume);
             sfxVolumeSlider.onValueChanged.AddListener(SoundManager.SetSfxVolume);
+        }
+
+        if (vfxIntensitySlider != null)
+        {
+            vfxIntensitySlider.SetValueWithoutNotify(
+                CombatAccessibilitySettings.PresentationIntensity);
+            vfxIntensitySlider.onValueChanged.AddListener(
+                CombatAccessibilitySettings.SetPresentationIntensity);
         }
     }
 
