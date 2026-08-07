@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -6,6 +7,7 @@ public class StageProgressUI : MonoBehaviour
 {
     [Header("References")]
     [SerializeField] private StateManager stateManager;
+    [SerializeField] private TMP_Text stageTitleText;
     [SerializeField] private RectTransform battleContainer;
     [SerializeField] private Image battleIconPrefab;
     [SerializeField] private Sprite normalBattleSprite;
@@ -33,6 +35,7 @@ public class StageProgressUI : MonoBehaviour
             stateManager = FindFirstObjectByType<StateManager>();
         }
 
+        ResolveStageTitleText();
         ResolveCurrentStageIndicator();
     }
 
@@ -73,6 +76,54 @@ public class StageProgressUI : MonoBehaviour
         }
 
         UpdateCurrentBattlePosition();
+        UpdateStageTitle();
+    }
+
+    private void UpdateStageTitle()
+    {
+        ResolveStageTitleText();
+
+        if (stageTitleText == null || stateManager == null)
+        {
+            return;
+        }
+
+        if (stateManager.CurrentState == GameFlowState.Shop)
+        {
+            stageTitleText.text = "마을. 상점";
+            return;
+        }
+
+        StageData stage = stateManager.CurrentStage;
+        BattleData battle = stateManager.CurrentBattle;
+
+        if (stateManager.CurrentState != GameFlowState.Battle
+            || stage == null || battle == null)
+        {
+            stageTitleText.text = string.Empty;
+            return;
+        }
+
+        stageTitleText.text = StageTitleFormatter.Format(stage, battle);
+    }
+
+    private void ResolveStageTitleText()
+    {
+        if (stageTitleText != null)
+        {
+            return;
+        }
+
+        foreach (TMP_Text candidate in FindObjectsByType<TMP_Text>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (candidate.name == "Text | Stage Title")
+            {
+                stageTitleText = candidate;
+                return;
+            }
+        }
     }
 
     private void Rebuild(StageData stage)

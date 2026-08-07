@@ -29,6 +29,8 @@ public class EnemyDataEditor : Editor
     private SerializedProperty thrownProjectileSize;
     private SerializedProperty thrownProjectileDuration;
     private SerializedProperty thrownProjectileArcHeight;
+    private SerializedProperty explosionVfxPrefab;
+    private SerializedProperty explosionVfxScale;
     private SerializedProperty gunnerTelegraphMaterial;
     private SerializedProperty throwerTelegraphMaterial;
     private SerializedProperty supportTelegraphMaterial;
@@ -68,6 +70,8 @@ public class EnemyDataEditor : Editor
         thrownProjectileSize = Find("thrownProjectileSize");
         thrownProjectileDuration = Find("thrownProjectileDuration");
         thrownProjectileArcHeight = Find("thrownProjectileArcHeight");
+        explosionVfxPrefab = Find("explosionVfxPrefab");
+        explosionVfxScale = Find("explosionVfxScale");
         gunnerTelegraphMaterial = Find("gunnerTelegraphMaterial");
         throwerTelegraphMaterial = Find("throwerTelegraphMaterial");
         supportTelegraphMaterial = Find("supportTelegraphMaterial");
@@ -135,6 +139,8 @@ public class EnemyDataEditor : Editor
                 EditorGUILayout.PropertyField(thrownProjectileSize);
                 EditorGUILayout.PropertyField(thrownProjectileDuration);
                 EditorGUILayout.PropertyField(thrownProjectileArcHeight);
+                EditorGUILayout.PropertyField(explosionVfxPrefab);
+                EditorGUILayout.PropertyField(explosionVfxScale);
                 EditorGUILayout.PropertyField(throwerTelegraphMaterial);
                 EditorGUILayout.PropertyField(throwerTelegraphSegments);
                 DrawTelegraphSettings();
@@ -165,6 +171,8 @@ public class EnemyDataEditor : Editor
                 EditorGUILayout.PropertyField(thrownProjectileColor);
                 EditorGUILayout.PropertyField(thrownProjectileSize);
                 EditorGUILayout.PropertyField(thrownProjectileDuration);
+                EditorGUILayout.PropertyField(explosionVfxPrefab);
+                EditorGUILayout.PropertyField(explosionVfxScale);
                 EditorGUILayout.PropertyField(bigBarrel, true);
                 EditorGUILayout.PropertyField(throwerTelegraphSegments);
                 DrawTelegraphSettings();
@@ -293,6 +301,14 @@ public class EnemyDataEditor : Editor
                 "행동 예고선 머티리얼이 연결되지 않았습니다.",
                 MessageType.Warning);
         }
+
+        if (data.BehaviorType == EnemyBehaviorType.Thrower
+            && data.ExplosionVfxPrefab == null)
+        {
+            EditorGUILayout.HelpBox(
+                "Thrower explosion VFX prefab is not assigned.",
+                MessageType.Warning);
+        }
     }
 
     private static void DrawBigBarrelValidation(EnemyData data)
@@ -302,6 +318,11 @@ public class EnemyDataEditor : Editor
         ValidateBossAction(data, EnemyActionType.Reload, "재장전");
 
         BigBarrelSettings settings = data.BigBarrel;
+
+        if (data.ExplosionVfxPrefab == null)
+        {
+            Warning("Big Barrel explosion VFX prefab is not assigned.");
+        }
 
         if (settings.BossBombPrefab == null)
         {

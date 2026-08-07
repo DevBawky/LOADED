@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Stage 1
   m_EditorClassIdentifier: Assembly-CSharp::StageData
   stageId: stage_1
-  displayName: Stage 1
+  displayName: Dust'n Dawn
   battles:
   - {fileID: 11400000, guid: 9dc865d939c4004468d1fade197f6efb, type: 2}
   - {fileID: 11400000, guid: 53925893ac2f4e6d9314572bf022f005, type: 2}

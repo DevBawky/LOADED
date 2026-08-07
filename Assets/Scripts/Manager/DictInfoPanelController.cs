@@ -45,7 +45,7 @@ public sealed class DictInfoPanelController : MonoBehaviour
         public RawImage Display;
         public Color ContainerColor;
         public VideoPlayer Player;
-        public RenderTexture Texture;
+        public bool Preparing;
     }
 
     private static readonly VideoBinding[] VideoBindings =
@@ -105,6 +105,30 @@ public sealed class DictInfoPanelController : MonoBehaviour
         }
     }
 
+    private void OnEnable()
+    {
+        if (!initialized)
+        {
+            return;
+        }
+
+        foreach (VideoRuntime runtime in videoRuntimes)
+        {
+            ResumeOrPrepare(runtime);
+        }
+    }
+
+    private void OnDisable()
+    {
+        foreach (VideoRuntime runtime in videoRuntimes)
+        {
+            if (runtime.Player != null && runtime.Player.isPlaying)
+            {
+                runtime.Player.Pause();
+            }
+        }
+    }
+
     private void OnDestroy()
     {
         UnbindButtons();
@@ -113,6 +137,9 @@ public sealed class DictInfoPanelController : MonoBehaviour
         {
             if (runtime.Player != null)
             {
+                runtime.Player.prepareCompleted -= HandleVideoPrepared;
+                runtime.Player.frameReady -= HandleVideoFrameReady;
+                runtime.Player.errorReceived -= HandleVideoError;
                 runtime.Player.Stop();
             }
 
@@ -127,11 +154,6 @@ public sealed class DictInfoPanelController : MonoBehaviour
                 Destroy(runtime.Display.gameObject);
             }
 
-            if (runtime.Texture != null)
-            {
-                runtime.Texture.Release();
-                Destroy(runtime.Texture);
-            }
         }
 
         videoRuntimes.Clear();
@@ -319,6 +341,7 @@ public sealed class DictInfoPanelController : MonoBehaviour
         player.isLooping = true;
         player.skipOnDrop = true;
         player.waitForFirstFrame = true;
+        player.sendFrameReadyEvents = true;
         player.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
 
         Color containerColor = rawImage.color;
@@ -332,11 +355,12 @@ public sealed class DictInfoPanelController : MonoBehaviour
             Display = display,
             ContainerColor = containerColor,
             Player = player,
-            Texture = null
+            Preparing = true
         };
         videoRuntimes.Add(runtime);
 
         player.prepareCompleted += HandleVideoPrepared;
+        player.frameReady += HandleVideoFrameReady;
         player.errorReceived += HandleVideoError;
         player.Prepare();
     }
@@ -349,18 +373,11 @@ public sealed class DictInfoPanelController : MonoBehaviour
             return;
         }
 
+        runtime.Preparing = false;
+
         int width = GetVideoDimension(player.width);
         int height = GetVideoDimension(player.height);
-        RenderTexture texture = new(width, height, 0, RenderTextureFormat.ARGB32)
-        {
-            name = $"Control Video | {runtime.Container.transform.parent.name} | {width}x{height}",
-            filterMode = FilterMode.Bilinear,
-            wrapMode = TextureWrapMode.Clamp
-        };
-        texture.Create();
-
-        runtime.Texture = texture;
-        runtime.Display.texture = texture;
+        AssignVideoTexture(runtime, player);
 
         AspectRatioFitter aspectRatioFitter = runtime.Display.GetComponent<AspectRatioFitter>();
         if (aspectRatioFitter != null)
@@ -368,10 +385,28 @@ public sealed class DictInfoPanelController : MonoBehaviour
             aspectRatioFitter.aspectRatio = (float)width / height;
         }
 
-        player.renderMode = VideoRenderMode.RenderTexture;
-        player.targetTexture = texture;
         player.time = 0d;
         player.Play();
+    }
+
+    private void HandleVideoFrameReady(VideoPlayer player, long _)
+    {
+        VideoRuntime runtime = videoRuntimes.Find(
+            candidate => candidate.Player == player);
+        AssignVideoTexture(runtime, player);
+    }
+
+    private static void AssignVideoTexture(
+        VideoRuntime runtime,
+        VideoPlayer player)
+    {
+        if (runtime == null || runtime.Display == null || player == null
+            || player.texture == null)
+        {
+            return;
+        }
+
+        runtime.Display.texture = player.texture;
     }
 
     private int GetVideoDimension(ulong dimension)
@@ -386,7 +421,33 @@ public sealed class DictInfoPanelController : MonoBehaviour
 
     private void HandleVideoError(VideoPlayer player, string message)
     {
+        VideoRuntime runtime = videoRuntimes.Find(
+            candidate => candidate.Player == player);
+        if (runtime != null && runtime.Container != null)
+        {
+            runtime.Preparing = false;
+            runtime.Container.color = runtime.ContainerColor;
+        }
+
         Debug.LogError($"Control guide video failed: '{player.url}'. {message}", this);
+    }
+
+    private static void ResumeOrPrepare(VideoRuntime runtime)
+    {
+        if (runtime == null || runtime.Player == null)
+        {
+            return;
+        }
+
+        if (runtime.Player.isPrepared)
+        {
+            runtime.Player.Play();
+        }
+        else if (!runtime.Preparing)
+        {
+            runtime.Preparing = true;
+            runtime.Player.Prepare();
+        }
     }
 
     private static void SetActive(GameObject target, bool active)

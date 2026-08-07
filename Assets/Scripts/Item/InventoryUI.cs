@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
@@ -108,6 +109,8 @@ public class InventoryUI : MonoBehaviour
 
     private void Refresh()
     {
+        RefreshShortcutLabels();
+
         if (playerInventory == null || itemImages == null)
         {
             return;
@@ -127,5 +130,69 @@ public class InventoryUI : MonoBehaviour
             itemImage.sprite = item != null ? item.Icon : null;
             itemImage.gameObject.SetActive(item != null && item.Icon != null);
         }
+    }
+
+    private void RefreshShortcutLabels()
+    {
+        if (itemImages == null)
+        {
+            return;
+        }
+
+        int count = Mathf.Min(
+            itemImages.Length,
+            PlayerInventory.MaximumSlotCount);
+
+        for (int index = 0; index < count; index++)
+        {
+            Image itemImage = itemImages[index];
+            Transform slot = itemImage == null
+                ? null
+                : itemImage.transform.parent;
+            Transform shortcutBadge = FindShortcutBadge(slot);
+
+            if (shortcutBadge == null)
+            {
+                continue;
+            }
+
+            shortcutBadge.gameObject.SetActive(true);
+            shortcutBadge.SetAsLastSibling();
+
+            TMP_Text shortcutLabel =
+                shortcutBadge.GetComponentInChildren<TMP_Text>(true);
+            if (shortcutLabel == null)
+            {
+                continue;
+            }
+
+            shortcutLabel.gameObject.SetActive(true);
+            shortcutLabel.enabled = true;
+            shortcutLabel.text = (index + 1).ToString();
+            shortcutLabel.color = Color.white;
+            shortcutLabel.enableAutoSizing = true;
+            shortcutLabel.fontSizeMin = 8f;
+            shortcutLabel.fontSizeMax = 24f;
+            shortcutLabel.alignment = TextAlignmentOptions.Center;
+        }
+    }
+
+    private static Transform FindShortcutBadge(Transform slot)
+    {
+        if (slot == null)
+        {
+            return null;
+        }
+
+        for (int index = 0; index < slot.childCount; index++)
+        {
+            Transform child = slot.GetChild(index);
+            if (child.name.StartsWith("Image | Inventory Num"))
+            {
+                return child;
+            }
+        }
+
+        return null;
     }
 }

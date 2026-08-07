@@ -187,6 +187,10 @@ public class EnemyData : ScriptableObject
     [Tooltip("투척 궤적 정점의 추가 높이입니다.")]
     [SerializeField] private float thrownProjectileArcHeight = 2f;
 
+    [Header("Explosion VFX")]
+    [SerializeField] private GameObject explosionVfxPrefab;
+    [Min(0f)] [SerializeField] private float explosionVfxScale = 1f;
+
     [Header("Ranged Attack Telegraph")]
     [Tooltip("총잡이의 직선 사격 범위를 표시할 LineRenderer 머티리얼입니다.")]
     [SerializeField] private Material gunnerTelegraphMaterial;
@@ -252,6 +256,8 @@ public class EnemyData : ScriptableObject
         Mathf.Max(0f, thrownProjectileDuration);
     public float ThrownProjectileArcHeight =>
         Mathf.Max(0f, thrownProjectileArcHeight);
+    public GameObject ExplosionVfxPrefab => explosionVfxPrefab;
+    public float ExplosionVfxScale => Mathf.Max(0f, explosionVfxScale);
     public Material GunnerTelegraphMaterial => gunnerTelegraphMaterial;
     public Material ThrowerTelegraphMaterial => throwerTelegraphMaterial;
     public Material SupportTelegraphMaterial => supportTelegraphMaterial;
@@ -360,6 +366,7 @@ public class EnemyData : ScriptableObject
         thrownProjectileArcHeight = Mathf.Max(
             0f,
             thrownProjectileArcHeight);
+        explosionVfxScale = Mathf.Max(0f, explosionVfxScale);
         telegraphLineWidth = Mathf.Max(0.001f, telegraphLineWidth);
         throwerTelegraphSegments = Mathf.Clamp(
             throwerTelegraphSegments,

@@ -280,6 +280,7 @@ public class StateManager : MonoBehaviour
     private IEnumerator PlayBattleStart(BattleData battle)
     {
         yield return gameStartUI.Play(
+            CurrentStage,
             battle,
             () => BeginBattleGameplay(battle));
         battleStartCoroutine = null;

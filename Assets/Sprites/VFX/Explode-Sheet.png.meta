@@ -85,7 +85,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -122,7 +122,7 @@ TextureImporter:
     buildTarget: DefaultTexturePlatform
     maxTextureSize: 2048
     resizeAlgorithm: 0
-    textureFormat: -1
+    textureFormat: 4
     textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
@@ -157,6 +157,19 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
@@ -164,12 +177,12 @@ TextureImporter:
       name: Explode-Sheet_0
       rect:
         serializedVersion: 2
-        x: 20
-        y: 14
-        width: 36
-        height: 45
+        x: 0
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -186,12 +199,12 @@ TextureImporter:
       name: Explode-Sheet_1
       rect:
         serializedVersion: 2
-        x: 132
-        y: 7
-        width: 55
-        height: 50
+        x: 64
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -208,12 +221,12 @@ TextureImporter:
       name: Explode-Sheet_2
       rect:
         serializedVersion: 2
-        x: 191
-        y: 1
-        width: 66
-        height: 61
+        x: 128
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -230,12 +243,12 @@ TextureImporter:
       name: Explode-Sheet_3
       rect:
         serializedVersion: 2
-        x: 259
-        y: 5
-        width: 59
-        height: 56
+        x: 192
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -252,12 +265,12 @@ TextureImporter:
       name: Explode-Sheet_4
       rect:
         serializedVersion: 2
-        x: 319
+        x: 256
         y: 0
-        width: 68
-        height: 60
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -274,12 +287,12 @@ TextureImporter:
       name: Explode-Sheet_5
       rect:
         serializedVersion: 2
-        x: 330
-        y: 54
-        width: 7
-        height: 7
+        x: 320
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -296,12 +309,12 @@ TextureImporter:
       name: Explode-Sheet_6
       rect:
         serializedVersion: 2
-        x: 340
-        y: 57
-        width: 7
-        height: 7
+        x: 384
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -318,12 +331,12 @@ TextureImporter:
       name: Explode-Sheet_7
       rect:
         serializedVersion: 2
-        x: 356
-        y: 55
-        width: 10
-        height: 9
+        x: 448
+        y: 0
+        width: 64
+        height: 64
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -336,209 +349,11 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_8
-      rect:
-        serializedVersion: 2
-        x: 386
-        y: 0
-        width: 65
-        height: 60
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 983c1b107f5d60fd0800000000000000
-      internalID: -2375976496529292407
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_9
-      rect:
-        serializedVersion: 2
-        x: 394
-        y: 54
-        width: 7
-        height: 7
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 48d2248dbe336ab50800000000000000
-      internalID: 6604022991623957892
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_10
-      rect:
-        serializedVersion: 2
-        x: 404
-        y: 57
-        width: 7
-        height: 7
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: e48fd9addd154df70800000000000000
-      internalID: 9211077151176915022
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_11
-      rect:
-        serializedVersion: 2
-        x: 420
-        y: 55
-        width: 10
-        height: 9
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: d2594941de4cdb940800000000000000
-      internalID: 5313619657898628397
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_12
-      rect:
-        serializedVersion: 2
-        x: 450
-        y: 1
-        width: 62
-        height: 59
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 2333fb1ca86c3e7e0800000000000000
-      internalID: -1737326731976559822
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_13
-      rect:
-        serializedVersion: 2
-        x: 458
-        y: 54
-        width: 7
-        height: 7
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 3f2c8c4d8a79919c0800000000000000
-      internalID: -3955964046288043277
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_14
-      rect:
-        serializedVersion: 2
-        x: 468
-        y: 57
-        width: 7
-        height: 7
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 34773b32ab58c7a60800000000000000
-      internalID: 7673154899641857859
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_15
-      rect:
-        serializedVersion: 2
-        x: 484
-        y: 55
-        width: 10
-        height: 9
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: e39ffb034a6b5b9f0800000000000000
-      internalID: -453255371172087490
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Explode-Sheet_16
-      rect:
-        serializedVersion: 2
-        x: 76
-        y: 7
-        width: 42
-        height: 43
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 25b0e8aad4ee4ac90800000000000000
-      internalID: -7159335490270917806
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 3d13e7ac50897394691d6bb6131bb387
     internalID: 0
     vertices: []
     indices: 
@@ -546,25 +361,18 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries: []
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":8.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.5},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":0,"pivotUnitMode":0,"slicingType":2,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
       Explode-Sheet_0: 1377957585323287830
       Explode-Sheet_1: 247601430529031323
-      Explode-Sheet_10: 9211077151176915022
-      Explode-Sheet_11: 5313619657898628397
-      Explode-Sheet_12: -1737326731976559822
-      Explode-Sheet_13: -3955964046288043277
-      Explode-Sheet_14: 7673154899641857859
-      Explode-Sheet_15: -453255371172087490
-      Explode-Sheet_16: -7159335490270917806
       Explode-Sheet_2: 6689238083981537615
       Explode-Sheet_3: 3557200089752999425
       Explode-Sheet_4: -199987415944080340
       Explode-Sheet_5: -5089994330647066362
       Explode-Sheet_6: -2727065769031920982
       Explode-Sheet_7: 7177661247148505044
-      Explode-Sheet_8: -2375976496529292407
-      Explode-Sheet_9: 6604022991623957892
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

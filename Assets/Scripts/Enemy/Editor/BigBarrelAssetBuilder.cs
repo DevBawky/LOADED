@@ -9,6 +9,8 @@ public static class BigBarrelAssetBuilder
     private const string PrefabFolder = "Assets/Prefabs/Enemy";
     private const string MaterialFolder = "Assets/Materials/Enemy";
     private const string BattleFolder = "Assets/Scripts/Manager/Battle SO";
+    private const string ExplosionVfxPath =
+        "Assets/Sprites/VFX/VFX_Explode.prefab";
 
     [MenuItem("Tools/Loaded/Create Stage 1 Big Barrel Assets")]
     public static void CreateRequiredAssets()
@@ -22,6 +24,8 @@ public static class BigBarrelAssetBuilder
             $"{MaterialFolder}/BigBarrelShotgunTelegraph.mat",
             new Color(1f, 0.04f, 0.02f, 0.78f));
         GameObject bombPrefab = CreateBombPrefabIfMissing();
+        GameObject explosionVfx =
+            AssetDatabase.LoadAssetAtPath<GameObject>(ExplosionVfxPath);
         EnemyActionData explosiveThrow = CreateActionIfMissing(
             "ExplosiveThrow",
             EnemyActionType.ExplosiveThrow,
@@ -39,6 +43,7 @@ public static class BigBarrelAssetBuilder
             "폭탄 투척 패턴을 다시 시작하기 전에 재장전합니다.");
         EnemyData bossData = CreateBossDataIfMissing(
             bombPrefab,
+            explosionVfx,
             bombMaterial,
             shotgunMaterial,
             explosiveThrow,
@@ -118,6 +123,7 @@ public static class BigBarrelAssetBuilder
 
     private static EnemyData CreateBossDataIfMissing(
         GameObject bombPrefab,
+        GameObject explosionVfx,
         Material bombMaterial,
         Material shotgunMaterial,
         params EnemyActionData[] actions)
@@ -145,6 +151,9 @@ public static class BigBarrelAssetBuilder
         serialized.FindProperty("maxQueuedAttacks").intValue = 1;
         serialized.FindProperty("recoveryTurns").intValue = 2;
         serialized.FindProperty("thrownProjectileDuration").floatValue = 0.45f;
+        serialized.FindProperty("explosionVfxPrefab").objectReferenceValue =
+            explosionVfx;
+        serialized.FindProperty("explosionVfxScale").floatValue = 1f;
         SerializedProperty actionList = serialized.FindProperty("actions");
         actionList.arraySize = actions.Length;
 

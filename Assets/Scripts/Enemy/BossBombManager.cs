@@ -14,6 +14,7 @@ public class BossBombManager : MonoBehaviour
     private BoardManager boardManager;
     private PlayerMove playerMove;
     private PlayerHealth playerHealth;
+    private CombatFeedbackController combatFeedback;
     private bool bombsPaused;
     private bool isProcessingDetonations;
 
@@ -31,6 +32,9 @@ public class BossBombManager : MonoBehaviour
         boardManager = assignedBoardManager;
         playerMove = assignedPlayerMove;
         playerHealth = assignedPlayerHealth;
+        combatFeedback = playerMove == null
+            ? FindFirstObjectByType<CombatFeedbackController>()
+            : playerMove.GetComponent<CombatFeedbackController>();
         bombsPaused = false;
 
         if (waveManager != null)
@@ -242,6 +246,13 @@ public class BossBombManager : MonoBehaviour
             int centerTile = bomb.TileIndex;
             int radius = sourceData.BigBarrel.BombExplosionRadius;
             SoundManager.PlaySfx("SFX_BigBarrel_Bomb");
+            combatFeedback ??=
+                FindFirstObjectByType<CombatFeedbackController>();
+            combatFeedback?.RecordExplosionCameraShake();
+            SpawnExplosionVfxOnAffectedTiles(
+                sourceData,
+                centerTile,
+                radius);
             QueueChainBombs(centerTile, radius, bomb);
             ApplyExplosionDamage(sourceData, centerTile, radius);
             RemoveBomb(bomb);
@@ -250,6 +261,42 @@ public class BossBombManager : MonoBehaviour
         detonationQueue.Clear();
         queuedDetonations.Clear();
         isProcessingDetonations = false;
+    }
+
+    private void SpawnExplosionVfxOnAffectedTiles(
+        EnemyData sourceData,
+        int centerTile,
+        int radius)
+    {
+        if (sourceData == null || boardManager == null
+            || sourceData.ExplosionVfxPrefab == null)
+        {
+            return;
+        }
+
+        int firstTile = Mathf.Max(0, centerTile - radius);
+        int lastTile = Mathf.Min(
+            boardManager.BoardCount - 1,
+            centerTile + radius);
+
+        for (int tileIndex = firstTile;
+             tileIndex <= lastTile;
+             tileIndex++)
+        {
+            if (!boardManager.TryGetTilePosition(
+                    tileIndex,
+                    out Vector3 effectPosition))
+            {
+                continue;
+            }
+
+            effectPosition.y += 0.3f;
+            TransientVfx.Spawn(
+                sourceData.ExplosionVfxPrefab,
+                effectPosition,
+                Quaternion.identity,
+                sourceData.ExplosionVfxScale);
+        }
     }
 
     private void QueueChainBombs(
