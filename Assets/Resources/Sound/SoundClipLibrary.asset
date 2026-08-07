@@ -55,6 +55,12 @@ MonoBehaviour:
     clips:
     - {fileID: 8300000, guid: 825c7d96644187a4eb3cf6cd5d360079, type: 3}
     - {fileID: 8300000, guid: c96475fe9df1eb4469138567daa6b1fd, type: 3}
+  - stageId: stage_1
+    battleIndex: 4
+    battleId: stage_1_battle_05
+    clips:
+    - {fileID: 8300000, guid: 55b3c2a7b98da314d823bb88cae96396, type: 3}
+    - {fileID: 8300000, guid: 333a3d08a5c70ac4cb1314e6a088e6f4, type: 3}
   sfx:
   - id: SFX_Player_Reload
     category: 1
