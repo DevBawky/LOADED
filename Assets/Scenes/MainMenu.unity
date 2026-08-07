@@ -8298,7 +8298,7 @@ GameObject:
   - component: {fileID: 886211780}
   - component: {fileID: 886211779}
   m_Layer: 5
-  m_Name: Image
+  m_Name: Image | PilDog
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8321,7 +8321,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.52, y: 0.15}
   m_AnchorMax: {x: 0.68, y: 0.2}
-  m_AnchoredPosition: {x: 0, y: -0.0000038146973}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: -0.0000076293945}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &886211779
@@ -9120,6 +9120,7 @@ MonoBehaviour:
   playGameButton: {fileID: 704134004}
   buttonsCanvasGroup: {fileID: 1572629040}
   settingsButtonCanvasGroup: {fileID: 0}
+  pilDogCanvasGroup: {fileID: 0}
   buttonsFadeOutDuration: 0.5
   gameSceneName: Stage 1
 --- !u!1 &926998720
@@ -18354,7 +18355,7 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 618552737}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.93, y: 0.9}
+  m_AnchorMin: {x: 0.933, y: 0.9}
   m_AnchorMax: {x: 0.98, y: 0.98}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}

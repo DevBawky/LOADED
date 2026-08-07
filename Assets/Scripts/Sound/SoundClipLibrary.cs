@@ -93,6 +93,7 @@ public sealed class SoundClipLibrary : ScriptableObject
     [SerializeField] private List<AudioClip> mainMenuBgm = new List<AudioClip>();
     [SerializeField] private List<AudioClip> shopBgm = new List<AudioClip>();
     [SerializeField] private List<AudioClip> bossBgm = new List<AudioClip>();
+    [SerializeField] private List<AudioClip> gameOverBgm = new List<AudioClip>();
     [SerializeField] private List<BattleBgmPlaylist> battleBgm = new List<BattleBgmPlaylist>();
 
     [Header("SFX")]
@@ -105,6 +106,7 @@ public sealed class SoundClipLibrary : ScriptableObject
     public IReadOnlyList<AudioClip> MainMenuBgm => mainMenuBgm;
     public IReadOnlyList<AudioClip> ShopBgm => shopBgm;
     public IReadOnlyList<AudioClip> BossBgm => bossBgm;
+    public IReadOnlyList<AudioClip> GameOverBgm => gameOverBgm;
     public IReadOnlyList<AudioClip> GetBattleBgm(
         string stageId,
         int battleIndex,

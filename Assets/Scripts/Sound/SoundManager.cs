@@ -12,6 +12,8 @@ public sealed class SoundManager : MonoBehaviour
     private const float UiClickPitchMultiplier = 0.9f;
     private const float UiButtonRescanInterval = 0.5f;
     private const float BgmCompletionToleranceSeconds = 0.25f;
+    private const float BgmFadeOutDuration = 0.45f;
+    private const float BgmFadeInDuration = 0.65f;
     private const string UiButtonSfxId = "UI_Button_Hover_Click";
     private const string BgmVolumePreferenceKey = "Audio.BGM.Volume";
     private const string SfxVolumePreferenceKey = "Audio.SFX.Volume";
@@ -32,6 +34,21 @@ public sealed class SoundManager : MonoBehaviour
         "Button | Shoot"
     };
 
+    private static readonly string[] HoverScaleSpriteNames =
+    {
+        "Button_Delete",
+        "Button_Management",
+        "Button_Refresh",
+        "Button_Settings",
+        "Button_Upgrade"
+    };
+
+    private static readonly string[] HoverScaleButtonNames =
+    {
+        "Button | Go To Battle",
+        "Button | Pause"
+    };
+
     [SerializeField] private SoundClipLibrary clipLibrary;
     [Header("Audio Sources")]
     [SerializeField] private AudioSource bgmSource;
@@ -42,6 +59,10 @@ public sealed class SoundManager : MonoBehaviour
     private readonly List<AudioSource> sfxSources = new List<AudioSource>();
     private readonly HashSet<Button> boundUiButtons = new HashSet<Button>();
     private IReadOnlyList<AudioClip> currentPlaylist;
+    private IReadOnlyList<AudioClip> pendingPlaylist;
+    private Coroutine bgmTransitionCoroutine;
+    private float bgmFadeMultiplier = 1f;
+    private bool gameOverBgmLocked;
     private int lastBgmIndex = -1;
     private AudioClip lastKnownBgmClip;
     private int lastKnownBgmTimeSamples;
@@ -82,7 +103,8 @@ public sealed class SoundManager : MonoBehaviour
         {
             // Time.timeScale must not alter the authored BGM playback pitch.
             bgmSource.pitch = 1f;
-            bgmSource.volume = clipLibrary.BgmVolume * bgmVolume;
+            bgmSource.volume = clipLibrary.BgmVolume * bgmVolume
+                * bgmFadeMultiplier;
             ApplyMixerRouting();
         }
 
@@ -90,7 +112,7 @@ public sealed class SoundManager : MonoBehaviour
         {
             RememberBgmPlaybackPosition();
         }
-        else if (currentPlaylist != null)
+        else if (currentPlaylist != null && bgmTransitionCoroutine == null)
         {
             if (!TryResumeInterruptedBgm()) PlayNextBgm();
         }
@@ -115,7 +137,10 @@ public sealed class SoundManager : MonoBehaviour
             return;
         }
 
-        TryResumeInterruptedBgm();
+        if (bgmTransitionCoroutine == null)
+        {
+            TryResumeInterruptedBgm();
+        }
     }
 
     private void OnApplicationPause(bool pauseStatus)
@@ -126,7 +151,10 @@ public sealed class SoundManager : MonoBehaviour
             return;
         }
 
-        TryResumeInterruptedBgm();
+        if (bgmTransitionCoroutine == null)
+        {
+            TryResumeInterruptedBgm();
+        }
     }
 
     public static void PlayFire() => PlaySfx("SFX_Player_Shoot");
@@ -181,6 +209,14 @@ public sealed class SoundManager : MonoBehaviour
     public static void ResetComboPitch() { }
     public static void StopBgm() => Instance.SetPlaylist(null);
 
+    public static void PlayGameOverBgm()
+    {
+        SoundManager manager = Instance;
+        manager.EnsureClipLibrary();
+        manager.gameOverBgmLocked = true;
+        manager.SetPlaylist(manager.clipLibrary?.GameOverBgm);
+    }
+
     public static void SetBgmVolume(float volume)
     {
         SoundManager manager = Instance;
@@ -230,6 +266,7 @@ public sealed class SoundManager : MonoBehaviour
     private void RefreshForScene(Scene scene)
     {
         EnsureClipLibrary();
+        gameOverBgmLocked = false;
         StateManager stateManager = FindFirstObjectByType<StateManager>(FindObjectsInactive.Include);
         ObserveStateManager(stateManager);
         if (stateManager != null) { RefreshForGameState(); return; }
@@ -248,6 +285,7 @@ public sealed class SoundManager : MonoBehaviour
 
     private void RefreshForGameState()
     {
+        if (gameOverBgmLocked) return;
         if (observedStateManager == null || clipLibrary == null) { SetPlaylist(null); return; }
         if (observedStateManager.CurrentState == GameFlowState.Shop)
         {
@@ -279,14 +317,62 @@ public sealed class SoundManager : MonoBehaviour
 
     private void SetPlaylist(IReadOnlyList<AudioClip> playlist)
     {
-        if (ReferenceEquals(currentPlaylist, playlist)) return;
-        currentPlaylist = playlist;
+        if (ReferenceEquals(pendingPlaylist, playlist)) return;
+        pendingPlaylist = playlist;
+
+        if (bgmTransitionCoroutine != null)
+        {
+            StopCoroutine(bgmTransitionCoroutine);
+        }
+
+        bgmTransitionCoroutine = StartCoroutine(TransitionPlaylist());
+    }
+
+    private IEnumerator TransitionPlaylist()
+    {
+        bool hasOutgoingBgm = bgmSource != null
+            && (bgmSource.isPlaying || bgmSource.clip != null);
+
+        if (hasOutgoingBgm)
+        {
+            float startMultiplier = bgmFadeMultiplier;
+            float elapsed = 0f;
+            while (elapsed < BgmFadeOutDuration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float progress = Mathf.Clamp01(elapsed / BgmFadeOutDuration);
+                bgmFadeMultiplier = Mathf.Lerp(startMultiplier, 0f,
+                    Mathf.SmoothStep(0f, 1f, progress));
+                yield return null;
+            }
+        }
+
+        bgmFadeMultiplier = 0f;
+        currentPlaylist = pendingPlaylist;
         lastBgmIndex = -1;
         lastKnownBgmClip = null;
         lastKnownBgmTimeSamples = 0;
         bgmSource.Stop();
         bgmSource.clip = null;
-        if (HasValidClip(currentPlaylist)) PlayNextBgm();
+
+        if (!HasValidClip(currentPlaylist))
+        {
+            bgmTransitionCoroutine = null;
+            yield break;
+        }
+
+        PlayNextBgm();
+        float fadeInElapsed = 0f;
+        while (fadeInElapsed < BgmFadeInDuration)
+        {
+            fadeInElapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(fadeInElapsed / BgmFadeInDuration);
+            bgmFadeMultiplier = Mathf.SmoothStep(0f, 1f, progress);
+            yield return null;
+        }
+
+        bgmFadeMultiplier = 1f;
+        bgmTransitionCoroutine = null;
     }
 
     private void PlayNextBgm()
@@ -480,7 +566,8 @@ public sealed class SoundManager : MonoBehaviour
         if (bgmSource != null)
         {
             float authoredVolume = clipLibrary == null ? 1f : clipLibrary.BgmVolume;
-            bgmSource.volume = authoredVolume * bgmVolume;
+            bgmSource.volume = authoredVolume * bgmVolume
+                * bgmFadeMultiplier;
         }
 
         foreach (AudioSource source in sfxSources)
@@ -542,8 +629,55 @@ public sealed class SoundManager : MonoBehaviour
                      FindObjectsInactive.Include,
                      FindObjectsSortMode.None))
         {
+            TryBindSpriteHoverScale(candidate);
             TryBindUiButton(candidate);
         }
+    }
+
+    private static void TryBindSpriteHoverScale(Button button)
+    {
+        if (button == null || !ShouldUseHoverScale(button)) return;
+
+        UiButtonSpriteHoverScale hoverScale =
+            button.GetComponent<UiButtonSpriteHoverScale>();
+        if (hoverScale == null)
+        {
+            hoverScale = button.gameObject.AddComponent<UiButtonSpriteHoverScale>();
+        }
+
+        hoverScale.Initialize(button);
+    }
+
+    private static bool ShouldUseHoverScale(Button button)
+    {
+        foreach (string buttonName in HoverScaleButtonNames)
+        {
+            if (button.name == buttonName)
+            {
+                return true;
+            }
+        }
+
+        Image image = button.targetGraphic as Image;
+        if (image == null)
+        {
+            image = button.GetComponent<Image>();
+        }
+
+        Sprite sprite = image == null ? null : image.sprite;
+        if (sprite == null) return false;
+
+        foreach (string spriteName in HoverScaleSpriteNames)
+        {
+            if (sprite.name == spriteName
+                || sprite.name.StartsWith(spriteName + "_",
+                    System.StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void TryBindUiButton(Button button)
@@ -594,6 +728,71 @@ internal sealed class UiButtonHoverSfx : MonoBehaviour, IPointerEnterHandler
         if (button != null && button.IsActive() && button.IsInteractable())
         {
             SoundManager.PlaySfx("UI_Button_Hover_Click");
+        }
+    }
+}
+
+[DisallowMultipleComponent]
+internal sealed class UiButtonSpriteHoverScale : MonoBehaviour,
+    IPointerEnterHandler,
+    IPointerExitHandler
+{
+    private const float HoverScale = 1.1f;
+    private const float ScaleSpeed = 18f;
+
+    private Button button;
+    private Vector3 baseScale;
+    private bool initialized;
+    private bool pointerInside;
+
+    public void Initialize(Button targetButton)
+    {
+        if (initialized && button == targetButton) return;
+
+        button = targetButton;
+        baseScale = transform.localScale;
+        initialized = true;
+    }
+
+    private void Update()
+    {
+        if (!initialized) return;
+
+        bool canEnlarge = pointerInside
+            && button != null
+            && button.IsActive()
+            && button.IsInteractable();
+        Vector3 targetScale = canEnlarge
+            ? baseScale * HoverScale
+            : baseScale;
+        float blend = 1f - Mathf.Exp(-ScaleSpeed * Time.unscaledDeltaTime);
+        transform.localScale = Vector3.Lerp(
+            transform.localScale,
+            targetScale,
+            blend);
+
+        if ((transform.localScale - targetScale).sqrMagnitude < 0.000001f)
+        {
+            transform.localScale = targetScale;
+        }
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        pointerInside = true;
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        pointerInside = false;
+    }
+
+    private void OnDisable()
+    {
+        pointerInside = false;
+        if (initialized)
+        {
+            transform.localScale = baseScale;
         }
     }
 }
