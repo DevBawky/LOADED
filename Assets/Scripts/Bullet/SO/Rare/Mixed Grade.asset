@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: Mixed Grade
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_mixed_grade
-  displayName: "\uD63C\uC131\uD0C4"
-  description: "실린더 속 레어 이외의 등급 탄환 하나당 최종대미지 +20%"
+  displayName: "\uD63C\uD569\uD0C4"
+  description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
+    \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +20%"
   cylinderIcon: {fileID: 4923265321069294368, guid: e5e105338554a3344b4991ef6218a494, type: 3}
   price: 6
   grade: 1
@@ -34,6 +35,8 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 1
     amount: 20
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -43,7 +46,8 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "실린더 속 레어 이외의 등급 탄환 하나당 최종대미지 +40%"
+  - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +40%"
     damage: 16
     maxRange: 4
     criticalChance: 18
@@ -55,15 +59,16 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 40
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.75, g: 0.25, b: 1, a: 1}
-    secondaryLineColor: {r: 0.2, g: 0.1, b: 0.55, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "실린더 속 레어 이외의 등급 탄환 하나당 최종대미지 +60%"
+  - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +60%"
     damage: 21
     maxRange: 5
     criticalChance: 23
@@ -75,15 +80,16 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 60
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.75, g: 0.25, b: 1, a: 1}
-    secondaryLineColor: {r: 0.2, g: 0.1, b: 0.55, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "실린더 속 레어 이외의 등급 탄환 하나당 최종대미지 +80%"
+  - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +80%"
     damage: 27
     maxRange: 5
     criticalChance: 30
@@ -95,11 +101,11 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 80
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.75, g: 0.25, b: 1, a: 1}
-    secondaryLineColor: {r: 0.2, g: 0.1, b: 0.55, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 0

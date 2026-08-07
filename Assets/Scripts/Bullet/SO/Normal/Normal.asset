@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Normal
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
-  displayName: Normal
-  description: "일반적인 탄환입니다."
+  displayName: "\uBCF4\uD1B5\uD0C4"
+  description: "\uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
   cylinderIcon: {fileID: 21300000, guid: ff771df025c71e04c9c634cbc6ec431b, type: 3}
   price: 3
   grade: 0
@@ -37,7 +37,8 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 5
   upgradeLevels:
-  - description: "조금 더 강력해진 일반적인 탄환입니다."
+  - description: "\uC870\uAE08 \uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
+      \uD0C4\uD658\uC785\uB2C8\uB2E4."
     damage: 22
     maxRange: 3
     criticalChance: 20
@@ -46,12 +47,10 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 10
-  - description: "더 강력해진 일반적인 탄환입니다."
+  - description: "\uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
     damage: 25
     maxRange: 3
     criticalChance: 27
@@ -60,12 +59,11 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 15
-  - description: "더 많이 강력해진 일반적인 탄환입니다.\n관통 1회 (80%)"
+  - description: "\uB354 \uB9CE\uC774 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
+      \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uAD00\uD1B5 1\uD68C (80%)"
     damage: 30
     maxRange: 4
     criticalChance: 35
@@ -75,8 +73,6 @@ MonoBehaviour:
     penetrationChances:
     - chance: 80
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.35
     upgradeCost: 0

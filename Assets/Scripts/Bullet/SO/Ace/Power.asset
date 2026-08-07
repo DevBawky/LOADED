@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_power
   displayName: "\uAC15\uD654\uD0C4"
-  description: "강력한 탄환입니다.\n발사 시 파괴 (5%)"
+  description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
+    \uC2DC \uD30C\uAD34 (5%)"
   cylinderIcon: {fileID: -1511212471940627665, guid: 642dc24acacca0c419a6cb6d26f207f6, type: 3}
   price: 10
   grade: 2
@@ -34,6 +35,8 @@ MonoBehaviour:
     stackCount: 0
     knockbackDistance: 0
     amount: 0
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -43,7 +46,8 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "강력한 탄환입니다.\n발사 시 파괴 (5%)\n관통 1회 (20%)"
+  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
+      \uC2DC \uD30C\uAD34 (5%)\n\uAD00\uD1B5 1\uD68C (20%)"
     damage: 85
     maxRange: 3
     criticalChance: 60
@@ -55,16 +59,17 @@ MonoBehaviour:
       stackCount: 0
       knockbackDistance: 0
       amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances:
     - chance: 20
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
-    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "강력한 탄환입니다.\n발사 시 파괴 (3%)\n관통 1회 (40%)"
+  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
+      \uC2DC \uD30C\uAD34 (3%)\n\uAD00\uD1B5 1\uD68C (40%)"
     damage: 120
     maxRange: 4
     criticalChance: 70
@@ -76,16 +81,17 @@ MonoBehaviour:
       stackCount: 5
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances:
     - chance: 40
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
-    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "강력한 탄환입니다.\n발사 시 파괴 (1%)\n연속 관통 (40%)"
+  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
+      \uC2DC \uD30C\uAD34 (1%)\n\uC5F0\uC18D \uAD00\uD1B5 (40%)"
     damage: 150
     maxRange: 4
     criticalChance: 85
@@ -97,6 +103,8 @@ MonoBehaviour:
       stackCount: 0
       knockbackDistance: 0
       amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances:
     - chance: 40
@@ -104,8 +112,6 @@ MonoBehaviour:
     - chance: 40
     - chance: 40
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 0, b: 0.14725637, a: 1}
-    secondaryLineColor: {r: 0.6603774, g: 0, b: 0.5137647, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 0

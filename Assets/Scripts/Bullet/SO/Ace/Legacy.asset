@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Legacy
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_legacy
-  displayName: "\uC720\uC0B0\uD0C4"
+  displayName: "\uC720\uC0B0"
   description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420 \uB54C\uB9C8\uB2E4
     \uC720\uC0B0 +1\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
     +30%"
@@ -66,8 +66,6 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
@@ -91,8 +89,6 @@ MonoBehaviour:
     penetrationChances:
     - chance: 30
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
@@ -116,8 +112,6 @@ MonoBehaviour:
     penetrationChances:
     - chance: 50
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 0
