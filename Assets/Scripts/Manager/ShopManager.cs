@@ -120,7 +120,6 @@ public class ShopManager : MonoBehaviour
     private readonly List<UnityAction> itemSlotClickActions =
         new List<UnityAction>();
     private UnityAction refreshClickAction;
-    private string refreshButtonLabel;
     private bool isRefreshing;
 
     private sealed class OfferVisualState
@@ -982,9 +981,8 @@ public class ShopManager : MonoBehaviour
 
         if (refreshCostText != null)
         {
-            refreshCostText.text = string.IsNullOrWhiteSpace(refreshButtonLabel)
-                ? $"${currentRefreshCost}"
-                : $"{refreshButtonLabel} ${currentRefreshCost}";
+            refreshCostText.text =
+                $"새로고침 비용: ${currentRefreshCost}";
         }
     }
 
@@ -1062,14 +1060,21 @@ public class ShopManager : MonoBehaviour
             }
         }
 
-        if (refreshCostText == null && refreshButton != null)
+        if (refreshCostText == null)
         {
-            refreshCostText = refreshButton.GetComponentInChildren<TMP_Text>(true);
-        }
-
-        if (refreshCostText != null)
-        {
-            refreshButtonLabel = refreshCostText.text;
+            foreach (TMP_Text text in FindObjectsByType<TMP_Text>(
+                         FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                if (text != null
+                    && text.gameObject.scene.IsValid()
+                    && text.name == "Text | Refresh Cost"
+                    && HasNamedAncestor(text.transform, "Panel | Shop"))
+                {
+                    refreshCostText = text;
+                    break;
+                }
+            }
         }
     }
 

@@ -43,6 +43,7 @@ public class BulletManagementUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI removeButtonText;
     [SerializeField] private Button upgradeButton;
     [SerializeField] private TextMeshProUGUI upgradeButtonText;
+    [SerializeField] private TextMeshProUGUI warningText;
 
     [Header("Upgrade Tooltip")]
     [SerializeField] private RectTransform upgradeTooltip;
@@ -60,6 +61,10 @@ public class BulletManagementUI : MonoBehaviour
     private readonly Vector3[] tooltipWorldCorners = new Vector3[4];
     private BulletInstance selectedBullet;
     private bool wasShopActive;
+
+    public BulletInstance SelectedBullet => selectedBullet;
+    public bool IsOpen => manageBulletsPanel != null
+        && manageBulletsPanel.activeInHierarchy;
 
     private void Awake()
     {
@@ -280,6 +285,14 @@ public class BulletManagementUI : MonoBehaviour
             "Text | Level");
         ApplyUpgradeLevel(levelText, bullet);
 
+        TextMeshProUGUI stackText = FindNamedChild<TextMeshProUGUI>(
+            button.transform,
+            "Text | Stack");
+        ApplyStackCount(
+            stackText,
+            bullet,
+            CreateBulletTooltipContext());
+
         Image indicator = button.GetComponent<Image>();
         BulletButtonVisualState visual =
             button.GetComponent<BulletButtonVisualState>();
@@ -355,10 +368,8 @@ public class BulletManagementUI : MonoBehaviour
         if (removeButtonText != null)
         {
             removeButtonText.richText = true;
-            removeButtonText.text = canManageSelectedBullet
-                && !canRemoveSelectedBullet
-                    ? "At least 1 bullet required"
-                    : $"Remove  {FormatCost(removeCost, currentMoney)}";
+            removeButtonText.text =
+                $"제거  {FormatCost(removeCost, currentMoney)}";
         }
 
         if (upgradeButton != null)
@@ -372,9 +383,58 @@ public class BulletManagementUI : MonoBehaviour
         {
             upgradeButtonText.richText = true;
             upgradeButtonText.text = selectedBullet.CanUpgrade
-                ? $"Upgrade  {FormatCost(selectedBullet.UpgradeCost, currentMoney)}"
-                : "MAX LEVEL";
+                ? $"강화  {FormatCost(selectedBullet.UpgradeCost, currentMoney)}"
+                : "강화";
         }
+
+        string warning = GetManagementWarning(
+            canManageSelectedBullet,
+            canRemoveSelectedBullet,
+            currentMoney,
+            removeCost);
+        SetWarning(warning);
+    }
+
+    private string GetManagementWarning(
+        bool canManageSelectedBullet,
+        bool canRemoveSelectedBullet,
+        int currentMoney,
+        int removeCost)
+    {
+        if (!canManageSelectedBullet)
+        {
+            return "선택한 탄환을 관리할 수 없습니다.";
+        }
+
+        if (!canRemoveSelectedBullet)
+        {
+            return "최소 1개의 탄환은 보유해야 합니다.";
+        }
+
+        if (!selectedBullet.CanUpgrade)
+        {
+            return "이미 최대 강화 단계입니다.";
+        }
+
+        if (currentMoney < removeCost
+            || currentMoney < selectedBullet.UpgradeCost)
+        {
+            return "골드가 부족합니다.";
+        }
+
+        return string.Empty;
+    }
+
+    private void SetWarning(string message)
+    {
+        if (warningText == null)
+        {
+            return;
+        }
+
+        bool hasWarning = !string.IsNullOrWhiteSpace(message);
+        warningText.text = hasWarning ? message : string.Empty;
+        warningText.gameObject.SetActive(hasWarning);
     }
 
     private static string FormatCost(int cost, int currentMoney)
@@ -419,13 +479,15 @@ public class BulletManagementUI : MonoBehaviour
 
         if (removeButtonText != null)
         {
-            removeButtonText.text = "Remove";
+            removeButtonText.text = "제거";
         }
 
         if (upgradeButtonText != null)
         {
-            upgradeButtonText.text = "Upgrade";
+            upgradeButtonText.text = "강화";
         }
+
+        SetWarning(string.Empty);
     }
 
     private void BindEvents()
@@ -591,6 +653,9 @@ public class BulletManagementUI : MonoBehaviour
         upgradeButtonText ??= upgradeButton == null
             ? null
             : upgradeButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        warningText ??= FindNamedChild<TextMeshProUGUI>(
+            manageBulletsPanel == null ? null : manageBulletsPanel.transform,
+            "Text | Warning");
         upgradeTooltipDescriptionText ??= FindNamedChild<TextMeshProUGUI>(
             upgradeTooltip,
             "Text | Bullet Description");
@@ -957,6 +1022,23 @@ public class BulletManagementUI : MonoBehaviour
 
         levelText.text = $"+{bullet.Level}";
         levelText.color = bullet.Data.GetUpgradeLevelColor(bullet.Level);
+    }
+
+    private static void ApplyStackCount(
+        TextMeshProUGUI stackText,
+        BulletInstance bullet,
+        BulletTooltipContext context)
+    {
+        if (stackText == null)
+        {
+            return;
+        }
+
+        string statusText = bullet == null
+            ? string.Empty
+            : bullet.GetStatusDisplayText(context);
+        stackText.gameObject.SetActive(!string.IsNullOrEmpty(statusText));
+        stackText.text = statusText;
     }
 
     private static void ApplyIcon(Image image, Sprite sprite)

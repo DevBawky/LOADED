@@ -729,13 +729,23 @@ public class PlayerMove : MonoBehaviour
 
     public void CompleteTurn()
     {
+        int previousPushCooldown = RemainingPushCooldownTurns;
+
         if (statusEffects != null)
         {
             statusEffects.ProcessTurnEnd();
         }
 
         TurnCount++;
-        PushCooldownChanged?.Invoke(RemainingPushCooldownTurns);
+        int remainingPushCooldown = RemainingPushCooldownTurns;
+        PushCooldownChanged?.Invoke(remainingPushCooldown);
+
+        if (previousPushCooldown > 0 && remainingPushCooldown == 0)
+        {
+            combatFeedback ??= GetComponent<CombatFeedbackController>();
+            combatFeedback?.RecordKickReady(transform.position);
+        }
+
         TurnCompleted?.Invoke();
     }
 

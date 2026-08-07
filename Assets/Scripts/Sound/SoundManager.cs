@@ -184,18 +184,30 @@ public sealed class SoundManager : MonoBehaviour
     public static void SetBgmVolume(float volume)
     {
         SoundManager manager = Instance;
-        manager.bgmVolume = Mathf.Clamp01(volume);
+        PreviewBgmVolume(volume);
         PlayerPrefs.SetFloat(BgmVolumePreferenceKey, manager.bgmVolume);
         PlayerPrefs.Save();
-        manager.ApplyVolumes();
     }
 
     public static void SetSfxVolume(float volume)
     {
         SoundManager manager = Instance;
-        manager.sfxVolume = Mathf.Clamp01(volume);
+        PreviewSfxVolume(volume);
         PlayerPrefs.SetFloat(SfxVolumePreferenceKey, manager.sfxVolume);
         PlayerPrefs.Save();
+    }
+
+    public static void PreviewBgmVolume(float volume)
+    {
+        SoundManager manager = Instance;
+        manager.bgmVolume = Mathf.Clamp01(volume);
+        manager.ApplyVolumes();
+    }
+
+    public static void PreviewSfxVolume(float volume)
+    {
+        SoundManager manager = Instance;
+        manager.sfxVolume = Mathf.Clamp01(volume);
         manager.ApplyVolumes();
     }
 

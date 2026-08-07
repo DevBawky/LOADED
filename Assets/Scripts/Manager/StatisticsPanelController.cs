@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 [DisallowMultipleComponent]
 public sealed class StatisticsPanelController : MonoBehaviour
@@ -37,6 +38,7 @@ public sealed class StatisticsPanelController : MonoBehaviour
 
     private void OnEnable()
     {
+        EventSystem.current?.SetSelectedGameObject(null);
         BindValues();
         Refresh();
     }

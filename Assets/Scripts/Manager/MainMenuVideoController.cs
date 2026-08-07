@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using UnityEngine.Video;
@@ -8,6 +10,14 @@ using UnityEngine.Video;
 [RequireComponent(typeof(VideoPlayer))]
 public sealed class MainMenuVideoController : MonoBehaviour
 {
+    private static readonly string[] ModalPanelNames =
+    {
+        "Panel | Settings",
+        "Panel | Statistics",
+        "Panel | Dict & Info",
+        "Panel | Credits"
+    };
+
     private enum PlaybackState
     {
         Idle,
@@ -21,6 +31,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
     [Header("Game Start")]
     [SerializeField] private Button playGameButton;
     [SerializeField] private CanvasGroup buttonsCanvasGroup;
+    [SerializeField] private CanvasGroup settingsButtonCanvasGroup;
     [Min(0.01f)]
     [SerializeField] private float buttonsFadeOutDuration = 0.5f;
     [SerializeField] private string gameSceneName = "Stage 1";
@@ -29,12 +40,16 @@ public sealed class MainMenuVideoController : MonoBehaviour
     private PlaybackState playbackState;
     private bool gameStartRequested;
     private Coroutine buttonsFadeCoroutine;
+    private readonly List<GameObject> modalPanels = new List<GameObject>();
+    private bool hadActiveModalPanel;
 
     private void Awake()
     {
         StatisticsPanelController.EnsureExists();
         ResolvePlayGameButton();
         ResolveButtonsCanvasGroup();
+        ResolveSettingsButtonCanvasGroup();
+        ResolveModalPanels();
         videoPlayer = GetComponent<VideoPlayer>();
         videoPlayer.playOnAwake = false;
         videoPlayer.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
@@ -49,6 +64,9 @@ public sealed class MainMenuVideoController : MonoBehaviour
 
         ResolvePlayGameButton();
         ResolveButtonsCanvasGroup();
+        ResolveSettingsButtonCanvasGroup();
+        ResolveModalPanels();
+        hadActiveModalPanel = HasActiveModalPanel();
         if (playGameButton != null)
         {
             playGameButton.onClick.AddListener(StartGame);
@@ -60,6 +78,13 @@ public sealed class MainMenuVideoController : MonoBehaviour
             buttonsCanvasGroup.alpha = 1f;
             buttonsCanvasGroup.interactable = true;
             buttonsCanvasGroup.blocksRaycasts = true;
+        }
+
+        if (settingsButtonCanvasGroup != null)
+        {
+            settingsButtonCanvasGroup.alpha = 1f;
+            settingsButtonCanvasGroup.interactable = true;
+            settingsButtonCanvasGroup.blocksRaycasts = true;
         }
 
         gameStartRequested = false;
@@ -76,6 +101,50 @@ public sealed class MainMenuVideoController : MonoBehaviour
             playGameButton.onClick.RemoveListener(StartGame);
         }
         videoPlayer.Stop();
+    }
+
+    private void LateUpdate()
+    {
+        bool hasActiveModalPanel = HasActiveModalPanel();
+
+        if (hasActiveModalPanel && !hadActiveModalPanel)
+        {
+            EventSystem.current?.SetSelectedGameObject(null);
+        }
+
+        hadActiveModalPanel = hasActiveModalPanel;
+    }
+
+    private void ResolveModalPanels()
+    {
+        modalPanels.Clear();
+
+        foreach (Transform candidate in FindObjectsByType<Transform>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            foreach (string panelName in ModalPanelNames)
+            {
+                if (candidate.name == panelName)
+                {
+                    modalPanels.Add(candidate.gameObject);
+                    break;
+                }
+            }
+        }
+    }
+
+    private bool HasActiveModalPanel()
+    {
+        foreach (GameObject panel in modalPanels)
+        {
+            if (panel != null && panel.activeInHierarchy)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void StartGame()
@@ -126,8 +195,9 @@ public sealed class MainMenuVideoController : MonoBehaviour
     private void FadeOutButtons()
     {
         ResolveButtonsCanvasGroup();
+        ResolveSettingsButtonCanvasGroup();
 
-        if (buttonsCanvasGroup == null)
+        if (buttonsCanvasGroup == null && settingsButtonCanvasGroup == null)
         {
             return;
         }
@@ -142,23 +212,80 @@ public sealed class MainMenuVideoController : MonoBehaviour
 
     private IEnumerator FadeOutButtonsRoutine()
     {
-        buttonsCanvasGroup.interactable = false;
-        buttonsCanvasGroup.blocksRaycasts = false;
-        float startAlpha = buttonsCanvasGroup.alpha;
+        SetCanvasGroupInteraction(buttonsCanvasGroup, false);
+        SetCanvasGroupInteraction(settingsButtonCanvasGroup, false);
+        float buttonsStartAlpha = buttonsCanvasGroup == null
+            ? 0f
+            : buttonsCanvasGroup.alpha;
+        float settingsStartAlpha = settingsButtonCanvasGroup == null
+            ? 0f
+            : settingsButtonCanvasGroup.alpha;
         float elapsed = 0f;
 
         while (elapsed < buttonsFadeOutDuration)
         {
             yield return null;
             elapsed += Time.unscaledDeltaTime;
-            buttonsCanvasGroup.alpha = Mathf.SmoothStep(
-                startAlpha,
-                0f,
-                Mathf.Clamp01(elapsed / buttonsFadeOutDuration));
+            float progress = Mathf.Clamp01(elapsed / buttonsFadeOutDuration);
+            SetCanvasGroupAlpha(
+                buttonsCanvasGroup,
+                Mathf.SmoothStep(buttonsStartAlpha, 0f, progress));
+            SetCanvasGroupAlpha(
+                settingsButtonCanvasGroup,
+                Mathf.SmoothStep(settingsStartAlpha, 0f, progress));
         }
 
-        buttonsCanvasGroup.alpha = 0f;
+        SetCanvasGroupAlpha(buttonsCanvasGroup, 0f);
+        SetCanvasGroupAlpha(settingsButtonCanvasGroup, 0f);
         buttonsFadeCoroutine = null;
+    }
+
+    private void ResolveSettingsButtonCanvasGroup()
+    {
+        if (settingsButtonCanvasGroup != null)
+        {
+            return;
+        }
+
+        foreach (Button button in FindObjectsByType<Button>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (button.name != "Button | Settings")
+            {
+                continue;
+            }
+
+            settingsButtonCanvasGroup = button.GetComponent<CanvasGroup>();
+            if (settingsButtonCanvasGroup == null)
+            {
+                settingsButtonCanvasGroup =
+                    button.gameObject.AddComponent<CanvasGroup>();
+            }
+
+            return;
+        }
+    }
+
+    private static void SetCanvasGroupInteraction(
+        CanvasGroup canvasGroup,
+        bool enabled)
+    {
+        if (canvasGroup == null)
+        {
+            return;
+        }
+
+        canvasGroup.interactable = enabled;
+        canvasGroup.blocksRaycasts = enabled;
+    }
+
+    private static void SetCanvasGroupAlpha(CanvasGroup canvasGroup, float alpha)
+    {
+        if (canvasGroup != null)
+        {
+            canvasGroup.alpha = alpha;
+        }
     }
 
     private void ResolvePlayGameButton()

@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public enum GameFlowState
@@ -337,10 +338,14 @@ public class StateManager : MonoBehaviour
         SetPanels(false, false, false);
         SetInputLocked(true);
         StateChanged?.Invoke();
+        bool isFinalBossBattle = battle.IsBoss
+            && !TryGetNextBattlePosition(out _, out _);
 
         if (gameStartUI != null)
         {
-            yield return gameStartUI.PlayBattleClear(battle);
+            yield return gameStartUI.PlayBattleClear(
+                battle,
+                isFinalBossBattle);
         }
 
         if (currentState != GameFlowState.BattleClear)
@@ -350,7 +355,33 @@ public class StateManager : MonoBehaviour
         }
 
         battleClearCoroutine = null;
+
+        if (isFinalBossBattle)
+        {
+            CompleteRunAndLoadEnding();
+            yield break;
+        }
+
         LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
+    }
+
+    private void CompleteRunAndLoadEnding()
+    {
+        if (currentState != GameFlowState.BattleClear)
+        {
+            return;
+        }
+
+        GameStatistics.EndRun(true);
+        currentState = GameFlowState.RunComplete;
+        SetPanels(false, false, false);
+        SetInputLocked(true);
+        StateChanged?.Invoke();
+
+        if (!LoadingTransitionController.LoadScene("Ending"))
+        {
+            SceneManager.LoadScene("Ending");
+        }
     }
 
     private void HandleBattleFailed()

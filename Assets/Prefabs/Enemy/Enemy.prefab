@@ -32,7 +32,7 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2012758511208510004}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.1, y: 0.82}
+  m_AnchorMin: {x: 0.1, y: 0.78}
   m_AnchorMax: {x: 0.9, y: 0.9}
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
@@ -695,6 +695,10 @@ MonoBehaviour:
   normalQueueSprite: {fileID: -7011974728582058555, guid: 3a284be4f66071345800d3a41867ad9b, type: 3}
   preparedQueueSprite: {fileID: 4322565380153887898, guid: 89b8b4870d31d6247ac93330a9f4f101, type: 3}
   queueReadyMaterial: {fileID: 2100000, guid: a5899b1b8d324dd8877b1de1e74d15f4, type: 2}
+  stunnedEmberColor: {r: 0.015, g: 0.08, b: 0.55, a: 1}
+  stunnedFlameColor: {r: 0.04, g: 0.55, b: 1.2, a: 1}
+  stunnedHotColor: {r: 0.55, g: 0.95, b: 1.4, a: 1}
+  stunnedFlameSpeed: 0.45
   missingIconColor: {r: 1, g: 0, b: 0, a: 1}
 --- !u!114 &700000000000000001
 MonoBehaviour:
