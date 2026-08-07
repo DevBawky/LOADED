@@ -13,8 +13,8 @@ MonoBehaviour:
   m_Name: Test Range Attack
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   skillId: 0
-  displayName: Test Attack
-  description: 
+  displayName: "\uC0AC\uACA9"
+  description: "\uC6D0\uAC70\uB9AC \uACF5\uACA9\uC785\uB2C8\uB2E4."
   damage: 15
   range: 4
   knockbackDistance: 0

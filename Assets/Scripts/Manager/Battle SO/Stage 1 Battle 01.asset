@@ -15,7 +15,7 @@ MonoBehaviour:
   battleId: stage_1_battle_01
   displayName: 1-1
   noticeDescription: "\uC801\uB4E4\uC744 \uBAA8\uB450 \uC18C\uD0D5\uD558\uC2ED\uC2DC\uC624."
-  clearNoticeTitle: "\uD074\uB9AC\uC5B4"
+  clearNoticeTitle: BATTLE CLEAR
   clearNoticeDescription: "\uBAA8\uB4E0 \uC801\uC744 \uC18C\uD0D5\uD588\uC2B5\uB2C8\uB2E4!"
   battleType: 0
   boardCount: 7

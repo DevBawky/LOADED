@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
@@ -12,13 +13,35 @@ public class GamePauseController : MonoBehaviour
     [SerializeField] private Slider sfxVolumeSlider;
     [SerializeField] private Slider vfxIntensitySlider;
 
+    private readonly List<Button> pauseButtons = new List<Button>();
+    private StateManager stateManager;
+
     public static bool IsPaused { get; private set; }
 
     private void Awake()
     {
+        stateManager = FindFirstObjectByType<StateManager>(
+            FindObjectsInactive.Include);
         CachePauseMenuReferences();
         BindPauseMenuControls();
         SetPaused(false);
+        RefreshPauseAvailability();
+    }
+
+    private void OnEnable()
+    {
+        if (stateManager != null)
+        {
+            stateManager.StateChanged += HandleFlowStateChanged;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (stateManager != null)
+        {
+            stateManager.StateChanged -= HandleFlowStateChanged;
+        }
     }
 
     public void TogglePause()
@@ -28,7 +51,18 @@ public class GamePauseController : MonoBehaviour
             return;
         }
 
-        SetPaused(!IsPaused);
+        if (IsPaused)
+        {
+            SetPaused(false);
+            return;
+        }
+
+        if (!CanOpenPauseMenu())
+        {
+            return;
+        }
+
+        SetPaused(true);
     }
 
     public void Resume()
@@ -114,12 +148,15 @@ public class GamePauseController : MonoBehaviour
 
     private void BindPauseMenuControls()
     {
+        pauseButtons.Clear();
+
         foreach (Button button in FindObjectsByType<Button>(
                      FindObjectsInactive.Include,
                      FindObjectsSortMode.None))
         {
             if (button.name == "Button | Pause")
             {
+                pauseButtons.Add(button);
                 AddListenerWhenMissing(button, TogglePause);
             }
             else if (button.name == "Button _ Resume")
@@ -150,6 +187,35 @@ public class GamePauseController : MonoBehaviour
                 CombatAccessibilitySettings.PresentationIntensity);
             vfxIntensitySlider.onValueChanged.AddListener(
                 CombatAccessibilitySettings.SetPresentationIntensity);
+        }
+    }
+
+    private void HandleFlowStateChanged()
+    {
+        if (!CanOpenPauseMenu() && IsPaused)
+        {
+            SetPaused(false);
+        }
+
+        RefreshPauseAvailability();
+    }
+
+    private bool CanOpenPauseMenu()
+    {
+        return stateManager == null
+            || stateManager.CurrentState == GameFlowState.Battle;
+    }
+
+    private void RefreshPauseAvailability()
+    {
+        bool available = CanOpenPauseMenu();
+
+        foreach (Button pauseButton in pauseButtons)
+        {
+            if (pauseButton != null)
+            {
+                pauseButton.gameObject.SetActive(available);
+            }
         }
     }
 
@@ -236,6 +302,14 @@ internal static class EscapePanelInput
             return;
         }
 
+        GamePauseController pauseController =
+            Object.FindFirstObjectByType<GamePauseController>();
+        if (pauseController != null && GamePauseController.IsPaused)
+        {
+            pauseController.Resume();
+            return;
+        }
+
         BulletManagementUI bulletManagement =
             Object.FindFirstObjectByType<BulletManagementUI>();
         if (bulletManagement != null
@@ -249,8 +323,6 @@ internal static class EscapePanelInput
             return;
         }
 
-        GamePauseController pauseController =
-            Object.FindFirstObjectByType<GamePauseController>();
         if (pauseController != null)
         {
             pauseController.TogglePause();

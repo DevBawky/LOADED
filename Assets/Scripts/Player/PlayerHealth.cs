@@ -1,6 +1,8 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
 public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
@@ -15,10 +17,24 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private Image healthFillImage;
     [SerializeField] private TMP_Text healthText;
 
+    [Header("Damage Screen Flash")]
+    [SerializeField] private Color damageVignetteColor =
+        new Color(0.8f, 0f, 0f, 1f);
+    [SerializeField, Range(0f, 1f)] private float damageVignetteIntensity =
+        0.5f;
+    [SerializeField, Range(0.01f, 1f)] private float damageVignetteSmoothness =
+        0.45f;
+    [SerializeField] private bool damageVignetteRounded = true;
+    [SerializeField, Range(0f, 1f)] private float damageFlashWeight = 0.65f;
+    [SerializeField, Min(0.01f)] private float damageFlashDuration = 0.3f;
+
     [Header("Runtime State")]
     [SerializeField] private int currentHealth;
 
     private StatusEffectController statusEffects;
+    private Volume damageFlashVolume;
+    private VolumeProfile damageFlashProfile;
+    private float damageFlashElapsed = -1f;
 
     public event Action<int, int> HealthChanged;
     public event Action Defeated;
@@ -30,8 +46,39 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
     private void Awake()
     {
         statusEffects = GetComponent<StatusEffectController>();
+        ResolveUIReferences();
         currentHealth = Mathf.Clamp(startingHealth, 0, maxHealth);
+        CreateDamageFlashVolume();
         RefreshUI();
+    }
+
+    private void Update()
+    {
+        if (damageFlashElapsed < 0f || damageFlashVolume == null)
+        {
+            return;
+        }
+
+        damageFlashElapsed += Time.unscaledDeltaTime;
+        float progress = Mathf.Clamp01(
+            damageFlashElapsed / damageFlashDuration);
+        damageFlashVolume.weight = damageFlashWeight
+            * (1f - Mathf.SmoothStep(0f, 1f, progress));
+
+        if (progress >= 1f)
+        {
+            damageFlashElapsed = -1f;
+            damageFlashVolume.weight = 0f;
+            damageFlashVolume.enabled = false;
+        }
+    }
+
+    private void OnDestroy()
+    {
+        if (damageFlashProfile != null)
+        {
+            Destroy(damageFlashProfile);
+        }
     }
 
     public bool ApplyDamage(int damage)
@@ -50,6 +97,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         if (currentHealth < previousHealth)
         {
             SoundManager.PlayHit();
+            PlayDamageScreenFlash();
         }
 
         return true;
@@ -68,6 +116,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         if (currentHealth < previousHealth)
         {
             SoundManager.PlayHit();
+            PlayDamageScreenFlash();
         }
 
         return true;
@@ -144,5 +193,75 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         {
             healthText.text = $"{currentHealth}/{maxHealth}";
         }
+    }
+
+    private void ResolveUIReferences()
+    {
+        if (healthFillImage == null)
+        {
+            Image[] images = FindObjectsByType<Image>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+
+            foreach (Image image in images)
+            {
+                if (image.gameObject.scene.IsValid()
+                    && image.name == "Image | Fill Amount")
+                {
+                    healthFillImage = image;
+                    break;
+                }
+            }
+        }
+
+        if (healthText == null)
+        {
+            TMP_Text[] texts = FindObjectsByType<TMP_Text>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None);
+
+            foreach (TMP_Text text in texts)
+            {
+                if (text.gameObject.scene.IsValid()
+                    && text.name == "Text | Player HP")
+                {
+                    healthText = text;
+                    break;
+                }
+            }
+        }
+    }
+
+    private void CreateDamageFlashVolume()
+    {
+        GameObject volumeObject = new GameObject(
+            "Volume | Player Damage Flash");
+        volumeObject.transform.SetParent(transform, false);
+        damageFlashVolume = volumeObject.AddComponent<Volume>();
+        damageFlashVolume.isGlobal = true;
+        damageFlashVolume.priority = 100f;
+        damageFlashVolume.weight = 0f;
+
+        damageFlashProfile = ScriptableObject.CreateInstance<VolumeProfile>();
+        damageFlashProfile.name = "Player Damage Flash (Runtime)";
+        Vignette vignette = damageFlashProfile.Add<Vignette>(true);
+        vignette.color.Override(damageVignetteColor);
+        vignette.intensity.Override(damageVignetteIntensity);
+        vignette.smoothness.Override(damageVignetteSmoothness);
+        vignette.rounded.Override(damageVignetteRounded);
+        damageFlashVolume.sharedProfile = damageFlashProfile;
+        damageFlashVolume.enabled = false;
+    }
+
+    private void PlayDamageScreenFlash()
+    {
+        if (damageFlashVolume == null)
+        {
+            return;
+        }
+
+        damageFlashElapsed = 0f;
+        damageFlashVolume.weight = damageFlashWeight;
+        damageFlashVolume.enabled = true;
     }
 }

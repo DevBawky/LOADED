@@ -123,6 +123,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private EnemyAnimationSfx avatarEffects;
     private SpriteRenderer avatarSortingRenderer;
     private int avatarAnimationSequence;
+    private bool isStunActive;
     private readonly List<LineRenderer> bigBarrelTelegraphLines =
         new List<LineRenderer>();
 
@@ -170,6 +171,12 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             damageNumberDisplay = GetComponent<EnemyDamageNumberDisplay>();
         }
 
+        if (statusEffects != null)
+        {
+            statusEffects.StacksChanged += HandleStatusStacksChanged;
+            isStunActive = statusEffects.IsStunned;
+        }
+
         healthBarFeedback = GetComponent<EnemyHealthBarFeedback>();
         if (healthBarFeedback == null && healthFillImage != null)
         {
@@ -180,6 +187,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         healthBarFeedback?.Initialize(healthFillImage);
         ResetRuntimeState();
         ApplyCanvasOrientation();
+    }
+
+    private void OnDestroy()
+    {
+        if (statusEffects != null)
+        {
+            statusEffects.StacksChanged -= HandleStatusStacksChanged;
+        }
     }
 
     private void LateUpdate()
@@ -352,6 +367,55 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         isActing = false;
+    }
+
+    private void HandleStatusStacksChanged(
+        StatusEffectType type,
+        int stacks)
+    {
+        if (type != StatusEffectType.Stun)
+        {
+            return;
+        }
+
+        bool isNowStunned = stacks > 0;
+
+        if (!isStunActive && isNowStunned)
+        {
+            actionQueueUI?.SetStunned(true);
+
+            if (isAttackPrepared)
+            {
+                isAttackPrepared = false;
+                actionQueueUI?.SetPrepared(false);
+                HideAttackTelegraph();
+                ResetBigBarrelPreparation();
+            }
+        }
+        else if (isStunActive && !isNowStunned)
+        {
+            actionQueueUI?.SetStunned(false);
+        }
+
+        isStunActive = isNowStunned;
+    }
+
+    private void ResetBigBarrelPreparation()
+    {
+        if (enemyData == null
+            || enemyData.BehaviorType != EnemyBehaviorType.BigBarrel)
+        {
+            return;
+        }
+
+        if (bigBarrelStep == BigBarrelStep.ExecuteBomb)
+        {
+            bigBarrelStep = BigBarrelStep.PrepareBomb;
+        }
+        else if (bigBarrelStep == BigBarrelStep.ExecuteShotgun)
+        {
+            bigBarrelStep = BigBarrelStep.PrepareShotgun;
+        }
     }
 
     private void ConfigureBigBarrelHud()

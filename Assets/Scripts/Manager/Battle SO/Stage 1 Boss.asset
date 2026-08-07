@@ -13,10 +13,10 @@ MonoBehaviour:
   m_Name: Stage 1 Boss
   m_EditorClassIdentifier: Assembly-CSharp::BattleData
   battleId: stage1_boss
-  displayName: STAGE 1 BOSS
+  displayName: BOSS
   noticeDescription: "\uD3ED\uC57D\uC655 \uBE45 \uBCA0\uB7F4\uC744 \uCC98\uCE58\uD558\uC2ED\uC2DC\uC624"
-  clearNoticeTitle: BATTLE CLEAR
-  clearNoticeDescription: "\uD3ED\uC57D\uC655 \uBE45 \uBCA0\uB7F4\uC744 \uCC98\uCE58\uD588\uC2B5\uB2C8\uB2E4."
+  clearNoticeTitle: BOSS ELIMINATED
+  clearNoticeDescription: "\uD3ED\uC57D\uC655 \uBE45 \uBCA0\uB7F4\uC744 \uCC98\uCE58\uD588\uC2B5\uB2C8\uB2E4!"
   battleType: 1
   boardCount: 9
   tilePrefab: {fileID: 6102437938462105721, guid: a8a92d97c094e1b42bdbf5fbb08aa209, type: 3}
