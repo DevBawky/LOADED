@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Venom Burst
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_venom_burst
-  displayName: "\uBCA0\uB188 \uBC84\uC2A4\uD2B8"
+  displayName: "\uB9F9\uB3C5"
   description: "\uB300\uC0C1\uC758 \uB3C5\uC744 \uBAA8\uB450 \uC18C\uBE44\uD558\uACE0
     \uB0A8\uC740 \uB3C5 \uD53C\uD574\uB97C 100% \uC989\uC2DC \uC801\uC6A9\uD569\uB2C8\uB2E4."
   cylinderIcon: {fileID: -4169730618207851146, guid: bf217de4a496384478866404bb6540a6, type: 3}
@@ -35,6 +35,8 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 0
     amount: 100
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -58,11 +60,11 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 5
       amount: 110
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
@@ -80,12 +82,12 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 10
       amount: 150
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances:
     - chance: 50
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
@@ -103,14 +105,14 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 20
       amount: 200
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances:
     - chance: 50
     - chance: 50
     - chance: 50
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 0

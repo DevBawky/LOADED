@@ -13,8 +13,10 @@ MonoBehaviour:
   m_Name: Devourer
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_devourer
-  displayName: "\uD3EC\uC2DD\uD0C4"
-  description: "적을 처치할 때마다 영구 포식 1을 얻습니다.\n포식 하나당 최종대미지 +15%"
+  displayName: "\uD3EC\uC2DD\uC790"
+  description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C \uD3EC\uC2DD
+    1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+    +15%"
   cylinderIcon: {fileID: 7299877752034667788, guid: 94e5d446387ed6e41a9824ac2a861afe, type: 3}
   price: 20
   grade: 3
@@ -34,6 +36,8 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 1
     amount: 15
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -43,7 +47,9 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 50
   upgradeLevels:
-  - description: "적을 처치할 때마다 영구 포식 1을 얻습니다.\n포식 하나당 최종대미지 +20%"
+  - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
+      \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
+      \uCD5C\uC885\uB300\uBBF8\uC9C0 +20%"
     damage: 30
     maxRange: 4
     criticalChance: 35
@@ -55,15 +61,17 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 20
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "적을 처치할 때마다 영구 포식 1을 얻습니다.\n포식 하나당 최종대미지 +30%\n관통 1회 (40%)"
+  - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
+      \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
+      \uCD5C\uC885\uB300\uBBF8\uC9C0 +30%\n\uAD00\uD1B5 1\uD68C (40%)"
     damage: 40
     maxRange: 5
     criticalChance: 40
@@ -75,16 +83,19 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 30
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances:
     - chance: 40
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 200
-  - description: "적을 처치할 때마다 영구 포식 2을 얻습니다.\n포식 하나당 최종대미지 +35%\n관통 최대 2회 (각 70%)"
+  - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
+      \uD3EC\uC2DD 2\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
+      \uCD5C\uC885\uB300\uBBF8\uC9C0 +35%\n\uAD00\uD1B5 \uCD5C\uB300 2\uD68C (\uAC01
+      70%)"
     damage: 55
     maxRange: 6
     criticalChance: 50
@@ -96,13 +107,13 @@ MonoBehaviour:
       stackCount: 2
       knockbackDistance: 1
       amount: 35
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances:
     - chance: 70
     - chance: 70
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.85, g: 0.45, b: 1, a: 1}
-    secondaryLineColor: {r: 0.25, g: 0.7, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 0

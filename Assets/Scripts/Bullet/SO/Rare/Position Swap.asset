@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Position Swap
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
-  displayName: "\uC704\uCE58\uBCC0\uACBD\uD0C4"
+  displayName: "\uC2A4\uC651\uD0C4"
   description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658"
   cylinderIcon: {fileID: -1611615653400164907, guid: 96884931d179a6f4f83b01b601888336, type: 3}
   price: 6
@@ -70,8 +70,6 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
@@ -111,8 +109,6 @@ MonoBehaviour:
         thirdTransferPercent: 0
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
@@ -153,8 +149,6 @@ MonoBehaviour:
         thirdTransferPercent: 0
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.59567195, b: 0.48584908, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.35
     upgradeCost: 0
