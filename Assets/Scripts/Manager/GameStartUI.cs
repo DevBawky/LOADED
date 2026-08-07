@@ -162,7 +162,9 @@ public sealed class GameStartUI : MonoBehaviour
         gameObject.SetActive(false);
     }
 
-    public IEnumerator PlayBattleClear(BattleData battleData)
+    public IEnumerator PlayBattleClear(
+        BattleData battleData,
+        bool isFinalBossBattle = false)
     {
         FindChildReferences();
         ResolveGameplayReferences();
@@ -180,7 +182,9 @@ public sealed class GameStartUI : MonoBehaviour
 
         ResetVisualState();
         SetBattleReport(battleData);
-        stageReportClickText.text = "클릭하여 상점으로 이동";
+        stageReportClickText.text = isFinalBossBattle
+            ? string.Empty
+            : "클릭하여 상점으로 이동";
 
         SetGameplayCanvasActive(false);
         gameObject.SetActive(true);

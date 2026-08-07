@@ -1211,7 +1211,14 @@ public sealed class CombatPresentation : MonoBehaviour
 
             if (GamePauseController.IsPaused)
             {
-                continue;
+                if (Time.timeScale <= 0f && timeScaleBeforeHitStop > 0f)
+                {
+                    Time.timeScale = timeScaleBeforeHitStop;
+                }
+
+                hitStopRemaining = 0f;
+                hitStopCoroutine = null;
+                yield break;
             }
 
             hitStopRemaining -= Time.unscaledDeltaTime;
@@ -1240,6 +1247,11 @@ public sealed class CombatPresentation : MonoBehaviour
         }
 
         hitStopRemaining = 0f;
+    }
+
+    public void CancelHitStopForPause()
+    {
+        RestoreTimeScale();
     }
 
     private GameObject CreateEffectRoot(string effectName, Vector3 position)

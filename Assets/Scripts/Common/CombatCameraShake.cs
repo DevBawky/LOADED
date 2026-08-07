@@ -1,6 +1,9 @@
 using System.Collections;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.SceneManagement;
+using VolFx;
 
 public enum CombatImpactTier
 {
@@ -34,6 +37,59 @@ public static class CombatImpactTierUtility
         return isCritical
             ? CombatImpactTier.Critical
             : CombatImpactTier.Normal;
+    }
+}
+
+public static class OldMoviePresentationSettings
+{
+    private const string PreferenceKey = "Presentation.OldMovie.Enabled";
+    private static bool enabled = true;
+
+    public static bool Enabled => enabled;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void Initialize()
+    {
+        enabled = PlayerPrefs.GetInt(PreferenceKey, 1) != 0;
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    public static void SetEnabled(bool value)
+    {
+        PreviewEnabled(value);
+        PlayerPrefs.SetInt(PreferenceKey, value ? 1 : 0);
+        PlayerPrefs.Save();
+    }
+
+    public static void PreviewEnabled(bool value)
+    {
+        enabled = value;
+        ApplyToLoadedVolumes();
+    }
+
+    private static void HandleSceneLoaded(Scene _, LoadSceneMode __)
+    {
+        ApplyToLoadedVolumes();
+    }
+
+    private static void ApplyToLoadedVolumes()
+    {
+        foreach (Volume volume in Object.FindObjectsByType<Volume>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            ApplyToProfile(volume.sharedProfile);
+            ApplyToProfile(volume.profile);
+        }
+    }
+
+    private static void ApplyToProfile(VolumeProfile profile)
+    {
+        if (profile != null && profile.TryGet(out OldMovieVol oldMovie))
+        {
+            oldMovie.active = enabled;
+        }
     }
 }
 
@@ -111,12 +167,17 @@ public sealed class CombatAccessibilitySettings : MonoBehaviour
 
     public static void SetPresentationIntensity(float value)
     {
-        presentationIntensity = Mathf.Clamp01(value);
-        hasLoadedPresentationIntensity = true;
+        PreviewPresentationIntensity(value);
         PlayerPrefs.SetFloat(
             PresentationIntensityPreferenceKey,
             presentationIntensity);
         PlayerPrefs.Save();
+    }
+
+    public static void PreviewPresentationIntensity(float value)
+    {
+        presentationIntensity = Mathf.Clamp01(value);
+        hasLoadedPresentationIntensity = true;
     }
 
     private static void LoadPresentationIntensity()

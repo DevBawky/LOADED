@@ -70,6 +70,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private int comboGoldPerKill = 10;
     [Min(0.1f)]
     [SerializeField] private float killComboTextDuration = 0.85f;
+    [Min(0f)]
+    [SerializeField] private float killComboTextDurationPerAdditionalKill = 0.12f;
+    [Min(0f)]
+    [SerializeField] private float maximumKillComboTextDurationBonus = 1.2f;
     [Min(0.01f)]
     [SerializeField] private float killComboTextScale = 0.13f;
     [Range(0f, 0.5f)]
@@ -78,6 +82,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         new Color(1f, 0.46f, 0.08f, 1f);
     [SerializeField] private Color highComboTextColor =
         new Color(1f, 0.12f, 0.06f, 1f);
+    [SerializeField] private Color kickReadyTextColor =
+        new Color(0.35f, 0.85f, 1f, 1f);
 
     [Header("Kill Motion")]
     [Range(0.05f, 1f)]
@@ -484,6 +490,13 @@ public sealed class CombatFeedbackController : MonoBehaviour
             cameraShakeDuration);
     }
 
+    public void RecordPlayerDamageCameraShake()
+    {
+        CombatCameraShake.Play(
+            cameraShakeStrength * killShakeMultiplier,
+            cameraShakeDuration);
+    }
+
     public void RecordDefeat(
         Vector3 worldPosition,
         int horizontalDirection,
@@ -577,6 +590,51 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void SpawnKillComboText(Vector3 worldPosition)
     {
+        string message = comboCount <= 1
+            ? "적 처치!"
+            : $"{comboCount}연속 처치!";
+        Color color = comboCount switch
+        {
+            1 => Color.white,
+            2 => secondKillTextColor,
+            _ => highComboTextColor
+        };
+        float comboGrowth = 1f + Mathf.Min(
+            maximumComboTextScaleBonus,
+            Mathf.Max(0, comboCount - 1) * 0.025f);
+        float duration = killComboTextDuration + Mathf.Min(
+            maximumKillComboTextDurationBonus,
+            Mathf.Max(0, comboCount - 1)
+                * killComboTextDurationPerAdditionalKill);
+
+        SpawnAnimatedCombatText(
+            "Text | Kill Combo",
+            message,
+            color,
+            worldPosition,
+            comboGrowth,
+            duration);
+    }
+
+    public void RecordKickReady(Vector3 worldPosition)
+    {
+        SpawnAnimatedCombatText(
+            "Text | Kick Ready",
+            "발차기 준비!",
+            kickReadyTextColor,
+            worldPosition,
+            1f,
+            killComboTextDuration);
+    }
+
+    private void SpawnAnimatedCombatText(
+        string objectName,
+        string message,
+        Color color,
+        Vector3 worldPosition,
+        float scaleMultiplier,
+        float duration)
+    {
         TextMeshPro text;
         GameObject textObject;
         Vector3 prefabScale;
@@ -590,7 +648,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         else
         {
             textObject = new GameObject(
-                "Text | Kill Combo",
+                objectName,
                 typeof(TextMeshPro));
             text = textObject.GetComponent<TextMeshPro>();
             text.alignment = TextAlignmentOptions.Center;
@@ -603,33 +661,33 @@ public sealed class CombatFeedbackController : MonoBehaviour
             prefabScale = Vector3.one * killComboTextScale;
         }
 
-        text.text = comboCount <= 1
-            ? "적 처치!"
-            : $"{comboCount}연속 처치!";
-        text.color = comboCount switch
-        {
-            1 => Color.white,
-            2 => secondKillTextColor,
-            _ => highComboTextColor
-        };
+        textObject.name = objectName;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.text = message;
+        Vector2 preferredSize = text.GetPreferredValues(message);
+        Vector2 textAreaSize = text.rectTransform.sizeDelta;
+        textAreaSize.x = Mathf.Max(textAreaSize.x, preferredSize.x + 1f);
+        text.rectTransform.sizeDelta = textAreaSize;
+        color.a = 1f;
+        text.color = color;
         textObject.transform.position = worldPosition
             + new Vector3(0f, 0.72f, -1f);
-        float comboGrowth = 1f + Mathf.Min(
-            maximumComboTextScaleBonus,
-            Mathf.Max(0, comboCount - 1) * 0.025f);
-        Vector3 targetScale = prefabScale * comboGrowth;
+        Vector3 targetScale = prefabScale * Mathf.Max(0.01f, scaleMultiplier);
         textObject.transform.localScale = targetScale * 0.12f;
         spawnedComboTexts.Add(textObject);
         StartCoroutine(AnimateKillComboText(
             textObject,
             text,
-            targetScale));
+            targetScale,
+            Mathf.Max(0.01f, duration)));
     }
 
     private IEnumerator AnimateKillComboText(
         GameObject textObject,
         TextMeshPro text,
-        Vector3 targetScale)
+        Vector3 targetScale,
+        float duration)
     {
         Vector3 startPosition = textObject.transform.position;
         Quaternion startRotation = textObject.transform.rotation;
@@ -638,7 +696,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float rotationDirection = Random.value < 0.5f ? -1f : 1f;
         float elapsed = 0f;
 
-        while (elapsed < killComboTextDuration && textObject != null)
+        while (elapsed < duration && textObject != null)
         {
             yield return null;
 
@@ -654,7 +712,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
             elapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(
-                elapsed / killComboTextDuration);
+                elapsed / duration);
             float entrance = Mathf.Clamp01(progress / 0.22f);
             float entranceEase = 1f - Mathf.Pow(1f - entrance, 3f);
             float pop = Mathf.Sin(entrance * Mathf.PI) * 0.42f;
@@ -685,7 +743,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 Mathf.SmoothStep(0f, 0.5f, progress),
                 0f);
             Color color = startColor;
-            color.a = 1f - Mathf.SmoothStep(0.58f, 1f, progress);
+            color.a = 1f - Mathf.SmoothStep(0f, 1f, progress);
             text.color = color;
         }
 

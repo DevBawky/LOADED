@@ -12,6 +12,7 @@ public class GamePauseController : MonoBehaviour
     [SerializeField] private Slider bgmVolumeSlider;
     [SerializeField] private Slider sfxVolumeSlider;
     [SerializeField] private Slider vfxIntensitySlider;
+    [SerializeField] private Toggle oldMovieToggle;
 
     private readonly List<Button> pauseButtons = new List<Button>();
     private StateManager stateManager;
@@ -89,6 +90,17 @@ public class GamePauseController : MonoBehaviour
 
     private void SetPaused(bool isPaused)
     {
+        if (isPaused)
+        {
+            foreach (CombatPresentation presentation in
+                     FindObjectsByType<CombatPresentation>(
+                         FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                presentation.CancelHitStopForPause();
+            }
+        }
+
         if (IsPaused == isPaused)
         {
             if (pausedPanel != null)
@@ -103,6 +115,11 @@ public class GamePauseController : MonoBehaviour
 
         if (pausedPanel != null)
         {
+            if (isPaused)
+            {
+                pausedPanel.transform.SetAsLastSibling();
+            }
+
             pausedPanel.SetActive(isPaused);
         }
     }
@@ -142,6 +159,16 @@ public class GamePauseController : MonoBehaviour
             else if (HasAncestorNamed(slider.transform, "Layout | VFX"))
             {
                 vfxIntensitySlider = slider;
+            }
+        }
+
+        foreach (Toggle toggle in pausedPanel.GetComponentsInChildren<Toggle>(true))
+        {
+            if (toggle.name == "Toggle | OnOffMovie"
+                && HasAncestorNamed(toggle.transform, "Layout | OnOffMovie"))
+            {
+                oldMovieToggle = toggle;
+                break;
             }
         }
     }
@@ -188,6 +215,14 @@ public class GamePauseController : MonoBehaviour
             vfxIntensitySlider.onValueChanged.AddListener(
                 CombatAccessibilitySettings.SetPresentationIntensity);
         }
+
+        if (oldMovieToggle != null)
+        {
+            oldMovieToggle.SetIsOnWithoutNotify(
+                OldMoviePresentationSettings.Enabled);
+            oldMovieToggle.onValueChanged.AddListener(
+                OldMoviePresentationSettings.SetEnabled);
+        }
     }
 
     private void HandleFlowStateChanged()
@@ -202,8 +237,14 @@ public class GamePauseController : MonoBehaviour
 
     private bool CanOpenPauseMenu()
     {
-        return stateManager == null
-            || stateManager.CurrentState == GameFlowState.Battle;
+        if (stateManager == null)
+        {
+            return true;
+        }
+
+        return stateManager.CurrentState == GameFlowState.Battle
+            || stateManager.CurrentState == GameFlowState.BattleClear
+            || stateManager.CurrentState == GameFlowState.Shop;
     }
 
     private void RefreshPauseAvailability()
@@ -215,6 +256,7 @@ public class GamePauseController : MonoBehaviour
             if (pauseButton != null)
             {
                 pauseButton.gameObject.SetActive(available);
+                pauseButton.interactable = available;
             }
         }
     }
@@ -314,6 +356,14 @@ internal static class EscapePanelInput
             Object.FindFirstObjectByType<BulletManagementUI>();
         if (bulletManagement != null
             && bulletManagement.TryCloseFromEscape())
+        {
+            return;
+        }
+
+        MainMenuSettingsController settingsController =
+            Object.FindFirstObjectByType<MainMenuSettingsController>();
+        if (settingsController != null
+            && settingsController.TryCloseWithoutSaving())
         {
             return;
         }

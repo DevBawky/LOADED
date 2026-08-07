@@ -120,6 +120,9 @@ public sealed class BulletInstance
     public int AcquisitionOrder => acquisitionOrder;
     public int AbilityStacks => Mathf.Max(0, abilityStacks);
     public int PermanentStacks => Mathf.Max(0, permanentStacks);
+    public int CurrentStackCount => (int)Math.Min(
+        int.MaxValue,
+        (long)AbilityStacks + PermanentStacks);
     public float StoredDamageBonus => Mathf.Max(0f, storedDamageBonus);
     public float TemporaryDamageBonus => Mathf.Max(0f, temporaryDamageBonus);
     public float TemporaryCriticalChanceBonus => Mathf.Max(
@@ -182,11 +185,62 @@ public sealed class BulletInstance
         : data.GetRecoilStrength(Level);
     public int UpgradeCost => data == null ? 0 : data.GetUpgradeCost(Level);
 
+    public int GetDisplayedStackCount(
+        IReadOnlyList<BulletInstance> loadedBullets)
+    {
+        long stackCount = CurrentStackCount;
+
+        if (!ContainsReference(loadedBullets, this))
+        {
+            return CurrentStackCount;
+        }
+
+        foreach (BulletEffectData effect in Effects)
+        {
+            if (effect == null)
+            {
+                continue;
+            }
+
+            switch (effect.EffectType)
+            {
+                case BulletEffectType.Resonance:
+                    stackCount += CountOtherLoadedEffects(
+                        loadedBullets,
+                        BulletEffectType.Resonance);
+                    break;
+                case BulletEffectType.Charge:
+                    stackCount += Mathf.Min(
+                        ShotsObservedWhileLoaded,
+                        Mathf.Max(0, effect.StackCount));
+                    break;
+            }
+        }
+
+        return (int)Math.Min(int.MaxValue, stackCount);
+    }
+
     public string GetDetailedDescription(BulletTooltipContext context)
     {
         if (data == null)
         {
             return string.Empty;
+        }
+
+        return data.GetDetailedDescription(
+            Level,
+            GetRuntimeTooltipStats(context));
+    }
+
+    public BulletRuntimeTooltipStats GetRuntimeTooltipStats(
+        BulletTooltipContext context)
+    {
+        if (data == null)
+        {
+            return new BulletRuntimeTooltipStats(
+                1f,
+                0f,
+                Array.Empty<string>());
         }
 
         float damageMultiplier = 1f + TemporaryDamageBonus;
@@ -457,18 +511,169 @@ public sealed class BulletInstance
                 + $"+{TemporaryCriticalChanceBonus:0.##}%p");
         }
 
-        return data.GetDetailedDescription(
-            Level,
-            new BulletRuntimeTooltipStats(
-                damageMultiplier,
-                criticalChanceBonus,
-                stateLines));
+        return new BulletRuntimeTooltipStats(
+            damageMultiplier,
+            criticalChanceBonus,
+            stateLines);
+    }
+
+    public string GetStatusDisplayText(BulletTooltipContext context)
+    {
+        if (TryGetEffectUnitCount(context, out int effectUnitCount)
+            && effectUnitCount > 0)
+        {
+            return effectUnitCount.ToString();
+        }
+
+        int stackCount = CurrentStackCount;
+
+        if (stackCount > 0)
+        {
+            return stackCount.ToString();
+        }
+
+        if (StoredDamageBonus > 0.0001f
+            && HasEffect(BulletEffectType.Distributor))
+        {
+            return $"+{StoredDamageBonus * 100f:0.##}%";
+        }
+
+        BulletRuntimeTooltipStats stats = GetRuntimeTooltipStats(context);
+
+        if (stats.DamageMultiplier > 1.0001f)
+        {
+            return $"+{(stats.DamageMultiplier - 1f) * 100f:0.##}%";
+        }
+
+        if (stats.CriticalChanceBonus > 0.0001f)
+        {
+            return $"+{stats.CriticalChanceBonus:0.##}%p";
+        }
+
+        return string.Empty;
+    }
+
+    private bool TryGetEffectUnitCount(
+        BulletTooltipContext context,
+        out int unitCount)
+    {
+        bool isLoaded = ContainsReference(context.LoadedBullets, this);
+
+        foreach (BulletEffectData effect in Effects)
+        {
+            if (effect == null)
+            {
+                continue;
+            }
+
+            switch (effect.EffectType)
+            {
+                case BulletEffectType.Jackpot:
+                    unitCount = isLoaded
+                        && context.LoadedBullets.Count > 0
+                        && ReferenceEquals(context.LoadedBullets[0], this)
+                            ? 1
+                            : 0;
+                    return true;
+                case BulletEffectType.Gilded:
+                    unitCount = context.CurrentGold
+                        / Mathf.Max(1, effect.StackCount);
+                    return true;
+                case BulletEffectType.Coagulation:
+                {
+                    float missingPercent = context.MaxHealth <= 0
+                        ? 0f
+                        : 100f * (context.MaxHealth - context.CurrentHealth)
+                            / context.MaxHealth;
+                    unitCount = Mathf.FloorToInt(
+                        missingPercent / Mathf.Max(1, effect.StackCount));
+                    return true;
+                }
+                case BulletEffectType.Heart:
+                    unitCount = context.MaxHealth
+                        / Mathf.Max(1, effect.StackCount);
+                    return true;
+                case BulletEffectType.Loader:
+                    unitCount = isLoaded
+                        ? Mathf.Max(
+                            0,
+                            context.MaxChambers - context.InitialLoadedCount)
+                        : 0;
+                    return true;
+                case BulletEffectType.Resonance:
+                    unitCount = isLoaded
+                        ? CountOtherLoadedEffects(
+                            context.LoadedBullets,
+                            BulletEffectType.Resonance)
+                        : 0;
+                    return true;
+                case BulletEffectType.Focus:
+                case BulletEffectType.Accumulator:
+                    unitCount = AbilityStacks;
+                    return true;
+                case BulletEffectType.Charge:
+                    unitCount = isLoaded
+                        ? Mathf.Min(
+                            ShotsObservedWhileLoaded,
+                            Mathf.Max(0, effect.StackCount))
+                        : 0;
+                    return true;
+                case BulletEffectType.Devourer:
+                case BulletEffectType.Legacy:
+                    unitCount = PermanentStacks;
+                    return true;
+                case BulletEffectType.Collection:
+                    unitCount = CountDistinctOwnedBulletTypes(context);
+                    return true;
+                case BulletEffectType.MixedGrade:
+                    unitCount = isLoaded
+                        ? CountOtherLoadedGrades(context.LoadedBullets)
+                        : 0;
+                    return true;
+                case BulletEffectType.Masterpiece:
+                    unitCount = CountOwnedGrades(
+                        context,
+                        BulletGrade.Ace,
+                        BulletGrade.Legendary);
+                    return true;
+                case BulletEffectType.MassProduced:
+                    unitCount = CountOwnedGrades(
+                        context,
+                        BulletGrade.Normal,
+                        BulletGrade.Rare);
+                    return true;
+                case BulletEffectType.Monopoly:
+                    unitCount = GetMostCommonOwnedGradeCount(context);
+                    return true;
+            }
+        }
+
+        unitCount = 0;
+        return false;
+    }
+
+    private bool HasEffect(BulletEffectType effectType)
+    {
+        foreach (BulletEffectData effect in Effects)
+        {
+            if (effect != null && effect.EffectType == effectType)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool ContainsReference(
         IReadOnlyList<BulletInstance> bullets,
         BulletInstance target)
     {
+        if (bullets == null)
+        {
+            return false;
+        }
+
         foreach (BulletInstance bullet in bullets)
         {
             if (ReferenceEquals(bullet, target))

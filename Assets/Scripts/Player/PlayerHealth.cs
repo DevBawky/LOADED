@@ -32,6 +32,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private int currentHealth;
 
     private StatusEffectController statusEffects;
+    private CombatFeedbackController combatFeedback;
     private Volume damageFlashVolume;
     private VolumeProfile damageFlashProfile;
     private float damageFlashElapsed = -1f;
@@ -46,6 +47,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
     private void Awake()
     {
         statusEffects = GetComponent<StatusEffectController>();
+        combatFeedback = FindFirstObjectByType<CombatFeedbackController>();
         ResolveUIReferences();
         currentHealth = Mathf.Clamp(startingHealth, 0, maxHealth);
         CreateDamageFlashVolume();
@@ -98,6 +100,8 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         {
             SoundManager.PlayHit();
             PlayDamageScreenFlash();
+            combatFeedback ??= FindFirstObjectByType<CombatFeedbackController>();
+            combatFeedback?.RecordPlayerDamageCameraShake();
         }
 
         return true;

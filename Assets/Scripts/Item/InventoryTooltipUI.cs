@@ -6,6 +6,9 @@ using UnityEngine.UI;
 
 public class InventoryTooltipUI : MonoBehaviour
 {
+    private const int BulletStacksPerRow = 4;
+    private const int BulletStackRowCount = 5;
+
     private enum TooltipPointerAnchor
     {
         LeftCenter,
@@ -61,10 +64,44 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI cylinderBulletGradeText;
     [SerializeField] private TextMeshProUGUI cylinderBulletDescriptionText;
 
+    [Header("Debuff Description")]
+    [SerializeField] private RectTransform debuffDescriptionPanel;
+    [SerializeField] private Image debuffDescriptionIcon;
+    [SerializeField] private TextMeshProUGUI debuffDescriptionNameText;
+    [SerializeField] private TextMeshProUGUI debuffDescriptionBodyText;
+    [SerializeField] private Sprite poisonDescriptionIcon;
+    [SerializeField] private Sprite stunDescriptionIcon;
+    [SerializeField] private Sprite weaknessDescriptionIcon;
+    [SerializeField] private Sprite markDescriptionIcon;
+    [TextArea(2, 6)]
+    [SerializeField] private string poisonDescription;
+    [TextArea(2, 6)]
+    [SerializeField] private string stunDescription;
+    [TextArea(2, 6)]
+    [SerializeField] private string weaknessDescription;
+    [TextArea(2, 6)]
+    [SerializeField] private string markDescription;
+
+    [Header("Bullet Stack Status")]
+    [SerializeField] private RectTransform bulletStatusLayout;
+    [SerializeField] private Image bulletStackPrefab;
+
     private readonly Vector3[] tooltipCorners = new Vector3[4];
+    private readonly List<BulletInstance> ownedBullets =
+        new List<BulletInstance>();
+    private readonly List<BulletInstance> displayedStackBullets =
+        new List<BulletInstance>();
+    private readonly List<Image> bulletStackImages = new List<Image>();
+    private readonly List<TextMeshProUGUI> bulletStackCountTexts =
+        new List<TextMeshProUGUI>();
+    private readonly RectTransform[] bulletStackRows =
+        new RectTransform[BulletStackRowCount];
     private Canvas rootCanvas;
+    private BulletManagementUI bulletManagementUI;
     private BulletInstance previewedCylinderBullet;
     private int previewedCylinderBulletIndex = -1;
+    private Vector2 debuffDescriptionInitialPosition;
+    private bool hasDebuffDescriptionInitialPosition;
 
     private void OnEnable()
     {
@@ -81,6 +118,15 @@ public class InventoryTooltipUI : MonoBehaviour
         DisableRaycasts(tooltip);
         DisableRaycasts(bulletTooltip);
         DisableRaycasts(cylinderBulletTooltip);
+        DisableRaycasts(debuffDescriptionPanel);
+
+        if (debuffDescriptionPanel != null
+            && !hasDebuffDescriptionInitialPosition)
+        {
+            debuffDescriptionInitialPosition =
+                debuffDescriptionPanel.anchoredPosition;
+            hasDebuffDescriptionInitialPosition = true;
+        }
 
         if (deckManager != null)
         {
@@ -93,6 +139,7 @@ public class InventoryTooltipUI : MonoBehaviour
         }
 
         RefreshNextChip();
+        RefreshBulletStatusVisibility();
         HideAll();
     }
 
@@ -113,12 +160,35 @@ public class InventoryTooltipUI : MonoBehaviour
 
     private void Update()
     {
-        Mouse mouse = Mouse.current;
-
         if (GamePauseController.IsPaused
             || LoadingTransitionController.IsTransitioning
-            || mouse == null
             || cylinderUI != null && cylinderUI.IsDragging)
+        {
+            HideAll();
+            return;
+        }
+
+        RefreshBulletStackStatus();
+
+        if (bulletManagementUI != null && bulletManagementUI.IsOpen)
+        {
+            HideItemTooltip();
+            HideBulletTooltip();
+            HideCylinderBulletTooltip();
+            ShowDebuffDescription(
+                TryGetDebuff(
+                    bulletManagementUI.SelectedBullet,
+                    out StatusEffectType selectedDebuff)
+                    ? selectedDebuff
+                    : (StatusEffectType?)null,
+                null,
+                true);
+            return;
+        }
+
+        Mouse mouse = Mouse.current;
+
+        if (mouse == null)
         {
             HideAll();
             return;
@@ -130,6 +200,7 @@ public class InventoryTooltipUI : MonoBehaviour
             || TryShowShopItem(pointerPosition)
             || TryShowShopBullet(pointerPosition)
             || TryShowLoadedBullet(pointerPosition)
+            || TryShowBulletStack(pointerPosition)
             || TryShowNextBullet(pointerPosition))
         {
             return;
@@ -259,6 +330,32 @@ public class InventoryTooltipUI : MonoBehaviour
         return true;
     }
 
+    private bool TryShowBulletStack(Vector2 pointerPosition)
+    {
+        for (int index = 0; index < displayedStackBullets.Count; index++)
+        {
+            Image stackImage = index < bulletStackImages.Count
+                ? bulletStackImages[index]
+                : null;
+
+            if (stackImage == null
+                || !stackImage.gameObject.activeInHierarchy
+                || !IsHovered(stackImage.rectTransform, pointerPosition))
+            {
+                continue;
+            }
+
+            ShowCylinderBullet(
+                displayedStackBullets[index],
+                -1,
+                pointerPosition,
+                TooltipPointerAnchor.BottomRight);
+            return true;
+        }
+
+        return false;
+    }
+
     private void ShowItem(
         ItemData item,
         Vector2 pointerPosition,
@@ -291,6 +388,12 @@ public class InventoryTooltipUI : MonoBehaviour
         ApplyIcon(itemIcon, item.Icon);
         tooltip.gameObject.SetActive(true);
         PositionInsideScreen(tooltip, pointerPosition, pointerAnchor);
+        ShowDebuffDescription(
+            TryGetDebuff(item, out StatusEffectType debuff)
+                ? debuff
+                : (StatusEffectType?)null,
+            tooltip,
+            false);
     }
 
     private void ShowBullet(
@@ -348,6 +451,12 @@ public class InventoryTooltipUI : MonoBehaviour
         ApplyIcon(bulletCylinderIcon, bullet.CylinderIcon);
         bulletTooltip.gameObject.SetActive(true);
         PositionInsideScreen(bulletTooltip, pointerPosition, pointerAnchor);
+        ShowDebuffDescription(
+            TryGetDebuff(bullet, level, out StatusEffectType debuff)
+                ? debuff
+                : (StatusEffectType?)null,
+            bulletTooltip,
+            false);
     }
 
     private void ShowCylinderBullet(
@@ -386,8 +495,20 @@ public class InventoryTooltipUI : MonoBehaviour
             cylinderBulletTooltip,
             pointerPosition,
             pointerAnchor);
+        ShowDebuffDescription(
+            TryGetDebuff(bullet, out StatusEffectType debuff)
+                ? debuff
+                : (StatusEffectType?)null,
+            cylinderBulletTooltip,
+            false);
 
-        if (!ReferenceEquals(previewedCylinderBullet, bullet)
+        if (loadedBulletIndex < 0)
+        {
+            playerShoot?.ClearLoadedBulletDamagePreview();
+            previewedCylinderBullet = null;
+            previewedCylinderBulletIndex = -1;
+        }
+        else if (!ReferenceEquals(previewedCylinderBullet, bullet)
             || previewedCylinderBulletIndex != loadedBulletIndex)
         {
             playerShoot?.ClearLoadedBulletDamagePreview();
@@ -409,10 +530,127 @@ public class InventoryTooltipUI : MonoBehaviour
         ApplyIcon(nextChipIcon, GetPreferredIcon(nextBullet));
     }
 
+    private void RefreshBulletStackStatus()
+    {
+        if (bulletStatusLayout == null
+            || !bulletStatusLayout.gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        displayedStackBullets.Clear();
+        BulletTooltipContext context = CreateBulletTooltipContext();
+
+        if (deckManager != null)
+        {
+            deckManager.GetOwnedBullets(ownedBullets);
+
+            foreach (BulletInstance bullet in ownedBullets)
+            {
+                if (!string.IsNullOrEmpty(GetBulletStatusText(bullet, context)))
+                {
+                    displayedStackBullets.Add(bullet);
+                }
+            }
+        }
+
+        int capacity = BulletStackRowCount * BulletStacksPerRow;
+        int visibleCount = Mathf.Min(capacity, displayedStackBullets.Count);
+
+        for (int index = 0; index < visibleCount; index++)
+        {
+            EnsureBulletStackImage(index);
+
+            if (index >= bulletStackImages.Count
+                || bulletStackImages[index] == null)
+            {
+                continue;
+            }
+
+            BulletInstance bullet = displayedStackBullets[index];
+            Image stackImage = bulletStackImages[index];
+            stackImage.gameObject.SetActive(true);
+            ApplyIcon(stackImage, GetPreferredIcon(bullet));
+
+            TextMeshProUGUI countText = bulletStackCountTexts[index];
+            if (countText != null)
+            {
+                countText.text = GetBulletStatusText(bullet, context);
+            }
+        }
+
+        for (int index = visibleCount; index < bulletStackImages.Count; index++)
+        {
+            if (bulletStackImages[index] != null)
+            {
+                bulletStackImages[index].gameObject.SetActive(false);
+            }
+        }
+
+        if (displayedStackBullets.Count > visibleCount)
+        {
+            displayedStackBullets.RemoveRange(
+                visibleCount,
+                displayedStackBullets.Count - visibleCount);
+        }
+    }
+
+    private static string GetBulletStatusText(
+        BulletInstance bullet,
+        BulletTooltipContext context)
+    {
+        return bullet == null
+            ? string.Empty
+            : bullet.GetStatusDisplayText(context);
+    }
+
+    private void EnsureBulletStackImage(int index)
+    {
+        while (bulletStackImages.Count <= index)
+        {
+            int newIndex = bulletStackImages.Count;
+            int rowIndex = newIndex / BulletStacksPerRow;
+            RectTransform row = rowIndex < bulletStackRows.Length
+                ? bulletStackRows[rowIndex]
+                : null;
+
+            if (bulletStackPrefab == null || row == null)
+            {
+                return;
+            }
+
+            Image stackImage = Instantiate(bulletStackPrefab, row);
+            stackImage.name = $"Image _ Bullet Stack {newIndex + 1}";
+            stackImage.raycastTarget = true;
+            bulletStackImages.Add(stackImage);
+            bulletStackCountTexts.Add(FindNamedChild<TextMeshProUGUI>(
+                stackImage.rectTransform,
+                "Text | Stack Count"));
+        }
+    }
+
     private void HandleFlowStateChanged()
     {
         ResolveReferences();
+        RefreshBulletStatusVisibility();
         HideAll();
+    }
+
+    private void RefreshBulletStatusVisibility()
+    {
+        if (bulletStatusLayout == null)
+        {
+            return;
+        }
+
+        bool shouldShow = stateManager != null
+            && stateManager.CurrentState == GameFlowState.Battle;
+        bulletStatusLayout.gameObject.SetActive(shouldShow);
+
+        if (shouldShow)
+        {
+            RefreshBulletStackStatus();
+        }
     }
 
     private void PositionInsideScreen(
@@ -462,6 +700,97 @@ public class InventoryTooltipUI : MonoBehaviour
             tooltipScreenSize.x * targetTooltip.pivot.x,
             tooltipScreenSize.y * targetTooltip.pivot.y);
         SetScreenPosition(targetTooltip, targetPivotPosition);
+    }
+
+    private void ShowDebuffDescription(
+        StatusEffectType? debuff,
+        RectTransform adjacentTooltip,
+        bool useInitialPosition)
+    {
+        if (!debuff.HasValue
+            || debuffDescriptionPanel == null
+            || debuffDescriptionIcon == null
+            || debuffDescriptionNameText == null
+            || debuffDescriptionBodyText == null)
+        {
+            HideDebuffDescription();
+            return;
+        }
+
+        StatusEffectType type = debuff.Value;
+        ApplyIcon(debuffDescriptionIcon, GetDebuffIcon(type));
+        debuffDescriptionNameText.text = GetDebuffName(type);
+        debuffDescriptionNameText.color = GetDebuffColor(type);
+        debuffDescriptionBodyText.richText = true;
+        debuffDescriptionBodyText.text = TooltipTextFormatter.Format(
+            GetDebuffDescription(type));
+        debuffDescriptionPanel.gameObject.SetActive(true);
+
+        if (useInitialPosition && hasDebuffDescriptionInitialPosition)
+        {
+            debuffDescriptionPanel.anchoredPosition =
+                debuffDescriptionInitialPosition;
+        }
+        else
+        {
+            PositionBesideTooltip(debuffDescriptionPanel, adjacentTooltip);
+        }
+    }
+
+    private void PositionBesideTooltip(
+        RectTransform target,
+        RectTransform adjacentTooltip)
+    {
+        if (target == null || adjacentTooltip == null || canvasRect == null)
+        {
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+        Camera canvasCamera = GetCanvasCamera();
+        adjacentTooltip.GetWorldCorners(tooltipCorners);
+        Vector2 sourceLowerLeft = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[0]);
+        Vector2 sourceUpperRight = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[2]);
+
+        target.GetWorldCorners(tooltipCorners);
+        Vector2 targetLowerLeft = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[0]);
+        Vector2 targetUpperRight = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[2]);
+        Vector2 targetSize = targetUpperRight - targetLowerLeft;
+        Rect screenRect = rootCanvas == null
+            ? new Rect(0f, 0f, Screen.width, Screen.height)
+            : rootCanvas.pixelRect;
+
+        float rightX = sourceUpperRight.x + pointerGap;
+        float leftX = sourceLowerLeft.x - pointerGap - targetSize.x;
+        float desiredX = rightX + targetSize.x
+                <= screenRect.xMax - screenPadding
+            ? rightX
+            : leftX;
+        Vector2 desiredLowerLeft = new Vector2(
+            desiredX,
+            sourceUpperRight.y - targetSize.y);
+        desiredLowerLeft.x = Mathf.Clamp(
+            desiredLowerLeft.x,
+            screenRect.xMin + screenPadding,
+            screenRect.xMax - screenPadding - targetSize.x);
+        desiredLowerLeft.y = Mathf.Clamp(
+            desiredLowerLeft.y,
+            screenRect.yMin + screenPadding,
+            screenRect.yMax - screenPadding - targetSize.y);
+
+        SetScreenPosition(
+            target,
+            desiredLowerLeft + new Vector2(
+                targetSize.x * target.pivot.x,
+                targetSize.y * target.pivot.y));
     }
 
     private Vector2 GetPreferredLowerLeft(
@@ -531,6 +860,241 @@ public class InventoryTooltipUI : MonoBehaviour
         return string.IsNullOrWhiteSpace(displayName) ? fallback : displayName;
     }
 
+    private static bool TryGetDebuff(
+        ItemData item,
+        out StatusEffectType debuff)
+    {
+        if (item != null)
+        {
+            switch (item.EffectType)
+            {
+                case ItemEffectType.PoisonAllEnemies:
+                    debuff = StatusEffectType.Poison;
+                    return true;
+                case ItemEffectType.StunAllEnemies:
+                    debuff = StatusEffectType.Stun;
+                    return true;
+            }
+
+            if (TryGetDebuffFromText(item.Description, out debuff))
+            {
+                return true;
+            }
+        }
+
+        debuff = default;
+        return false;
+    }
+
+    private static bool TryGetDebuff(
+        BulletInstance bullet,
+        out StatusEffectType debuff)
+    {
+        if (bullet != null)
+        {
+            return TryGetDebuff(
+                bullet.Data,
+                bullet.Level,
+                out debuff);
+        }
+
+        debuff = default;
+        return false;
+    }
+
+    private static bool TryGetDebuff(
+        BulletData bullet,
+        int level,
+        out StatusEffectType debuff)
+    {
+        bool poison = false;
+        bool stun = false;
+        bool weakness = false;
+        bool mark = false;
+
+        if (bullet != null)
+        {
+            AddDebuffs(
+                bullet.GetEffects(level),
+                ref poison,
+                ref stun,
+                ref weakness,
+                ref mark);
+
+            foreach (BulletConditionalEventData conditionalEvent
+                     in bullet.GetConditionalEvents(level))
+            {
+                if (conditionalEvent != null)
+                {
+                    AddDebuffs(
+                        conditionalEvent.Events,
+                        ref poison,
+                        ref stun,
+                        ref weakness,
+                        ref mark);
+                }
+            }
+
+            if (!poison && !stun && !weakness && !mark
+                && TryGetDebuffFromText(
+                    bullet.GetDescription(level),
+                    out debuff))
+            {
+                return true;
+            }
+        }
+
+        if (poison)
+        {
+            debuff = StatusEffectType.Poison;
+            return true;
+        }
+
+        if (stun)
+        {
+            debuff = StatusEffectType.Stun;
+            return true;
+        }
+
+        if (weakness)
+        {
+            debuff = StatusEffectType.Weakness;
+            return true;
+        }
+
+        if (mark)
+        {
+            debuff = StatusEffectType.Mark;
+            return true;
+        }
+
+        debuff = default;
+        return false;
+    }
+
+    private static void AddDebuffs(
+        IReadOnlyList<BulletEffectData> effects,
+        ref bool poison,
+        ref bool stun,
+        ref bool weakness,
+        ref bool mark)
+    {
+        if (effects == null)
+        {
+            return;
+        }
+
+        foreach (BulletEffectData effect in effects)
+        {
+            if (effect == null)
+            {
+                continue;
+            }
+
+            switch (effect.EffectType)
+            {
+                case BulletEffectType.Poison:
+                    poison = true;
+                    break;
+                case BulletEffectType.Stun:
+                    stun = true;
+                    break;
+                case BulletEffectType.Weakness:
+                    weakness = true;
+                    break;
+                case BulletEffectType.Mark:
+                    mark = true;
+                    break;
+            }
+        }
+    }
+
+    private static bool TryGetDebuffFromText(
+        string description,
+        out StatusEffectType debuff)
+    {
+        if (!string.IsNullOrEmpty(description))
+        {
+            if (description.Contains("독"))
+            {
+                debuff = StatusEffectType.Poison;
+                return true;
+            }
+
+            if (description.Contains("기절"))
+            {
+                debuff = StatusEffectType.Stun;
+                return true;
+            }
+
+            if (description.Contains("약화"))
+            {
+                debuff = StatusEffectType.Weakness;
+                return true;
+            }
+
+            if (description.Contains("표식"))
+            {
+                debuff = StatusEffectType.Mark;
+                return true;
+            }
+        }
+
+        debuff = default;
+        return false;
+    }
+
+    private Sprite GetDebuffIcon(StatusEffectType type)
+    {
+        return type switch
+        {
+            StatusEffectType.Poison => poisonDescriptionIcon,
+            StatusEffectType.Stun => stunDescriptionIcon,
+            StatusEffectType.Weakness => weaknessDescriptionIcon,
+            StatusEffectType.Mark => markDescriptionIcon,
+            _ => null
+        };
+    }
+
+    private string GetDebuffDescription(StatusEffectType type)
+    {
+        return type switch
+        {
+            StatusEffectType.Poison => poisonDescription,
+            StatusEffectType.Stun => stunDescription,
+            StatusEffectType.Weakness => weaknessDescription,
+            StatusEffectType.Mark => markDescription,
+            _ => string.Empty
+        };
+    }
+
+    private static string GetDebuffName(StatusEffectType type)
+    {
+        return type switch
+        {
+            StatusEffectType.Poison => "독",
+            StatusEffectType.Stun => "기절",
+            StatusEffectType.Weakness => "약화",
+            StatusEffectType.Mark => "표식",
+            _ => string.Empty
+        };
+    }
+
+    private static Color GetDebuffColor(StatusEffectType type)
+    {
+        string htmlColor = type switch
+        {
+            StatusEffectType.Poison => TooltipTextFormatter.PoisonColor,
+            StatusEffectType.Stun => TooltipTextFormatter.StunColor,
+            StatusEffectType.Weakness => TooltipTextFormatter.WeaknessColor,
+            StatusEffectType.Mark => TooltipTextFormatter.MarkColor,
+            _ => "#FFFFFF"
+        };
+        return ColorUtility.TryParseHtmlString(htmlColor, out Color color)
+            ? color
+            : Color.white;
+    }
+
     private static void ApplyIcon(Image target, Sprite sprite)
     {
         if (target == null)
@@ -581,6 +1145,7 @@ public class InventoryTooltipUI : MonoBehaviour
         HideItemTooltip();
         HideBulletTooltip();
         HideCylinderBulletTooltip();
+        HideDebuffDescription();
     }
 
     private void HideItemTooltip()
@@ -612,6 +1177,15 @@ public class InventoryTooltipUI : MonoBehaviour
         previewedCylinderBulletIndex = -1;
     }
 
+    private void HideDebuffDescription()
+    {
+        if (debuffDescriptionPanel != null
+            && debuffDescriptionPanel.gameObject.activeSelf)
+        {
+            debuffDescriptionPanel.gameObject.SetActive(false);
+        }
+    }
+
     private void ResolveReferences()
     {
         playerInventory ??= FindSceneObject<PlayerInventory>();
@@ -622,6 +1196,7 @@ public class InventoryTooltipUI : MonoBehaviour
         playerShoot ??= FindSceneObject<PlayerShoot>();
         stateManager ??= FindSceneObject<StateManager>();
         cylinderUI ??= FindSceneObject<PlayerCylinderUI>();
+        bulletManagementUI ??= FindSceneObject<BulletManagementUI>();
 
         Canvas canvas = GetComponentInParent<Canvas>();
 
@@ -635,7 +1210,17 @@ public class InventoryTooltipUI : MonoBehaviour
         bulletTooltip ??= FindRectTransform("Panel | Bullet Tooltip");
         cylinderBulletTooltip ??= FindRectTransform(
             "Panel | Cylinder Bullet Tooltip");
+        debuffDescriptionPanel ??= FindRectTransform(
+            "Panel | Debuff Desciption");
+        bulletStatusLayout ??= FindRectTransform("Layout | Bullet Status");
         nextChip ??= FindRectTransform("Next Chip", "Panel | MainGame");
+
+        for (int index = 0; index < bulletStackRows.Length; index++)
+        {
+            bulletStackRows[index] ??= FindNamedChild<RectTransform>(
+                bulletStatusLayout,
+                $"Layout | Stack {index + 1}");
+        }
 
         if (itemSlots == null || itemSlots.Length == 0)
         {
@@ -686,6 +1271,15 @@ public class InventoryTooltipUI : MonoBehaviour
             "Text | Bullet Grade");
         cylinderBulletDescriptionText ??= FindNamedChild<TextMeshProUGUI>(
             cylinderBulletTooltip,
+            "Text | Bullet Description");
+        debuffDescriptionIcon ??= FindNamedChild<Image>(
+            debuffDescriptionPanel,
+            "Image | Debuff Icon");
+        debuffDescriptionNameText ??= FindNamedChild<TextMeshProUGUI>(
+            debuffDescriptionPanel,
+            "Text | Bullet Name");
+        debuffDescriptionBodyText ??= FindNamedChild<TextMeshProUGUI>(
+            debuffDescriptionPanel,
             "Text | Bullet Description");
         nextChipIcon ??= FindNamedChild<Image>(nextChip, "Image | Next Chip");
     }

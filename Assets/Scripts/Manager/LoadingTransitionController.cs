@@ -11,6 +11,9 @@ using UnityEngine.UI;
 public sealed class LoadingTransitionController : MonoBehaviour
 {
     private const string ResourcePath = "UI/Canvas _ Loading Transition";
+    private const string EndingSceneName = "Ending";
+    private const string MainMenuSceneName = "MainMenu";
+    private const string EndingMainButtonName = "Button _ Main";
     private const int ChamberCount = 6;
 
     [Header("UI References")]
@@ -63,6 +66,7 @@ public sealed class LoadingTransitionController : MonoBehaviour
     private Quaternion cylinderRestRotation = Quaternion.identity;
     private float currentCylinderAngle;
     private Coroutine transitionCoroutine;
+    private Button endingMainButton;
 
     public static LoadingTransitionController Instance { get; private set; }
     public static bool IsTransitioning => Instance != null && Instance.transitionCoroutine != null;
@@ -124,15 +128,70 @@ public sealed class LoadingTransitionController : MonoBehaviour
 
         Instance = this;
         DontDestroyOnLoad(gameObject);
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        SceneManager.sceneLoaded += HandleSceneLoaded;
         CacheBulletRestStates();
         ResetPresentation();
+        BindEndingMainButton(SceneManager.GetActiveScene());
     }
 
     private void OnDestroy()
     {
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+
         if (Instance == this)
         {
             Instance = null;
+        }
+    }
+
+    private void HandleSceneLoaded(Scene scene, LoadSceneMode _)
+    {
+        BindEndingMainButton(scene);
+    }
+
+    private void BindEndingMainButton(Scene scene)
+    {
+        endingMainButton = null;
+
+        if (scene.name != EndingSceneName)
+        {
+            return;
+        }
+
+        Button[] buttons = FindObjectsByType<Button>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        foreach (Button button in buttons)
+        {
+            if (button.gameObject.scene == scene
+                && button.name == EndingMainButtonName)
+            {
+                endingMainButton = button;
+                endingMainButton.onClick.RemoveListener(
+                    LoadMainMenuFromEnding);
+                endingMainButton.onClick.AddListener(
+                    LoadMainMenuFromEnding);
+                return;
+            }
+        }
+
+        Debug.LogError(
+            $"Ending scene requires a Button named '{EndingMainButtonName}'.",
+            this);
+    }
+
+    private void LoadMainMenuFromEnding()
+    {
+        if (endingMainButton != null)
+        {
+            endingMainButton.interactable = false;
+        }
+
+        if (!LoadScene(MainMenuSceneName))
+        {
+            SceneManager.LoadScene(MainMenuSceneName);
         }
     }
 
