@@ -167,6 +167,8 @@ public class PlayerCylinderUI : MonoBehaviour
         if (reloadPunchCoroutine != null)
         {
             StopCoroutine(reloadPunchCoroutine);
+            reloadPunchCoroutine = null;
+            ResetReloadPresentation();
         }
 
         reloadPunchCoroutine = StartCoroutine(
@@ -1395,7 +1397,6 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private IEnumerator ReloadPunchRoutine(Color accentColor, float intensity)
     {
-        cylinderRestScale = cylinderTransform.localScale;
         float elapsed = 0f;
         float peakScale = Mathf.Lerp(
             1f,
