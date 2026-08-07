@@ -42,7 +42,7 @@ MonoBehaviour:
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-  secondaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+  secondaryLineColor: {r: 0.82, g: 0.85, b: 0.88, a: 1}
   lineWidthMultiplier: 0.8
   doesNotConsumeTurn: 0
   recoilStrength: 0.08
