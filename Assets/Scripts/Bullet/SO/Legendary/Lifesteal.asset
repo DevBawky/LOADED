@@ -37,8 +37,9 @@ MonoBehaviour:
   conditionalEvents: []
   penetrationChances: []
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-  primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
-  secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
+  primaryLineColor: {r: 1, g: 0.5, b: 0, a: 1}
+  secondaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+  lineWidthMultiplier: 1
   doesNotConsumeTurn: 0
   recoilStrength: 0.1
   upgradeCost: 50
@@ -58,8 +59,8 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances: []
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
-    secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
+    primaryLineColor: {r: 1, g: 0.5, b: 0, a: 1}
+    secondaryLineColor: {r: 1, g: 1, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
@@ -79,8 +80,8 @@ MonoBehaviour:
     penetrationChances:
     - chance: 50
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
-    secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
+    primaryLineColor: {r: 1, g: 0.5, b: 0, a: 1}
+    secondaryLineColor: {r: 1, g: 1, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 200
@@ -106,8 +107,8 @@ MonoBehaviour:
     penetrationChances:
     - chance: 100
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.07035947, g: 1, b: 0, a: 1}
-    secondaryLineColor: {r: 0.0033684766, g: 0.3490566, b: 0, a: 1}
+    primaryLineColor: {r: 1, g: 0.5, b: 0, a: 1}
+    secondaryLineColor: {r: 1, g: 1, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.2
     upgradeCost: 0
