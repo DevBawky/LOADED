@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 2bb736269f551914e99a779a465f6ee7
+guid: ff44a70ff70dfc045b332461ad480fda
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 3313975218708896211
-    second: HPBar_Boss_0
+      213: -5153219815541399663
+    second: UI_HPSlider_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: HPBar_Boss_0
+      name: UI_HPSlider_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 538
-        height: 77
+        x: 2
+        y: 3
+        width: 2072
+        height: 309
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 3d9579937ea9dfd20800000000000000
-      internalID: 3313975218708896211
+      spriteID: 19f962571e51c78b0800000000000000
+      internalID: -5153219815541399663
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      HPBar_Boss_0: 3313975218708896211
+      UI_HPSlider_0: -5153219815541399663
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
