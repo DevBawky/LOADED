@@ -400,6 +400,8 @@ public class BulletData : ScriptableObject
     [FormerlySerializedAs("lineColor")]
     [SerializeField] private Color primaryLineColor = Color.white;
     [SerializeField] private Color secondaryLineColor = Color.white;
+    [Min(0.05f)]
+    [SerializeField] private float lineWidthMultiplier = 1f;
     [SerializeField] private bool doesNotConsumeTurn;
     [Min(0f)]
     [SerializeField] private float recoilStrength;
@@ -436,6 +438,7 @@ public class BulletData : ScriptableObject
     public Material LineMaterial => lineMaterial;
     public Color PrimaryLineColor => primaryLineColor;
     public Color SecondaryLineColor => secondaryLineColor;
+    public float LineWidthMultiplier => Mathf.Max(0.05f, lineWidthMultiplier);
     public Color LineColor => primaryLineColor;
     public bool DoesNotConsumeTurn => doesNotConsumeTurn;
     public float RecoilStrength => recoilStrength;
@@ -691,6 +694,11 @@ public class BulletData : ScriptableObject
     public Color GetSecondaryLineColor(int level)
     {
         return secondaryLineColor;
+    }
+
+    public float GetLineWidthMultiplier(int level)
+    {
+        return LineWidthMultiplier;
     }
 
     public bool GetDoesNotConsumeTurn(int level)
