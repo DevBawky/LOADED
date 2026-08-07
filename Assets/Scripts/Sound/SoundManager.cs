@@ -13,6 +13,8 @@ public sealed class SoundManager : MonoBehaviour
     private const float UiButtonRescanInterval = 0.5f;
     private const float BgmCompletionToleranceSeconds = 0.25f;
     private const string UiButtonSfxId = "UI_Button_Hover_Click";
+    private const string BgmVolumePreferenceKey = "Audio.BGM.Volume";
+    private const string SfxVolumePreferenceKey = "Audio.SFX.Volume";
     private static SoundManager instance;
 
     private static readonly string[] SpecialButtonNames =
@@ -34,6 +36,7 @@ public sealed class SoundManager : MonoBehaviour
     [Header("Audio Sources")]
     [SerializeField] private AudioSource bgmSource;
     [SerializeField] private AudioSource sfxSource;
+    [Range(0f, 1f)] [SerializeField] private float bgmVolume = 1f;
     [Range(0f, 1f)] [SerializeField] private float sfxVolume = 1f;
 
     private readonly List<AudioSource> sfxSources = new List<AudioSource>();
@@ -46,6 +49,8 @@ public sealed class SoundManager : MonoBehaviour
     private float nextUiButtonScanTime;
 
     public static SoundManager Instance { get { EnsureInstance(); return instance; } }
+    public static float BgmVolume => Instance.bgmVolume;
+    public static float SfxVolume => Instance.sfxVolume;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Bootstrap()
@@ -60,6 +65,7 @@ public sealed class SoundManager : MonoBehaviour
         instance = this;
         DontDestroyOnLoad(gameObject);
         EnsureClipLibrary();
+        LoadVolumePreferences();
         EnsureAudioSources();
     }
 
@@ -76,7 +82,7 @@ public sealed class SoundManager : MonoBehaviour
         {
             // Time.timeScale must not alter the authored BGM playback pitch.
             bgmSource.pitch = 1f;
-            bgmSource.volume = clipLibrary.BgmVolume;
+            bgmSource.volume = clipLibrary.BgmVolume * bgmVolume;
             ApplyMixerRouting();
         }
 
@@ -174,6 +180,24 @@ public sealed class SoundManager : MonoBehaviour
 
     public static void ResetComboPitch() { }
     public static void StopBgm() => Instance.SetPlaylist(null);
+
+    public static void SetBgmVolume(float volume)
+    {
+        SoundManager manager = Instance;
+        manager.bgmVolume = Mathf.Clamp01(volume);
+        PlayerPrefs.SetFloat(BgmVolumePreferenceKey, manager.bgmVolume);
+        PlayerPrefs.Save();
+        manager.ApplyVolumes();
+    }
+
+    public static void SetSfxVolume(float volume)
+    {
+        SoundManager manager = Instance;
+        manager.sfxVolume = Mathf.Clamp01(volume);
+        PlayerPrefs.SetFloat(SfxVolumePreferenceKey, manager.sfxVolume);
+        PlayerPrefs.Save();
+        manager.ApplyVolumes();
+    }
 
     private static void EnsureInstance()
     {
@@ -421,12 +445,39 @@ public sealed class SoundManager : MonoBehaviour
         bgmSource.playOnAwake = false;
         bgmSource.loop = false;
         bgmSource.spatialBlend = 0f;
-        bgmSource.volume = clipLibrary == null ? 1f : clipLibrary.BgmVolume;
         if (sfxSource == null) sfxSource = gameObject.AddComponent<AudioSource>();
         ConfigureSfxSource(sfxSource);
         sfxSources.Clear();
         sfxSources.Add(sfxSource);
+        ApplyVolumes();
         ApplyMixerRouting();
+    }
+
+    private void LoadVolumePreferences()
+    {
+        bgmVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(
+            BgmVolumePreferenceKey,
+            bgmVolume));
+        sfxVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(
+            SfxVolumePreferenceKey,
+            sfxVolume));
+    }
+
+    private void ApplyVolumes()
+    {
+        if (bgmSource != null)
+        {
+            float authoredVolume = clipLibrary == null ? 1f : clipLibrary.BgmVolume;
+            bgmSource.volume = authoredVolume * bgmVolume;
+        }
+
+        foreach (AudioSource source in sfxSources)
+        {
+            if (source != null)
+            {
+                source.volume = sfxVolume;
+            }
+        }
     }
 
     private void ApplyMixerRouting()

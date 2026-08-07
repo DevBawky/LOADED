@@ -66,6 +66,11 @@ public class BulletDataEditor : Editor
         Draw("levelOneColor", "Level +1 Rich Text Color");
         Draw("levelTwoColor", "Level +2 Rich Text Color");
         Draw("levelThreeColor", "Level +3 Rich Text Color");
+
+        EditorGUILayout.Space(2f);
+        EditorGUILayout.LabelField("Shared Line Colors", EditorStyles.boldLabel);
+        Draw("primaryLineColor");
+        Draw("secondaryLineColor");
     }
 
     private void DrawBaseLevel()
@@ -93,8 +98,6 @@ public class BulletDataEditor : Editor
             Draw("conditionalEvents", includeChildren: true);
             Draw("penetrationChances", includeChildren: true);
             Draw("lineMaterial");
-            Draw("primaryLineColor");
-            Draw("secondaryLineColor");
             Draw("doesNotConsumeTurn");
             Draw("recoilStrength");
             EditorGUILayout.Space(2f);

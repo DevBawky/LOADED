@@ -86,23 +86,23 @@ public static class GameStatistics
         SaveCheckpoint();
     }
 
-    public static void RecordDamage(int appliedDamage)
+    public static void RecordDamage(int damage)
     {
-        if (!CanRecord() || appliedDamage <= 0)
+        if (!CanRecord() || damage <= 0)
         {
             return;
         }
 
-        data.totalDamage = SaturatingAdd(data.totalDamage, appliedDamage);
+        data.totalDamage = SaturatingAdd(data.totalDamage, damage);
         data.highestSingleHitDamage = Math.Max(
             data.highestSingleHitDamage,
-            appliedDamage);
+            damage);
 
         if (cylinderActive)
         {
             currentCylinderDamage = SaturatingAdd(
                 currentCylinderDamage,
-                appliedDamage);
+                damage);
         }
 
         dirty = true;

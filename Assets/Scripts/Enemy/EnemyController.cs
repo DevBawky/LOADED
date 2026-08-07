@@ -638,7 +638,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (appliedDamage > 0)
         {
             DamageApplied?.Invoke(appliedDamage, enemyData.MaxHealth);
-            GameStatistics.RecordDamage(appliedDamage);
+
+            // Statistics represent the full power of a successful hit. Keep
+            // overkill damage even though health itself is clamped to zero.
+            GameStatistics.RecordDamage(damage);
         }
 
         if (currentHealth != previousHealth)
