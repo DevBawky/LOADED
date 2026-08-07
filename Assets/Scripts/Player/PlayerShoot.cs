@@ -2725,8 +2725,8 @@ public class PlayerShoot : MonoBehaviour
 
         // Clone and other resolver effects borrow combat behavior, but the
         // preview segment belongs to the physical cylinder bullet that will
-        // be consumed. Its own upgraded Primary Line Color is authoritative.
-        Color previewColor = firedBullet.PrimaryLineColor;
+        // be consumed. Its own upgraded Secondary Line Color is authoritative.
+        Color previewColor = firedBullet.SecondaryLineColor;
 
         for (int hitIndex = 0; hitIndex < hitBuffer.Count; hitIndex++)
         {
