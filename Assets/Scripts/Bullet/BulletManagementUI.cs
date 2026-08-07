@@ -85,7 +85,7 @@ public class BulletManagementUI : MonoBehaviour
         bool isShopActive = shopPanel != null
             && shopPanel.activeInHierarchy;
 
-        if (wasShopActive && !isShopActive)
+        if (wasShopActive != isShopActive)
         {
             Close();
         }
@@ -274,6 +274,11 @@ public class BulletManagementUI : MonoBehaviour
         {
             icon.raycastTarget = true;
         }
+
+        TextMeshProUGUI levelText = FindNamedChild<TextMeshProUGUI>(
+            button.transform,
+            "Text | Level");
+        ApplyUpgradeLevel(levelText, bullet);
 
         Image indicator = button.GetComponent<Image>();
         BulletButtonVisualState visual =
@@ -928,6 +933,30 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         return bullet.CylinderIcon;
+    }
+
+    private static void ApplyUpgradeLevel(
+        TextMeshProUGUI levelText,
+        BulletInstance bullet)
+    {
+        if (levelText == null)
+        {
+            return;
+        }
+
+        bool hasUpgrade = bullet != null
+            && bullet.Data != null
+            && bullet.Level > 0;
+        levelText.gameObject.SetActive(hasUpgrade);
+
+        if (!hasUpgrade)
+        {
+            levelText.text = string.Empty;
+            return;
+        }
+
+        levelText.text = $"+{bullet.Level}";
+        levelText.color = bullet.Data.GetUpgradeLevelColor(bullet.Level);
     }
 
     private static void ApplyIcon(Image image, Sprite sprite)

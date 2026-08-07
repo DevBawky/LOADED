@@ -8,6 +8,7 @@ using UnityEngine.UI;
 public class PlayerCylinderUI : MonoBehaviour
 {
     private const string CylinderObjectName = "Image | Cylinder";
+    private const string FireStartObjectName = "Image | FireStart";
     private const string BulletEffectObjectName = "Image | Effect";
     private const string MainGamePanelName = "Panel | MainGame";
     private static readonly int BulletInCylinderParameter =
@@ -15,6 +16,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
     [Header("References")]
     [SerializeField] private RectTransform cylinderTransform;
+    [SerializeField] private RectTransform fireStartTransform;
     [SerializeField] private List<Image> bulletImages = new List<Image>();
     [SerializeField] private Animator playerAnimator;
 
@@ -176,6 +178,7 @@ public class PlayerCylinderUI : MonoBehaviour
         if (cylinderTransform != null
             && HasUsableBulletReferences())
         {
+            ResolveFireStartReference();
             return;
         }
 
@@ -212,6 +215,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
         cylinderTransform = movedCylinder;
         cylinderRestScale = cylinderTransform.localScale;
+        ResolveFireStartReference();
         bulletImages.Clear();
 
         for (int childIndex = 0;
@@ -220,7 +224,8 @@ public class PlayerCylinderUI : MonoBehaviour
         {
             Transform child = movedCylinder.GetChild(childIndex);
 
-            if (child.TryGetComponent(out Image bulletImage))
+            if (child != fireStartTransform
+                && child.TryGetComponent(out Image bulletImage))
             {
                 bulletImages.Add(bulletImage);
             }
@@ -1355,6 +1360,37 @@ public class PlayerCylinderUI : MonoBehaviour
                 bulletImage.rectTransform.rotation = Quaternion.identity;
             }
         }
+
+    }
+
+    private void ResolveFireStartReference()
+    {
+        if (cylinderTransform == null || cylinderTransform.parent == null)
+        {
+            return;
+        }
+
+        fireStartTransform = cylinderTransform.Find(
+            FireStartObjectName) as RectTransform;
+
+        if (fireStartTransform == null)
+        {
+            Debug.LogWarning(
+                $"Could not find '{CylinderObjectName}/{FireStartObjectName}'.",
+                this);
+            return;
+        }
+
+        CylinderFireStartAnchor anchor =
+            fireStartTransform.GetComponent<CylinderFireStartAnchor>();
+
+        if (anchor == null)
+        {
+            anchor = fireStartTransform.gameObject.AddComponent<
+                CylinderFireStartAnchor>();
+        }
+
+        anchor.Initialize(cylinderTransform.parent);
     }
 
     private IEnumerator ReloadPunchRoutine(Color accentColor, float intensity)
@@ -1433,6 +1469,48 @@ public class PlayerCylinderUI : MonoBehaviour
         }
 
         isSubscribed = false;
+    }
+}
+
+[DefaultExecutionOrder(10000)]
+public sealed class CylinderFireStartAnchor : MonoBehaviour
+{
+    private Transform referenceSpace;
+    private Vector3 fixedPositionInReferenceSpace;
+    private Quaternion fixedWorldRotation;
+    private bool isInitialized;
+
+    public void Initialize(Transform stableReferenceSpace)
+    {
+        if (stableReferenceSpace == null
+            || isInitialized && referenceSpace == stableReferenceSpace)
+        {
+            return;
+        }
+
+        referenceSpace = stableReferenceSpace;
+        fixedPositionInReferenceSpace = referenceSpace.InverseTransformPoint(
+            transform.position);
+        fixedWorldRotation = transform.rotation;
+        isInitialized = true;
+        ApplyFixedPose();
+    }
+
+    private void LateUpdate()
+    {
+        ApplyFixedPose();
+    }
+
+    private void ApplyFixedPose()
+    {
+        if (!isInitialized || referenceSpace == null)
+        {
+            return;
+        }
+
+        transform.SetPositionAndRotation(
+            referenceSpace.TransformPoint(fixedPositionInReferenceSpace),
+            fixedWorldRotation);
     }
 }
 

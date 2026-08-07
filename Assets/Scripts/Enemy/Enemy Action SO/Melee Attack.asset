@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57ee2ab9487741fa84ee7612fa65163e, type: 3}
   m_Name: Melee Attack
   m_EditorClassIdentifier: Assembly-CSharp::EnemyActionData
+  displayName: 
   actionType: 3
   movementDistance: 0
   attackData: {fileID: 11400000, guid: d6098802f1fc9c045a48ec725992d8b2, type: 2}
   icon: {fileID: 1095335737386660123, guid: 6c13a294c61226a428b2573a1b252ae0, type: 3}
-  description: 
+  description: "\uADFC\uC811 \uACF5\uACA9\uC744 \uAC00\uD569\uB2C8\uB2E4."

@@ -21,6 +21,7 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private CurrencyManager currencyManager;
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private PlayerShoot playerShoot;
+    [SerializeField] private StateManager stateManager;
 
     [Header("Canvas")]
     [SerializeField] private RectTransform canvasRect;
@@ -86,6 +87,11 @@ public class InventoryTooltipUI : MonoBehaviour
             deckManager.StateChanged += RefreshNextChip;
         }
 
+        if (stateManager != null)
+        {
+            stateManager.StateChanged += HandleFlowStateChanged;
+        }
+
         RefreshNextChip();
         HideAll();
     }
@@ -95,6 +101,11 @@ public class InventoryTooltipUI : MonoBehaviour
         if (deckManager != null)
         {
             deckManager.StateChanged -= RefreshNextChip;
+        }
+
+        if (stateManager != null)
+        {
+            stateManager.StateChanged -= HandleFlowStateChanged;
         }
 
         HideAll();
@@ -398,6 +409,12 @@ public class InventoryTooltipUI : MonoBehaviour
         ApplyIcon(nextChipIcon, GetPreferredIcon(nextBullet));
     }
 
+    private void HandleFlowStateChanged()
+    {
+        ResolveReferences();
+        HideAll();
+    }
+
     private void PositionInsideScreen(
         RectTransform targetTooltip,
         Vector2 pointerPosition,
@@ -603,6 +620,7 @@ public class InventoryTooltipUI : MonoBehaviour
         currencyManager ??= FindSceneObject<CurrencyManager>();
         playerHealth ??= FindSceneObject<PlayerHealth>();
         playerShoot ??= FindSceneObject<PlayerShoot>();
+        stateManager ??= FindSceneObject<StateManager>();
         cylinderUI ??= FindSceneObject<PlayerCylinderUI>();
 
         Canvas canvas = GetComponentInParent<Canvas>();

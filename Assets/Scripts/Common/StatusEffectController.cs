@@ -72,7 +72,7 @@ public class StatusEffectController : MonoBehaviour
 
     private void ResolveStatusIconParent()
     {
-        if (statusIconParent != null && statusIconParent.IsChildOf(transform))
+        if (statusIconParent != null)
         {
             return;
         }

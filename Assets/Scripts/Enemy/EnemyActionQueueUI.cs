@@ -20,10 +20,22 @@ public class EnemyActionQueueUI : MonoBehaviour
     [Header("Ready Emphasis")]
     [SerializeField] private Material queueReadyMaterial;
 
+    [Header("Stunned Emphasis")]
+    [SerializeField, ColorUsage(true, true)] private Color stunnedEmberColor =
+        new Color(0.015f, 0.08f, 0.55f, 1f);
+    [SerializeField, ColorUsage(true, true)] private Color stunnedFlameColor =
+        new Color(0.04f, 0.55f, 1.2f, 1f);
+    [SerializeField, ColorUsage(true, true)] private Color stunnedHotColor =
+        new Color(0.55f, 0.95f, 1.4f, 1f);
+    [SerializeField, Range(0f, 8f)] private float stunnedFlameSpeed = 0.45f;
+
     [Header("Fallback")]
     [SerializeField] private Color missingIconColor = Color.red;
 
     private readonly List<Image> spawnedIcons = new List<Image>();
+    private Material stunnedQueueMaterial;
+    private bool isPrepared;
+    private bool isStunned;
 
     public int IconCount => spawnedIcons.Count;
 
@@ -31,6 +43,14 @@ public class EnemyActionQueueUI : MonoBehaviour
     {
         EnsureReadyImage();
         ResetDisplay();
+    }
+
+    private void OnDestroy()
+    {
+        if (stunnedQueueMaterial != null)
+        {
+            Destroy(stunnedQueueMaterial);
+        }
     }
 
     public void ShowQueue()
@@ -42,7 +62,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         ApplyQueueSprite(normalQueueSprite);
         queueImage.gameObject.SetActive(true);
-        SetReadyImageActive(false);
+        RefreshEmphasis();
         RefreshQueueWidth();
     }
 
@@ -104,12 +124,18 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     public void SetPrepared(bool prepared)
     {
+        isPrepared = prepared;
         ApplyQueueSprite(prepared
             ? preparedQueueSprite
             : normalQueueSprite);
-        SetReadyImageActive(prepared && queueImage != null
-            && queueImage.gameObject.activeSelf);
+        RefreshEmphasis();
         RefreshQueueWidth();
+    }
+
+    public void SetStunned(bool stunned)
+    {
+        isStunned = stunned;
+        RefreshEmphasis();
     }
 
     public void RemoveFirstIcon()
@@ -143,6 +169,7 @@ public class EnemyActionQueueUI : MonoBehaviour
         }
 
         spawnedIcons.Clear();
+        isPrepared = false;
 
         if (queueImage != null)
         {
@@ -150,7 +177,7 @@ public class EnemyActionQueueUI : MonoBehaviour
             queueImage.gameObject.SetActive(false);
         }
 
-        SetReadyImageActive(false);
+        RefreshEmphasis();
         RefreshQueueWidth();
     }
 
@@ -232,14 +259,42 @@ public class EnemyActionQueueUI : MonoBehaviour
         SyncReadyImageRect();
     }
 
-    private void SetReadyImageActive(bool active)
+    private void RefreshEmphasis()
     {
         EnsureReadyImage();
-        if (queueReadyImage != null)
+
+        if (queueReadyImage == null)
         {
-            queueReadyImage.gameObject.SetActive(
-                active && queueReadyMaterial != null);
+            return;
         }
+
+        Material emphasisMaterial = isStunned
+            ? GetOrCreateStunnedMaterial()
+            : isPrepared ? queueReadyMaterial : null;
+        queueReadyImage.material = emphasisMaterial;
+        queueReadyImage.gameObject.SetActive(
+            emphasisMaterial != null
+            && queueImage != null
+            && queueImage.gameObject.activeSelf);
+    }
+
+    private Material GetOrCreateStunnedMaterial()
+    {
+        if (stunnedQueueMaterial != null || queueReadyMaterial == null)
+        {
+            return stunnedQueueMaterial;
+        }
+
+        stunnedQueueMaterial = new Material(queueReadyMaterial)
+        {
+            name = $"{queueReadyMaterial.name} (Stunned)"
+        };
+        stunnedQueueMaterial.SetColor("_EmberColor", stunnedEmberColor);
+        stunnedQueueMaterial.SetColor("_FlameColor", stunnedFlameColor);
+        stunnedQueueMaterial.SetColor("_HotColor", stunnedHotColor);
+        stunnedQueueMaterial.SetFloat("_Speed", stunnedFlameSpeed);
+        stunnedQueueMaterial.SetFloat("_PulseAmount", 0.1f);
+        return stunnedQueueMaterial;
     }
 
     private void RefreshQueueWidth()

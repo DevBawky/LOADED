@@ -139,6 +139,12 @@ public class PlayerMove : MonoBehaviour
                 return;
             }
 
+            if (keyboard.wKey.wasPressedThisFrame)
+            {
+                Rotate();
+                return;
+            }
+
             if (keyboard.sKey.wasPressedThisFrame)
             {
                 Wait();
