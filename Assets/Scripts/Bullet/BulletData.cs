@@ -108,8 +108,6 @@ public class BulletLevelData
     [SerializeField] private List<PenetrationChanceData> penetrationChances =
         new List<PenetrationChanceData>();
     [SerializeField] private Material lineMaterial;
-    [SerializeField] private Color primaryLineColor = Color.white;
-    [SerializeField] private Color secondaryLineColor = Color.white;
     [SerializeField] private bool doesNotConsumeTurn;
     [Min(0f)]
     [SerializeField] private float recoilStrength;
@@ -132,8 +130,6 @@ public class BulletLevelData
         penetrationChances
         ?? (IReadOnlyList<PenetrationChanceData>)Array.Empty<PenetrationChanceData>();
     public Material LineMaterial => lineMaterial;
-    public Color PrimaryLineColor => primaryLineColor;
-    public Color SecondaryLineColor => secondaryLineColor;
     public bool DoesNotConsumeTurn => doesNotConsumeTurn;
     public float RecoilStrength => Mathf.Max(0f, recoilStrength);
     public int UpgradeCost => Mathf.Max(0, upgradeCost);
@@ -152,8 +148,6 @@ public class BulletLevelData
         List<BulletConditionalEventData> conditionalEvents,
         List<PenetrationChanceData> penetrationChances,
         Material lineMaterial,
-        Color primaryLineColor,
-        Color secondaryLineColor,
         bool doesNotConsumeTurn,
         float recoilStrength,
         int upgradeCost)
@@ -168,8 +162,6 @@ public class BulletLevelData
         this.penetrationChances = ClonePenetrationChances(
             penetrationChances);
         this.lineMaterial = lineMaterial;
-        this.primaryLineColor = primaryLineColor;
-        this.secondaryLineColor = secondaryLineColor;
         this.doesNotConsumeTurn = doesNotConsumeTurn;
         this.recoilStrength = recoilStrength;
         this.upgradeCost = upgradeCost;
@@ -693,18 +685,12 @@ public class BulletData : ScriptableObject
 
     public Color GetPrimaryLineColor(int level)
     {
-        BulletLevelData levelData = GetUpgradeLevelData(level);
-        return levelData == null
-            ? primaryLineColor
-            : levelData.PrimaryLineColor;
+        return primaryLineColor;
     }
 
     public Color GetSecondaryLineColor(int level)
     {
-        BulletLevelData levelData = GetUpgradeLevelData(level);
-        return levelData == null
-            ? secondaryLineColor
-            : levelData.SecondaryLineColor;
+        return secondaryLineColor;
     }
 
     public bool GetDoesNotConsumeTurn(int level)
@@ -787,8 +773,6 @@ public class BulletData : ScriptableObject
             conditionalEvents,
             penetrationChances,
             lineMaterial,
-            primaryLineColor,
-            secondaryLineColor,
             doesNotConsumeTurn,
             recoilStrength,
             upgradeCost);

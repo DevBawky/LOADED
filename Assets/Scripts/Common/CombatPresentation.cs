@@ -1208,6 +1208,12 @@ public sealed class CombatPresentation : MonoBehaviour
         while (hitStopRemaining > 0f)
         {
             yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
             hitStopRemaining -= Time.unscaledDeltaTime;
         }
 
