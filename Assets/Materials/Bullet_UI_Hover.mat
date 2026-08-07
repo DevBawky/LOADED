@@ -29,12 +29,12 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _BorderWidth: 0.0389
+    - _BorderWidth: 0.0314
     - _ColorMask: 15
     - _FlameReach: 0.0355
-    - _Intensity: 3.42
+    - _Intensity: 1
     - _PulseAmount: 0.2
-    - _Scale: 10.6
+    - _Scale: 19.1
     - _Softness: 0.0344
     - _Speed: 1.74
     - _Stencil: 0
