@@ -178,6 +178,9 @@ public sealed class BulletInstance
     public Color SecondaryLineColor => data == null
         ? Color.white
         : data.GetSecondaryLineColor(Level);
+    public float LineWidthMultiplier => data == null
+        ? 1f
+        : data.GetLineWidthMultiplier(Level);
     public bool DoesNotConsumeTurn => data != null
         && data.GetDoesNotConsumeTurn(Level);
     public float RecoilStrength => data == null

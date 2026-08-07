@@ -20,12 +20,13 @@ public class BulletLine : MonoBehaviour
     [Range(0.1f, 1f)]
     [SerializeField] private float coreWidthMultiplier = 0.32f;
     [Range(1f, 4f)]
-    [SerializeField] private float glowWidthMultiplier = 1.9f;
+    [SerializeField] private float glowWidthMultiplier = 3.2f;
     [Range(0f, 1f)]
     [SerializeField] private float glowAlpha = 0.28f;
 
     private MaterialPropertyBlock materialPropertyBlock;
     private readonly List<LineRenderer> trailLayers = new List<LineRenderer>();
+    private float baseWidthMultiplier = -1f;
 
     public BulletInstance Data { get; private set; }
 
@@ -53,8 +54,15 @@ public class BulletLine : MonoBehaviour
             lineRenderer.sharedMaterial = bulletData.LineMaterial;
         }
 
+        if (baseWidthMultiplier < 0f)
+        {
+            baseWidthMultiplier = lineRenderer.widthMultiplier;
+        }
+
         lineRenderer.startColor = bulletData.PrimaryLineColor;
         lineRenderer.endColor = bulletData.PrimaryLineColor;
+        lineRenderer.widthMultiplier =
+            baseWidthMultiplier * bulletData.LineWidthMultiplier;
         ApplyLineColors(
             bulletData.PrimaryLineColor,
             bulletData.SecondaryLineColor);
