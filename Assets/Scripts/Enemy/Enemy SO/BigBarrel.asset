@@ -18,7 +18,7 @@ MonoBehaviour:
     \uACE0\uC815 \uC21C\uC11C\uB85C \uC0AC\uC6A9\uD558\uB294 \uC2A4\uD14C\uC774\uC9C0
     1 \uBCF4\uC2A4."
   avatar: {fileID: 1233976601806711513, guid: 1df5961b6c231c845973c37e6e51ce28, type: 3}
-  maxHealth: 2000
+  maxHealth: 5000
   minimumGoldDrop: 500
   maximumGoldDrop: 500
   dropChance: 10

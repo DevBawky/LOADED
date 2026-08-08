@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_mixed_grade
   displayName: "\uD63C\uD569\uD0C4"
   description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
-    \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +20%"
+    \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +30%"
   cylinderIcon: {fileID: 4923265321069294368, guid: e5e105338554a3344b4991ef6218a494, type: 3}
   price: 6
   grade: 1
@@ -34,7 +34,7 @@ MonoBehaviour:
     activationChance: 100
     stackCount: 1
     knockbackDistance: 1
-    amount: 20
+    amount: 30
     secondTransferPercent: 0
     thirdTransferPercent: 0
   conditionalEvents: []
@@ -48,7 +48,7 @@ MonoBehaviour:
   upgradeCost: 10
   upgradeLevels:
   - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
-      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +40%"
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +50%"
     damage: 16
     maxRange: 4
     criticalChance: 18
@@ -59,7 +59,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 40
+      amount: 50
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []
@@ -69,7 +69,7 @@ MonoBehaviour:
     recoilStrength: 0.12
     upgradeCost: 20
   - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
-      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +60%"
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +75%"
     damage: 21
     maxRange: 5
     criticalChance: 23
@@ -80,7 +80,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 60
+      amount: 75
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []
@@ -90,7 +90,7 @@ MonoBehaviour:
     recoilStrength: 0.12
     upgradeCost: 40
   - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
-      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +80%"
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +100%"
     damage: 27
     maxRange: 5
     criticalChance: 30
@@ -101,7 +101,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 80
+      amount: 100
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []

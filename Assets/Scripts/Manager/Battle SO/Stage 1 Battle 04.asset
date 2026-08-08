@@ -24,30 +24,32 @@ MonoBehaviour:
   waves:
   - enemies:
     - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+      count: 2
+    - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
+      count: 1
+    - enemyData: {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
+      count: 1
+  - enemies:
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 3
     - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
+      count: 1
+  - enemies:
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 2
+    - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
+      count: 2
+  - enemies:
+    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+      count: 2
+    - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
+      count: 1
     - enemyData: {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
       count: 1
   - enemies:
     - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 4
-    - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-      count: 1
-  - enemies:
-    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 2
-    - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
       count: 3
-  - enemies:
-    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 2
+    - enemyData: {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
+      count: 1
     - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-      count: 1
-    - enemyData: {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
-      count: 1
-  - enemies:
-    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 5
-    - enemyData: {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
       count: 1
