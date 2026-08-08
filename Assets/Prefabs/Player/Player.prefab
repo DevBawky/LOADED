@@ -466,10 +466,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7d8f5e19a3b4e0e9f1a2b3c4d5e6f70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CombatFeedbackController
-  comboDuration: 15
+  comboTurnLimit: 8
+  turnDrainDuration: 0.2
   comboLowColor: {r: 1, g: 1, b: 1, a: 1}
-  comboHighColor: {r: 1, g: 0.42, b: 0.12, a: 1}
-  timerDangerColor: {r: 1, g: 0.18, b: 0.08, a: 1}
+  comboMidColor: {r: 1, g: 0.42, b: 0.12, a: 1}
+  comboCriticalColor: {r: 1, g: 0.18, b: 0.08, a: 1}
   firingSequenceFeedbackStrengthPerKill: 0.2
   killComboTextPrefab: {fileID: 6304521783619051883, guid: e42db836b5444fe59470033ca0bc92a1, type: 3}
   comboGoldPerKill: 5

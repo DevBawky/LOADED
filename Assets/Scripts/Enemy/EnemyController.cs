@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -72,6 +73,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     [Tooltip("런타임에 WaveManager가 주입하는 적 데이터입니다.")]
     [SerializeField] private EnemyData enemyData;
     [SerializeField] private Image healthFillImage;
+    [SerializeField] private TMP_Text healthText;
     [SerializeField] private Transform canvasTransform;
     [SerializeField] private ActorMotion actorMotion;
     [SerializeField] private EnemyActionQueueUI actionQueueUI;
@@ -118,6 +120,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         new List<EnemyController>();
     private MaterialPropertyBlock lineColorProperties;
     private EnemyHealthBarFeedback healthBarFeedback;
+    private EnemyHealthTextFeedback healthTextFeedback;
     private BossHudController bossHud;
     private Animator avatarAnimator;
     private EnemyAnimationSfx avatarEffects;
@@ -185,6 +188,10 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         healthBarFeedback?.Initialize(healthFillImage);
+        ResolveHealthText();
+        healthTextFeedback = GetComponent<EnemyHealthTextFeedback>();
+        healthTextFeedback ??= gameObject.AddComponent<EnemyHealthTextFeedback>();
+        healthTextFeedback.Initialize(healthText);
         ResetRuntimeState();
         ApplyCanvasOrientation();
     }
@@ -245,6 +252,187 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             : enemyData.DisplayName;
         isInitialized = true;
         return true;
+    }
+
+    public RunEnemySaveData CaptureRunState(
+        IReadOnlyList<EnemyController> allEnemies)
+    {
+        boardManager.TryGetTileIndex(transform.position, out int tileIndex);
+        RunEnemySaveData state = new RunEnemySaveData
+        {
+            enemyAssetName = enemyData == null ? string.Empty : enemyData.name,
+            tileIndex = tileIndex,
+            facingRight = transform.localScale.x >= 0f,
+            currentHealth = currentHealth,
+            currentShield = currentShield,
+            remainingSupportCharges = remainingSupportCharges,
+            recoveryTurnsRemaining = recoveryTurnsRemaining,
+            isQueueCreated = isQueueCreated,
+            isAttackPrepared = isAttackPrepared,
+            isRetreating = isRetreating,
+            preparedTargetTileIndex = preparedTargetTileIndex,
+            preparedSupportType = (int)preparedSupportType,
+            lastTurnAction = (int)lastTurnAction,
+            bigBarrelStep = (int)bigBarrelStep,
+            isBigBarrelPhaseTwo = isBigBarrelPhaseTwo,
+            bigBarrelActionUsesPhaseTwo = bigBarrelActionUsesPhaseTwo,
+            preparedBigBarrelFuse = preparedBigBarrelFuse,
+            bigBarrelReloadTurnsRemaining = bigBarrelReloadTurnsRemaining,
+            statusEffects = statusEffects == null
+                ? new RunStatusEffectSaveData()
+                : statusEffects.CaptureRunState()
+        };
+
+        foreach (EnemyActionData action in queuedAttackActions)
+        {
+            state.queuedActionAssetNames.Add(
+                action == null ? string.Empty : action.name);
+        }
+
+        state.preparedBombTargetTileIndices.AddRange(
+            preparedBombTargetTileIndices);
+        state.preparedShotgunTileIndices.AddRange(
+            preparedShotgunTileIndices);
+
+        if (preparedSupportTarget != null && allEnemies != null)
+        {
+            for (int index = 0; index < allEnemies.Count; index++)
+            {
+                if (allEnemies[index] == preparedSupportTarget)
+                {
+                    state.preparedSupportTargetIndex = index;
+                    break;
+                }
+            }
+        }
+
+        return state;
+    }
+
+    public void RestoreRunState(
+        RunEnemySaveData state,
+        EnemyController restoredSupportTarget)
+    {
+        if (state == null || enemyData == null)
+        {
+            return;
+        }
+
+        currentHealth = Mathf.Clamp(state.currentHealth, 1, MaxHealth);
+        currentShield = Mathf.Max(0, state.currentShield);
+        remainingSupportCharges = Mathf.Max(
+            0,
+            state.remainingSupportCharges);
+        recoveryTurnsRemaining = Mathf.Max(
+            0,
+            state.recoveryTurnsRemaining);
+        queuedAttackActions.Clear();
+
+        if (state.queuedActionAssetNames != null)
+        {
+            foreach (string actionAssetName in state.queuedActionAssetNames)
+            {
+                EnemyActionData action = ResolveSavedAction(actionAssetName);
+
+                if (action != null)
+                {
+                    queuedAttackActions.Add(action);
+                }
+            }
+        }
+
+        isQueueCreated = state.isQueueCreated;
+        isAttackPrepared = state.isAttackPrepared;
+        isRetreating = state.isRetreating;
+        preparedTargetTileIndex = state.preparedTargetTileIndex;
+        preparedTargetPosition = boardManager != null
+            && boardManager.TryGetTilePosition(
+                preparedTargetTileIndex,
+                out Vector3 targetPosition)
+                    ? targetPosition
+                    : Vector3.zero;
+        preparedSupportTarget = restoredSupportTarget;
+        preparedSupportType = Enum.IsDefined(
+            typeof(EnemySupportType),
+            state.preparedSupportType)
+                ? (EnemySupportType)state.preparedSupportType
+                : EnemySupportType.None;
+        lastTurnAction = Enum.IsDefined(
+            typeof(EnemyTurnActionType),
+            state.lastTurnAction)
+                ? (EnemyTurnActionType)state.lastTurnAction
+                : EnemyTurnActionType.None;
+        bigBarrelStep = Enum.IsDefined(
+            typeof(BigBarrelStep),
+            state.bigBarrelStep)
+                ? (BigBarrelStep)state.bigBarrelStep
+                : BigBarrelStep.RotateToPlayer;
+        isBigBarrelPhaseTwo = state.isBigBarrelPhaseTwo;
+        bigBarrelActionUsesPhaseTwo = state.bigBarrelActionUsesPhaseTwo;
+        preparedBigBarrelFuse = Mathf.Max(0, state.preparedBigBarrelFuse);
+        bigBarrelReloadTurnsRemaining = Mathf.Max(
+            0,
+            state.bigBarrelReloadTurnsRemaining);
+        preparedBombTargetTileIndices.Clear();
+        preparedShotgunTileIndices.Clear();
+
+        if (state.preparedBombTargetTileIndices != null)
+        {
+            preparedBombTargetTileIndices.AddRange(
+                state.preparedBombTargetTileIndices);
+        }
+
+        if (state.preparedShotgunTileIndices != null)
+        {
+            preparedShotgunTileIndices.AddRange(
+                state.preparedShotgunTileIndices);
+        }
+
+        isActing = false;
+        Vector3 scale = transform.localScale;
+        scale.x = Mathf.Max(0.0001f, Mathf.Abs(scale.x))
+            * (state.facingRight ? 1f : -1f);
+        transform.localScale = scale;
+        statusEffects?.RestoreRunState(state.statusEffects);
+        actionQueueUI.ResetDisplay();
+
+        foreach (EnemyActionData action in queuedAttackActions)
+        {
+            actionQueueUI.AddAttackIcon(action);
+        }
+
+        if (isQueueCreated && queuedAttackActions.Count == 0)
+        {
+            actionQueueUI.ShowQueue();
+        }
+
+        actionQueueUI.SetPrepared(isAttackPrepared);
+        RefreshGunnerReloadedAnimation();
+        RefreshShieldIndicator();
+        RefreshHealthUI();
+        ApplyCanvasOrientation();
+        RefreshAttackTelegraph();
+    }
+
+    private EnemyActionData ResolveSavedAction(string assetName)
+    {
+        if (enemyData == null || string.IsNullOrWhiteSpace(assetName))
+        {
+            return null;
+        }
+
+        foreach (EnemyActionData action in enemyData.Actions)
+        {
+            if (action != null && string.Equals(
+                    action.name,
+                    assetName,
+                    StringComparison.Ordinal))
+            {
+                return action;
+            }
+        }
+
+        return null;
     }
 
     public void TakeTurn()
@@ -436,7 +624,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        if (bossHud.Bind(this, healthBarFeedback, statusEffects))
+        if (bossHud.Bind(
+                this,
+                healthBarFeedback,
+                healthTextFeedback,
+                statusEffects))
         {
             RefreshHealthUI();
         }
@@ -507,11 +699,16 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             currentHealth,
             MaxHealth,
             segments);
+        healthTextFeedback?.ShowDamagePreview(
+            currentHealth,
+            MaxHealth,
+            segments);
     }
 
     public void ClearDamagePreview()
     {
         healthBarFeedback?.ClearDamagePreview();
+        healthTextFeedback?.ClearDamagePreview();
     }
 
     public bool ApplyStatusDamage(int damage, bool creditedToPlayer)
@@ -2955,12 +3152,21 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         bool isCritical = false,
         float impactStrength = 1f)
     {
+        int maxHealth = enemyData == null ? 0 : enemyData.MaxHealth;
+        if (playDamageFeedback)
+        {
+            healthTextFeedback?.PlayDamage(currentHealth, maxHealth);
+        }
+        else
+        {
+            healthTextFeedback?.SetValueImmediate(currentHealth, maxHealth);
+        }
+
         if (healthFillImage == null)
         {
             return;
         }
 
-        int maxHealth = enemyData == null ? 0 : enemyData.MaxHealth;
         float normalizedHealth = maxHealth <= 0
             ? 0f
             : (float)currentHealth / maxHealth;
@@ -2981,6 +3187,26 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         healthBarFeedback.SetValueImmediate(normalizedHealth);
+    }
+
+    private void ResolveHealthText()
+    {
+        if (healthText != null)
+        {
+            return;
+        }
+
+        foreach (TMP_Text candidate in
+                 GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (candidate.name == "Text | HP"
+                && candidate.transform.parent != null
+                && candidate.transform.parent.name == "HP_Value")
+            {
+                healthText = candidate;
+                return;
+            }
+        }
     }
 
     private void ApplyCanvasOrientation()

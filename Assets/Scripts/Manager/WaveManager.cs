@@ -87,6 +87,7 @@ public class WaveManager : MonoBehaviour
     public float EnemyActionInterval => enemyActionInterval;
     public bool IsWaitingForNextWave => isWaitingForNextWave;
     public bool IsBattleCompleted => isBattleCompleted;
+    public bool IsBattleCompletionPending => isBattleCompletionPending;
     public bool IsStageCleared => isBattleCompleted;
     public bool IsResolvingTurn => isResolvingTurn;
     public int CurrentEnemyTurnCycle => currentEnemyTurnCycle;
@@ -154,6 +155,7 @@ public class WaveManager : MonoBehaviour
 
         ResetBattleRuntime();
         playerMove.SetWaveManager(this);
+        playerMove.ResetKickCooldownForBattle();
         EnsureBossBombManager();
         bossBombManager.ResumeForBattle();
         spawnTerm = Mathf.Max(0, configuredSpawnTerm);
@@ -172,6 +174,163 @@ public class WaveManager : MonoBehaviour
         }
 
         return TrySpawnNextWave();
+    }
+
+    public void CaptureRunState(RunSaveData saveData)
+    {
+        if (saveData == null)
+        {
+            return;
+        }
+
+        saveData.currentWaveIndex = currentWaveIndex;
+        saveData.remainingSpawnTurns = remainingSpawnTurns;
+        saveData.isWaitingForNextWave = isWaitingForNextWave;
+        saveData.isBattleCompletionPending = isBattleCompletionPending;
+        saveData.currentEnemyTurnCycle = currentEnemyTurnCycle;
+        saveData.reservedSpawnTileIndices.Clear();
+        saveData.reservedSpawnTileIndices.AddRange(
+            reservedSpawnTileIndices);
+        saveData.enemies.Clear();
+
+        foreach (EnemyController enemy in activeEnemies)
+        {
+            if (enemy != null && enemy.CurrentHealth > 0)
+            {
+                saveData.enemies.Add(enemy.CaptureRunState(activeEnemies));
+            }
+        }
+
+        bossBombManager?.CaptureRunState(saveData.bombs);
+    }
+
+    public bool RestoreBattle(
+        IReadOnlyList<EnemyWave> configuredWaves,
+        int configuredSpawnTerm,
+        RunSaveData saveData)
+    {
+        if (!ValidateReferences() || saveData == null)
+        {
+            return false;
+        }
+
+        ResetBattleRuntime();
+        playerMove.SetWaveManager(this);
+        EnsureBossBombManager();
+        bossBombManager.ResumeForBattle();
+        spawnTerm = Mathf.Max(0, configuredSpawnTerm);
+        int waveCount = configuredWaves == null ? 0 : configuredWaves.Count;
+        waves = new EnemyWave[waveCount];
+
+        for (int index = 0; index < waveCount; index++)
+        {
+            waves[index] = configuredWaves[index];
+        }
+
+        if (!ValidateConfiguredWaves()
+            || saveData.currentWaveIndex < 0
+            || saveData.currentWaveIndex >= waves.Length)
+        {
+            return false;
+        }
+
+        currentWaveIndex = saveData.currentWaveIndex;
+        remainingSpawnTurns = Mathf.Max(0, saveData.remainingSpawnTurns);
+        isWaitingForNextWave = saveData.isWaitingForNextWave;
+        isBattleCompletionPending = saveData.isBattleCompletionPending;
+        isBattleCompleted = false;
+        isResolvingTurn = false;
+        currentEnemyTurnCycle = Mathf.Max(
+            0,
+            saveData.currentEnemyTurnCycle);
+        reservedSpawnTileIndices.Clear();
+
+        if (saveData.reservedSpawnTileIndices != null)
+        {
+            foreach (int tileIndex in saveData.reservedSpawnTileIndices)
+            {
+                if (tileIndex >= 0 && tileIndex < boardManager.BoardCount
+                    && !reservedSpawnTileIndices.Contains(tileIndex))
+                {
+                    reservedSpawnTileIndices.Add(tileIndex);
+                    boardManager.SetTileWarningActive(tileIndex, true);
+                }
+            }
+        }
+
+        List<RunEnemySaveData> savedEnemies = saveData.enemies
+            ?? new List<RunEnemySaveData>();
+
+        foreach (RunEnemySaveData savedEnemy in savedEnemies)
+        {
+            EnemyData enemyData = ResolveSavedEnemy(
+                savedEnemy == null ? string.Empty : savedEnemy.enemyAssetName);
+
+            if (savedEnemy == null || enemyData == null
+                || !TrySpawnEnemy(
+                    enemyData,
+                    savedEnemy.tileIndex,
+                    out _))
+            {
+                ResetBattleRuntime();
+                return false;
+            }
+        }
+
+        for (int index = 0; index < savedEnemies.Count; index++)
+        {
+            RunEnemySaveData savedEnemy = savedEnemies[index];
+            EnemyController supportTarget = savedEnemy != null
+                && savedEnemy.preparedSupportTargetIndex >= 0
+                && savedEnemy.preparedSupportTargetIndex < activeEnemies.Count
+                    ? activeEnemies[savedEnemy.preparedSupportTargetIndex]
+                    : null;
+            activeEnemies[index].RestoreRunState(
+                savedEnemy,
+                supportTarget);
+        }
+
+        if (bossBombManager != null
+            && !bossBombManager.RestoreRunState(
+                saveData.bombs,
+                ResolveSavedEnemy))
+        {
+            ResetBattleRuntime();
+            return false;
+        }
+
+        playerMove.SetEnemyTurnResolving(false);
+        StateChanged?.Invoke();
+        return activeEnemies.Count > 0 || isWaitingForNextWave;
+    }
+
+    private EnemyData ResolveSavedEnemy(string assetName)
+    {
+        if (string.IsNullOrWhiteSpace(assetName) || waves == null)
+        {
+            return null;
+        }
+
+        foreach (EnemyWave wave in waves)
+        {
+            if (wave == null)
+            {
+                continue;
+            }
+
+            foreach (EnemyWaveEntry entry in wave.Enemies)
+            {
+                if (entry?.EnemyData != null && string.Equals(
+                        entry.EnemyData.name,
+                        assetName,
+                        StringComparison.Ordinal))
+                {
+                    return entry.EnemyData;
+                }
+            }
+        }
+
+        return null;
     }
 
     public void StopBattle()

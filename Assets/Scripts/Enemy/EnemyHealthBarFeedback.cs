@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -1088,5 +1089,220 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
         }
 
         damagePreviewMaterials.Clear();
+    }
+}
+
+[DisallowMultipleComponent]
+public sealed class EnemyHealthTextFeedback : MonoBehaviour
+{
+    [SerializeField] private TMP_Text healthText;
+    [SerializeField] private Color damageColor = new(1f, 0.12f, 0.08f, 1f);
+    [Min(1f)] [SerializeField] private float damageScale = 1.18f;
+    [Min(0.01f)] [SerializeField] private float recoverDuration = 0.5f;
+    [Min(0.05f)] [SerializeField] private float previewBlinkDuration = 0.5f;
+
+    private Color baseColor = Color.white;
+    private Vector3 baseScale = Vector3.one;
+    private Coroutine animationRoutine;
+    private Coroutine previewRoutine;
+    private float displayedHealth;
+    private int displayedMaxHealth;
+    private int previewOriginalHealth;
+    private int previewOriginalMaxHealth;
+    private bool previewActive;
+    private bool initialized;
+
+    public void Initialize(TMP_Text target)
+    {
+        Rebind(target);
+    }
+
+    public void Rebind(TMP_Text target)
+    {
+        StopPreview(false);
+        StopAnimation();
+        healthText = target;
+        initialized = healthText != null;
+
+        if (!initialized)
+        {
+            return;
+        }
+
+        baseColor = healthText.color;
+        baseScale = healthText.rectTransform.localScale;
+        healthText.color = baseColor;
+        healthText.rectTransform.localScale = baseScale;
+    }
+
+    public void SetValueImmediate(int currentHealth, int maxHealth)
+    {
+        if (!initialized || healthText == null)
+        {
+            return;
+        }
+
+        StopPreview(false);
+        StopAnimation();
+        displayedHealth = Mathf.Max(0, currentHealth);
+        displayedMaxHealth = Mathf.Max(0, maxHealth);
+        RefreshText(Mathf.RoundToInt(displayedHealth));
+        healthText.color = baseColor;
+        healthText.rectTransform.localScale = baseScale;
+    }
+
+    public void PlayDamage(int currentHealth, int maxHealth)
+    {
+        if (!initialized || healthText == null)
+        {
+            return;
+        }
+
+        float startHealth = previewActive
+            ? previewOriginalHealth
+            : displayedHealth;
+        StopPreview(false);
+        int targetHealth = Mathf.Max(0, currentHealth);
+        displayedMaxHealth = Mathf.Max(0, maxHealth);
+        StopAnimation();
+        animationRoutine = StartCoroutine(AnimateDamage(
+            Mathf.Max(startHealth, targetHealth),
+            targetHealth));
+    }
+
+    public void ShowDamagePreview(
+        int currentHealth,
+        int maxHealth,
+        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments)
+    {
+        if (!initialized || healthText == null || maxHealth <= 0
+            || segments == null || segments.Count == 0)
+        {
+            ClearDamagePreview();
+            return;
+        }
+
+        int remainingHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+
+        foreach (EnemyHealthBarFeedback.DamagePreviewSegment segment in segments)
+        {
+            remainingHealth = Mathf.Max(0, remainingHealth - segment.Damage);
+        }
+
+        if (remainingHealth == currentHealth)
+        {
+            ClearDamagePreview();
+            return;
+        }
+
+        StopAnimation();
+        StopPreview(false);
+        previewActive = true;
+        previewOriginalHealth = Mathf.Clamp(currentHealth, 0, maxHealth);
+        previewOriginalMaxHealth = Mathf.Max(0, maxHealth);
+        displayedMaxHealth = previewOriginalMaxHealth;
+        displayedHealth = remainingHealth;
+        RefreshText(remainingHealth);
+        healthText.rectTransform.localScale = baseScale;
+        previewRoutine = StartCoroutine(AnimatePreviewBlink());
+    }
+
+    public void ClearDamagePreview()
+    {
+        StopPreview(true);
+    }
+
+    private IEnumerator AnimatePreviewBlink()
+    {
+        float elapsed = 0f;
+        float blinkDuration = Mathf.Max(0.05f, previewBlinkDuration);
+
+        while (previewActive && healthText != null)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+            float blend = Mathf.PingPong(elapsed / blinkDuration, 1f);
+            healthText.color = Color.Lerp(baseColor, damageColor, blend);
+        }
+
+        previewRoutine = null;
+    }
+
+    private IEnumerator AnimateDamage(float startHealth, int targetHealth)
+    {
+        float duration = Mathf.Max(0.01f, recoverDuration);
+        float elapsed = 0f;
+        Vector3 impactScale = baseScale * Mathf.Max(1f, damageScale);
+        healthText.color = damageColor;
+        healthText.rectTransform.localScale = impactScale;
+
+        while (elapsed < duration)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float eased = 1f - Mathf.Pow(1f - progress, 3f);
+            displayedHealth = Mathf.Lerp(startHealth, targetHealth, eased);
+            RefreshText(Mathf.CeilToInt(displayedHealth));
+            healthText.color = Color.Lerp(damageColor, baseColor, eased);
+            healthText.rectTransform.localScale = Vector3.Lerp(
+                impactScale,
+                baseScale,
+                eased);
+        }
+
+        displayedHealth = targetHealth;
+        RefreshText(targetHealth);
+        healthText.color = baseColor;
+        healthText.rectTransform.localScale = baseScale;
+        animationRoutine = null;
+    }
+
+    private void RefreshText(int currentHealth)
+    {
+        healthText.text = $"{Mathf.Max(0, currentHealth)}/{displayedMaxHealth}";
+    }
+
+    private void StopAnimation()
+    {
+        if (animationRoutine == null)
+        {
+            return;
+        }
+
+        StopCoroutine(animationRoutine);
+        animationRoutine = null;
+    }
+
+    private void StopPreview(bool restoreValue)
+    {
+        bool wasPreviewActive = previewActive;
+
+        if (previewRoutine != null)
+        {
+            StopCoroutine(previewRoutine);
+            previewRoutine = null;
+        }
+
+        if (restoreValue && wasPreviewActive && healthText != null)
+        {
+            displayedHealth = previewOriginalHealth;
+            displayedMaxHealth = previewOriginalMaxHealth;
+            RefreshText(previewOriginalHealth);
+        }
+
+        previewActive = false;
+
+        if (wasPreviewActive && healthText != null)
+        {
+            healthText.color = baseColor;
+            healthText.rectTransform.localScale = baseScale;
+        }
+    }
+
+    private void OnDisable()
+    {
+        StopPreview(false);
+        StopAnimation();
     }
 }

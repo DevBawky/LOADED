@@ -50,7 +50,7 @@ internal static class EnemyActionTooltipView
     private static TextMeshProUGUI actionNameText;
     private static TextMeshProUGUI actionDescriptionText;
     private static Canvas rootCanvas;
-    private static EnemyActionTooltipTrigger owner;
+    private static object owner;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void HideAfterSceneLoad()
@@ -84,16 +84,62 @@ internal static class EnemyActionTooltipView
         Vector2 pointerPosition,
         EnemyActionTooltipTrigger requestedOwner)
     {
-        if (owner == requestedOwner && tooltip != null
+        if (ReferenceEquals(owner, requestedOwner) && tooltip != null
             && tooltip.gameObject.activeSelf)
         {
             PositionInsideScreen(pointerPosition);
         }
     }
 
+    public static void ShowStatus(
+        string displayName,
+        string description,
+        Vector2 pointerPosition,
+        DebuffIconUI requestedOwner)
+    {
+        if (requestedOwner == null || !TryResolveReferences())
+        {
+            return;
+        }
+
+        owner = requestedOwner;
+        actionNameText.richText = true;
+        actionDescriptionText.richText = true;
+        actionNameText.text = displayName;
+        actionDescriptionText.text = description;
+        tooltip.gameObject.SetActive(true);
+        PositionInsideScreen(pointerPosition);
+    }
+
+    public static void MoveStatus(
+        Vector2 pointerPosition,
+        DebuffIconUI requestedOwner)
+    {
+        if (ReferenceEquals(owner, requestedOwner) && tooltip != null
+            && tooltip.gameObject.activeSelf)
+        {
+            PositionInsideScreen(pointerPosition);
+        }
+    }
+
+    public static void HideStatus(DebuffIconUI requestedOwner)
+    {
+        if (!ReferenceEquals(owner, requestedOwner))
+        {
+            return;
+        }
+
+        owner = null;
+
+        if (tooltip != null)
+        {
+            tooltip.gameObject.SetActive(false);
+        }
+    }
+
     public static void Hide(EnemyActionTooltipTrigger requestedOwner)
     {
-        if (owner != requestedOwner)
+        if (!ReferenceEquals(owner, requestedOwner))
         {
             return;
         }

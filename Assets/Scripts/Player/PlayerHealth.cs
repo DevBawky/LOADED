@@ -43,6 +43,12 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
     public int CurrentHealth => currentHealth;
     public int MaxHealth => maxHealth;
     public bool IsDefeated => currentHealth <= 0;
+    public RunStatusEffectSaveData CaptureStatusRunState()
+    {
+        return statusEffects == null
+            ? new RunStatusEffectSaveData()
+            : statusEffects.CaptureRunState();
+    }
 
     private void Awake()
     {
@@ -163,6 +169,19 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         RefreshUI();
         HealthChanged?.Invoke(currentHealth, maxHealth);
         return true;
+    }
+
+    public void RestoreRunHealth(int health, int savedMaxHealth)
+    {
+        maxHealth = Mathf.Max(1, savedMaxHealth);
+        currentHealth = Mathf.Clamp(health, 1, maxHealth);
+        RefreshUI();
+        HealthChanged?.Invoke(currentHealth, maxHealth);
+    }
+
+    public void RestoreStatusRunState(RunStatusEffectSaveData state)
+    {
+        statusEffects?.RestoreRunState(state);
     }
 
     private void SetCurrentHealth(int health)

@@ -416,7 +416,9 @@ public sealed class BulletInstance
                 case BulletEffectType.ShellCollector:
                 {
                     int cost = Mathf.Max(1, effect.StackCount);
-                    int extraShots = Mathf.Min(3, AbilityStacks / cost);
+                    int extraShots = Mathf.Min(
+                        Mathf.Max(1, effect.KnockbackDistance),
+                        AbilityStacks / cost);
                     stateLines.Add(
                         $"탄피: {AbilityStacks} "
                         + $"(추가 발사 {extraShots}회)");

@@ -7,7 +7,9 @@ public class BossBomb : MonoBehaviour
 
     [Header("Optional Visual References")]
     [SerializeField] private SpriteRenderer bombRenderer;
+    [SerializeField] private Sprite bombSprite;
     [SerializeField] private TMP_Text fuseText;
+    [SerializeField] private TMP_FontAsset fuseFont;
 
     [Header("Runtime State")]
     [SerializeField] private int tileIndex = -1;
@@ -54,6 +56,20 @@ public class BossBomb : MonoBehaviour
             CreateExplosionRangeTelegraph();
         }
         return true;
+    }
+
+    public void RestoreRunTiming(int savedRemainingFuse, int savedCreatedCycle)
+    {
+        remainingFuse = Mathf.Clamp(savedRemainingFuse, 1, 3);
+        createdTurnCycle = Mathf.Max(0, savedCreatedCycle);
+        isExploding = false;
+        DisposeVisuals();
+        RefreshFuseText();
+
+        if (remainingFuse == 1)
+        {
+            CreateExplosionRangeTelegraph();
+        }
     }
 
     public void ProcessEnemyTurnCycleEnd(int completedTurnCycle)
@@ -129,10 +145,12 @@ public class BossBomb : MonoBehaviour
         if (bombRenderer == null)
         {
             bombRenderer = gameObject.AddComponent<SpriteRenderer>();
-            bombRenderer.sprite = RuntimeBossBombVisuals.BombSprite;
-            bombRenderer.color = new Color(0.16f, 0.12f, 0.08f, 1f);
-            transform.localScale = Vector3.one * 0.55f;
         }
+
+        bombRenderer.sprite = bombSprite != null
+            ? bombSprite
+            : RuntimeBossBombVisuals.BombSprite;
+        bombRenderer.color = Color.white;
 
         baseBombColor = bombRenderer.color;
 
@@ -146,13 +164,20 @@ public class BossBomb : MonoBehaviour
             GameObject textObject = new GameObject("Text | Bomb Fuse");
             textObject.transform.SetParent(transform, false);
             textObject.transform.localPosition = new Vector3(0f, 0.65f, 0f);
-            textObject.transform.localScale = Vector3.one * 0.16f;
+            textObject.transform.localScale = Vector3.one;
             TextMeshPro textMesh = textObject.AddComponent<TextMeshPro>();
             textMesh.alignment = TextAlignmentOptions.Center;
             textMesh.fontSize = 6f;
             textMesh.color = Color.white;
             textMesh.sortingOrder = bombRenderer.sortingOrder + 2;
             fuseText = textMesh;
+        }
+
+        fuseText.transform.localScale = Vector3.one;
+
+        if (fuseFont != null)
+        {
+            fuseText.font = fuseFont;
         }
     }
 

@@ -184,7 +184,7 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         GameStatistics.RecordGoldSpent(cost);
-        SoundManager.PlaySfx("UI_Upgrade");
+        SoundManager.PlaySfxNonOverlapping("UI_Upgrade");
         RefreshOwnedBullets();
     }
 

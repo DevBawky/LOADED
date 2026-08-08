@@ -39,6 +39,9 @@ public class DeckManager : MonoBehaviour
         + graveyard.Count;
     public int OwnedBulletCount => TotalBulletCount;
     public int ReloadableBulletCount => deck.Count + graveyard.Count;
+    public int PaidBulletRemovalCount => Mathf.Max(
+        0,
+        paidBulletRemovalCount);
     public bool CanRemoveOwnedBullet =>
         TotalBulletCount > MinimumOwnedBulletCount;
     public int CurrentBulletRemovalCost =>
@@ -259,6 +262,192 @@ public class DeckManager : MonoBehaviour
         results.AddRange(graveyard);
         results.Sort((left, right) => left.AcquisitionOrder.CompareTo(
             right.AcquisitionOrder));
+    }
+
+    public void CaptureRunState(
+        List<RunBulletSaveData> savedBullets,
+        List<int> savedNextCycleAcquisitionOrders)
+    {
+        if (savedBullets == null || savedNextCycleAcquisitionOrders == null)
+        {
+            return;
+        }
+
+        savedBullets.Clear();
+        savedNextCycleAcquisitionOrders.Clear();
+        CaptureBulletList(deck, 0, savedBullets);
+        CaptureBulletList(loadedBullets, 1, savedBullets);
+        CaptureBulletList(graveyard, 2, savedBullets);
+
+        foreach (BulletInstance bullet in nextCycleOrder)
+        {
+            if (bullet != null)
+            {
+                savedNextCycleAcquisitionOrders.Add(
+                    bullet.AcquisitionOrder);
+            }
+        }
+    }
+
+    public bool RestoreRunState(
+        IReadOnlyList<RunBulletSaveData> savedBullets,
+        Func<RunBulletSaveData, BulletData> resolveBulletData,
+        int savedPaidBulletRemovalCount,
+        IReadOnlyList<int> savedNextCycleAcquisitionOrders)
+    {
+        if (savedBullets == null || resolveBulletData == null)
+        {
+            return false;
+        }
+
+        List<(RunBulletSaveData Save, BulletInstance Bullet)> restoredBullets =
+            new List<(RunBulletSaveData, BulletInstance)>();
+        int highestAcquisitionOrder = -1;
+
+        foreach (RunBulletSaveData savedBullet in savedBullets)
+        {
+            if (savedBullet == null
+                || restoredBullets.Count >= MaximumOwnedBulletCount)
+            {
+                continue;
+            }
+
+            BulletData bulletData = resolveBulletData(savedBullet);
+
+            if (bulletData == null)
+            {
+                Debug.LogWarning(
+                    $"Saved bullet '{savedBullet.assetName}' could not be resolved.",
+                    this);
+                continue;
+            }
+
+            int acquisitionOrder = Mathf.Max(
+                0,
+                savedBullet.acquisitionOrder);
+            BulletInstance bullet = new BulletInstance(
+                bulletData,
+                acquisitionOrder);
+            int targetLevel = Mathf.Clamp(
+                savedBullet.level,
+                0,
+                BulletData.MaximumUpgradeLevel);
+
+            while (bullet.Level < targetLevel && bullet.TryUpgrade())
+            {
+            }
+
+            bullet.ApplyRuntimeState(new BulletRuntimeStateSnapshot(
+                savedBullet.abilityStacks,
+                savedBullet.permanentStacks,
+                savedBullet.storedDamageBonus,
+                savedBullet.temporaryCriticalChanceBonus,
+                savedBullet.temporaryDamageBonus,
+                savedBullet.shotsObservedWhileLoaded));
+            restoredBullets.Add((savedBullet, bullet));
+            highestAcquisitionOrder = Mathf.Max(
+                highestAcquisitionOrder,
+                acquisitionOrder);
+        }
+
+        if (restoredBullets.Count == 0)
+        {
+            return false;
+        }
+
+        deck.Clear();
+        loadedBullets.Clear();
+        graveyard.Clear();
+        nextCycleOrder.Clear();
+        restoredBullets.Sort((left, right) =>
+        {
+            int locationComparison = left.Save.location.CompareTo(
+                right.Save.location);
+            return locationComparison != 0
+                ? locationComparison
+                : left.Save.locationIndex.CompareTo(
+                    right.Save.locationIndex);
+        });
+
+        Dictionary<int, BulletInstance> bulletsByAcquisitionOrder =
+            new Dictionary<int, BulletInstance>();
+
+        foreach ((RunBulletSaveData saved, BulletInstance bullet)
+                 in restoredBullets)
+        {
+            switch (saved.location)
+            {
+                case 1:
+                    loadedBullets.Add(bullet);
+                    break;
+                case 2:
+                    graveyard.Add(bullet);
+                    break;
+                default:
+                    deck.Add(bullet);
+                    break;
+            }
+
+            bulletsByAcquisitionOrder[bullet.AcquisitionOrder] = bullet;
+        }
+
+        if (savedNextCycleAcquisitionOrders != null)
+        {
+            foreach (int acquisitionOrder in savedNextCycleAcquisitionOrders)
+            {
+                if (bulletsByAcquisitionOrder.TryGetValue(
+                        acquisitionOrder,
+                        out BulletInstance bullet)
+                    && !nextCycleOrder.Contains(bullet))
+                {
+                    nextCycleOrder.Add(bullet);
+                }
+            }
+        }
+        nextAcquisitionOrder = highestAcquisitionOrder == int.MaxValue
+            ? int.MaxValue
+            : highestAcquisitionOrder + 1;
+        paidBulletRemovalCount = Mathf.Max(
+            0,
+            savedPaidBulletRemovalCount);
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    private static void CaptureBulletList(
+        IReadOnlyList<BulletInstance> source,
+        int location,
+        List<RunBulletSaveData> destination)
+    {
+        for (int index = 0; index < source.Count; index++)
+        {
+            BulletInstance bullet = source[index];
+
+            if (bullet == null || bullet.Data == null)
+            {
+                continue;
+            }
+
+            BulletRuntimeStateSnapshot runtimeState =
+                bullet.CaptureRuntimeState();
+            destination.Add(new RunBulletSaveData
+            {
+                assetName = bullet.Data.name,
+                bulletId = bullet.Data.BulletId,
+                level = bullet.Level,
+                acquisitionOrder = bullet.AcquisitionOrder,
+                abilityStacks = runtimeState.AbilityStacks,
+                permanentStacks = runtimeState.PermanentStacks,
+                storedDamageBonus = runtimeState.StoredDamageBonus,
+                temporaryCriticalChanceBonus =
+                    runtimeState.TemporaryCriticalChanceBonus,
+                temporaryDamageBonus = runtimeState.TemporaryDamageBonus,
+                shotsObservedWhileLoaded =
+                    runtimeState.ShotsObservedWhileLoaded,
+                location = location,
+                locationIndex = index
+            });
+        }
     }
 
     public BulletInstance PeekNextBullet()

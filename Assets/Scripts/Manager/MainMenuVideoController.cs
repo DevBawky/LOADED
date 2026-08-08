@@ -15,7 +15,8 @@ public sealed class MainMenuVideoController : MonoBehaviour
         "Panel | Settings",
         "Panel | Statistics",
         "Panel | Dict & Info",
-        "Panel | Credits"
+        "Panel | Credits",
+        "Panel | Load Game"
     };
 
     private enum PlaybackState
@@ -30,6 +31,9 @@ public sealed class MainMenuVideoController : MonoBehaviour
 
     [Header("Game Start")]
     [SerializeField] private Button playGameButton;
+    [SerializeField] private GameObject loadGamePanel;
+    [SerializeField] private Button loadGameYesButton;
+    [SerializeField] private Button loadGameNoButton;
     [SerializeField] private CanvasGroup buttonsCanvasGroup;
     [SerializeField] private CanvasGroup settingsButtonCanvasGroup;
     [SerializeField] private CanvasGroup pilDogCanvasGroup;
@@ -48,6 +52,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
     {
         StatisticsPanelController.EnsureExists();
         ResolvePlayGameButton();
+        ResolveLoadGameControls();
         ResolveButtonsCanvasGroup();
         ResolveSettingsButtonCanvasGroup();
         ResolvePilDogCanvasGroup();
@@ -65,6 +70,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
         videoPlayer.errorReceived += HandleVideoError;
 
         ResolvePlayGameButton();
+        ResolveLoadGameControls();
         ResolveButtonsCanvasGroup();
         ResolveSettingsButtonCanvasGroup();
         ResolvePilDogCanvasGroup();
@@ -74,6 +80,14 @@ public sealed class MainMenuVideoController : MonoBehaviour
         {
             playGameButton.onClick.AddListener(StartGame);
             playGameButton.interactable = true;
+        }
+
+        loadGameYesButton?.onClick.AddListener(ContinueSavedGame);
+        loadGameNoButton?.onClick.AddListener(StartNewGame);
+
+        if (loadGamePanel != null)
+        {
+            loadGamePanel.SetActive(false);
         }
 
         if (buttonsCanvasGroup != null)
@@ -110,6 +124,8 @@ public sealed class MainMenuVideoController : MonoBehaviour
         {
             playGameButton.onClick.RemoveListener(StartGame);
         }
+        loadGameYesButton?.onClick.RemoveListener(ContinueSavedGame);
+        loadGameNoButton?.onClick.RemoveListener(StartNewGame);
         videoPlayer.Stop();
     }
 
@@ -164,14 +180,103 @@ public sealed class MainMenuVideoController : MonoBehaviour
             return;
         }
 
+        if (RunSaveSystem.HasValidSave)
+        {
+            ShowLoadGamePanel();
+            return;
+        }
+
+        StartNewGame();
+    }
+
+    private void ContinueSavedGame()
+    {
+        if (!RunSaveSystem.HasValidSave)
+        {
+            StartNewGame();
+            return;
+        }
+
+        BeginGameStart(RunStartMode.Continue);
+    }
+
+    private void StartNewGame()
+    {
+        RunSaveSystem.DeleteSave();
+        BeginGameStart(RunStartMode.New);
+    }
+
+    private void BeginGameStart(RunStartMode startMode)
+    {
+        if (gameStartRequested)
+        {
+            return;
+        }
+
         gameStartRequested = true;
-        GameStatistics.BeginRun();
+        RunSaveSystem.RequestStart(startMode);
+
+        if (loadGamePanel != null)
+        {
+            loadGamePanel.SetActive(false);
+        }
+
         if (playGameButton != null)
         {
             playGameButton.interactable = false;
         }
         FadeOutButtons();
         PlayVideo(PlaybackState.Ready, readyVideoPath, false);
+    }
+
+    private void ShowLoadGamePanel()
+    {
+        ResolveLoadGameControls();
+
+        if (loadGamePanel == null)
+        {
+            ContinueSavedGame();
+            return;
+        }
+
+        loadGamePanel.transform.SetAsLastSibling();
+        loadGamePanel.SetActive(true);
+        EventSystem.current?.SetSelectedGameObject(null);
+    }
+
+    private void ResolveLoadGameControls()
+    {
+        if (loadGamePanel == null)
+        {
+            foreach (Transform candidate in FindObjectsByType<Transform>(
+                         FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                if (candidate.name == "Panel | Load Game")
+                {
+                    loadGamePanel = candidate.gameObject;
+                    break;
+                }
+            }
+        }
+
+        if (loadGamePanel == null)
+        {
+            return;
+        }
+
+        foreach (Button button in loadGamePanel.GetComponentsInChildren<Button>(
+                     true))
+        {
+            if (button.name == "Button | Yes")
+            {
+                loadGameYesButton = button;
+            }
+            else if (button.name == "Button | No")
+            {
+                loadGameNoButton = button;
+            }
+        }
     }
 
     private void ResolveButtonsCanvasGroup()
@@ -272,7 +377,8 @@ public sealed class MainMenuVideoController : MonoBehaviour
                      FindObjectsInactive.Include,
                      FindObjectsSortMode.None))
         {
-            if (candidate.name == "Image | PilDog")
+            if (candidate.name == "Image | PilDog"
+                || candidate.name == "Image_PilDog")
             {
                 pilDogCanvasGroup = GetOrAddCanvasGroup(candidate);
                 return;

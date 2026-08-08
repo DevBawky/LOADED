@@ -143,6 +143,14 @@ public class CurrencyManager : MonoBehaviour
         return true;
     }
 
+    public void RestoreRunMoney(int amount)
+    {
+        FlushPendingMoney();
+        currentMoney = Mathf.Max(0, amount);
+        pendingAnimatedMoney = 0;
+        NotifyMoneyChanged();
+    }
+
     private void NotifyMoneyChanged()
     {
         RefreshText();

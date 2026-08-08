@@ -57,6 +57,8 @@ public sealed class SoundManager : MonoBehaviour
     [Range(0f, 1f)] [SerializeField] private float sfxVolume = 1f;
 
     private readonly List<AudioSource> sfxSources = new List<AudioSource>();
+    private readonly Dictionary<string, float> nonOverlappingSfxEndTimes =
+        new Dictionary<string, float>();
     private readonly HashSet<Button> boundUiButtons = new HashSet<Button>();
     private IReadOnlyList<AudioClip> currentPlaylist;
     private IReadOnlyList<AudioClip> pendingPlaylist;
@@ -164,6 +166,31 @@ public sealed class SoundManager : MonoBehaviour
     public static void PlaySfx(string id)
     {
         PlaySfxPitched(id, 1f);
+    }
+
+    public static void PlaySfxNonOverlapping(string id)
+    {
+        SoundManager manager = Instance;
+        if (string.IsNullOrWhiteSpace(id)
+            || manager.nonOverlappingSfxEndTimes.TryGetValue(
+                id,
+                out float endTime)
+            && Time.realtimeSinceStartup < endTime
+            || manager.clipLibrary == null
+            || !manager.clipLibrary.TryGetSfx(
+                id,
+                out AudioClip clip,
+                out float volume,
+                out float pitch,
+                out UnityEngine.Audio.AudioMixerGroup mixerGroup))
+        {
+            return;
+        }
+
+        float playbackPitch = Mathf.Clamp(pitch, 0.01f, 3f);
+        manager.nonOverlappingSfxEndTimes[id] =
+            Time.realtimeSinceStartup + clip.length / playbackPitch;
+        manager.PlayOneShot(clip, playbackPitch, volume, mixerGroup);
     }
 
     public static void PlaySfxPitched(string id, float pitchMultiplier)
