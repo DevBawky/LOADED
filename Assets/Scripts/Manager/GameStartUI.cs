@@ -868,7 +868,7 @@ public sealed class GameStartUI : MonoBehaviour
     {
         if (target != null)
         {
-            target.text = $"{threshold:0.#}% 이상";
+            target.text = $"{threshold:0.#}%";
         }
     }
 
