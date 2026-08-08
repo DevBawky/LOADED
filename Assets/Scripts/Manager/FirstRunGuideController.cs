@@ -42,7 +42,9 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private enum TargetKind
     {
         Named,
-        Cylinder
+        Cylinder,
+        TutorialEnemyAction,
+        MoveButtons
     }
 
     private readonly struct GuideStepDefinition
@@ -108,7 +110,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
             "적의 공격 예고",
             "공격 준비 시 <color=#FF5757><b>경고음</b></color>이 울립니다.\n<color=#FF5757><b>적 아래의 행동 패널</b></color>도 붉어집니다.\n원거리 공격은 경로와 범위도 표시됩니다.\n다음 턴 전에 피하거나 대비하세요.",
             null,
-            "Image | Queue"),
+            "Image | Queue",
+            TargetKind.TutorialEnemyAction),
         new GuidePage(
             "핵심 전략: 탄환 순서",
             "<color=#FFD05A><b>탄환 순서에 따라 피해량이 달라집니다.</b></color>\n실린더는 <color=#FFD05A><b>나중에 장전한 탄환부터</b></color> 발사하며, 탄환 효과도 앞뒤 순서와 연계됩니다.\n발사 전에 <color=#FF5757><b>마우스 드래그</b></color>로 순서를 바꾸고 <color=#FFD05A><b>예상 피해</b></color>를 비교하세요.",
@@ -133,21 +136,22 @@ public sealed class FirstRunGuideController : MonoBehaviour
         new GuideStepDefinition(
             CombatStep.Move,
             "이동",
-            "<color=#FF5757><b>A/D 키</b></color> 또는 이동 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 한 칸 이동합니다.\n이동하면 <color=#FFD05A><b>적도 바로 한 턴 행동</b></color>합니다.",
+            "<color=#FF5757><b>A/D 키</b></color> 또는 <color=#FF5757><b>이동 버튼 클릭</b></color>으로 한 칸 이동합니다.\n이동하면 <color=#FFD05A><b>적도 바로 한 턴 행동</b></color>합니다.",
             "한 칸 이동",
             "Videos/Movement.mp4",
-            "Panel | Behaviour Tile"),
+            null,
+            TargetKind.MoveButtons),
         new GuideStepDefinition(
             CombatStep.Rotate,
             "회전",
-            "<color=#FF5757><b>W 키</b></color> 또는 회전 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 방향을 바꿉니다.\n탄환은 <color=#FFD05A><b>바라보는 방향</b></color>으로 발사됩니다.",
+            "<color=#FF5757><b>W 키</b></color>, <color=#FF5757><b>마우스 휠 클릭</b></color> 또는 <color=#FF5757><b>회전 버튼 클릭</b></color>으로 방향을 바꿉니다.\n탄환은 <color=#FFD05A><b>바라보는 방향</b></color>으로 발사됩니다.",
             "한 번 회전",
             "Videos/Rotate.mp4",
             "Button | Rotate"),
         new GuideStepDefinition(
             CombatStep.Wait,
             "대기",
-            "<color=#FF5757><b>S 키</b></color> 또는 대기 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 제자리에서 한 턴을 보냅니다.\n<color=#FFD05A><b>적의 거리와 공격 시점</b></color>을 조절할 때 사용하세요.",
+            "<color=#FF5757><b>S 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 제자리에서 한 턴을 보냅니다.\n<color=#FFD05A><b>적의 거리와 공격 시점</b></color>을 조절할 때 사용하세요.",
             "한 번 대기",
             "Videos/Wait.mp4",
             "Button | Wait"),
@@ -157,11 +161,12 @@ public sealed class FirstRunGuideController : MonoBehaviour
             "<color=#FFD05A><b>적 아래의 행동 아이콘</b></color>에서 다음 행동을 확인하세요.\n아이콘이 없다면 한 턴 진행한 뒤 <color=#FF5757><b>마우스 커서를 올리거나 클릭</b></color>하세요.",
             "적 행동 아이콘 확인",
             null,
-            "Image | Queue"),
+            "Image | Queue",
+            TargetKind.TutorialEnemyAction),
         new GuideStepDefinition(
             CombatStep.ReloadThree,
             "장전",
-            "<color=#FF5757><b>R 키</b></color> 또는 장전 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 다음 탄환을 장전합니다.\n장전은 <color=#FFD05A><b>한 턴</b></color>을 사용합니다.\n적 행동을 먼저 확인하세요.",
+            "<color=#FF5757><b>R 키</b></color> 또는 <color=#FF5757><b>장전 버튼 클릭</b></color>으로 다음 탄환을 장전합니다.\n장전은 <color=#FFD05A><b>한 턴</b></color>을 사용합니다.\n적 행동을 먼저 확인하세요.",
             "탄환 3회 장전",
             "Videos/Reload.mp4",
             "Button | Reload"),
@@ -192,21 +197,21 @@ public sealed class FirstRunGuideController : MonoBehaviour
         new GuideStepDefinition(
             CombatStep.UseItem,
             "아이템 사용",
-            "모든 적을 기절시키는 <color=#FFD05A><b>전기충격</b></color>을 지급합니다.\n<color=#FF5757><b>1/2/3 키</b></color> 또는 인벤토리 슬롯 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 사용하세요.",
+            "모든 적을 기절시키는 <color=#FFD05A><b>전기충격</b></color>을 지급합니다.\n<color=#FF5757><b>1/2/3 키</b></color> 또는 <color=#FF5757><b>인벤토리 슬롯 클릭</b></color>으로 사용하세요.",
             "전기충격 한 번 사용",
             null,
             "Layout | Inventory"),
         new GuideStepDefinition(
             CombatStep.Kick,
             "발차기",
-            "바로 앞의 적 방향으로 이동하면 발차기합니다.\n<color=#FF5757><b>A/D 키</b></color> 또는 이동 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>을 사용하세요.\n재사용 대기시간은 <color=#FFD05A><b>3턴</b></color>입니다.\n적끼리 부딪히면 <color=#FFD05A><b>둘 다 피해</b></color>를 받습니다.",
+            "바로 앞의 적 방향으로 이동하면 발차기합니다.\n<color=#FF5757><b>A/D 키</b></color> 또는 <color=#FF5757><b>이동 버튼 클릭</b></color>을 사용하세요.\n재사용 대기시간은 <color=#FFD05A><b>3턴</b></color>입니다.\n적끼리 부딪히면 <color=#FFD05A><b>둘 다 피해</b></color>를 받습니다.",
             "적을 한 번 발차기",
             "Videos/Kick.mp4",
             "Panel | Behaviour Tile"),
         new GuideStepDefinition(
             CombatStep.Fire,
             "발사",
-            "<color=#FF5757><b>화면에 마우스 왼쪽 클릭</b></color> 또는 <color=#FF5757><b>사격 버튼 클릭</b></color>하면 탄환을 <color=#FFD05A><b>순서대로 모두 발사</b></color>합니다.\n발사 전에 <color=#FFD05A><b>방향, 사거리, 탄환 순서</b></color>를 확인하세요.",
+            "<color=#FF5757><b>화면에 마우스 왼쪽 클릭</b></color>, <color=#FF5757><b>스페이스 바</b></color> 또는 <color=#FF5757><b>사격 버튼 클릭</b></color>으로 탄환을 <color=#FFD05A><b>순서대로 모두 발사</b></color>합니다.\n발사 전에 <color=#FFD05A><b>방향, 사거리, 탄환 순서</b></color>를 확인하세요.",
             "실린더 발사",
             "Videos/Shoot.mp4",
             "Button | Shoot")
@@ -258,11 +263,14 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private TMP_Text cardStepText;
     private TMP_Text cardTitleText;
     private TMP_Text cardBodyText;
+    private GameObject cardMissionPanel;
+    private TMP_Text cardMissionText;
     private Button cardBackButton;
     private Button cardSkipButton;
     private Button cardNeverShowButton;
     private Button continueButton;
     private TMP_Text continueButtonText;
+    private Button missionNextButton;
     private GameObject videoFrame;
     private RawImage videoDisplay;
     private TMP_Text videoLoadingText;
@@ -287,6 +295,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private string activeTargetName;
     private TargetKind activeTargetKind;
     private RectTransform activeTarget;
+    private RectTransform activeSecondaryTarget;
+    private EnemyController activeTutorialEnemy;
 
     private bool moved;
     private bool rotated;
@@ -420,6 +430,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         cardBackButton?.onClick.RemoveListener(HandleBack);
         cardSkipButton?.onClick.RemoveListener(SkipCurrentGuide);
         cardNeverShowButton?.onClick.RemoveListener(DisableAllGuides);
+        missionNextButton?.onClick.RemoveListener(AdvanceCurrentMission);
 
         if (videoPlayer != null)
         {
@@ -534,7 +545,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         ShowCard(
             "ITEM GUIDE",
             "아이템 사용",
-            "<color=#FF5757><b>1/2/3 키</b></color> 또는 인벤토리 슬롯 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 아이템을 사용합니다.\n<color=#FFD05A><b>사용 조건이 맞지 않으면 소비되지 않습니다.</b></color>\n적이 나온 뒤 다시 시도하세요.",
+            "<color=#FF5757><b>1/2/3 키</b></color> 또는 <color=#FF5757><b>인벤토리 슬롯 클릭</b></color>으로 아이템을 사용합니다.\n<color=#FFD05A><b>사용 조건이 맞지 않으면 소비되지 않습니다.</b></color>\n적이 나온 뒤 다시 시도하세요.",
             "보유 아이템 한 번 사용",
             null,
             "미션 시작");
@@ -673,18 +684,29 @@ public sealed class FirstRunGuideController : MonoBehaviour
         pendingAdvance = false;
         cardStepText.text = stepLabel;
         cardTitleText.text = title;
-        cardBodyText.text = string.IsNullOrWhiteSpace(mission)
-            ? description
-            : description + "\n<color=#FFD05A><b>MISSION</b></color>  "
-                + mission;
+        cardBodyText.text = description;
+        bool hasMission = !string.IsNullOrWhiteSpace(mission);
+        cardMissionPanel.SetActive(hasMission);
+        cardMissionText.text = hasMission
+            ? "<color=#FFB347><b>MISSION</b></color>  "
+                + $"<color=#8FE6FF><b>{mission}</b></color>"
+            : string.Empty;
         continueButtonText.text = continueLabel;
         SetCardVideo(videoPath);
+        bool hasVideo = !string.IsNullOrWhiteSpace(videoPath);
         SetAnchors(
             cardBodyText.rectTransform,
             0.08f,
-            string.IsNullOrWhiteSpace(videoPath) ? 0.17f : 0.13f,
+            hasMission ? hasVideo ? 0.18f : 0.23f
+                : hasVideo ? 0.13f : 0.17f,
             0.92f,
-            string.IsNullOrWhiteSpace(videoPath) ? 0.72f : 0.29f);
+            hasVideo ? 0.30f : 0.72f);
+        SetAnchors(
+            (RectTransform)cardMissionPanel.transform,
+            0.12f,
+            hasVideo ? 0.12f : 0.13f,
+            0.88f,
+            hasVideo ? 0.17f : 0.20f);
         RefreshBackButton();
 
         if (mode == GuideMode.Combat || mode == GuideMode.Item)
@@ -866,12 +888,32 @@ public sealed class FirstRunGuideController : MonoBehaviour
         {
             GuideStepDefinition step = CombatSteps[combatStepIndex];
             missionText.text = "<color=#FFD05A><b>MISSION</b></color>  "
-                + GetMissionText(step);
+                + $"<color=#8FE6FF><b>{GetMissionText(step)}</b></color>";
         }
         else if (mode == GuideMode.Item)
         {
             missionText.text = "<color=#FFD05A><b>MISSION</b></color>  "
-                + "보유 아이템 한 번 사용";
+                + "<color=#8FE6FF><b>보유 아이템 한 번 사용</b></color>";
+        }
+    }
+
+    private void AdvanceCurrentMission()
+    {
+        if (!missionActive || pendingAdvance)
+        {
+            return;
+        }
+
+        missionActive = false;
+
+        if (mode == GuideMode.Combat)
+        {
+            combatStepIndex++;
+            ShowNextCombatStep();
+        }
+        else if (mode == GuideMode.Item)
+        {
+            FinishItemGuide();
         }
     }
 
@@ -988,6 +1030,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         showingCombatSystemPages = false;
         combatReviewStepIndex = -1;
         activeTarget = null;
+        activeSecondaryTarget = null;
         activeTargetName = null;
         StopVideo();
 
@@ -1254,6 +1297,10 @@ public sealed class FirstRunGuideController : MonoBehaviour
     {
         activeTargetName = targetName;
         activeTargetKind = targetKind;
+        activeSecondaryTarget = null;
+        activeTutorialEnemy = targetKind == TargetKind.TutorialEnemyAction
+            ? FindTutorialEnemy()
+            : null;
         activeTarget = ResolveActiveTarget();
     }
 
@@ -1264,7 +1311,47 @@ public sealed class FirstRunGuideController : MonoBehaviour
             return cylinderUI == null ? null : cylinderUI.CylinderTransform;
         }
 
+        if (activeTargetKind == TargetKind.TutorialEnemyAction)
+        {
+            activeTutorialEnemy ??= FindTutorialEnemy();
+            if (activeTutorialEnemy == null)
+            {
+                return null;
+            }
+
+            foreach (RectTransform candidate in
+                     activeTutorialEnemy.GetComponentsInChildren<RectTransform>(
+                         true))
+            {
+                if (candidate != null
+                    && candidate.name == activeTargetName
+                    && candidate.gameObject.activeInHierarchy)
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        if (activeTargetKind == TargetKind.MoveButtons)
+        {
+            activeSecondaryTarget = ResolveNamedTarget("Button | Move R");
+            return ResolveNamedTarget("Button | Move L");
+        }
+
         if (string.IsNullOrWhiteSpace(activeTargetName))
+        {
+            return null;
+        }
+
+
+        return ResolveNamedTarget(activeTargetName);
+    }
+
+    private RectTransform ResolveNamedTarget(string targetName)
+    {
+        if (string.IsNullOrWhiteSpace(targetName))
         {
             return null;
         }
@@ -1276,7 +1363,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
                      FindObjectsInactive.Include,
                      FindObjectsSortMode.None))
         {
-            if (candidate == null || candidate.name != activeTargetName
+            if (candidate == null || candidate.name != targetName
                 || !candidate.gameObject.activeInHierarchy
                 || guideRoot != null && candidate.IsChildOf(guideRoot))
             {
@@ -1295,6 +1382,21 @@ public sealed class FirstRunGuideController : MonoBehaviour
         return best;
     }
 
+    private static EnemyController FindTutorialEnemy()
+    {
+        foreach (EnemyController enemy in FindObjectsByType<EnemyController>(
+                     FindObjectsInactive.Exclude,
+                     FindObjectsSortMode.None))
+        {
+            if (enemy != null && enemy.CurrentHealth > 0)
+            {
+                return enemy;
+            }
+        }
+
+        return null;
+    }
+
     private void UpdateHighlight()
     {
         if (highlight == null || guideRoot == null
@@ -1308,7 +1410,14 @@ public sealed class FirstRunGuideController : MonoBehaviour
             activeTarget = ResolveActiveTarget();
         }
 
-        if (activeTarget == null || rootCanvas == null)
+        if (activeTargetKind == TargetKind.MoveButtons
+            && (activeSecondaryTarget == null
+                || !activeSecondaryTarget.gameObject.activeInHierarchy))
+        {
+            activeSecondaryTarget = ResolveNamedTarget("Button | Move R");
+        }
+
+        if (rootCanvas == null)
         {
             highlight.gameObject.SetActive(false);
             return;
@@ -1321,17 +1430,16 @@ public sealed class FirstRunGuideController : MonoBehaviour
             return;
         }
 
-        activeTarget.GetWorldCorners(targetWorldCorners);
-        Camera targetCamera = GetCanvasCamera(activeTarget);
         Camera rootCamera = rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay
             ? null
             : rootCanvas.worldCamera;
-        Vector2 screenMin = RectTransformUtility.WorldToScreenPoint(
-            targetCamera,
-            targetWorldCorners[0]);
-        Vector2 screenMax = RectTransformUtility.WorldToScreenPoint(
-            targetCamera,
-            targetWorldCorners[2]);
+        if (!TryGetHighlightScreenBounds(
+                out Vector2 screenMin,
+                out Vector2 screenMax))
+        {
+            highlight.gameObject.SetActive(false);
+            return;
+        }
 
         if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 canvasRect,
@@ -1361,6 +1469,65 @@ public sealed class FirstRunGuideController : MonoBehaviour
         highlightImage.color = color;
     }
 
+    private bool TryGetHighlightScreenBounds(
+        out Vector2 screenMin,
+        out Vector2 screenMax)
+    {
+        screenMin = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+        screenMax = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+        bool hasBounds = false;
+
+        if (activeTarget != null && activeTarget.gameObject.activeInHierarchy)
+        {
+            activeTarget.GetWorldCorners(targetWorldCorners);
+            Camera targetCamera = GetCanvasCamera(activeTarget);
+            IncludeScreenPoint(
+                RectTransformUtility.WorldToScreenPoint(
+                    targetCamera,
+                    targetWorldCorners[0]),
+                ref screenMin,
+                ref screenMax);
+            IncludeScreenPoint(
+                RectTransformUtility.WorldToScreenPoint(
+                    targetCamera,
+                    targetWorldCorners[2]),
+                ref screenMin,
+                ref screenMax);
+            hasBounds = true;
+        }
+
+        if (activeSecondaryTarget != null
+            && activeSecondaryTarget.gameObject.activeInHierarchy)
+        {
+            activeSecondaryTarget.GetWorldCorners(targetWorldCorners);
+            Camera targetCamera = GetCanvasCamera(activeSecondaryTarget);
+            IncludeScreenPoint(
+                RectTransformUtility.WorldToScreenPoint(
+                    targetCamera,
+                    targetWorldCorners[0]),
+                ref screenMin,
+                ref screenMax);
+            IncludeScreenPoint(
+                RectTransformUtility.WorldToScreenPoint(
+                    targetCamera,
+                    targetWorldCorners[2]),
+                ref screenMin,
+                ref screenMax);
+            hasBounds = true;
+        }
+
+        return hasBounds;
+    }
+
+    private static void IncludeScreenPoint(
+        Vector2 point,
+        ref Vector2 minimum,
+        ref Vector2 maximum)
+    {
+        minimum = Vector2.Min(minimum, point);
+        maximum = Vector2.Max(maximum, point);
+    }
+
     private static Camera GetCanvasCamera(RectTransform target)
     {
         Canvas canvas = target == null
@@ -1371,10 +1538,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
             return null;
         }
 
-        Canvas targetCanvas = canvas.rootCanvas;
-        return targetCanvas.renderMode == RenderMode.ScreenSpaceOverlay
+        return canvas.renderMode == RenderMode.ScreenSpaceOverlay
             ? null
-            : targetCanvas.worldCamera;
+            : canvas.worldCamera != null
+                ? canvas.worldCamera
+                : Camera.main;
     }
 
     private void ResolveFont()
@@ -1485,6 +1653,33 @@ public sealed class FirstRunGuideController : MonoBehaviour
         cardBodyText.textWrappingMode = TextWrappingModes.NoWrap;
         cardBodyText.overflowMode = TextOverflowModes.Ellipsis;
 
+        Image cardMissionImage = CreateImage(
+            "Panel | Guide Card Mission",
+            cardRect,
+            new Color(0.035f, 0.09f, 0.11f, 0.98f));
+        cardMissionPanel = cardMissionImage.gameObject;
+        SetAnchors(
+            cardMissionImage.rectTransform,
+            0.12f,
+            0.12f,
+            0.88f,
+            0.17f);
+        cardMissionImage.raycastTarget = false;
+        Outline cardMissionOutline = cardMissionPanel.AddComponent<Outline>();
+        cardMissionOutline.effectColor = new Color(0.35f, 0.8f, 1f, 0.8f);
+        cardMissionOutline.effectDistance = new Vector2(2f, -2f);
+
+        cardMissionText = CreateText(
+            "Text | Guide Card Mission",
+            cardMissionImage.rectTransform);
+        SetAnchors(cardMissionText.rectTransform, 0.04f, 0.08f, 0.96f, 0.92f);
+        cardMissionText.alignment = TextAlignmentOptions.Center;
+        cardMissionText.fontSizeMin = 11f;
+        cardMissionText.fontSizeMax = 24f;
+        cardMissionText.textWrappingMode = TextWrappingModes.NoWrap;
+        cardMissionText.overflowMode = TextOverflowModes.Ellipsis;
+        cardMissionPanel.SetActive(false);
+
         cardBackButton = CreateButton(
             "Button | Previous Guide",
             cardRect,
@@ -1553,12 +1748,26 @@ public sealed class FirstRunGuideController : MonoBehaviour
         missionOutline.effectDistance = new Vector2(2f, -2f);
 
         missionText = CreateText("Text | Guide Mission", missionImage.rectTransform);
-        SetAnchors(missionText.rectTransform, 0.04f, 0.12f, 0.67f, 0.88f);
+        SetAnchors(missionText.rectTransform, 0.04f, 0.12f, 0.50f, 0.88f);
         missionText.alignment = TextAlignmentOptions.MidlineLeft;
         missionText.fontSizeMin = 12f;
         missionText.fontSizeMax = 28f;
         missionText.textWrappingMode = TextWrappingModes.NoWrap;
         missionText.overflowMode = TextOverflowModes.Ellipsis;
+
+        missionNextButton = CreateButton(
+            "Button | Next Mission Guide",
+            missionImage.rectTransform,
+            "다음 단계",
+            new Color(0.12f, 0.32f, 0.4f, 0.95f),
+            out _);
+        SetAnchors(
+            (RectTransform)missionNextButton.transform,
+            0.52f,
+            0.18f,
+            0.66f,
+            0.82f);
+        missionNextButton.onClick.AddListener(AdvanceCurrentMission);
 
         Button missionSkip = CreateButton(
             "Button | Skip Mission Guide",
@@ -1568,9 +1777,9 @@ public sealed class FirstRunGuideController : MonoBehaviour
             out _);
         SetAnchors(
             (RectTransform)missionSkip.transform,
-            0.68f,
+            0.67f,
             0.18f,
-            0.81f,
+            0.80f,
             0.82f);
         missionSkip.onClick.AddListener(SkipCurrentGuide);
 
@@ -1582,7 +1791,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             out _);
         SetAnchors(
             (RectTransform)missionNeverShow.transform,
-            0.82f,
+            0.81f,
             0.18f,
             0.97f,
             0.82f);
