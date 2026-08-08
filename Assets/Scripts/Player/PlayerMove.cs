@@ -69,6 +69,7 @@ public class PlayerMove : MonoBehaviour
     public event Action PositionChanged;
     public event Action<int> PushCooldownChanged;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
+    public event Action PushPerformed;
 
     public int TurnCount { get; private set; }
     public bool IsShooting => isShooting;
@@ -327,6 +328,7 @@ public class PlayerMove : MonoBehaviour
         nextPushAvailableTurn = TurnCount
             + Mathf.Max(0, pushCooldownTurns)
             + 1;
+        PushPerformed?.Invoke();
         isActing = false;
         CompleteTurn();
     }

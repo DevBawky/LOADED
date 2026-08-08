@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <link rel="preload" href="Build/{{{ LOADER_FILENAME }}}" as="script">
+    <link rel="preload" href="Build/{{{ DATA_FILENAME }}}" as="fetch" crossorigin>
+    <link rel="preload" href="Build/{{{ FRAMEWORK_FILENAME }}}" as="fetch" crossorigin>
+#if USE_WASM
+    <link rel="preload" href="Build/{{{ CODE_FILENAME }}}" as="fetch" type="application/wasm" crossorigin>
+#endif
+    <style>
+      html, body { width: 100%; height: 100%; margin: 0; background: #090706; overflow: hidden; }
+      body { display: grid; place-items: center; color: #f2e8d5; font-family: Arial, sans-serif; }
+      #unity-container { position: relative; width: min(100vw, {{{ WIDTH }}}px); aspect-ratio: {{{ WIDTH }}} / {{{ HEIGHT }}}; }
+      #unity-canvas { width: 100%; height: 100%; background: {{{ BACKGROUND_COLOR }}}; }
+      #unity-loading { position: absolute; inset: 0; display: grid; place-content: center; gap: 14px; background: #090706; text-align: center; }
+      #unity-loading-title { color: #d9b36c; font-size: 22px; font-weight: 700; letter-spacing: 0.14em; }
+      #unity-progress-track { width: min(68vw, 420px); height: 12px; border: 1px solid #765c36; background: #17100b; }
+      #unity-progress-bar { width: 0; height: 100%; background: #b92d24; transition: width 0.12s linear; }
+      #unity-progress-text { color: #c8b99f; font-size: 14px; }
+      #unity-fullscreen { position: absolute; right: 12px; bottom: 12px; display: none; padding: 8px 12px; border: 1px solid #765c36; background: #17100b; color: #f2e8d5; cursor: pointer; }
+      #unity-warning { position: absolute; left: 50%; top: 12px; z-index: 2; transform: translateX(-50%); width: min(90%, 720px); }
+      #unity-warning > div { margin-bottom: 8px; padding: 10px; color: #fff; background: #8f261f; }
+      @media (max-width: 720px), (max-height: 540px) {
+        #unity-container { width: 100vw; height: 100vh; aspect-ratio: auto; }
+        #unity-fullscreen { display: none !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="unity-container">
+      <canvas id="unity-canvas" width={{{ WIDTH }}} height={{{ HEIGHT }}} tabindex="-1"></canvas>
+      <div id="unity-loading">
+        <div id="unity-loading-title">LOADED</div>
+        <div id="unity-progress-track"><div id="unity-progress-bar"></div></div>
+        <div id="unity-progress-text">게임 데이터 준비 중, 0%</div>
+      </div>
+      <div id="unity-warning"></div>
+      <button id="unity-fullscreen" type="button">전체 화면</button>
+    </div>
+    <script>
+      const canvas = document.querySelector("#unity-canvas");
+      const loading = document.querySelector("#unity-loading");
+      const progressBar = document.querySelector("#unity-progress-bar");
+      const progressText = document.querySelector("#unity-progress-text");
+      const fullscreenButton = document.querySelector("#unity-fullscreen");
+
+      function unityShowBanner(message, type) {
+        const warning = document.querySelector("#unity-warning");
+        const item = document.createElement("div");
+        item.textContent = message;
+        warning.appendChild(item);
+        if (type !== "error") {
+          setTimeout(() => item.remove(), 5000);
+        }
+      }
+
+      const buildUrl = "Build";
+      const loaderUrl = buildUrl + "/{{{ LOADER_FILENAME }}}";
+      const config = {
+        arguments: [],
+        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+        workerUrl: buildUrl + "/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+#endif
+#if SYMBOLS_FILENAME
+        symbolsUrl: buildUrl + "/{{{ SYMBOLS_FILENAME }}}",
+#endif
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        showBanner: unityShowBanner,
+        autoSyncPersistentDataPath: true
+      };
+
+      config.cacheControl = (url) => {
+        if (url === config.dataUrl || url === config.frameworkUrl || url === config.codeUrl) {
+          return "immutable";
+        }
+        return "must-revalidate";
+      };
+
+      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+        config.devicePixelRatio = 1;
+      }
+
+      const loader = document.createElement("script");
+      loader.src = loaderUrl;
+      loader.onload = () => {
+        createUnityInstance(canvas, config, (progress) => {
+          const percent = Math.round(progress * 100);
+          progressBar.style.width = percent + "%";
+          progressText.textContent = "게임 데이터 준비 중, " + percent + "%";
+        }).then((unityInstance) => {
+          loading.style.display = "none";
+          fullscreenButton.style.display = "block";
+          fullscreenButton.onclick = () => unityInstance.SetFullscreen(1);
+        }).catch((message) => {
+          progressText.textContent = "불러오기에 실패했습니다";
+          unityShowBanner(message, "error");
+        });
+      };
+      loader.onerror = () => {
+        progressText.textContent = "로더를 불러오지 못했습니다";
+      };
+      document.body.appendChild(loader);
+    </script>
+  </body>
+</html>

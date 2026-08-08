@@ -21,6 +21,7 @@ public class PlayerInventory : MonoBehaviour
     private InputAction useItemHotkeyAction;
 
     public event Action Changed;
+    public event Action<int, ItemData> ItemUsed;
 
     public int SlotCount => slotCount;
     public bool IsFull => FindEmptySlotIndex() < 0;
@@ -153,6 +154,7 @@ public class PlayerInventory : MonoBehaviour
 
         items[slotIndex] = null;
         Changed?.Invoke();
+        ItemUsed?.Invoke(slotIndex, item);
         return true;
     }
 
