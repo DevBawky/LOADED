@@ -93,7 +93,6 @@
       #unity-start-gate:not(.is-visible) { opacity: 0; visibility: hidden; pointer-events: none; }
 
       .loading-content { width: min(88vw, 560px); display: grid; justify-items: center; }
-      .eyebrow { margin-bottom: 5px; color: var(--red); font-size: 11px; font-weight: 800; letter-spacing: 0.34em; }
       .brand { color: var(--paper); font-family: Georgia, serif; font-size: clamp(42px, 8vw, 76px); font-weight: 900; letter-spacing: 0.12em; line-height: 1; text-shadow: 0 4px 0 #3b1712, 0 0 34px rgba(196,59,47,0.28); }
       .brand-rule { width: 76px; height: 2px; margin: 17px 0 22px; background: var(--gold); box-shadow: 0 0 16px rgba(215,170,91,0.52); }
 
@@ -182,20 +181,17 @@
       }
       #unity-loading.is-ready .cylinder-ring { animation: cylinder-lock 0.75s cubic-bezier(.2,.85,.2,1); }
 
-      #cylinder-status {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        width: min(72vw, 330px);
-        min-height: 31px;
-        padding: 7px 12px;
-        border-top: 1px solid var(--line);
-        border-bottom: 1px solid var(--line);
-        color: var(--muted);
-        font-size: 12px;
-        letter-spacing: 0.04em;
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
       }
-      #cylinder-count { color: var(--gold); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.12em; }
 
       .tip { min-height: 62px; margin-top: 24px; padding: 12px 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: #cdbfa8; font-size: 13px; line-height: 1.55; }
       .tip-label { display: block; margin-bottom: 3px; color: var(--red); font-size: 9px; font-weight: 800; letter-spacing: 0.24em; }
@@ -269,7 +265,6 @@
 
       <section id="unity-loading" aria-live="polite">
         <div class="loading-content">
-          <div class="eyebrow">TACTICAL CYLINDER</div>
           <div class="brand">LOADED</div>
           <div class="brand-rule"></div>
           <div class="cylinder" role="progressbar" aria-label="실린더 장전 진행" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0">
@@ -283,10 +278,7 @@
               <span class="chamber" style="--index:5"></span>
             </div>
           </div>
-          <div id="cylinder-status">
-            <span id="unity-progress-text">실린더 장전 준비 중</span>
-            <span id="cylinder-count">0 / 6</span>
-          </div>
+          <span id="unity-progress-text" class="sr-only">실린더 장전 준비 중</span>
           <div class="tip">
             <span class="tip-label">TACTICAL NOTE</span>
             <span id="unity-tip-text">탄환은 나중에 장전한 순서부터 발사됩니다.</span>
@@ -306,7 +298,6 @@
 
       <div id="unity-warning"></div>
       <div id="unity-controls">
-        <button id="unity-mute" class="web-button" type="button">음소거</button>
         <button id="unity-fullscreen" class="web-button" type="button">전체 화면</button>
       </div>
     </div>
@@ -320,12 +311,10 @@
       const progressText = document.querySelector("#unity-progress-text");
       const cylinder = document.querySelector(".cylinder");
       const cylinderRing = document.querySelector(".cylinder-ring");
-      const cylinderCount = document.querySelector("#cylinder-count");
       const tipText = document.querySelector("#unity-tip-text");
       const chambers = Array.from(document.querySelectorAll(".chamber"));
       const controls = document.querySelector("#unity-controls");
       const fullscreenButton = document.querySelector("#unity-fullscreen");
-      const muteButton = document.querySelector("#unity-mute");
       const tips = [
         "탄환은 나중에 장전한 순서부터 발사됩니다.",
         "행동을 시작하면 적도 바로 다음 행동을 수행합니다.",
@@ -335,7 +324,6 @@
       ];
       let unityInstance = null;
       let tipIndex = 0;
-      let muted = false;
       let requestedChambers = 0;
       let loadedChambers = 0;
       let isLoadingChamber = false;
@@ -399,7 +387,6 @@
             cylinder.classList.remove("is-loading");
             loadedChambers++;
             cylinder.setAttribute("aria-valuenow", String(loadedChambers));
-            cylinderCount.textContent = `${loadedChambers} / ${chambers.length}`;
             progressText.textContent = `탄환 ${loadedChambers}발 장전 완료`;
             isLoadingChamber = false;
             setTimeout(loadNextChamber, reduceMotion ? 0 : 70);
@@ -420,7 +407,6 @@
       function showLoadError(message) {
         loading.classList.add("is-error");
         progressText.textContent = "불러오기에 실패했습니다";
-        cylinderCount.textContent = "ERROR";
         clearInterval(tipTimer);
         tipText.textContent = "네트워크 연결을 확인한 뒤 다시 시도하세요.";
         unityShowBanner(String(message), "error");
@@ -430,16 +416,6 @@
         return window.WEBAudio && window.WEBAudio.audioContext
           ? window.WEBAudio.audioContext
           : null;
-      }
-
-      function setMuted(nextMuted) {
-        muted = nextMuted;
-        const context = getAudioContext();
-        if (context) {
-          const operation = muted ? context.suspend() : context.resume();
-          if (operation && operation.catch) operation.catch(() => {});
-        }
-        muteButton.textContent = muted ? "소리 켜기" : "음소거";
       }
 
       const buildUrl = "Build";
@@ -477,7 +453,6 @@
         document.body.classList.add("is-playing");
         canvas.focus();
       };
-      muteButton.onclick = () => setMuted(!muted);
       fullscreenButton.onclick = () => {
         if (unityInstance) unityInstance.SetFullscreen(1);
       };
