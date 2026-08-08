@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 9c14663f5b2d2d446beb4944b26d7d8c
+guid: 900694bd0fab354499d6a3fde660a346
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 484458694181738793
-    second: Medal_3_0
+      213: 8778475205168106421
+    second: Medal_3 1_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Medal_3_0
+      name: Medal_3 1_0
       rect:
         serializedVersion: 2
         x: 7
-        y: 0
+        y: 1
         width: 51
-        height: 64
+        height: 63
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 9295d079d9429b600800000000000000
-      internalID: 484458694181738793
+      spriteID: 5bb8e9150b863d970800000000000000
+      internalID: 8778475205168106421
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Medal_3_0: 484458694181738793
+      Medal_3 1_0: 8778475205168106421
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
