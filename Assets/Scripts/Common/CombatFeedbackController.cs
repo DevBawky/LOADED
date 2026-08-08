@@ -702,6 +702,14 @@ public sealed class CombatFeedbackController : MonoBehaviour
         }
 
         playerMove ??= GetComponent<PlayerMove>();
+
+        // Bullet-driven indirect defeats are finalized by PlayerShoot so
+        // they keep their firing-sequence count and exact effect damage.
+        if (playerMove != null && playerMove.IsShooting)
+        {
+            return;
+        }
+
         int horizontalDirection = playerMove == null
             ? 0
             : enemy.transform.position.x >= playerMove.transform.position.x
