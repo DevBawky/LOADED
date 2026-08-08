@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1b35703ddfa4487fb66ad5ef2734261e, type: 3}
+  m_Name: DefaultCustomCursorTheme
+  m_EditorClassIdentifier: 
+  standardCursor: {fileID: 2800000, guid: 086fc2e0404f7a4459d2cfe3fb8aed0c, type: 3}
+  pressedCursor: {fileID: 2800000, guid: 2b668af1b6914e5469e0383846c3c3c0, type: 3}
+  hotspot: {x: 9, y: 3}
+  cursorMode: 0
