@@ -20,7 +20,7 @@ public class TurnCountText : MonoBehaviour
     {
         if (playerMove != null)
         {
-            playerMove.TurnCompleted += Refresh;
+            playerMove.TurnCountChanged += HandleTurnCountChanged;
         }
 
         Refresh();
@@ -30,8 +30,13 @@ public class TurnCountText : MonoBehaviour
     {
         if (playerMove != null)
         {
-            playerMove.TurnCompleted -= Refresh;
+            playerMove.TurnCountChanged -= HandleTurnCountChanged;
         }
+    }
+
+    private void HandleTurnCountChanged(int turnCount)
+    {
+        Refresh();
     }
 
     private void Refresh()

@@ -2049,7 +2049,8 @@ public class PlayerShoot : MonoBehaviour
                 Vector3 poisonImpactPosition = enemy.transform.position;
                 int appliedPoisonDamage = enemy.ApplyStatusDamageAmount(
                     poisonDamage,
-                    true);
+                    true,
+                    false);
                 defeated = healthBeforePoison > 0
                     && enemy.CurrentHealth <= 0;
 

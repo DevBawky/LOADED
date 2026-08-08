@@ -17,8 +17,8 @@ MonoBehaviour:
   description: 
   avatar: {fileID: 1233976601806711513, guid: 6718b6967c22ff54490cf76113040c67, type: 3}
   maxHealth: 10
-  minimumGoldDrop: 20
-  maximumGoldDrop: 20
+  minimumGoldDrop: 3
+  maximumGoldDrop: 7
   dropChance: 10
   dropItems:
   - dropType: 1

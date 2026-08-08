@@ -232,7 +232,8 @@ public sealed class CombatCameraShake : MonoBehaviour
     {
         strength *= CombatAccessibilitySettings.CameraShakeMultiplier;
 
-        if (strength <= 0f
+        if (GamePauseController.IsPaused
+            || strength <= 0f
             || duration <= 0f
             || Camera.main == null)
         {
@@ -250,6 +251,11 @@ public sealed class CombatCameraShake : MonoBehaviour
         }
 
         instance.RequestShake(strength, duration);
+    }
+
+    public static void CancelForPause()
+    {
+        instance?.CancelActiveShake();
     }
 
     private void Awake()
@@ -407,14 +413,27 @@ public sealed class CombatCameraShake : MonoBehaviour
 
     private void OnDisable()
     {
-        RestoreCameraTransform();
-        shakeRoutine = null;
-        activeStrength = 0f;
+        CancelActiveShake();
 
         if (instance == this)
         {
             instance = null;
         }
+    }
+
+    private void CancelActiveShake()
+    {
+        if (shakeRoutine != null)
+        {
+            StopCoroutine(shakeRoutine);
+            shakeRoutine = null;
+        }
+
+        RestoreCameraTransform();
+        activeStrength = 0f;
+        activeDuration = 0f;
+        elapsed = 0f;
+        startingStrength = 0f;
     }
 
     private void RestoreCameraTransform()

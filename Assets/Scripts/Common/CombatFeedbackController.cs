@@ -337,6 +337,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private void OnEnable()
     {
         playerMove ??= GetComponent<PlayerMove>();
+        EnemyController.PlayerStatusDefeated -= HandlePlayerStatusDefeated;
+        EnemyController.PlayerStatusDefeated += HandlePlayerStatusDefeated;
 
         if (playerMove != null)
         {
@@ -366,6 +368,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void OnDisable()
     {
+        EnemyController.PlayerStatusDefeated -= HandlePlayerStatusDefeated;
+
         if (playerMove != null)
         {
             playerMove.TurnCompleted -= HandlePlayerTurnCompleted;
@@ -586,18 +590,28 @@ public sealed class CombatFeedbackController : MonoBehaviour
         bool wasCritical,
         bool wasFinalEnemy,
         float cylinderBuild,
-        int targetHealthBeforeDamage = -1)
+        int targetHealthBeforeDamage = -1,
+        bool countsForFiringSequence = true)
     {
         comboCount = comboCount >= int.MaxValue
             ? int.MaxValue
             : comboCount + 1;
         SoundManager.PlayComboDie(comboCount);
         GameStatistics.RecordComboKills(comboCount);
-        firingSequenceDefeatCount = firingSequenceDefeatCount >= int.MaxValue
-            ? int.MaxValue
-            : firingSequenceDefeatCount + 1;
-        firingSequenceFeedbackMultiplier =
-            GetFiringSequenceFeedbackMultiplier(firingSequenceDefeatCount);
+        if (countsForFiringSequence)
+        {
+            firingSequenceDefeatCount =
+                firingSequenceDefeatCount >= int.MaxValue
+                    ? int.MaxValue
+                    : firingSequenceDefeatCount + 1;
+            firingSequenceFeedbackMultiplier =
+                GetFiringSequenceFeedbackMultiplier(
+                    firingSequenceDefeatCount);
+        }
+
+        float defeatFeedbackMultiplier = countsForFiringSequence
+            ? firingSequenceFeedbackMultiplier
+            : 1f;
         float overkillPercent = targetMaxHealth <= 0
             || targetHealthBeforeDamage < 0
                 ? 0f
@@ -613,7 +627,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
         RefreshComboTurnValues();
         comboPunchRemaining = 0.3f;
         UpdateComboText();
-        SpawnKillComboText(worldPosition);
+
+        if (countsForFiringSequence)
+        {
+            SpawnKillComboText(worldPosition);
+        }
+
         CombatCameraShake.Play(
             cameraShakeStrength * GetKillShakeMultiplier(comboCount),
             cameraShakeDuration);
@@ -643,14 +662,16 @@ public sealed class CombatFeedbackController : MonoBehaviour
             0.95f,
             1.15f,
             Mathf.Clamp01(cylinderBuild));
-        if (firingSequenceDefeatCount == 1)
+        if (countsForFiringSequence && firingSequenceDefeatCount == 1)
         {
             firingSequenceBaseIntensity = calculatedBaseIntensity;
         }
 
-        float baseIntensity = firingSequenceBaseIntensity;
+        float baseIntensity = countsForFiringSequence
+            ? firingSequenceBaseIntensity
+            : calculatedBaseIntensity;
         float amplifiedIntensity = baseIntensity
-            * firingSequenceFeedbackMultiplier;
+            * defeatFeedbackMultiplier;
 
         StartVolumePulse(amplifiedIntensity);
         StartSlowMotion(
@@ -658,7 +679,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             killSlowMotionScale,
             killSlowMotionHold,
             killSlowMotionRecovery,
-            firingSequenceFeedbackMultiplier);
+            defeatFeedbackMultiplier);
         QueueFullscreenImpact(
             worldPosition,
             horizontalDirection,
@@ -666,8 +687,38 @@ public sealed class CombatFeedbackController : MonoBehaviour
             fullscreenImpactDuration * (wasFinalEnemy ? 1.3f : 1f),
             wasCritical,
             wasFinalEnemy,
-            firingSequenceFeedbackMultiplier,
+            defeatFeedbackMultiplier,
             true);
+    }
+
+    private void HandlePlayerStatusDefeated(
+        EnemyController enemy,
+        int damage,
+        int healthBeforeDamage)
+    {
+        if (enemy == null)
+        {
+            return;
+        }
+
+        playerMove ??= GetComponent<PlayerMove>();
+        int horizontalDirection = playerMove == null
+            ? 0
+            : enemy.transform.position.x >= playerMove.transform.position.x
+                ? 1
+                : -1;
+        WaveManager waveManager = FindFirstObjectByType<WaveManager>();
+
+        RecordDefeat(
+            enemy.transform.position,
+            horizontalDirection,
+            Mathf.Max(0, damage),
+            enemy.MaxHealth,
+            false,
+            waveManager != null && waveManager.ActiveEnemies.Count <= 1,
+            0f,
+            Mathf.Max(0, healthBeforeDamage),
+            false);
     }
 
     private float GetKillShakeMultiplier(int currentComboCount)
@@ -1368,6 +1419,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void StartVolumePulse(float intensity)
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         intensity *= CombatAccessibilitySettings.FlashMultiplier;
 
         if (cameraVolume == null)
@@ -1485,6 +1541,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float recoveryDuration,
         float strengthMultiplier = 1f)
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         float timeEffectMultiplier =
             CombatAccessibilitySettings.TimeEffectMultiplier;
         if (timeEffectMultiplier <= 0f)
@@ -1617,6 +1678,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float feedbackMultiplier = 1f,
         bool restartExisting = false)
     {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
         intensity *= CombatAccessibilitySettings.FlashMultiplier;
 
         if (!fullscreenImpactEnabled || duration <= 0f || intensity <= 0f)
@@ -1832,6 +1898,19 @@ public sealed class CombatFeedbackController : MonoBehaviour
             fullscreenDirections);
         Shader.SetGlobalVectorArray(FullscreenParamsId, fullscreenParams);
         Shader.SetGlobalFloat(FullscreenIntensityId, 0f);
+    }
+
+    public void CancelPresentationForPause()
+    {
+        if (volumePulseCoroutine != null)
+        {
+            StopCoroutine(volumePulseCoroutine);
+            volumePulseCoroutine = null;
+        }
+
+        CancelSlowMotionAndRestore();
+        RestoreVolume();
+        ResetFullscreenImpact();
     }
 
 }

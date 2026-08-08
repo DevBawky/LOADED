@@ -741,7 +741,7 @@ public sealed class GameStartUI : MonoBehaviour
             .AppendLine(Colorize(averageDamagePerTurn.ToString("N1"), damageValueColor));
         report.Append("평균 발 당 대미지: ")
             .AppendLine(Colorize(averageDamagePerShot.ToString("N1"), damageValueColor));
-        report.Append("이번 스테이지에서 획득한 골드: ")
+        report.Append("획득한 골드: ")
             .Append(Colorize($"$ {stageEarnedGold:N0}", goldValueColor));
         stageReportBodyText.text = report.ToString();
     }
@@ -838,7 +838,7 @@ public sealed class GameStartUI : MonoBehaviour
 
         target.text = threshold == int.MaxValue
             ? "-"
-            : $"{threshold:N0}콤보";
+            : $"{threshold:N0}";
     }
 
     private void PrepareStageResult()
