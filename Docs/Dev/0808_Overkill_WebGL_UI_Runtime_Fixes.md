@@ -113,6 +113,10 @@ FireStart anchoredPosition = (0, 150), size = (50, 25)
 
 프리팹의 `Image | FireStart`에도 `Preserve Aspect = true`를 직렬화했으며, 런타임 참조를 해석할 때도 같은 값을 보장한다.
 
+### 실린더 표시 상태 동기화
+
+`FireStart`가 실린더의 자식이 아니므로 잔탄이 0발일 때 자동으로 숨겨지지 않는 문제를 보완했다. `PlayerCylinderUI.SetCylinderVisible()`에서 실린더와 `FireStart`의 활성 상태를 함께 변경한다. 초기화, 재장전, 마지막 탄환 회전 연출 완료 경로가 모두 이 함수를 사용하므로 실린더가 비활성화되는 순간 `FireStart`도 함께 비활성화된다.
+
 ## WebGL 커스텀 커서 제거
 
 ### 로그 분석
