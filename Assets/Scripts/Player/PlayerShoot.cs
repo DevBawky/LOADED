@@ -27,6 +27,28 @@ public class PlayerShoot : MonoBehaviour
         public int Damage { get; }
     }
 
+    private readonly struct ManagedEffectDefeatResult
+    {
+        public ManagedEffectDefeatResult(
+            int damage,
+            int healthBeforeDamage,
+            int targetMaxHealth,
+            Vector3 worldPosition)
+        {
+            Damage = Mathf.Max(0, damage);
+            HealthBeforeDamage = Mathf.Max(0, healthBeforeDamage);
+            TargetMaxHealth = Mathf.Max(0, targetMaxHealth);
+            WorldPosition = worldPosition;
+            WasDefeated = true;
+        }
+
+        public bool WasDefeated { get; }
+        public int Damage { get; }
+        public int HealthBeforeDamage { get; }
+        public int TargetMaxHealth { get; }
+        public Vector3 WorldPosition { get; }
+    }
+
     private sealed class DamagePreviewEnemyState
     {
         public DamagePreviewEnemyState(EnemyController enemy)
@@ -126,6 +148,9 @@ public class PlayerShoot : MonoBehaviour
         new HashSet<BulletData>();
     private readonly Dictionary<EnemyController, int> reservedDamageByEnemy =
         new Dictionary<EnemyController, int>();
+    private readonly Dictionary<EnemyController, ManagedEffectDefeatResult>
+        pendingEffectDefeats =
+            new Dictionary<EnemyController, ManagedEffectDefeatResult>();
     private readonly int[] ownedGradeCountBuffer = new int[4];
     private readonly Dictionary<EnemyController, DamagePreviewEnemyState>
         damagePreviewStates =
@@ -194,6 +219,8 @@ public class PlayerShoot : MonoBehaviour
     {
         EnemyController.PlayerIndirectDamageDealt +=
             HandlePlayerIndirectDamageDealt;
+        EnemyController.PlayerStatusDefeated +=
+            HandlePlayerEffectDefeated;
 
         if (waveManager != null)
         {
@@ -213,6 +240,8 @@ public class PlayerShoot : MonoBehaviour
     {
         EnemyController.PlayerIndirectDamageDealt -=
             HandlePlayerIndirectDamageDealt;
+        EnemyController.PlayerStatusDefeated -=
+            HandlePlayerEffectDefeated;
 
         if (waveManager != null)
         {
@@ -234,6 +263,7 @@ public class PlayerShoot : MonoBehaviour
 
         ResetBulletFeedback();
         reservedDamageByEnemy.Clear();
+        pendingEffectDefeats.Clear();
     }
 
     private void HandlePlayerIndirectDamageDealt(int damage)
@@ -245,6 +275,38 @@ public class PlayerShoot : MonoBehaviour
 
         DamageDealt?.Invoke(damage);
         combatFeedback?.RecordDamage(damage);
+    }
+
+    private void HandlePlayerEffectDefeated(
+        EnemyController enemy,
+        int damage,
+        int healthBeforeDamage)
+    {
+        if (!isFiring || enemy == null)
+        {
+            return;
+        }
+
+        pendingEffectDefeats[enemy] = new ManagedEffectDefeatResult(
+            damage,
+            healthBeforeDamage,
+            enemy.MaxHealth,
+            enemy.transform.position);
+
+        int horizontalDirection = playerMove == null
+            ? 0
+            : enemy.transform.position.x >= playerMove.transform.position.x
+                ? 1
+                : -1;
+        combatFeedback?.RecordDefeat(
+            enemy.transform.position,
+            horizontalDirection,
+            damage,
+            enemy.MaxHealth,
+            false,
+            waveManager != null && waveManager.ActiveEnemies.Count <= 1,
+            GetCurrentCylinderBuild(),
+            healthBeforeDamage);
     }
 
     private void HandleBattleCompleted()
@@ -413,6 +475,7 @@ public class PlayerShoot : MonoBehaviour
     private IEnumerator ShootLoadedBullets(int horizontalDirection)
     {
         reservedDamageByEnemy.Clear();
+        pendingEffectDefeats.Clear();
         isFiring = true;
         playerMove.SetShooting(true);
         bool firedAnyBullet = false;
@@ -685,6 +748,7 @@ public class PlayerShoot : MonoBehaviour
         combatFeedback?.EndCylinder();
         currentConsumedBullet = null;
         reservedDamageByEnemy.Clear();
+        pendingEffectDefeats.Clear();
         waveManager?.NotifyFiringSequenceCompleted();
         deckManager.CompleteFiringSequence();
 
@@ -1666,6 +1730,8 @@ public class PlayerShoot : MonoBehaviour
 
             if (enemy == null || enemy.CurrentHealth <= 0)
             {
+                bool preAttackEffectDefeatAlreadyRecorded =
+                    pendingEffectDefeats.Remove(enemy);
                 combatPresentation?.PlayImpact(
                     enemySnapshot,
                     horizontalDirection,
@@ -1673,14 +1739,18 @@ public class PlayerShoot : MonoBehaviour
                     CombatImpactTier.Defeat,
                     combatFeedback?.NextFiringSequenceDefeatFeedbackMultiplier
                         ?? 1f);
-                combatFeedback?.RecordDefeat(
-                    enemySnapshot.Position,
-                    horizontalDirection,
-                    0,
-                    targetMaxHealth,
-                    isCritical,
-                    waveManager != null && waveManager.ActiveEnemies.Count <= 1,
-                    GetCurrentCylinderBuild());
+                if (!preAttackEffectDefeatAlreadyRecorded)
+                {
+                    combatFeedback?.RecordDefeat(
+                        enemySnapshot.Position,
+                        horizontalDirection,
+                        0,
+                        targetMaxHealth,
+                        isCritical,
+                        waveManager != null
+                            && waveManager.ActiveEnemies.Count <= 1,
+                        GetCurrentCylinderBuild());
+                }
                 yield return ApplyConditionalEvents(
                     bulletData,
                     BulletConditionalTrigger.EnemyDefeated,
@@ -1742,7 +1812,7 @@ public class PlayerShoot : MonoBehaviour
                     isCritical,
                     GetCurrentCylinderBuild());
             }
-            bool defeatedByManagedEffect = false;
+            ManagedEffectDefeatResult managedEffectDefeat = default;
 
             ApplyWallImpactDamageTransfer(
                 bulletData,
@@ -1798,7 +1868,13 @@ public class PlayerShoot : MonoBehaviour
                 bulletData,
                 enemy,
                 horizontalDirection,
-                result => defeatedByManagedEffect = result);
+                result => managedEffectDefeat = result);
+
+            bool effectDefeatAlreadyRecorded =
+                pendingEffectDefeats.Remove(enemy);
+
+            bool defeatedByManagedEffect =
+                managedEffectDefeat.WasDefeated;
 
             if (enemy == null || enemy.CurrentHealth <= 0)
             {
@@ -1811,15 +1887,27 @@ public class PlayerShoot : MonoBehaviour
                         CombatImpactTier.Defeat,
                         combatFeedback
                             ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f);
-                    combatFeedback?.RecordDefeat(
-                        enemySnapshot.Position,
-                        horizontalDirection,
-                        appliedDamage,
-                        targetMaxHealth,
-                        isCritical,
-                        waveManager != null
-                            && waveManager.ActiveEnemies.Count <= 1,
-                        GetCurrentCylinderBuild());
+                    if (!effectDefeatAlreadyRecorded)
+                    {
+                        combatFeedback?.RecordDefeat(
+                            defeatedByManagedEffect
+                                ? managedEffectDefeat.WorldPosition
+                                : enemySnapshot.Position,
+                            horizontalDirection,
+                            defeatedByManagedEffect
+                                ? managedEffectDefeat.Damage
+                                : appliedDamage,
+                            defeatedByManagedEffect
+                                ? managedEffectDefeat.TargetMaxHealth
+                                : targetMaxHealth,
+                            isCritical,
+                            waveManager != null
+                                && waveManager.ActiveEnemies.Count <= 1,
+                            GetCurrentCylinderBuild(),
+                            defeatedByManagedEffect
+                                ? managedEffectDefeat.HealthBeforeDamage
+                                : -1);
+                    }
                 }
 
                 yield return ApplyConditionalEvents(
@@ -2006,11 +2094,11 @@ public class PlayerShoot : MonoBehaviour
         BulletInstance bullet,
         EnemyController enemy,
         int horizontalDirection,
-        Action<bool> onCompleted)
+        Action<ManagedEffectDefeatResult> onCompleted)
     {
         if (bullet == null || enemy == null || enemy.CurrentHealth <= 0)
         {
-            onCompleted?.Invoke(false);
+            onCompleted?.Invoke(default);
             yield break;
         }
 
@@ -2024,7 +2112,7 @@ public class PlayerShoot : MonoBehaviour
                 Mathf.Max(2, Mathf.RoundToInt(amplifierEffect.Amount)));
         }
 
-        bool defeated = false;
+        ManagedEffectDefeatResult defeatResult = default;
         BulletEffectData venomBurstEffect = FindSpecialEffect(
             bullet,
             BulletEffectType.VenomBurst);
@@ -2051,8 +2139,17 @@ public class PlayerShoot : MonoBehaviour
                     poisonDamage,
                     true,
                     false);
-                defeated = healthBeforePoison > 0
+                bool defeated = healthBeforePoison > 0
                     && enemy.CurrentHealth <= 0;
+
+                if (defeated)
+                {
+                    defeatResult = new ManagedEffectDefeatResult(
+                        poisonDamage,
+                        healthBeforePoison,
+                        poisonTargetMaxHealth,
+                        poisonImpactPosition);
+                }
 
                 if (!defeated && appliedPoisonDamage > 0)
                 {
@@ -2067,7 +2164,8 @@ public class PlayerShoot : MonoBehaviour
                 }
             }
 
-            if (!defeated && enemy != null && enemy.CurrentHealth > 0
+            if (!defeatResult.WasDefeated
+                && enemy != null && enemy.CurrentHealth > 0
                 && venomBurstEffect.KnockbackDistance > 0)
             {
                 enemy.AddStatusEffect(
@@ -2077,7 +2175,7 @@ public class PlayerShoot : MonoBehaviour
             }
         }
 
-        onCompleted?.Invoke(defeated);
+        onCompleted?.Invoke(defeatResult);
         yield break;
     }
 

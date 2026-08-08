@@ -751,7 +751,11 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             PlayerIndirectDamageDealt?.Invoke(damage);
         }
 
-        int appliedDamage = ApplyDamageInternal(damage, false, 1.2f);
+        int appliedDamage = ApplyDamageInternal(
+            damage,
+            false,
+            1.2f,
+            true);
 
         if (appliedDamage > 0)
         {
