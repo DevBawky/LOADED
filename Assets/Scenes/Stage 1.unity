@@ -2662,7 +2662,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 524305748251875578, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1130906909518864278, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_Sprite
@@ -2818,7 +2818,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5444055579294853986, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5588787102941100255, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_fontColor.b
@@ -2891,7 +2891,7 @@ PrefabInstance:
     - target: {fileID: 7533821384826531738, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: bronzeMedalSprite
       value: 
-      objectReference: {fileID: 484458694181738793, guid: 9c14663f5b2d2d446beb4944b26d7d8c, type: 3}
+      objectReference: {fileID: 8778475205168106421, guid: 900694bd0fab354499d6a3fde660a346, type: 3}
     - target: {fileID: 7533821384826531738, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: cinemachineCamera
       value: 
@@ -2911,7 +2911,7 @@ PrefabInstance:
     - target: {fileID: 7801112736669673574, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_Sprite
       value: 
-      objectReference: {fileID: 484458694181738793, guid: 9c14663f5b2d2d446beb4944b26d7d8c, type: 3}
+      objectReference: {fileID: 8778475205168106421, guid: 900694bd0fab354499d6a3fde660a346, type: 3}
     - target: {fileID: 8035159972489461609, guid: 1c6eb6d96ae70bf4181206020e530db4, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.9
