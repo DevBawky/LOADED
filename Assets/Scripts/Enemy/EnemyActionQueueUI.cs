@@ -118,7 +118,10 @@ public class EnemyActionQueueUI : MonoBehaviour
     {
         if (icon != null)
         {
-            yield return RevealGraphic(icon.gameObject, duration);
+            yield return RevealGraphic(
+                icon.gameObject,
+                duration,
+                true);
         }
     }
 
@@ -135,6 +138,15 @@ public class EnemyActionQueueUI : MonoBehaviour
     public void SetStunned(bool stunned)
     {
         isStunned = stunned;
+
+        // Stun can be applied while an action icon is still fading in.
+        // Complete that reveal immediately so a stopped/interrupted reveal
+        // can never leave only the blue queue frame visible.
+        if (isStunned)
+        {
+            EnsureSpawnedIconsVisible();
+        }
+
         RefreshEmphasis();
     }
 
@@ -256,7 +268,35 @@ public class EnemyActionQueueUI : MonoBehaviour
         queueReadyImage.color = Color.white;
         queueReadyImage.raycastTarget = false;
         queueReadyImage.material = queueReadyMaterial;
+        PlaceReadyImageBehindIcons();
         SyncReadyImageRect();
+    }
+
+    private void PlaceReadyImageBehindIcons()
+    {
+        if (queueImage == null || queueReadyImage == null)
+        {
+            return;
+        }
+
+        RectTransform readyRect = queueReadyImage.rectTransform;
+        RectTransform queueRect = queueImage.rectTransform;
+
+        if (readyRect.parent != queueRect)
+        {
+            readyRect.SetParent(queueRect, false);
+        }
+
+        LayoutElement layoutElement =
+            queueReadyImage.GetComponent<LayoutElement>();
+        if (layoutElement == null)
+        {
+            layoutElement = queueReadyImage.gameObject.AddComponent<
+                LayoutElement>();
+        }
+
+        layoutElement.ignoreLayout = true;
+        readyRect.SetAsFirstSibling();
     }
 
     private void RefreshEmphasis()
@@ -323,6 +363,12 @@ public class EnemyActionQueueUI : MonoBehaviour
                 continue;
             }
 
+            if (queueReadyImage != null
+                && child == queueReadyImage.rectTransform)
+            {
+                continue;
+            }
+
             if (activeChildCount > 0)
             {
                 width += spacing;
@@ -365,6 +411,17 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         RectTransform queueRect = queueImage.rectTransform;
         RectTransform readyRect = queueReadyImage.rectTransform;
+
+        if (readyRect.parent == queueRect)
+        {
+            readyRect.anchorMin = Vector2.zero;
+            readyRect.anchorMax = Vector2.one;
+            readyRect.anchoredPosition = Vector2.zero;
+            readyRect.sizeDelta = Vector2.zero;
+            readyRect.pivot = queueRect.pivot;
+            return;
+        }
+
         readyRect.anchorMin = queueRect.anchorMin;
         readyRect.anchorMax = queueRect.anchorMax;
         readyRect.anchoredPosition = queueRect.anchoredPosition;
@@ -372,9 +429,10 @@ public class EnemyActionQueueUI : MonoBehaviour
         readyRect.pivot = queueRect.pivot;
     }
 
-    private static IEnumerator RevealGraphic(
+    private IEnumerator RevealGraphic(
         GameObject target,
-        float duration)
+        float duration,
+        bool finishWhenStunned = false)
     {
         if (target == null)
         {
@@ -390,7 +448,7 @@ public class EnemyActionQueueUI : MonoBehaviour
         Transform targetTransform = target.transform;
         Vector3 finalScale = targetTransform.localScale;
 
-        if (duration <= 0f)
+        if (duration <= 0f || finishWhenStunned && isStunned)
         {
             canvasGroup.alpha = 1f;
             targetTransform.localScale = finalScale;
@@ -404,6 +462,11 @@ public class EnemyActionQueueUI : MonoBehaviour
         while (elapsedTime < duration && target != null)
         {
             yield return null;
+
+            if (finishWhenStunned && isStunned)
+            {
+                break;
+            }
 
             if (GamePauseController.IsPaused)
             {
@@ -424,6 +487,28 @@ public class EnemyActionQueueUI : MonoBehaviour
         {
             canvasGroup.alpha = 1f;
             targetTransform.localScale = finalScale;
+        }
+    }
+
+    private void EnsureSpawnedIconsVisible()
+    {
+        foreach (Image icon in spawnedIcons)
+        {
+            if (icon == null)
+            {
+                continue;
+            }
+
+            icon.enabled = true;
+            CanvasGroup canvasGroup = icon.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 1f;
+            }
+
+            Color iconColor = icon.color;
+            iconColor.a = 1f;
+            icon.color = iconColor;
         }
     }
 }
