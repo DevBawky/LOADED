@@ -60,12 +60,15 @@ public class StateManager : MonoBehaviour
     private Coroutine battleStartCoroutine;
     private RunSaveData pendingRestoredRun;
     private bool suppressExitSave;
+    private RunStartMode currentRunStartMode = RunStartMode.None;
 
     public event Action StateChanged;
 
     public int CurrentStageIndex => currentStageIndex;
     public int CurrentBattleIndex => currentBattleIndex;
     public GameFlowState CurrentState => currentState;
+    public RunStartMode CurrentRunStartMode => currentRunStartMode;
+    public bool IsFreshRun => currentRunStartMode != RunStartMode.Continue;
     public StageData CurrentStage =>
         stages != null
         && currentStageIndex >= 0
@@ -154,6 +157,7 @@ public class StateManager : MonoBehaviour
     private void Start()
     {
         RunStartMode startMode = RunSaveSystem.ConsumeRequestedStartMode();
+        currentRunStartMode = startMode;
 
         if (!ValidateReferences())
         {
@@ -174,6 +178,7 @@ public class StateManager : MonoBehaviour
             if (startMode == RunStartMode.Continue)
             {
                 RunSaveSystem.DeleteSave();
+                currentRunStartMode = RunStartMode.New;
             }
 
             if (!TryFindNextStageIndex(

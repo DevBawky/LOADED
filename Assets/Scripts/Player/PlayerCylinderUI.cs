@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -67,6 +68,8 @@ public class PlayerCylinderUI : MonoBehaviour
 
     public int DisplayedBulletCount => displayedBulletCount;
     public bool IsDragging => isDraggingBullet;
+    public RectTransform CylinderTransform => cylinderTransform;
+    public event Action BulletOrderChanged;
 
     private void Awake()
     {
@@ -478,6 +481,7 @@ public class PlayerCylinderUI : MonoBehaviour
         if (committed)
         {
             RefreshDisplay(false);
+            BulletOrderChanged?.Invoke();
         }
     }
 

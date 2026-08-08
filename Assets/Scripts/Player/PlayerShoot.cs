@@ -12,6 +12,7 @@ public class PlayerShoot : MonoBehaviour
     public event Action<BulletInstance> BulletFired;
     public event Action<int> DamageDealt;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
+    public event Action LoadedBulletDamagePreviewShown;
 
     private const float BulletFeedbackStartAlpha = 0.2f;
 
@@ -454,6 +455,11 @@ public class PlayerShoot : MonoBehaviour
             state.Enemy.ShowDamagePreview(state.Segments);
             previewedEnemies.Add(state.Enemy);
             displayedAnyDamage = true;
+        }
+
+        if (displayedAnyDamage)
+        {
+            LoadedBulletDamagePreviewShown?.Invoke();
         }
 
         return displayedAnyDamage;
