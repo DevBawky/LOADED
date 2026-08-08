@@ -467,6 +467,11 @@ internal static class EscapePanelInput
             return;
         }
 
+        if (FirstRunGuideController.TrySkipActiveGuide())
+        {
+            return;
+        }
+
         GamePauseController pauseController =
             Object.FindFirstObjectByType<GamePauseController>();
         if (pauseController != null && GamePauseController.IsPaused)
