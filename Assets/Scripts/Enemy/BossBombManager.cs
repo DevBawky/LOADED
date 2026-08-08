@@ -1,8 +1,11 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class BossBombManager : MonoBehaviour
 {
+    private const float BombSpawnOffsetY = -0.3f;
+
     private readonly List<BossBomb> activeBombs = new List<BossBomb>();
     private readonly Dictionary<int, BossBomb> bombsByTile =
         new Dictionary<int, BossBomb>();
@@ -69,7 +72,7 @@ public class BossBombManager : MonoBehaviour
             return false;
         }
 
-        spawnPosition.y += 0.3f;
+        spawnPosition.y = BombSpawnOffsetY;
 
         GameObject bombObject = Instantiate(
             sourceData.BigBarrel.BossBombPrefab,
@@ -104,6 +107,70 @@ public class BossBombManager : MonoBehaviour
         activeBombs.Add(bomb);
         bombsByTile.Add(tileIndex, bomb);
         spawnedBomb = bomb;
+        return true;
+    }
+
+    public void CaptureRunState(List<RunBombSaveData> results)
+    {
+        if (results == null)
+        {
+            return;
+        }
+
+        results.Clear();
+
+        foreach (BossBomb bomb in activeBombs)
+        {
+            if (bomb == null || bomb.IsExploding || bomb.SourceData == null)
+            {
+                continue;
+            }
+
+            results.Add(new RunBombSaveData
+            {
+                sourceEnemyAssetName = bomb.SourceData.name,
+                tileIndex = bomb.TileIndex,
+                remainingFuse = bomb.RemainingFuse,
+                createdTurnCycle = bomb.CreatedTurnCycle
+            });
+        }
+    }
+
+    public bool RestoreRunState(
+        IReadOnlyList<RunBombSaveData> savedBombs,
+        Func<string, EnemyData> resolveEnemyData)
+    {
+        ClearAll();
+        ResumeForBattle();
+
+        if (savedBombs == null)
+        {
+            return true;
+        }
+
+        foreach (RunBombSaveData savedBomb in savedBombs)
+        {
+            EnemyData sourceData = savedBomb == null
+                ? null
+                : resolveEnemyData?.Invoke(
+                    savedBomb.sourceEnemyAssetName);
+
+            if (savedBomb == null || sourceData == null
+                || !TrySpawnBomb(
+                    sourceData,
+                    savedBomb.tileIndex,
+                    savedBomb.remainingFuse,
+                    out BossBomb bomb))
+            {
+                ClearAll();
+                return false;
+            }
+
+            bomb.RestoreRunTiming(
+                savedBomb.remainingFuse,
+                savedBomb.createdTurnCycle);
+        }
+
         return true;
     }
 

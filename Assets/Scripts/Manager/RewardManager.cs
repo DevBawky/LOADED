@@ -1,4 +1,6 @@
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class RewardManager : MonoBehaviour
@@ -25,6 +27,95 @@ public class RewardManager : MonoBehaviour
         playerInventory ??= FindFirstObjectByType<PlayerInventory>();
         playerMove ??= FindFirstObjectByType<PlayerMove>();
         boardManager ??= FindFirstObjectByType<BoardManager>();
+    }
+
+    public void CaptureRunState(List<RunDroppedItemSaveData> results)
+    {
+        if (results == null)
+        {
+            return;
+        }
+
+        results.Clear();
+
+        foreach (DroppedItemPickup pickup in FindObjectsByType<
+                     DroppedItemPickup>(FindObjectsSortMode.None))
+        {
+            if (pickup != null && pickup.ItemData != null
+                && pickup.TileIndex >= 0)
+            {
+                results.Add(new RunDroppedItemSaveData
+                {
+                    itemAssetName = pickup.ItemData.name,
+                    tileIndex = pickup.TileIndex
+                });
+            }
+        }
+    }
+
+    public bool RestoreRunState(
+        IReadOnlyList<RunDroppedItemSaveData> savedItems,
+        Func<string, ItemData> resolveItemData)
+    {
+        foreach (DroppedItemPickup pickup in FindObjectsByType<
+                     DroppedItemPickup>(FindObjectsSortMode.None))
+        {
+            if (pickup != null)
+            {
+                Destroy(pickup.gameObject);
+            }
+        }
+
+        if (savedItems == null)
+        {
+            return true;
+        }
+
+        foreach (RunDroppedItemSaveData savedItem in savedItems)
+        {
+            ItemData itemData = savedItem == null
+                ? null
+                : resolveItemData?.Invoke(savedItem.itemAssetName);
+
+            if (savedItem == null || itemData == null
+                || !SpawnRestoredItem(itemData, savedItem.tileIndex))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private bool SpawnRestoredItem(ItemData itemData, int tileIndex)
+    {
+        if (itemData == null || boardManager == null
+            || playerInventory == null || playerMove == null
+            || !boardManager.TryGetTilePosition(
+                tileIndex,
+                out Vector3 tilePosition))
+        {
+            return false;
+        }
+
+        GameObject dropObject = new GameObject(
+            $"Dropped Item | {itemData.DisplayName}");
+        DroppedItemPickup pickup =
+            dropObject.AddComponent<DroppedItemPickup>();
+        Vector3 landingPosition = tilePosition + itemLandingOffset;
+        pickup.Initialize(
+            itemData,
+            playerInventory,
+            playerMove,
+            boardManager,
+            tileIndex,
+            landingPosition,
+            landingPosition,
+            0f,
+            0f,
+            itemDropSpriteSize,
+            itemSortingOrder);
+        return true;
     }
 
     public bool GrantEnemyDrop(EnemyData enemyData)
@@ -203,6 +294,9 @@ public class DroppedItemPickup : MonoBehaviour
     private int tileIndex = -1;
     private bool isLanded;
     private bool isCollecting;
+
+    public ItemData ItemData => itemData;
+    public int TileIndex => tileIndex;
 
     public void Initialize(
         ItemData assignedItemData,

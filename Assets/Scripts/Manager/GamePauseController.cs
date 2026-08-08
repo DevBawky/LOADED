@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -16,6 +17,7 @@ public class GamePauseController : MonoBehaviour
 
     private readonly List<Button> pauseButtons = new List<Button>();
     private StateManager stateManager;
+    private bool exitRequested;
 
     public static bool IsPaused { get; private set; }
 
@@ -47,7 +49,7 @@ public class GamePauseController : MonoBehaviour
 
     public void TogglePause()
     {
-        if (LoadingTransitionController.IsTransitioning
+        if (exitRequested || LoadingTransitionController.IsTransitioning
             || GameOverController.IsGameOver)
         {
             return;
@@ -74,6 +76,26 @@ public class GamePauseController : MonoBehaviour
 
     public void ExitToMainMenu()
     {
+        if (!exitRequested)
+        {
+            StartCoroutine(ExitToMainMenuRoutine());
+        }
+    }
+
+    private IEnumerator ExitToMainMenuRoutine()
+    {
+        exitRequested = true;
+        stateManager?.LockInputForExitSave();
+        SetPaused(false);
+
+        while (stateManager != null
+            && !stateManager.IsCombatSettledForExit)
+        {
+            yield return null;
+        }
+
+        stateManager?.SaveCurrentRun();
+
         IsPaused = false;
 
         if (pausedPanel != null)
@@ -320,7 +342,8 @@ internal static class EscapePanelInput
     {
         "Panel | Credits",
         "Panel | Statistics",
-        "Panel | Dict & Info"
+        "Panel | Dict & Info",
+        "Panel | Load Game"
     };
 
     private static InputAction escapeAction;
@@ -355,6 +378,13 @@ internal static class EscapePanelInput
             Object.FindFirstObjectByType<GamePauseController>();
         if (pauseController != null && GamePauseController.IsPaused)
         {
+            CombatControlPanelController controlPanel =
+                Object.FindFirstObjectByType<CombatControlPanelController>();
+            if (controlPanel != null && controlPanel.TryClose())
+            {
+                return;
+            }
+
             pauseController.Resume();
             return;
         }

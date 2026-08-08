@@ -553,9 +553,12 @@ public class PlayerShoot : MonoBehaviour
                 BulletEffectData shellEffect = FindSpecialEffect(
                     resolvedBullet,
                     BulletEffectType.ShellCollector);
-                int shellExtraShots = GetAndConsumeShellExtraShots(
+                int shellExtraShots = GetAvailableShellExtraShots(
                     firedBullet,
                     shellEffect);
+                int shellCost = shellEffect == null
+                    ? 0
+                    : Mathf.Max(1, shellEffect.StackCount);
                 int additionalShotCount = 0;
                 bool keepFiring;
 
@@ -609,6 +612,8 @@ public class PlayerShoot : MonoBehaviour
                     {
                         break;
                     }
+
+                    firedBullet.ConsumeAbilityStacks(shellCost);
 
                     if (shotInterval > 0f)
                     {
@@ -1394,7 +1399,7 @@ public class PlayerShoot : MonoBehaviour
         return bonus;
     }
 
-    private int GetAndConsumeShellExtraShots(
+    private static int GetAvailableShellExtraShots(
         BulletInstance firedBullet,
         BulletEffectData shellEffect)
     {
@@ -1408,7 +1413,6 @@ public class PlayerShoot : MonoBehaviour
         int extraShots = Mathf.Min(
             firedBullet.AbilityStacks / shellCost,
             maxExtraShots);
-        firedBullet.ConsumeAbilityStacks(extraShots * shellCost);
         return extraShots;
     }
 
@@ -1725,7 +1729,8 @@ public class PlayerShoot : MonoBehaviour
                     targetMaxHealth,
                     isCritical,
                     waveManager != null && waveManager.ActiveEnemies.Count <= 1,
-                    GetCurrentCylinderBuild());
+                    GetCurrentCylinderBuild(),
+                    healthBeforeHit);
             }
             else if (appliedDamage > 0)
             {
@@ -1963,7 +1968,8 @@ public class PlayerShoot : MonoBehaviour
                     targetMaxHealth,
                     false,
                     waveManager.ActiveEnemies.Count <= 1,
-                    GetCurrentCylinderBuild());
+                    GetCurrentCylinderBuild(),
+                    healthBeforeTransfer);
             }
             else if (appliedDamage > 0)
             {
@@ -2395,6 +2401,7 @@ public class PlayerShoot : MonoBehaviour
     {
         bulletDestroyedThisCylinder = true;
         SoundManager.PlaySfx("SFX_Bullet_Destroy");
+        combatFeedback?.RecordBulletDestroyed(transform.position);
 
         if (deckManager == null)
         {
@@ -2621,6 +2628,9 @@ public class PlayerShoot : MonoBehaviour
             int shellExtraShots = GetPreviewShellExtraShots(
                 firedBullet,
                 shellEffect);
+            int shellCost = shellEffect == null
+                ? 0
+                : Mathf.Max(1, shellEffect.StackCount);
             bool emphasized = bulletIndex == hoveredBulletIndex;
 
             SimulatePreviewShot(
@@ -2680,6 +2690,8 @@ public class PlayerShoot : MonoBehaviour
                 {
                     break;
                 }
+                previewAbilityStacks[firedBullet] =
+                    GetPreviewAbilityStacks(firedBullet) - shellCost;
             }
 
             BulletEffectData stackEffect = FindSpecialEffect(
@@ -3773,8 +3785,6 @@ public class PlayerShoot : MonoBehaviour
         int extraShots = Mathf.Min(
             GetPreviewAbilityStacks(firedBullet) / shellCost,
             Mathf.Max(1, shellEffect.KnockbackDistance));
-        previewAbilityStacks[firedBullet] =
-            GetPreviewAbilityStacks(firedBullet) - extraShots * shellCost;
         return extraShots;
     }
 

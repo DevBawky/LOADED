@@ -63,6 +63,36 @@ public class StatusEffectController : MonoBehaviour
     public bool IsStunned => stunStacks > 0;
     public bool IsWeakened => weaknessStacks > 0;
 
+    public RunStatusEffectSaveData CaptureRunState()
+    {
+        return new RunStatusEffectSaveData
+        {
+            markStacks = markStacks,
+            poisonStacks = poisonStacks,
+            stunStacks = stunStacks,
+            weaknessStacks = weaknessStacks,
+            poisonCreditedToPlayer = poisonCreditedToPlayer
+        };
+    }
+
+    public void RestoreRunState(RunStatusEffectSaveData state)
+    {
+        state ??= new RunStatusEffectSaveData();
+        markStacks = Mathf.Max(0, state.markStacks);
+        poisonStacks = Mathf.Max(0, state.poisonStacks);
+        stunStacks = Mathf.Max(0, state.stunStacks);
+        weaknessStacks = Mathf.Max(0, state.weaknessStacks);
+        poisonCreditedToPlayer = poisonStacks > 0
+            && state.poisonCreditedToPlayer;
+        RefreshAllIcons();
+
+        foreach (StatusEffectType type in Enum.GetValues(
+                     typeof(StatusEffectType)))
+        {
+            StacksChanged?.Invoke(type, GetStacks(type));
+        }
+    }
+
     private void Awake()
     {
         target = GetComponent<IStatusEffectTarget>();
@@ -390,7 +420,11 @@ public class StatusEffectController : MonoBehaviour
             return null;
         }
 
-        icon.Initialize(GetSprite(type), GetStacks(type));
+        icon.Initialize(
+            GetSprite(type),
+            GetStacks(type),
+            type,
+            GetComponent<EnemyController>());
         return icon;
     }
 

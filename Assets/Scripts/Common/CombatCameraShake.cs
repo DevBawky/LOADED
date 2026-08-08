@@ -98,10 +98,11 @@ public sealed class CombatAccessibilitySettings : MonoBehaviour
 {
     private const string PresentationIntensityPreferenceKey =
         "Combat.Presentation.Intensity";
+    private const float DefaultPresentationIntensity = 0.5f;
 
     private static CombatAccessibilitySettings instance;
     private static bool hasLoadedPresentationIntensity;
-    private static float presentationIntensity = 0.7f;
+    private static float presentationIntensity = DefaultPresentationIntensity;
 
     [Header("Combat Presentation Accessibility")]
     [SerializeField] private bool reduceScreenFlashes;
@@ -189,7 +190,7 @@ public sealed class CombatAccessibilitySettings : MonoBehaviour
 
         presentationIntensity = Mathf.Clamp01(PlayerPrefs.GetFloat(
             PresentationIntensityPreferenceKey,
-            0.7f));
+            DefaultPresentationIntensity));
         hasLoadedPresentationIntensity = true;
     }
 }

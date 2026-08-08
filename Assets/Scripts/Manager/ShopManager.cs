@@ -142,6 +142,192 @@ public class ShopManager : MonoBehaviour
     public bool CanSellInventoryItems => stateManager != null
         && stateManager.CurrentState == GameFlowState.Shop;
 
+    public BulletData ResolveSavedBullet(RunBulletSaveData savedBullet)
+    {
+        if (savedBullet == null)
+        {
+            return null;
+        }
+
+        foreach (BulletData bulletData in bulletPool)
+        {
+            if (bulletData != null && string.Equals(
+                    bulletData.name,
+                    savedBullet.assetName,
+                    StringComparison.Ordinal))
+            {
+                return bulletData;
+            }
+        }
+
+        foreach (BulletData bulletData in bulletPool)
+        {
+            if (bulletData != null && !string.IsNullOrWhiteSpace(
+                    savedBullet.bulletId)
+                && string.Equals(
+                    bulletData.BulletId,
+                    savedBullet.bulletId,
+                    StringComparison.Ordinal))
+            {
+                return bulletData;
+            }
+        }
+
+        return null;
+    }
+
+    public ItemData ResolveSavedItem(string assetName)
+    {
+        if (string.IsNullOrWhiteSpace(assetName))
+        {
+            return null;
+        }
+
+        foreach (ItemData itemData in itemPool)
+        {
+            if (itemData != null && string.Equals(
+                    itemData.name,
+                    assetName,
+                    StringComparison.Ordinal))
+            {
+                return itemData;
+            }
+        }
+
+        return null;
+    }
+
+    public void RestoreRunState(int savedRefreshCost)
+    {
+        currentRefreshCost = Mathf.Max(0, savedRefreshCost);
+        ClearOffers();
+        RefreshRefreshButton();
+    }
+
+    public void CaptureRunState(RunSaveData saveData)
+    {
+        if (saveData == null)
+        {
+            return;
+        }
+
+        saveData.shop ??= new RunShopSaveData();
+        saveData.shop.bulletOfferAssetNames.Clear();
+        saveData.shop.purchasedBulletOffers.Clear();
+        saveData.shop.itemOfferAssetNames.Clear();
+        saveData.shop.purchasedItemOffers.Clear();
+
+        for (int index = 0; index < currentOffers.Count; index++)
+        {
+            BulletData offer = currentOffers[index];
+            saveData.shop.bulletOfferAssetNames.Add(
+                offer == null ? string.Empty : offer.name);
+            saveData.shop.purchasedBulletOffers.Add(
+                index < purchasedBulletOffers.Count
+                && purchasedBulletOffers[index]);
+        }
+
+        for (int index = 0; index < currentItemOffers.Count; index++)
+        {
+            ItemData offer = currentItemOffers[index];
+            saveData.shop.itemOfferAssetNames.Add(
+                offer == null ? string.Empty : offer.name);
+            saveData.shop.purchasedItemOffers.Add(
+                index < purchasedItemOffers.Count
+                && purchasedItemOffers[index]);
+        }
+    }
+
+    public bool RestoreShopRunState(
+        RunShopSaveData savedShop,
+        int savedRefreshCost)
+    {
+        if (savedShop == null)
+        {
+            return false;
+        }
+
+        StopAllCoroutines();
+        isRefreshing = false;
+        currentRefreshCost = Mathf.Max(0, savedRefreshCost);
+        currentOffers.Clear();
+        purchasedBulletOffers.Clear();
+        currentItemOffers.Clear();
+        purchasedItemOffers.Clear();
+
+        if (savedShop.bulletOfferAssetNames != null)
+        {
+            for (int index = 0;
+                 index < savedShop.bulletOfferAssetNames.Count;
+                 index++)
+            {
+                BulletData offer = ResolveBulletByAssetName(
+                    savedShop.bulletOfferAssetNames[index]);
+
+                if (offer == null)
+                {
+                    return false;
+                }
+
+                currentOffers.Add(offer);
+                purchasedBulletOffers.Add(
+                    savedShop.purchasedBulletOffers != null
+                    && index < savedShop.purchasedBulletOffers.Count
+                    && savedShop.purchasedBulletOffers[index]);
+            }
+        }
+
+        if (savedShop.itemOfferAssetNames != null)
+        {
+            for (int index = 0;
+                 index < savedShop.itemOfferAssetNames.Count;
+                 index++)
+            {
+                ItemData offer = ResolveSavedItem(
+                    savedShop.itemOfferAssetNames[index]);
+
+                if (offer == null)
+                {
+                    return false;
+                }
+
+                currentItemOffers.Add(offer);
+                purchasedItemOffers.Add(
+                    savedShop.purchasedItemOffers != null
+                    && index < savedShop.purchasedItemOffers.Count
+                    && savedShop.purchasedItemOffers[index]);
+            }
+        }
+
+        RefreshSlots();
+        RefreshItemSlots();
+        RefreshRefreshButton();
+        RefreshOwnedBulletCount();
+        OffersChanged?.Invoke();
+        return true;
+    }
+
+    private BulletData ResolveBulletByAssetName(string assetName)
+    {
+        if (string.IsNullOrWhiteSpace(assetName))
+        {
+            return null;
+        }
+
+        foreach (BulletData bulletData in bulletPool)
+        {
+            if (bulletData != null && string.Equals(
+                    bulletData.name,
+                    assetName,
+                    StringComparison.Ordinal))
+            {
+                return bulletData;
+            }
+        }
+
+        return null;
+    }
+
     private void Awake()
     {
         ResolveReferences();

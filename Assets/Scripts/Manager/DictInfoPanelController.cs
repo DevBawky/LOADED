@@ -83,15 +83,24 @@ public sealed class DictInfoPanelController : MonoBehaviour
     private readonly List<ButtonStyle> originalButtonStyles = new();
     private readonly List<VideoRuntime> videoRuntimes = new();
     private bool initialized;
+    private bool isControlOnlyPanel;
 
     private void Awake()
     {
         ResolveReferences();
+        isControlOnlyPanel = infoPanel == null && dictionaryPanel == null;
         BindButtons();
         SetupVideos();
         initialized = true;
 
-        ShowInfo();
+        if (isControlOnlyPanel)
+        {
+            ShowControl();
+        }
+        else
+        {
+            ShowInfo();
+        }
         ShowBasicControls();
     }
 
@@ -110,6 +119,11 @@ public sealed class DictInfoPanelController : MonoBehaviour
         if (!initialized)
         {
             return;
+        }
+
+        if (isControlOnlyPanel)
+        {
+            ShowControl();
         }
 
         foreach (VideoRuntime runtime in videoRuntimes)
@@ -239,6 +253,11 @@ public sealed class DictInfoPanelController : MonoBehaviour
 
     private void SetMainTab(MainTab tab)
     {
+        if (isControlOnlyPanel)
+        {
+            tab = MainTab.Control;
+        }
+
         SetActive(infoPanel, tab == MainTab.Info);
         SetActive(controlPanel, tab == MainTab.Control);
         SetActive(dictionaryPanel, tab == MainTab.Dictionary);

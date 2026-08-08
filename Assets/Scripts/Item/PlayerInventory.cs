@@ -168,6 +168,46 @@ public class PlayerInventory : MonoBehaviour
         return true;
     }
 
+    public void CaptureRunState(System.Collections.Generic.List<string> results)
+    {
+        if (results == null)
+        {
+            return;
+        }
+
+        results.Clear();
+
+        for (int index = 0; index < slotCount; index++)
+        {
+            ItemData item = GetItem(index);
+            results.Add(item == null ? string.Empty : item.name);
+        }
+    }
+
+    public void RestoreRunState(
+        System.Collections.Generic.IReadOnlyList<string> savedItemNames,
+        Func<string, ItemData> resolveItemData)
+    {
+        items = new ItemData[slotCount];
+
+        if (savedItemNames != null && resolveItemData != null)
+        {
+            int count = Mathf.Min(slotCount, savedItemNames.Count);
+
+            for (int index = 0; index < count; index++)
+            {
+                string assetName = savedItemNames[index];
+
+                if (!string.IsNullOrWhiteSpace(assetName))
+                {
+                    items[index] = resolveItemData(assetName);
+                }
+            }
+        }
+
+        Changed?.Invoke();
+    }
+
     private int FindEmptySlotIndex()
     {
         if (items == null)

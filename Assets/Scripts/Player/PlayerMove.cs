@@ -78,6 +78,9 @@ public class PlayerMove : MonoBehaviour
     public int RemainingPushCooldownTurns => Mathf.Max(
         0,
         nextPushAvailableTurn - TurnCount);
+    public int NextPushAvailableTurn => Mathf.Max(
+        0,
+        nextPushAvailableTurn);
     public bool CanPush => RemainingPushCooldownTurns == 0;
     public float PushCollisionDamageRatio =>
         Mathf.Clamp01(pushCollisionDamageRatio);
@@ -92,6 +95,36 @@ public class PlayerMove : MonoBehaviour
     public void SetWaveManager(WaveManager assignedWaveManager)
     {
         waveManager = assignedWaveManager;
+    }
+
+    public void ResetKickCooldownForBattle()
+    {
+        nextPushAvailableTurn = TurnCount;
+        PushCooldownChanged?.Invoke(0);
+    }
+
+    public void RestoreRunState(
+        Vector3 worldPosition,
+        bool facingRight,
+        int savedTurnCount,
+        int savedNextPushAvailableTurn)
+    {
+        transform.position = worldPosition;
+        Vector3 localScale = transform.localScale;
+        float scaleMagnitude = Mathf.Abs(localScale.x);
+        localScale.x = Mathf.Max(0.0001f, scaleMagnitude)
+            * (facingRight ? 1f : -1f);
+        transform.localScale = localScale;
+        TurnCount = Mathf.Max(0, savedTurnCount);
+        nextPushAvailableTurn = Mathf.Max(
+            TurnCount,
+            savedNextPushAvailableTurn);
+        isShooting = false;
+        isActing = false;
+        isEnemyTurnResolving = false;
+        RestorePushVisualPosition();
+        PositionChanged?.Invoke();
+        PushCooldownChanged?.Invoke(RemainingPushCooldownTurns);
     }
 
     public void SetShooting(bool shooting)
