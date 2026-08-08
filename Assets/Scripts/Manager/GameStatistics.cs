@@ -187,6 +187,7 @@ public static class RunSaveSystem
 {
     private const int CurrentVersion = 3;
     private const string SaveFileName = "loaded_run_save.json";
+    private const string WebSaveKey = "loaded.run.save.v3";
     private static RunStartMode requestedStartMode;
 
     public static string SavePath => Path.Combine(
@@ -199,7 +200,7 @@ public static class RunSaveSystem
         {
             bool valid = TryLoad(out _);
 
-            if (!valid && File.Exists(SavePath))
+            if (!valid && HasStoredSave())
             {
                 DeleteSave();
             }
@@ -230,6 +231,12 @@ public static class RunSaveSystem
         try
         {
             saveData.version = CurrentVersion;
+            string json = JsonUtility.ToJson(saveData, true);
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            PlayerPrefs.SetString(WebSaveKey, json);
+            PlayerPrefs.Save();
+#else
             string directory = Path.GetDirectoryName(SavePath);
 
             if (!string.IsNullOrEmpty(directory))
@@ -237,9 +244,8 @@ public static class RunSaveSystem
                 Directory.CreateDirectory(directory);
             }
 
-            File.WriteAllText(
-                SavePath,
-                JsonUtility.ToJson(saveData, true));
+            File.WriteAllText(SavePath, json);
+#endif
             return true;
         }
         catch (Exception exception)
@@ -254,14 +260,32 @@ public static class RunSaveSystem
     {
         saveData = null;
 
-        if (!File.Exists(SavePath))
-        {
-            return false;
-        }
-
         try
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            string json = PlayerPrefs.GetString(WebSaveKey, string.Empty);
+
+            // Import a save made by an older WebGL build if its virtual file
+            // system happened to persist successfully.
+            if (string.IsNullOrWhiteSpace(json) && File.Exists(SavePath))
+            {
+                json = File.ReadAllText(SavePath);
+                PlayerPrefs.SetString(WebSaveKey, json);
+                PlayerPrefs.Save();
+            }
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return false;
+            }
+#else
+            if (!File.Exists(SavePath))
+            {
+                return false;
+            }
+
             string json = File.ReadAllText(SavePath);
+#endif
             saveData = JsonUtility.FromJson<RunSaveData>(json);
 
             if (saveData == null || saveData.version != CurrentVersion
@@ -300,6 +324,10 @@ public static class RunSaveSystem
     {
         try
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            PlayerPrefs.DeleteKey(WebSaveKey);
+            PlayerPrefs.Save();
+#endif
             if (File.Exists(SavePath))
             {
                 File.Delete(SavePath);
@@ -310,6 +338,15 @@ public static class RunSaveSystem
             Debug.LogWarning(
                 $"Run save could not be deleted: {exception.Message}");
         }
+    }
+
+    private static bool HasStoredSave()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        return PlayerPrefs.HasKey(WebSaveKey) || File.Exists(SavePath);
+#else
+        return File.Exists(SavePath);
+#endif
     }
 }
 
