@@ -106,7 +106,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             "Panel | Behaviour Tile"),
         new GuidePage(
             "적의 공격 예고",
-            "공격 준비 시 <color=#FF5757><b>경고음</b></color>이 울리고 <color=#FF5757><b>적 아래의 행동 패널</b></color>이 붉어집니다.\n원거리 공격은 경로와 범위도 표시됩니다. 다음 턴 전에 피하거나 대비하세요.",
+            "공격 준비 시 <color=#FF5757><b>경고음</b></color>이 울립니다.\n<color=#FF5757><b>적 아래의 행동 패널</b></color>도 붉어집니다.\n원거리 공격은 경로와 범위도 표시됩니다.\n다음 턴 전에 피하거나 대비하세요.",
             null,
             "Image | Queue"),
         new GuidePage(
@@ -117,7 +117,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             TargetKind.Cylinder),
         new GuidePage(
             "사거리와 공격 방향",
-            "탄환은 <color=#FFD05A><b>바라보는 방향</b></color>으로 발사되며, 탄환마다 <color=#FFD05A><b>사거리</b></color>가 다릅니다.\n탄환 정보에서 <color=#FFD05A><b>유효 범위 N칸</b></color>을 확인하세요.\n예상 피해가 없다면 <color=#FFD05A><b>방향, 거리, 앞을 막는 적</b></color>을 확인하세요.",
+            "탄환은 <color=#FFD05A><b>바라보는 방향</b></color>으로 발사됩니다.\n탄환마다 <color=#FFD05A><b>사거리</b></color>가 다릅니다.\n탄환 정보에서 <color=#FFD05A><b>유효 범위 N칸</b></color>을 확인하세요.\n예상 피해가 없다면 <color=#FFD05A><b>방향, 거리, 앞을 막는 적</b></color>을 확인하세요.",
             "Videos/Show_Expectation.mp4",
             null,
             TargetKind.Cylinder),
@@ -161,7 +161,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         new GuideStepDefinition(
             CombatStep.ReloadThree,
             "장전",
-            "<color=#FF5757><b>R 키</b></color> 또는 장전 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 다음 탄환을 장전합니다.\n장전은 <color=#FFD05A><b>한 턴</b></color>을 사용합니다. 적 행동을 먼저 확인하세요.",
+            "<color=#FF5757><b>R 키</b></color> 또는 장전 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 다음 탄환을 장전합니다.\n장전은 <color=#FFD05A><b>한 턴</b></color>을 사용합니다.\n적 행동을 먼저 확인하세요.",
             "탄환 3회 장전",
             "Videos/Reload.mp4",
             "Button | Reload"),
@@ -176,7 +176,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         new GuideStepDefinition(
             CombatStep.ReorderCylinder,
             "실린더 순서 조작",
-            "<color=#FFD05A><b>탄환 순서에 따라 피해량이 달라집니다.</b></color>\n실린더 탄환을 다른 탄환 위로 <color=#FF5757><b>마우스 드래그</b></color>하세요. <color=#FFD05A><b>나중에 장전한 탄환부터</b></color> 발사됩니다.",
+            "<color=#FFD05A><b>탄환 순서에 따라 피해량이 달라집니다.</b></color>\n실린더 탄환을 다른 탄환 위로 <color=#FF5757><b>마우스 드래그</b></color>하세요.\n<color=#FFD05A><b>나중에 장전한 탄환부터</b></color> 발사됩니다.",
             "탄환 순서 한 번 변경",
             "Videos/Switch_Bullet_Queue.mp4",
             null,
@@ -199,7 +199,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         new GuideStepDefinition(
             CombatStep.Kick,
             "발차기",
-            "바로 앞의 적 방향으로 <color=#FF5757><b>A/D 키</b></color> 또는 이동 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>을 누르면 발차기합니다.\n재사용 대기시간은 <color=#FFD05A><b>3턴</b></color>입니다. 밀린 적이 다른 적과 부딪히면 <color=#FFD05A><b>둘 다 피해</b></color>를 받습니다.\n적의 거리와 위치를 조절할 때 활용하세요.",
+            "바로 앞의 적 방향으로 이동하면 발차기합니다.\n<color=#FF5757><b>A/D 키</b></color> 또는 이동 버튼 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>을 사용하세요.\n재사용 대기시간은 <color=#FFD05A><b>3턴</b></color>입니다.\n적끼리 부딪히면 <color=#FFD05A><b>둘 다 피해</b></color>를 받습니다.",
             "적을 한 번 발차기",
             "Videos/Kick.mp4",
             "Panel | Behaviour Tile"),
@@ -534,7 +534,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         ShowCard(
             "ITEM GUIDE",
             "아이템 사용",
-            "<color=#FF5757><b>1/2/3 키</b></color> 또는 인벤토리 슬롯 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 아이템을 사용합니다.\n<color=#FFD05A><b>사용 조건이 맞지 않으면 소비되지 않습니다.</b></color> 적이 나온 뒤 다시 시도하세요.",
+            "<color=#FF5757><b>1/2/3 키</b></color> 또는 인벤토리 슬롯 <color=#FF5757><b>마우스 왼쪽 클릭</b></color>으로 아이템을 사용합니다.\n<color=#FFD05A><b>사용 조건이 맞지 않으면 소비되지 않습니다.</b></color>\n적이 나온 뒤 다시 시도하세요.",
             "보유 아이템 한 번 사용",
             null,
             "미션 시작");
@@ -675,7 +675,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         cardTitleText.text = title;
         cardBodyText.text = string.IsNullOrWhiteSpace(mission)
             ? description
-            : description + "\n\n<color=#FFD05A><b>MISSION</b></color>  "
+            : description + "\n<color=#FFD05A><b>MISSION</b></color>  "
                 + mission;
         continueButtonText.text = continueLabel;
         SetCardVideo(videoPath);
@@ -1439,12 +1439,14 @@ public sealed class FirstRunGuideController : MonoBehaviour
         cardStepText.alignment = TextAlignmentOptions.Center;
         cardStepText.color = new Color(1f, 0.7f, 0.28f, 1f);
         cardStepText.fontSizeMax = 25f;
+        cardStepText.textWrappingMode = TextWrappingModes.NoWrap;
 
         cardTitleText = CreateText("Text | Guide Title", cardRect);
         SetAnchors(cardTitleText.rectTransform, 0.06f, 0.80f, 0.94f, 0.90f);
         cardTitleText.alignment = TextAlignmentOptions.Center;
         cardTitleText.fontStyle = FontStyles.Bold;
         cardTitleText.fontSizeMax = 42f;
+        cardTitleText.textWrappingMode = TextWrappingModes.NoWrap;
 
         Image frameImage = CreateImage(
             "Image | Guide Video Frame",
@@ -1473,12 +1475,15 @@ public sealed class FirstRunGuideController : MonoBehaviour
         videoLoadingText.text = "영상 불러오는 중...";
         videoLoadingText.color = new Color(0.8f, 0.8f, 0.8f, 1f);
         videoLoadingText.fontSizeMax = 24f;
+        videoLoadingText.textWrappingMode = TextWrappingModes.NoWrap;
 
         cardBodyText = CreateText("Text | Guide Body", cardRect);
         SetAnchors(cardBodyText.rectTransform, 0.08f, 0.13f, 0.92f, 0.29f);
         cardBodyText.alignment = TextAlignmentOptions.Center;
-        cardBodyText.fontSizeMin = 17f;
+        cardBodyText.fontSizeMin = 12f;
         cardBodyText.fontSizeMax = 27f;
+        cardBodyText.textWrappingMode = TextWrappingModes.NoWrap;
+        cardBodyText.overflowMode = TextOverflowModes.Ellipsis;
 
         cardBackButton = CreateButton(
             "Button | Previous Guide",
@@ -1550,8 +1555,10 @@ public sealed class FirstRunGuideController : MonoBehaviour
         missionText = CreateText("Text | Guide Mission", missionImage.rectTransform);
         SetAnchors(missionText.rectTransform, 0.04f, 0.12f, 0.67f, 0.88f);
         missionText.alignment = TextAlignmentOptions.MidlineLeft;
-        missionText.fontSizeMin = 16f;
+        missionText.fontSizeMin = 12f;
         missionText.fontSizeMax = 28f;
+        missionText.textWrappingMode = TextWrappingModes.NoWrap;
+        missionText.overflowMode = TextOverflowModes.Ellipsis;
 
         Button missionSkip = CreateButton(
             "Button | Skip Mission Guide",
@@ -1684,7 +1691,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (videoLoadingText != null)
         {
             videoLoadingText.gameObject.SetActive(true);
-            videoLoadingText.text = "영상을 불러오지 못했습니다.\n미션은 그대로 진행할 수 있습니다.";
+            videoLoadingText.text =
+                "영상을 불러오지 못했습니다.\n미션은 그대로 진행할 수 있습니다.";
         }
 
         Debug.LogWarning(
@@ -1752,8 +1760,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
         Stretch(labelText.rectTransform);
         labelText.text = label;
         labelText.fontStyle = FontStyles.Bold;
-        labelText.fontSizeMin = 14f;
+        labelText.fontSizeMin = 9f;
         labelText.fontSizeMax = 26f;
+        labelText.textWrappingMode = TextWrappingModes.NoWrap;
+        labelText.overflowMode = TextOverflowModes.Ellipsis;
+        labelText.margin = new Vector4(6f, 2f, 6f, 2f);
         return button;
     }
 
