@@ -33,6 +33,9 @@ public sealed class GameStartUI : MonoBehaviour
     [SerializeField] private TMP_Text comboBronzeCriteriaText;
     [SerializeField] private TMP_Text comboSilverCriteriaText;
     [SerializeField] private TMP_Text comboGoldCriteriaText;
+    [SerializeField] private TMP_Text executorBronzeCriteriaText;
+    [SerializeField] private TMP_Text executorSilverCriteriaText;
+    [SerializeField] private TMP_Text executorGoldCriteriaText;
     [SerializeField] private Image comboMedalImage;
     [SerializeField] private Image cylinderMedalImage;
     [SerializeField] private Image executorMedalImage;
@@ -139,6 +142,9 @@ public sealed class GameStartUI : MonoBehaviour
         && comboBronzeCriteriaText != null
         && comboSilverCriteriaText != null
         && comboGoldCriteriaText != null
+        && executorBronzeCriteriaText != null
+        && executorSilverCriteriaText != null
+        && executorGoldCriteriaText != null
         && comboMedalImage != null
         && cylinderMedalImage != null
         && executorMedalImage != null
@@ -413,6 +419,18 @@ public sealed class GameStartUI : MonoBehaviour
             "Text | Silver");
         comboGoldCriteriaText = FindComponent<TMP_Text>(
             comboCriteriaRow,
+            "Text | Gold");
+        Transform executorCriteriaRow = FindChild(
+            resultPost,
+            "Layout | Executor");
+        executorBronzeCriteriaText = FindComponent<TMP_Text>(
+            executorCriteriaRow,
+            "Text | Bronze");
+        executorSilverCriteriaText = FindComponent<TMP_Text>(
+            executorCriteriaRow,
+            "Text | Silver");
+        executorGoldCriteriaText = FindComponent<TMP_Text>(
+            executorCriteriaRow,
             "Text | Gold");
 
         fightText ??= FindComponent<TMP_Text>(transform, "Text | Fight");
@@ -778,6 +796,9 @@ public sealed class GameStartUI : MonoBehaviour
         SetComboCriteriaText(
             comboGoldCriteriaText,
             comboGoldThreshold);
+        SetExecutorCriteriaText(executorBronzeCriteriaText, 25f);
+        SetExecutorCriteriaText(executorSilverCriteriaText, 75f);
+        SetExecutorCriteriaText(executorGoldCriteriaText, 150f);
     }
 
     private static int GetTotalEnemyCount(BattleData battleData)
@@ -839,6 +860,16 @@ public sealed class GameStartUI : MonoBehaviour
         target.text = threshold == int.MaxValue
             ? "-"
             : $"{threshold:N0}";
+    }
+
+    private static void SetExecutorCriteriaText(
+        TMP_Text target,
+        float threshold)
+    {
+        if (target != null)
+        {
+            target.text = $"{threshold:0.#}% 이상";
+        }
     }
 
     private void PrepareStageResult()
@@ -912,12 +943,21 @@ public sealed class GameStartUI : MonoBehaviour
             cylinderKillResultText.text = Mathf.RoundToInt(
                 stageMaxCylinderKills * eased).ToString("N0");
             executorResultText.text =
-                $"{stageMaxOverkillPercent * eased:0.#}%";
+                $"{GetDisplayedOverkillPercent(stageMaxOverkillPercent * eased)}%";
         }
 
         comboKillResultText.text = stageMaxCombo.ToString("N0");
         cylinderKillResultText.text = stageMaxCylinderKills.ToString("N0");
-        executorResultText.text = $"{stageMaxOverkillPercent:0.#}%";
+        executorResultText.text =
+            $"{GetDisplayedOverkillPercent(stageMaxOverkillPercent)}%";
+    }
+
+    private static int GetDisplayedOverkillPercent(float overkillPercent)
+    {
+        const float calculationTolerance = 0.0001f;
+        float nonNegativePercent = Mathf.Max(0f, overkillPercent);
+        return Mathf.FloorToInt(
+            nonNegativePercent + calculationTolerance);
     }
 
     private IEnumerator RevealMedal(Image medalImage, int medalScore)
@@ -1051,7 +1091,13 @@ public sealed class GameStartUI : MonoBehaviour
 
     private static int GetExecutorMedalScore(float overkillPercent)
     {
-        return overkillPercent >= 150f ? 3 : overkillPercent >= 75f ? 2 : overkillPercent >= 25f ? 1 : 0;
+        const float thresholdTolerance = 0.0001f;
+        float inclusivePercent = overkillPercent + thresholdTolerance;
+        return inclusivePercent >= 150f
+            ? 3
+            : inclusivePercent >= 75f
+                ? 2
+                : inclusivePercent >= 25f ? 1 : 0;
     }
 
     private static float GetBonusGoldRate(int score)

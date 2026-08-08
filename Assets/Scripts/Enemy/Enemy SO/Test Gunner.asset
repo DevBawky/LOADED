@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: "\uCD1D\uC7A1\uC774"
   description: 
   avatar: {fileID: 1233976601806711513, guid: 07d432807c5c0de47a856af8e66063ab, type: 3}
-  maxHealth: 35
+  maxHealth: 25
   minimumGoldDrop: 1
   maximumGoldDrop: 3
   dropChance: 10
