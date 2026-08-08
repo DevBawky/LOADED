@@ -15,7 +15,7 @@ MonoBehaviour:
   displayName: "\uD654\uC5FC\uBCD1 \uB358\uC9C0\uAE30"
   actionType: 4
   movementDistance: 0
-  attackData: {fileID: 11400000, guid: b04cb7eaffca66342a036dc5f2707d57, type: 2}
+  attackData: {fileID: 11400000, guid: 8fcdcff909c44d1468b22fcfa46bafb2, type: 2}
   icon: {fileID: 8865756261830827420, guid: 42e485ac8d43e8843a141b738584b4ea, type: 3}
   description: "\uD654\uC5FC\uBCD1\uC744 \uB358\uC838 \uBAA9\uD45C \uD0C0\uC77C\uC5D0
     \uD53C\uD574\uB97C \uC785\uD799\uB2C8\uB2E4.\n"

@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: Test Enemy
   description: 
   avatar: {fileID: 1233976601806711513, guid: 681bb752688943b41b903f4b80db2c5b, type: 3}
-  maxHealth: 70
+  maxHealth: 100
   minimumGoldDrop: 2
   maximumGoldDrop: 5
   dropChance: 10

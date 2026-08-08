@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 88615d6674bc44199ab7dfb3d705db35, type: 3}
-  m_Name: Test Range Attack
+  m_Name: Test Throw Attack
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   skillId: 0
   displayName: "\uC0AC\uACA9"
   description: "\uC6D0\uAC70\uB9AC \uACF5\uACA9\uC785\uB2C8\uB2E4."
   damage: 15
-  range: 3
+  range: 999
   knockbackDistance: 0
   stunDurationTurns: 0
   markDurationTurns: 0

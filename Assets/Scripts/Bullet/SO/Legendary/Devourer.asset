@@ -16,7 +16,7 @@ MonoBehaviour:
   displayName: "\uD3EC\uC2DD\uC790"
   description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C \uD3EC\uC2DD
     1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
-    +15%"
+    +10%"
   cylinderIcon: {fileID: 7299877752034667788, guid: 94e5d446387ed6e41a9824ac2a861afe, type: 3}
   price: 20
   grade: 3
@@ -35,7 +35,7 @@ MonoBehaviour:
     activationChance: 100
     stackCount: 1
     knockbackDistance: 1
-    amount: 15
+    amount: 10
     secondTransferPercent: 0
     thirdTransferPercent: 0
   conditionalEvents: []
@@ -50,8 +50,8 @@ MonoBehaviour:
   upgradeLevels:
   - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
       \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885\uB300\uBBF8\uC9C0 +20%"
-    damage: 30
+      \uCD5C\uC885\uB300\uBBF8\uC9C0 +15%"
+    damage: 22
     maxRange: 4
     criticalChance: 35
     criticalDamageMultiplier: 2.2
@@ -61,7 +61,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 20
+      amount: 15
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []
@@ -72,8 +72,8 @@ MonoBehaviour:
     upgradeCost: 100
   - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
       \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885\uB300\uBBF8\uC9C0 +30%\n\uAD00\uD1B5 1\uD68C (40%)"
-    damage: 40
+      \uCD5C\uC885\uB300\uBBF8\uC9C0 +20%\n\uAD00\uD1B5 1\uD68C (40%)"
+    damage: 25
     maxRange: 5
     criticalChance: 40
     criticalDamageMultiplier: 2.5
@@ -83,7 +83,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
-      amount: 30
+      amount: 20
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []
@@ -95,9 +95,9 @@ MonoBehaviour:
     upgradeCost: 200
   - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
       \uD3EC\uC2DD 2\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885\uB300\uBBF8\uC9C0 +35%\n\uAD00\uD1B5 \uCD5C\uB300 2\uD68C (\uAC01
+      \uCD5C\uC885\uB300\uBBF8\uC9C0 +30%\n\uAD00\uD1B5 \uCD5C\uB300 2\uD68C (\uAC01
       70%)"
-    damage: 55
+    damage: 30
     maxRange: 6
     criticalChance: 50
     criticalDamageMultiplier: 3
@@ -107,7 +107,7 @@ MonoBehaviour:
       activationChance: 100
       stackCount: 2
       knockbackDistance: 1
-      amount: 35
+      amount: 30
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []

@@ -23,9 +23,9 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
-  damage: 50
+  damage: 30
   maxRange: 3
-  criticalChance: 50
+  criticalChance: 30
   criticalDamageMultiplier: 2
   effects: []
   conditionalEvents: []
@@ -41,9 +41,9 @@ MonoBehaviour:
   upgradeCost: 50
   upgradeLevels:
   - description: "\uAD00\uD1B5 3\uD68C"
-    damage: 75
+    damage: 40
     maxRange: 3
-    criticalChance: 50
+    criticalChance: 40
     criticalDamageMultiplier: 2.1
     effects: []
     conditionalEvents: []
@@ -57,7 +57,7 @@ MonoBehaviour:
     upgradeCost: 100
   - description: "\uAD00\uD1B5 4\uD68C\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
       \uC54A\uC2B5\uB2C8\uB2E4."
-    damage: 100
+    damage: 50
     maxRange: 4
     criticalChance: 50
     criticalDamageMultiplier: 2.2
@@ -74,9 +74,9 @@ MonoBehaviour:
     upgradeCost: 200
   - description: "\uAD00\uD1B5 5\uD68C\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +1\n\uC7AC\uC7A5\uC804
       \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
-    damage: 125
+    damage: 70
     maxRange: 5
-    criticalChance: 50
+    criticalChance: 60
     criticalDamageMultiplier: 2.4
     effects: []
     conditionalEvents:

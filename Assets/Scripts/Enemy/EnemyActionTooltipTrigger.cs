@@ -42,6 +42,8 @@ internal static class EnemyActionTooltipView
     private const string ActionNameTextName = "Text | Action Name";
     private const string ActionDescriptionTextName =
         "Text | Action Description";
+    private const string ActionDamageRangeBackgroundName =
+        "BG | Action Damage Range";
     private const float PointerGap = 12f;
     private const float ScreenPadding = 8f;
     private static readonly Vector3[] WorldCorners = new Vector3[4];
@@ -49,6 +51,8 @@ internal static class EnemyActionTooltipView
     private static RectTransform tooltip;
     private static TextMeshProUGUI actionNameText;
     private static TextMeshProUGUI actionDescriptionText;
+    private static GameObject actionDamageRangeBackground;
+    private static TextMeshProUGUI actionDamageRangeText;
     private static Canvas rootCanvas;
     private static object owner;
 
@@ -74,8 +78,19 @@ internal static class EnemyActionTooltipView
         }
 
         owner = requestedOwner;
+        EnemyAttackData attackData = actionData.AttackData;
         actionNameText.text = actionData.DisplayName;
         actionDescriptionText.text = actionData.TooltipDescription;
+        actionDamageRangeBackground.SetActive(attackData != null);
+
+        if (attackData != null)
+        {
+            actionDamageRangeText.richText = true;
+            actionDamageRangeText.text =
+                $"대미지: <color=red> {attackData.Damage} </color> "
+                + $"사거리: <color=yellow>{attackData.Range}</color>";
+        }
+
         tooltip.gameObject.SetActive(true);
         PositionInsideScreen(pointerPosition);
     }
@@ -107,6 +122,7 @@ internal static class EnemyActionTooltipView
         actionDescriptionText.richText = true;
         actionNameText.text = displayName;
         actionDescriptionText.text = description;
+        actionDamageRangeBackground.SetActive(false);
         tooltip.gameObject.SetActive(true);
         PositionInsideScreen(pointerPosition);
     }
@@ -155,7 +171,10 @@ internal static class EnemyActionTooltipView
     private static bool TryResolveReferences()
     {
         if (tooltip != null && actionNameText != null
-            && actionDescriptionText != null && rootCanvas != null)
+            && actionDescriptionText != null
+            && actionDamageRangeBackground != null
+            && actionDamageRangeText != null
+            && rootCanvas != null)
         {
             return true;
         }
@@ -198,6 +217,18 @@ internal static class EnemyActionTooltipView
         TextMeshProUGUI[] texts =
             tooltip.GetComponentsInChildren<TextMeshProUGUI>(true);
 
+        RectTransform[] tooltipRects =
+            tooltip.GetComponentsInChildren<RectTransform>(true);
+
+        foreach (RectTransform candidate in tooltipRects)
+        {
+            if (candidate.name == ActionDamageRangeBackgroundName)
+            {
+                actionDamageRangeBackground = candidate.gameObject;
+                break;
+            }
+        }
+
         foreach (TextMeshProUGUI text in texts)
         {
             if (text.name == ActionNameTextName)
@@ -206,7 +237,16 @@ internal static class EnemyActionTooltipView
             }
             else if (text.name == ActionDescriptionTextName)
             {
-                actionDescriptionText = text;
+                if (actionDamageRangeBackground != null
+                    && text.transform.IsChildOf(
+                        actionDamageRangeBackground.transform))
+                {
+                    actionDamageRangeText = text;
+                }
+                else
+                {
+                    actionDescriptionText = text;
+                }
             }
         }
 
@@ -215,7 +255,10 @@ internal static class EnemyActionTooltipView
             graphic.raycastTarget = false;
         }
 
-        return actionNameText != null && actionDescriptionText != null;
+        return actionNameText != null
+            && actionDescriptionText != null
+            && actionDamageRangeBackground != null
+            && actionDamageRangeText != null;
     }
 
     private static void PositionInsideScreen(Vector2 pointerPosition)
@@ -286,6 +329,8 @@ internal static class EnemyActionTooltipView
         tooltip = null;
         actionNameText = null;
         actionDescriptionText = null;
+        actionDamageRangeBackground = null;
+        actionDamageRangeText = null;
         rootCanvas = null;
         owner = null;
     }
