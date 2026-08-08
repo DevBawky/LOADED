@@ -9,6 +9,8 @@ public class InventoryTooltipUI : MonoBehaviour
     private const int BulletStacksPerRow = 4;
     private const int BulletStackRowCount = 5;
 
+    public static event System.Action BulletInspected;
+
     private enum TooltipPointerAnchor
     {
         LeftCenter,
@@ -457,6 +459,7 @@ public class InventoryTooltipUI : MonoBehaviour
                 : (StatusEffectType?)null,
             bulletTooltip,
             false);
+        BulletInspected?.Invoke();
     }
 
     private void ShowCylinderBullet(
@@ -501,6 +504,7 @@ public class InventoryTooltipUI : MonoBehaviour
                 : (StatusEffectType?)null,
             cylinderBulletTooltip,
             false);
+        BulletInspected?.Invoke();
 
         if (loadedBulletIndex < 0)
         {

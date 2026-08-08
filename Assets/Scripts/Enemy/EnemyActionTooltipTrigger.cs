@@ -6,8 +6,11 @@ using UnityEngine.UI;
 public sealed class EnemyActionTooltipTrigger : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler,
-    IPointerMoveHandler
+    IPointerMoveHandler,
+    IPointerClickHandler
 {
+    public static event System.Action<EnemyActionData> ActionInspected;
+
     private EnemyActionData actionData;
 
     public void Configure(EnemyActionData configuredActionData)
@@ -17,7 +20,24 @@ public sealed class EnemyActionTooltipTrigger : MonoBehaviour,
 
     public void OnPointerEnter(PointerEventData eventData)
     {
+        if (actionData == null)
+        {
+            return;
+        }
+
         EnemyActionTooltipView.Show(actionData, eventData.position, this);
+        ActionInspected?.Invoke(actionData);
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (actionData == null)
+        {
+            return;
+        }
+
+        EnemyActionTooltipView.Show(actionData, eventData.position, this);
+        ActionInspected?.Invoke(actionData);
     }
 
     public void OnPointerMove(PointerEventData eventData)
