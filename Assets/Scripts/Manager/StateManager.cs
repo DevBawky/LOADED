@@ -58,6 +58,7 @@ public class StateManager : MonoBehaviour
 
     private Coroutine battleClearCoroutine;
     private Coroutine battleStartCoroutine;
+    private Coroutine webAutosaveCoroutine;
     private RunSaveData pendingRestoredRun;
     private bool suppressExitSave;
     private RunStartMode currentRunStartMode = RunStartMode.None;
@@ -131,6 +132,13 @@ public class StateManager : MonoBehaviour
         {
             waveManager.BattleCompleted += HandleBattleCompleted;
             waveManager.BattleFailed += HandleBattleFailed;
+            waveManager.EnemyTurnCycleCompleted +=
+                HandleWebEnemyTurnCycleCompleted;
+        }
+
+        if (shopManager != null)
+        {
+            shopManager.OffersChanged += HandleWebShopStateChanged;
         }
 
         if (playerHealth != null)
@@ -586,6 +594,7 @@ public class StateManager : MonoBehaviour
     {
         Application.wantsToQuit -= HandleWantsToQuit;
         StopBattleStartPresentation();
+        webAutosaveCoroutine = null;
 
         if (battleClearCoroutine != null)
         {
@@ -597,6 +606,13 @@ public class StateManager : MonoBehaviour
         {
             waveManager.BattleCompleted -= HandleBattleCompleted;
             waveManager.BattleFailed -= HandleBattleFailed;
+            waveManager.EnemyTurnCycleCompleted -=
+                HandleWebEnemyTurnCycleCompleted;
+        }
+
+        if (shopManager != null)
+        {
+            shopManager.OffersChanged -= HandleWebShopStateChanged;
         }
 
         if (playerHealth != null)
@@ -776,6 +792,50 @@ public class StateManager : MonoBehaviour
         }
 
         SetInputLocked(false);
+        RequestWebAutosave();
+    }
+
+    private void HandleWebEnemyTurnCycleCompleted(int _)
+    {
+        RequestWebAutosave();
+    }
+
+    private void HandleWebShopStateChanged()
+    {
+        RequestWebAutosave();
+    }
+
+    private void RequestWebAutosave()
+    {
+        if (Application.platform != RuntimePlatform.WebGLPlayer
+            || suppressExitSave || webAutosaveCoroutine != null)
+        {
+            return;
+        }
+
+        webAutosaveCoroutine = StartCoroutine(
+            SaveWebCheckpointWhenSettled());
+    }
+
+    private IEnumerator SaveWebCheckpointWhenSettled()
+    {
+        yield return null;
+
+        while ((currentState == GameFlowState.Battle
+                && !IsCombatSettledForExit)
+               || (currentState == GameFlowState.Shop
+                   && shopManager != null
+                   && shopManager.IsRefreshing))
+        {
+            yield return null;
+        }
+
+        webAutosaveCoroutine = null;
+
+        if (!suppressExitSave)
+        {
+            SaveCurrentRun();
+        }
     }
 
     private void HandleBattleCompleted()
