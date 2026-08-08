@@ -15,6 +15,13 @@ public sealed class CustomCursorController : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Initialize()
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        // Web browsers own the system cursor and dispatch focus changes
+        // outside Unity's player loop. Avoid the native WebGL cursor path
+        // entirely: runtime texture readback followed by Cursor.SetCursor
+        // can terminate the WASM player when browser focus changes.
+        return;
+#else
         if (instance != null)
         {
             return;
@@ -32,8 +39,9 @@ public sealed class CustomCursorController : MonoBehaviour
 
         instance = cursorObject.AddComponent<CustomCursorController>();
         instance.theme = loadedTheme;
-        instance.CreateReadableCursorTextures();
+        instance.AssignCursorTextures();
         instance.ApplyCursor(false);
+#endif
     }
 
     private void Update()
@@ -62,8 +70,8 @@ public sealed class CustomCursorController : MonoBehaviour
             Cursor.SetCursor(null, Vector2.zero, CursorMode.Auto);
         }
 
-        DestroyReadableCursor(ref standardCursor);
-        DestroyReadableCursor(ref pressedCursor);
+        standardCursor = null;
+        pressedCursor = null;
     }
 
     private void ApplyCursor(bool pressed)
@@ -100,53 +108,9 @@ public sealed class CustomCursorController : MonoBehaviour
             || mouse.middleButton.isPressed;
     }
 
-    private void CreateReadableCursorTextures()
+    private void AssignCursorTextures()
     {
-        standardCursor = CreateReadableCopy(theme.StandardCursor);
-        pressedCursor = CreateReadableCopy(theme.PressedCursor);
-    }
-
-    private static Texture2D CreateReadableCopy(Texture2D source)
-    {
-        if (source == null)
-        {
-            return null;
-        }
-
-        RenderTexture previous = RenderTexture.active;
-        RenderTexture temporary = RenderTexture.GetTemporary(
-            source.width,
-            source.height,
-            0,
-            RenderTextureFormat.ARGB32,
-            RenderTextureReadWrite.Default);
-
-        Graphics.Blit(source, temporary);
-        RenderTexture.active = temporary;
-
-        Texture2D copy = new Texture2D(
-            source.width,
-            source.height,
-            TextureFormat.RGBA32,
-            false);
-        copy.name = source.name;
-        copy.ReadPixels(new Rect(0, 0, source.width, source.height), 0, 0);
-        copy.Apply(false, false);
-
-        RenderTexture.active = previous;
-        RenderTexture.ReleaseTemporary(temporary);
-
-        return copy;
-    }
-
-    private static void DestroyReadableCursor(ref Texture2D cursorTexture)
-    {
-        if (cursorTexture == null)
-        {
-            return;
-        }
-
-        Destroy(cursorTexture);
-        cursorTexture = null;
+        standardCursor = theme.StandardCursor;
+        pressedCursor = theme.PressedCursor;
     }
 }
