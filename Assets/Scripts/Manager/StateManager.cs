@@ -405,7 +405,9 @@ public class StateManager : MonoBehaviour
         currentState = GameFlowState.BattleClear;
         SetPanels(false, false, false);
         SetInputLocked(true);
-        gameStartUI?.PrepareRestoredBattle(restoredRun.combatReport);
+        gameStartUI?.PrepareRestoredBattle(
+            restoredRun.combatReport,
+            battle);
         StateChanged?.Invoke();
         battleClearCoroutine = StartCoroutine(
             ResumeRestoredBattleClear(battle));
@@ -714,7 +716,8 @@ public class StateManager : MonoBehaviour
         if (pendingRestoredRun != null)
         {
             gameStartUI?.PrepareRestoredBattle(
-                pendingRestoredRun.combatReport);
+                pendingRestoredRun.combatReport,
+                battle);
             BeginBattleGameplay(battle);
             return;
         }

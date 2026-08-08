@@ -30,6 +30,9 @@ public sealed class GameStartUI : MonoBehaviour
     [SerializeField] private TMP_Text comboKillResultText;
     [SerializeField] private TMP_Text cylinderKillResultText;
     [SerializeField] private TMP_Text executorResultText;
+    [SerializeField] private TMP_Text comboBronzeCriteriaText;
+    [SerializeField] private TMP_Text comboSilverCriteriaText;
+    [SerializeField] private TMP_Text comboGoldCriteriaText;
     [SerializeField] private Image comboMedalImage;
     [SerializeField] private Image cylinderMedalImage;
     [SerializeField] private Image executorMedalImage;
@@ -103,6 +106,9 @@ public sealed class GameStartUI : MonoBehaviour
     private int stageMaxCombo;
     private int stageMaxCylinderKills;
     private float stageMaxOverkillPercent;
+    private int comboBronzeThreshold = int.MaxValue;
+    private int comboSilverThreshold = int.MaxValue;
+    private int comboGoldThreshold = int.MaxValue;
     private int comboMedalScore;
     private int cylinderMedalScore;
     private int executorMedalScore;
@@ -130,6 +136,9 @@ public sealed class GameStartUI : MonoBehaviour
         && comboKillResultText != null
         && cylinderKillResultText != null
         && executorResultText != null
+        && comboBronzeCriteriaText != null
+        && comboSilverCriteriaText != null
+        && comboGoldCriteriaText != null
         && comboMedalImage != null
         && cylinderMedalImage != null
         && executorMedalImage != null
@@ -160,10 +169,13 @@ public sealed class GameStartUI : MonoBehaviour
         SubscribeToReportEvents();
     }
 
-    public void PrepareRestoredBattle(RunCombatReportSaveData state)
+    public void PrepareRestoredBattle(
+        RunCombatReportSaveData state,
+        BattleData battleData)
     {
         FindChildReferences();
         ResolveGameplayReferences();
+        ConfigureComboMedalCriteria(battleData);
         ResetVisualState();
         SetGameplayReady();
         RestoreRunState(state);
@@ -217,6 +229,7 @@ public sealed class GameStartUI : MonoBehaviour
 
         ResetVisualState();
         SetBattleText(stageData, battleData);
+        ConfigureComboMedalCriteria(battleData);
         stageNoticeClickText.text = "클릭하여 전투 시작";
 
         SetGameplayCanvasActive(false);
@@ -260,6 +273,7 @@ public sealed class GameStartUI : MonoBehaviour
 
         ResetVisualState();
         SetBattleReport(battleData);
+        ConfigureComboMedalCriteria(battleData);
         PrepareStageResult();
         if (stageReportClickText != null)
         {
@@ -386,6 +400,20 @@ public sealed class GameStartUI : MonoBehaviour
                     ?? gainButton?.GetComponentInChildren<TMP_Text>(true);
             }
         }
+
+        Transform resultPost = FindChild(transform, "Panel | Result Post");
+        Transform comboCriteriaRow = FindChild(
+            resultPost,
+            "Layout | Combo Kill");
+        comboBronzeCriteriaText = FindComponent<TMP_Text>(
+            comboCriteriaRow,
+            "Text | Bronze");
+        comboSilverCriteriaText = FindComponent<TMP_Text>(
+            comboCriteriaRow,
+            "Text | Silver");
+        comboGoldCriteriaText = FindComponent<TMP_Text>(
+            comboCriteriaRow,
+            "Text | Gold");
 
         fightText ??= FindComponent<TMP_Text>(transform, "Text | Fight");
     }
@@ -718,6 +746,101 @@ public sealed class GameStartUI : MonoBehaviour
         stageReportBodyText.text = report.ToString();
     }
 
+    private void ConfigureComboMedalCriteria(BattleData battleData)
+    {
+        int totalEnemyCount = GetTotalEnemyCount(battleData);
+
+        if (totalEnemyCount <= 0)
+        {
+            comboBronzeThreshold = int.MaxValue;
+            comboSilverThreshold = int.MaxValue;
+            comboGoldThreshold = int.MaxValue;
+        }
+        else
+        {
+            comboBronzeThreshold = GetPercentageThreshold(
+                totalEnemyCount,
+                25);
+            comboSilverThreshold = GetPercentageThreshold(
+                totalEnemyCount,
+                50);
+            comboGoldThreshold = GetPercentageThreshold(
+                totalEnemyCount,
+                70);
+        }
+
+        SetComboCriteriaText(
+            comboBronzeCriteriaText,
+            comboBronzeThreshold);
+        SetComboCriteriaText(
+            comboSilverCriteriaText,
+            comboSilverThreshold);
+        SetComboCriteriaText(
+            comboGoldCriteriaText,
+            comboGoldThreshold);
+    }
+
+    private static int GetTotalEnemyCount(BattleData battleData)
+    {
+        if (battleData == null || battleData.Waves == null)
+        {
+            return 0;
+        }
+
+        long totalEnemyCount = 0;
+
+        foreach (EnemyWave wave in battleData.Waves)
+        {
+            if (wave == null || wave.Enemies == null)
+            {
+                continue;
+            }
+
+            foreach (EnemyWaveEntry entry in wave.Enemies)
+            {
+                if (entry == null || entry.EnemyData == null
+                    || entry.Count <= 0)
+                {
+                    continue;
+                }
+
+                totalEnemyCount += entry.Count;
+
+                if (totalEnemyCount >= int.MaxValue)
+                {
+                    return int.MaxValue;
+                }
+            }
+        }
+
+        return (int)totalEnemyCount;
+    }
+
+    private static int GetPercentageThreshold(
+        int totalEnemyCount,
+        int percentage)
+    {
+        long scaledCount = (long)Mathf.Max(0, totalEnemyCount)
+            * Mathf.Clamp(percentage, 0, 100);
+        return Mathf.Max(1, (int)Math.Min(
+            int.MaxValue,
+            (scaledCount + 99L) / 100L));
+    }
+
+    private static void SetComboCriteriaText(
+        TMP_Text target,
+        int threshold)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        target.text = threshold == int.MaxValue
+            ? "-"
+            : $"{threshold:N0}콤보";
+    }
+
     private void PrepareStageResult()
     {
         comboMedalScore = GetComboMedalScore(stageMaxCombo);
@@ -761,7 +884,7 @@ public sealed class GameStartUI : MonoBehaviour
         string bonusColor = bonusPercent > 0 ? "#55FF66" : "#A8A8A8";
         bonusResultText.text =
             $"정산 보너스: <color={bonusColor}>추가 골드 +{bonusPercent}%</color> "
-            + $"(메달 총점 {totalMedalScore}/9)\n"
+            + $"(메달 총점 <color=orange>{totalMedalScore}</color>/9)\n"
             + $"<color=#FFE21A>($ {stageEarnedGold:N0} × {bonusPercent}% = "
             + $"$ {bonusGold:N0})</color>";
 
@@ -907,9 +1030,18 @@ public sealed class GameStartUI : MonoBehaviour
         }
     }
 
-    private static int GetComboMedalScore(int comboKills)
+    private int GetComboMedalScore(int comboKills)
     {
-        return comboKills >= 15 ? 3 : comboKills >= 10 ? 2 : comboKills >= 5 ? 1 : 0;
+        if (comboGoldThreshold == int.MaxValue)
+        {
+            return 0;
+        }
+
+        return comboKills >= comboGoldThreshold
+            ? 3
+            : comboKills >= comboSilverThreshold
+                ? 2
+                : comboKills >= comboBronzeThreshold ? 1 : 0;
     }
 
     private static int GetCylinderMedalScore(int cylinderKills)
