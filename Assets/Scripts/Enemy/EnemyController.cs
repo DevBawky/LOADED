@@ -2324,8 +2324,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             waveManager.TryGetEnemyAtTile(
                 preparedTargetTileIndex,
-                out enemyTarget,
-                this);
+                out enemyTarget);
         }
 
         ApplyAttackToTarget(

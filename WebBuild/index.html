@@ -7,9 +7,9 @@
     <meta name="theme-color" content="#090706">
     <title>LOADED</title>
     <link rel="preload" href="Build/83d20a698279b6eecf2bceb7e6c9fbe2.loader.js" as="script">
-    <link rel="preload" href="Build/4ff59ac5578620803ac647246d4c799d.data.unityweb" as="fetch" crossorigin>
+    <link rel="preload" href="Build/d7c4f7f58ecea262ef78c2d04f8429ba.data.unityweb" as="fetch" crossorigin>
     <link rel="preload" href="Build/4967f8819654e03c012d1a7a56107949.framework.js.unityweb" as="fetch" crossorigin>
-    <link rel="preload" href="Build/14a7e4e503d3703f1034da564b723170.wasm.unityweb" as="fetch" crossorigin>
+    <link rel="preload" href="Build/f9a0634aa7f3e9baa1f5c57edc1dc84c.wasm.unityweb" as="fetch" crossorigin>
     <style>
       :root {
         color-scheme: dark;
@@ -75,6 +75,12 @@
         opacity: 0.24;
         filter: blur(4px) saturate(0.55);
         transition: opacity 0.65s ease, filter 0.65s ease;
+      }
+      #unity-canvas:focus,
+      #unity-canvas:focus-visible {
+        border: 0 !important;
+        outline: none !important;
+        box-shadow: none !important;
       }
       body.is-playing #unity-canvas { opacity: 1; filter: none; }
 
@@ -425,9 +431,9 @@
       const loaderUrl = buildUrl + "/83d20a698279b6eecf2bceb7e6c9fbe2.loader.js";
       const config = {
         arguments: [],
-        dataUrl: buildUrl + "/4ff59ac5578620803ac647246d4c799d.data.unityweb",
+        dataUrl: buildUrl + "/d7c4f7f58ecea262ef78c2d04f8429ba.data.unityweb",
         frameworkUrl: buildUrl + "/4967f8819654e03c012d1a7a56107949.framework.js.unityweb",
-        codeUrl: buildUrl + "/14a7e4e503d3703f1034da564b723170.wasm.unityweb",
+        codeUrl: buildUrl + "/f9a0634aa7f3e9baa1f5c57edc1dc84c.wasm.unityweb",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "LOADED",
