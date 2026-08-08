@@ -78,6 +78,12 @@
         filter: blur(4px) saturate(0.55);
         transition: opacity 0.65s ease, filter 0.65s ease;
       }
+      #unity-canvas:focus,
+      #unity-canvas:focus-visible {
+        border: 0 !important;
+        outline: none !important;
+        box-shadow: none !important;
+      }
       body.is-playing #unity-canvas { opacity: 1; filter: none; }
 
       #unity-loading,
