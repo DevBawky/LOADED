@@ -55,7 +55,9 @@ public class ShopItemSlot
 public class ShopManager : MonoBehaviour
 {
     public const int InventoryItemSellPrice = 3;
+    private const string PurchasedCostLabel = "구매 완료";
     private static readonly Color UnaffordableCostColor = Color.red;
+    private static readonly Color PurchasedCostColor = Color.red;
 
     [Header("References")]
     [SerializeField] private CurrencyManager currencyManager;
@@ -962,10 +964,16 @@ public class ShopManager : MonoBehaviour
 
         if (slot.CostText != null)
         {
-            slot.CostText.text = offer == null ? string.Empty : $"${offer.Price}";
-            slot.CostText.color = offer != null && !purchased && !canAfford
-                ? UnaffordableCostColor
-                : Color.white;
+            slot.CostText.text = offer == null
+                ? string.Empty
+                : purchased
+                    ? PurchasedCostLabel
+                    : $"${offer.Price}";
+            slot.CostText.color = purchased
+                ? PurchasedCostColor
+                : offer != null && !canAfford
+                    ? UnaffordableCostColor
+                    : Color.white;
         }
     }
 
@@ -1022,10 +1030,16 @@ public class ShopManager : MonoBehaviour
 
         if (slot.CostText != null)
         {
-            slot.CostText.text = offer == null ? string.Empty : $"${offer.Price}";
-            slot.CostText.color = offer != null && !purchased && !canAfford
-                ? UnaffordableCostColor
-                : Color.white;
+            slot.CostText.text = offer == null
+                ? string.Empty
+                : purchased
+                    ? PurchasedCostLabel
+                    : $"${offer.Price}";
+            slot.CostText.color = purchased
+                ? PurchasedCostColor
+                : offer != null && !canAfford
+                    ? UnaffordableCostColor
+                    : Color.white;
         }
     }
 
