@@ -44,6 +44,8 @@ public enum BigBarrelStep
 public class EnemyController : MonoBehaviour, IStatusEffectTarget
 {
     public static event Action<int> PlayerIndirectDamageDealt;
+    public static event Action<EnemyController, int, int>
+        PlayerStatusDefeated;
 
     private const int MaxBigBarrelPostShotgunRecoveryTurns = 2;
 
@@ -718,14 +720,19 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public int ApplyStatusDamageAmount(
         int damage,
-        bool creditedToPlayer = false)
+        bool creditedToPlayer = false,
+        bool reportDefeatToCombo = true)
     {
         if (creditedToPlayer && damage > 0 && currentHealth > 0)
         {
             PlayerIndirectDamageDealt?.Invoke(damage);
         }
 
-        int appliedDamage = ApplyDamageInternal(damage, false, 0.45f);
+        int appliedDamage = ApplyDamageInternal(
+            damage,
+            false,
+            0.45f,
+            creditedToPlayer && reportDefeatToCombo);
 
         // Status damage popups show the effect's full damage, even when the
         // target has less health remaining than the requested damage.
@@ -876,7 +883,8 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
     private int ApplyDamageInternal(
         int damage,
         bool isCritical,
-        float impactStrength)
+        float impactStrength,
+        bool reportPlayerStatusDefeat = false)
     {
         if (damage <= 0 || currentHealth <= 0)
         {
@@ -914,6 +922,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (currentHealth == 0)
         {
+            if (reportPlayerStatusDefeat)
+            {
+                PlayerStatusDefeated?.Invoke(
+                    this,
+                    damage,
+                    previousHealth);
+            }
+
             GameStatistics.RecordKill();
             SoundManager.PlaySfx("SFX_Enemy_Die");
             ClearAttackQueue();

@@ -65,6 +65,7 @@ public class PlayerMove : MonoBehaviour
     private readonly List<Vector3> pushPathBuffer = new List<Vector3>();
 
     public event Action TurnCompleted;
+    public event Action<int> TurnCountChanged;
     public event Action PositionChanged;
     public event Action<int> PushCooldownChanged;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
@@ -123,6 +124,7 @@ public class PlayerMove : MonoBehaviour
         isActing = false;
         isEnemyTurnResolving = false;
         RestorePushVisualPosition();
+        TurnCountChanged?.Invoke(TurnCount);
         PositionChanged?.Invoke();
         PushCooldownChanged?.Invoke(RemainingPushCooldownTurns);
     }
@@ -770,6 +772,7 @@ public class PlayerMove : MonoBehaviour
         }
 
         TurnCount++;
+        TurnCountChanged?.Invoke(TurnCount);
         int remainingPushCooldown = RemainingPushCooldownTurns;
         PushCooldownChanged?.Invoke(remainingPushCooldown);
 

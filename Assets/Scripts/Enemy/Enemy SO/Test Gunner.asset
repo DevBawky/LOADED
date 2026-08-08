@@ -17,8 +17,8 @@ MonoBehaviour:
   description: 
   avatar: {fileID: 1233976601806711513, guid: 07d432807c5c0de47a856af8e66063ab, type: 3}
   maxHealth: 20
-  minimumGoldDrop: 15
-  maximumGoldDrop: 15
+  minimumGoldDrop: 1
+  maximumGoldDrop: 3
   dropChance: 10
   dropItems:
   - dropType: 1
@@ -53,6 +53,8 @@ MonoBehaviour:
   thrownProjectileSize: 0.35
   thrownProjectileDuration: 0.5
   thrownProjectileArcHeight: 2
+  explosionVfxPrefab: {fileID: 0}
+  explosionVfxScale: 1
   gunnerTelegraphMaterial: {fileID: 2100000, guid: 4b917feaf47b4c0492dfb7a61abfb75d, type: 2}
   throwerTelegraphMaterial: {fileID: 0}
   supportTelegraphMaterial: {fileID: 0}

@@ -17,6 +17,7 @@ public class GamePauseController : MonoBehaviour
 
     private readonly List<Button> pauseButtons = new List<Button>();
     private StateManager stateManager;
+    private GameObject pauseOverlayRoot;
     private bool exitRequested;
 
     public static bool IsPaused { get; private set; }
@@ -26,6 +27,8 @@ public class GamePauseController : MonoBehaviour
         stateManager = FindFirstObjectByType<StateManager>(
             FindObjectsInactive.Include);
         CachePauseMenuReferences();
+        ConfigurePauseOverlay();
+        ConfigurePauseAnimators();
         BindPauseMenuControls();
         SetPaused(false);
         RefreshPauseAvailability();
@@ -122,6 +125,17 @@ public class GamePauseController : MonoBehaviour
             {
                 presentation.CancelHitStopForPause();
             }
+
+            foreach (CombatFeedbackController feedback in
+                     FindObjectsByType<CombatFeedbackController>(
+                         FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                feedback.CancelPresentationForPause();
+            }
+
+            CombatCameraShake.CancelForPause();
+            Time.timeScale = 1f;
         }
 
         if (IsPaused == isPaused)
@@ -149,12 +163,91 @@ public class GamePauseController : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (pauseOverlayRoot != null)
+        {
+            Destroy(pauseOverlayRoot);
+            pauseOverlayRoot = null;
+        }
+
         if (!IsPaused)
         {
             return;
         }
 
         IsPaused = false;
+    }
+
+    private void ConfigurePauseOverlay()
+    {
+        if (pausedPanel == null || pauseOverlayRoot != null)
+        {
+            return;
+        }
+
+        Canvas sourceCanvas = pausedPanel.GetComponentInParent<Canvas>();
+        pauseOverlayRoot = new GameObject(
+            "Canvas | Pause Overlay",
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(CanvasScaler),
+            typeof(GraphicRaycaster));
+
+        Canvas overlayCanvas = pauseOverlayRoot.GetComponent<Canvas>();
+        overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        overlayCanvas.overrideSorting = true;
+        overlayCanvas.sortingOrder = short.MaxValue;
+
+        if (sourceCanvas != null)
+        {
+            overlayCanvas.sortingLayerID = sourceCanvas.sortingLayerID;
+            overlayCanvas.targetDisplay = sourceCanvas.targetDisplay;
+        }
+
+        CanvasScaler overlayScaler =
+            pauseOverlayRoot.GetComponent<CanvasScaler>();
+        CanvasScaler sourceScaler = sourceCanvas == null
+            ? null
+            : sourceCanvas.GetComponent<CanvasScaler>();
+
+        if (sourceScaler != null)
+        {
+            overlayScaler.uiScaleMode = sourceScaler.uiScaleMode;
+            overlayScaler.referencePixelsPerUnit =
+                sourceScaler.referencePixelsPerUnit;
+            overlayScaler.scaleFactor = sourceScaler.scaleFactor;
+            overlayScaler.referenceResolution =
+                sourceScaler.referenceResolution;
+            overlayScaler.screenMatchMode = sourceScaler.screenMatchMode;
+            overlayScaler.matchWidthOrHeight =
+                sourceScaler.matchWidthOrHeight;
+            overlayScaler.physicalUnit = sourceScaler.physicalUnit;
+            overlayScaler.fallbackScreenDPI = sourceScaler.fallbackScreenDPI;
+            overlayScaler.defaultSpriteDPI = sourceScaler.defaultSpriteDPI;
+            overlayScaler.dynamicPixelsPerUnit =
+                sourceScaler.dynamicPixelsPerUnit;
+        }
+
+        RectTransform panelRect = pausedPanel.transform as RectTransform;
+        panelRect.SetParent(pauseOverlayRoot.transform, false);
+        panelRect.anchorMin = Vector2.zero;
+        panelRect.anchorMax = Vector2.one;
+        panelRect.anchoredPosition = Vector2.zero;
+        panelRect.sizeDelta = Vector2.zero;
+        panelRect.localScale = Vector3.one;
+    }
+
+    private void ConfigurePauseAnimators()
+    {
+        if (pausedPanel == null)
+        {
+            return;
+        }
+
+        foreach (Animator animator in
+                 pausedPanel.GetComponentsInChildren<Animator>(true))
+        {
+            animator.updateMode = AnimatorUpdateMode.UnscaledTime;
+        }
     }
 
     private void CachePauseMenuReferences()
