@@ -1392,7 +1392,12 @@ public class PlayerCylinderUI : MonoBehaviour
                 CylinderFireStartAnchor>();
         }
 
-        anchor.Initialize(cylinderTransform.parent);
+        if (fireStartTransform.TryGetComponent(out Image fireStartImage))
+        {
+            fireStartImage.preserveAspect = true;
+        }
+
+        anchor.Initialize(cylinderTransform, cylinderTransform.parent);
     }
 
     private IEnumerator ReloadPunchRoutine(Color accentColor, float intensity)
@@ -1476,22 +1481,29 @@ public class PlayerCylinderUI : MonoBehaviour
 [DefaultExecutionOrder(10000)]
 public sealed class CylinderFireStartAnchor : MonoBehaviour
 {
+    private Transform trackedCylinder;
     private Transform referenceSpace;
-    private Vector3 fixedPositionInReferenceSpace;
+    private Vector3 offsetFromCylinderInReferenceSpace;
     private Quaternion fixedWorldRotation;
     private bool isInitialized;
 
-    public void Initialize(Transform stableReferenceSpace)
+    public void Initialize(
+        Transform cylinder,
+        Transform stableReferenceSpace)
     {
-        if (stableReferenceSpace == null
-            || isInitialized && referenceSpace == stableReferenceSpace)
+        if (cylinder == null || stableReferenceSpace == null
+            || isInitialized
+            && trackedCylinder == cylinder
+            && referenceSpace == stableReferenceSpace)
         {
             return;
         }
 
+        trackedCylinder = cylinder;
         referenceSpace = stableReferenceSpace;
-        fixedPositionInReferenceSpace = referenceSpace.InverseTransformPoint(
-            transform.position);
+        offsetFromCylinderInReferenceSpace =
+            referenceSpace.InverseTransformPoint(transform.position)
+            - referenceSpace.InverseTransformPoint(trackedCylinder.position);
         fixedWorldRotation = transform.rotation;
         isInitialized = true;
         ApplyFixedPose();
@@ -1504,13 +1516,18 @@ public sealed class CylinderFireStartAnchor : MonoBehaviour
 
     private void ApplyFixedPose()
     {
-        if (!isInitialized || referenceSpace == null)
+        if (!isInitialized || trackedCylinder == null
+            || referenceSpace == null)
         {
             return;
         }
 
+        Vector3 cylinderPositionInReferenceSpace =
+            referenceSpace.InverseTransformPoint(trackedCylinder.position);
         transform.SetPositionAndRotation(
-            referenceSpace.TransformPoint(fixedPositionInReferenceSpace),
+            referenceSpace.TransformPoint(
+                cylinderPositionInReferenceSpace
+                + offsetFromCylinderInReferenceSpace),
             fixedWorldRotation);
     }
 }
