@@ -88,7 +88,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
         if (cylinderTransform != null)
         {
-            cylinderTransform.gameObject.SetActive(false);
+            SetCylinderVisible(false);
         }
     }
 
@@ -796,7 +796,7 @@ public class PlayerCylinderUI : MonoBehaviour
             displayedBulletCount = loadedCount;
             cylinderTargetAngle = GetStableCylinderAngle(loadedCount);
             SetCylinderAngle(cylinderTargetAngle);
-            cylinderTransform.gameObject.SetActive(loadedCount > 0);
+            SetCylinderVisible(loadedCount > 0);
             isInitialized = true;
             return;
         }
@@ -806,7 +806,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
         if (loadedCount > 0)
         {
-            cylinderTransform.gameObject.SetActive(true);
+            SetCylinderVisible(true);
 
             if (previousCount == 0)
             {
@@ -1290,7 +1290,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
             if (hideWhenComplete)
             {
-                cylinderTransform.gameObject.SetActive(false);
+                SetCylinderVisible(false);
                 SetCylinderAngle(0f);
                 cylinderTargetAngle = 0f;
             }
@@ -1337,7 +1337,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
         if (hideWhenComplete)
         {
-            cylinderTransform.gameObject.SetActive(false);
+            SetCylinderVisible(false);
             SetCylinderAngle(0f);
             cylinderTargetAngle = 0f;
         }
@@ -1351,6 +1351,21 @@ public class PlayerCylinderUI : MonoBehaviour
         localEulerAngles.z = angle;
         cylinderTransform.localEulerAngles = localEulerAngles;
         KeepBulletImagesUpright();
+    }
+
+    private void SetCylinderVisible(bool visible)
+    {
+        if (cylinderTransform != null
+            && cylinderTransform.gameObject.activeSelf != visible)
+        {
+            cylinderTransform.gameObject.SetActive(visible);
+        }
+
+        if (fireStartTransform != null
+            && fireStartTransform.gameObject.activeSelf != visible)
+        {
+            fireStartTransform.gameObject.SetActive(visible);
+        }
     }
 
     private void KeepBulletImagesUpright()
