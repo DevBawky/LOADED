@@ -99,7 +99,7 @@
       .brand { color: var(--paper); font-family: Georgia, serif; font-size: clamp(42px, 8vw, 76px); font-weight: 900; letter-spacing: 0.12em; line-height: 1; text-shadow: 0 4px 0 #3b1712, 0 0 34px rgba(196,59,47,0.28); }
       .brand-rule { width: 76px; height: 2px; margin: 17px 0 22px; background: var(--gold); box-shadow: 0 0 16px rgba(215,170,91,0.52); }
 
-      .cylinder { position: relative; width: 176px; height: 176px; margin: 2px 0 22px; }
+      .cylinder { position: relative; width: 176px; height: 176px; margin: 18px 0 18px; }
       .cylinder-ring {
         position: absolute;
         inset: 10px;
@@ -107,6 +107,9 @@
         border-radius: 50%;
         background: radial-gradient(circle, #2a2119 0 25%, #17110d 26% 58%, #35291e 59% 65%, #120d0a 66%);
         box-shadow: inset 0 0 24px #000, 0 12px 34px rgba(0,0,0,0.62), 0 0 0 1px #160e09;
+        transform: rotate(0deg);
+        transition: transform 0.28s cubic-bezier(.2,.8,.2,1);
+        will-change: transform;
       }
       .cylinder-ring::after {
         content: "";
@@ -146,12 +149,55 @@
         transition: opacity 0.2s ease, transform 0.28s cubic-bezier(.2,.9,.2,1.25);
       }
       .chamber.is-loaded::after { opacity: 1; transform: scale(1); }
+      .chamber.is-seating {
+        border-color: #d7aa5b;
+        box-shadow: inset 0 3px 8px #000, 0 0 18px rgba(215,170,91,0.7);
+      }
+      .loading-cartridge {
+        position: absolute;
+        left: 50%;
+        top: -31px;
+        z-index: 3;
+        width: 18px;
+        height: 43px;
+        margin-left: -9px;
+        opacity: 0;
+        border: 1px solid #f0c87f;
+        border-radius: 5px 5px 8px 8px;
+        background:
+          linear-gradient(90deg, #6c3218 0%, #d28a3e 25%, #f2c673 48%, #9a5124 76%, #4b2112 100%);
+        box-shadow: inset 0 -7px 0 #6b2d18, 0 0 16px rgba(215,170,91,0.68);
+        pointer-events: none;
+      }
+      .loading-cartridge::before {
+        content: "";
+        position: absolute;
+        left: 3px;
+        right: 3px;
+        top: -8px;
+        height: 11px;
+        border-radius: 50% 50% 25% 25%;
+        background: linear-gradient(90deg, #7b3a1e, #e4a85d 52%, #6a2e18);
+      }
+      .cylinder.is-loading .loading-cartridge {
+        animation: cartridge-load 0.34s cubic-bezier(.25,.75,.2,1) both;
+      }
       #unity-loading.is-ready .cylinder-ring { animation: cylinder-lock 0.75s cubic-bezier(.2,.85,.2,1); }
 
-      #unity-progress-track { position: relative; width: min(72vw, 430px); height: 5px; overflow: hidden; background: #211710; box-shadow: 0 0 0 1px var(--line); }
-      #unity-progress-bar { width: 0; height: 100%; background: linear-gradient(90deg, #7d1e19, var(--red), #e79a57); box-shadow: 0 0 16px rgba(196,59,47,0.62); transition: width 0.16s linear; }
-      #unity-progress-row { width: min(72vw, 430px); display: flex; justify-content: space-between; margin-top: 10px; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
-      #unity-progress-percent { color: var(--gold); font-variant-numeric: tabular-nums; }
+      #cylinder-status {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: min(72vw, 330px);
+        min-height: 31px;
+        padding: 7px 12px;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.04em;
+      }
+      #cylinder-count { color: var(--gold); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.12em; }
 
       .tip { min-height: 62px; margin-top: 24px; padding: 12px 18px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: #cdbfa8; font-size: 13px; line-height: 1.55; }
       .tip-label { display: block; margin-bottom: 3px; color: var(--red); font-size: 9px; font-weight: 800; letter-spacing: 0.24em; }
@@ -195,9 +241,15 @@
         100% { transform: translate3d(0, 2%, 0); }
       }
       @keyframes cylinder-lock {
-        0% { transform: rotate(0); }
-        68% { transform: rotate(380deg); }
-        100% { transform: rotate(360deg); }
+        0% { transform: rotate(-300deg); }
+        68% { transform: rotate(-375deg); }
+        100% { transform: rotate(-360deg); }
+      }
+      @keyframes cartridge-load {
+        0% { opacity: 0; transform: translateY(-26px) scale(0.92); }
+        18% { opacity: 1; }
+        72% { opacity: 1; transform: translateY(38px) scale(1); }
+        100% { opacity: 0; transform: translateY(54px) scale(0.72); }
       }
 
       @media (max-width: 720px), (max-height: 540px) {
@@ -222,7 +274,8 @@
           <div class="eyebrow">TACTICAL CYLINDER</div>
           <div class="brand">LOADED</div>
           <div class="brand-rule"></div>
-          <div class="cylinder" aria-hidden="true">
+          <div class="cylinder" role="progressbar" aria-label="실린더 장전 진행" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0">
+            <span class="loading-cartridge" aria-hidden="true"></span>
             <div class="cylinder-ring">
               <span class="chamber" style="--index:0"></span>
               <span class="chamber" style="--index:1"></span>
@@ -232,10 +285,9 @@
               <span class="chamber" style="--index:5"></span>
             </div>
           </div>
-          <div id="unity-progress-track"><div id="unity-progress-bar"></div></div>
-          <div id="unity-progress-row">
-            <span id="unity-progress-text">게임 데이터 확인 중</span>
-            <span id="unity-progress-percent">0%</span>
+          <div id="cylinder-status">
+            <span id="unity-progress-text">실린더 장전 준비 중</span>
+            <span id="cylinder-count">0 / 6</span>
           </div>
           <div class="tip">
             <span class="tip-label">TACTICAL NOTE</span>
@@ -267,9 +319,10 @@
       const startGate = document.querySelector("#unity-start-gate");
       const startButton = document.querySelector("#unity-start");
       const retryButton = document.querySelector("#unity-retry");
-      const progressBar = document.querySelector("#unity-progress-bar");
       const progressText = document.querySelector("#unity-progress-text");
-      const progressPercent = document.querySelector("#unity-progress-percent");
+      const cylinder = document.querySelector(".cylinder");
+      const cylinderRing = document.querySelector(".cylinder-ring");
+      const cylinderCount = document.querySelector("#cylinder-count");
       const tipText = document.querySelector("#unity-tip-text");
       const chambers = Array.from(document.querySelectorAll(".chamber"));
       const controls = document.querySelector("#unity-controls");
@@ -285,6 +338,12 @@
       let unityInstance = null;
       let tipIndex = 0;
       let muted = false;
+      let requestedChambers = 0;
+      let loadedChambers = 0;
+      let isLoadingChamber = false;
+      let unityLoadComplete = false;
+      let loadingPresentationComplete = false;
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       let tipTimer = setInterval(() => {
         tipIndex = (tipIndex + 1) % tips.length;
         tipText.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 360 });
@@ -301,26 +360,69 @@
         }
       }
 
+      function finishLoadingPresentation() {
+        if (!unityLoadComplete || loadedChambers < chambers.length || isLoadingChamber || loadingPresentationComplete) return;
+
+        loadingPresentationComplete = true;
+        progressText.textContent = "실린더 장전 완료";
+        loading.classList.add("is-ready");
+        clearInterval(tipTimer);
+        setTimeout(() => {
+          loading.classList.add("is-hidden");
+          startGate.classList.add("is-visible");
+          startButton.focus();
+        }, reduceMotion ? 20 : 760);
+      }
+
+      function loadNextChamber() {
+        if (isLoadingChamber || loadedChambers >= requestedChambers) {
+          finishLoadingPresentation();
+          return;
+        }
+
+        isLoadingChamber = true;
+        const chamberIndex = loadedChambers;
+        const rotationDelay = reduceMotion ? 0 : chamberIndex === 0 ? 70 : 280;
+        const loadingDelay = reduceMotion ? 0 : 340;
+        cylinderRing.style.transform = `rotate(${-chamberIndex * 60}deg)`;
+        progressText.textContent = `${chamberIndex + 1}번 탄실 정렬 중`;
+
+        setTimeout(() => {
+          const chamber = chambers[chamberIndex];
+          chamber.classList.add("is-seating");
+          cylinder.classList.remove("is-loading");
+          void cylinder.offsetWidth;
+          cylinder.classList.add("is-loading");
+          progressText.textContent = "탄환 장전 중";
+
+          setTimeout(() => {
+            chamber.classList.remove("is-seating");
+            chamber.classList.add("is-loaded");
+            cylinder.classList.remove("is-loading");
+            loadedChambers++;
+            cylinder.setAttribute("aria-valuenow", String(loadedChambers));
+            cylinderCount.textContent = `${loadedChambers} / ${chambers.length}`;
+            progressText.textContent = `탄환 ${loadedChambers}발 장전 완료`;
+            isLoadingChamber = false;
+            setTimeout(loadNextChamber, reduceMotion ? 0 : 70);
+          }, loadingDelay);
+        }, rotationDelay);
+      }
+
       function setProgress(progress) {
         const clamped = Math.max(0, Math.min(1, progress));
-        const percent = Math.round(clamped * 100);
-        const loadedChambers = Math.ceil(clamped * chambers.length);
-        progressBar.style.width = percent + "%";
-        progressPercent.textContent = percent + "%";
-        chambers.forEach((chamber, index) => {
-          chamber.classList.toggle("is-loaded", index < loadedChambers);
-        });
-
-        if (percent < 25) progressText.textContent = "핵심 시스템 준비 중";
-        else if (percent < 65) progressText.textContent = "전투 데이터 장전 중";
-        else if (percent < 95) progressText.textContent = "마지막 점검 중";
-        else progressText.textContent = "실린더 장전 완료";
+        const chamberProgress = Math.floor(clamped * chambers.length + 0.001);
+        requestedChambers = Math.max(
+          requestedChambers,
+          clamped >= 0.999 ? chambers.length : chamberProgress
+        );
+        loadNextChamber();
       }
 
       function showLoadError(message) {
         loading.classList.add("is-error");
         progressText.textContent = "불러오기에 실패했습니다";
-        progressPercent.textContent = "ERROR";
+        cylinderCount.textContent = "ERROR";
         clearInterval(tipTimer);
         tipText.textContent = "네트워크 연결을 확인한 뒤 다시 시도하세요.";
         unityShowBanner(String(message), "error");
@@ -395,14 +497,9 @@
       loader.onload = () => {
         createUnityInstance(canvas, config, setProgress).then((instance) => {
           unityInstance = instance;
+          unityLoadComplete = true;
           setProgress(1);
-          loading.classList.add("is-ready");
-          clearInterval(tipTimer);
-          setTimeout(() => {
-            loading.classList.add("is-hidden");
-            startGate.classList.add("is-visible");
-            startButton.focus();
-          }, 720);
+          finishLoadingPresentation();
         }).catch(showLoadError);
       };
       loader.onerror = () => showLoadError("게임 로더를 불러오지 못했습니다.");
