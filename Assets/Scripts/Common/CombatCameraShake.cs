@@ -2,6 +2,7 @@ using System.Collections;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using VolFx;
 
@@ -90,6 +91,111 @@ public static class OldMoviePresentationSettings
         {
             oldMovie.active = enabled;
         }
+    }
+}
+
+public static class GraphicsSaturationSettings
+{
+    private const string PreferenceKey = "Graphics.Saturation.v2";
+    private const string RuntimeVolumeName = "@_GraphicsSaturationVolume";
+    private const float DefaultSaturation = 0.85f;
+    private const float RuntimeVolumePriority = 10000f;
+
+    private static bool hasLoaded;
+    private static float saturation = DefaultSaturation;
+    private static Volume runtimeVolume;
+    private static VolumeProfile runtimeProfile;
+    private static ColorAdjustments colorAdjustments;
+
+    public static float Saturation
+    {
+        get
+        {
+            Load();
+            return saturation;
+        }
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void Initialize()
+    {
+        hasLoaded = false;
+        Load();
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    public static void SetSaturation(float value)
+    {
+        PreviewSaturation(value);
+        PlayerPrefs.SetFloat(PreferenceKey, saturation);
+        PlayerPrefs.Save();
+    }
+
+    public static void PreviewSaturation(float value)
+    {
+        saturation = Mathf.Clamp01(value);
+        hasLoaded = true;
+        ApplyToLoadedScene();
+    }
+
+    private static void Load()
+    {
+        if (hasLoaded)
+        {
+            return;
+        }
+
+        saturation = Mathf.Clamp01(PlayerPrefs.GetFloat(
+            PreferenceKey,
+            DefaultSaturation));
+        hasLoaded = true;
+    }
+
+    private static void HandleSceneLoaded(Scene _, LoadSceneMode __)
+    {
+        ApplyToLoadedScene();
+    }
+
+    private static void ApplyToLoadedScene()
+    {
+        Load();
+        EnsureRuntimeVolume();
+
+        if (colorAdjustments == null)
+        {
+            return;
+        }
+
+        colorAdjustments.active = true;
+        colorAdjustments.saturation.Override(
+            Mathf.Lerp(-100f, 0f, saturation));
+    }
+
+    private static void EnsureRuntimeVolume()
+    {
+        if (runtimeVolume != null && colorAdjustments != null)
+        {
+            return;
+        }
+
+        if (runtimeProfile != null)
+        {
+            Object.Destroy(runtimeProfile);
+        }
+
+        GameObject host = new GameObject(RuntimeVolumeName);
+        host.hideFlags = HideFlags.HideInHierarchy | HideFlags.DontSave;
+        runtimeVolume = host.AddComponent<Volume>();
+        runtimeVolume.isGlobal = true;
+        runtimeVolume.priority = RuntimeVolumePriority;
+        runtimeVolume.weight = 1f;
+
+        runtimeProfile = ScriptableObject.CreateInstance<VolumeProfile>();
+        runtimeProfile.hideFlags = HideFlags.DontSave;
+        colorAdjustments = runtimeProfile.Add<ColorAdjustments>(false);
+        colorAdjustments.active = true;
+        runtimeVolume.sharedProfile = runtimeProfile;
     }
 }
 

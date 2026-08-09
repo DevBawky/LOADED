@@ -11,11 +11,13 @@ public sealed class MainMenuSettingsController : MonoBehaviour
     [SerializeField] private Slider bgmSlider;
     [SerializeField] private Slider sfxSlider;
     [SerializeField] private Slider vfxSlider;
+    [SerializeField] private Slider saturationSlider;
     [SerializeField] private Toggle oldMovieToggle;
 
     private float bgmSnapshot;
     private float sfxSnapshot;
     private float vfxSnapshot;
+    private float saturationSnapshot;
     private bool oldMovieSnapshot;
     private bool sessionOpen;
     private bool closeHandled;
@@ -65,6 +67,10 @@ public sealed class MainMenuSettingsController : MonoBehaviour
             sfxSlider == null ? sfxSnapshot : sfxSlider.value);
         CombatAccessibilitySettings.SetPresentationIntensity(
             vfxSlider == null ? vfxSnapshot : vfxSlider.value);
+        GraphicsSaturationSettings.SetSaturation(
+            saturationSlider == null
+                ? saturationSnapshot
+                : saturationSlider.value);
         OldMoviePresentationSettings.SetEnabled(
             oldMovieToggle == null ? oldMovieSnapshot : oldMovieToggle.isOn);
         closeHandled = true;
@@ -94,10 +100,12 @@ public sealed class MainMenuSettingsController : MonoBehaviour
         bgmSnapshot = SoundManager.BgmVolume;
         sfxSnapshot = SoundManager.SfxVolume;
         vfxSnapshot = CombatAccessibilitySettings.PresentationIntensity;
+        saturationSnapshot = GraphicsSaturationSettings.Saturation;
         oldMovieSnapshot = OldMoviePresentationSettings.Enabled;
         bgmSlider?.SetValueWithoutNotify(bgmSnapshot);
         sfxSlider?.SetValueWithoutNotify(sfxSnapshot);
         vfxSlider?.SetValueWithoutNotify(vfxSnapshot);
+        saturationSlider?.SetValueWithoutNotify(saturationSnapshot);
         oldMovieToggle?.SetIsOnWithoutNotify(oldMovieSnapshot);
     }
 
@@ -106,10 +114,12 @@ public sealed class MainMenuSettingsController : MonoBehaviour
         SoundManager.PreviewBgmVolume(bgmSnapshot);
         SoundManager.PreviewSfxVolume(sfxSnapshot);
         CombatAccessibilitySettings.PreviewPresentationIntensity(vfxSnapshot);
+        GraphicsSaturationSettings.PreviewSaturation(saturationSnapshot);
         OldMoviePresentationSettings.PreviewEnabled(oldMovieSnapshot);
         bgmSlider?.SetValueWithoutNotify(bgmSnapshot);
         sfxSlider?.SetValueWithoutNotify(sfxSnapshot);
         vfxSlider?.SetValueWithoutNotify(vfxSnapshot);
+        saturationSlider?.SetValueWithoutNotify(saturationSnapshot);
         oldMovieToggle?.SetIsOnWithoutNotify(oldMovieSnapshot);
     }
 
@@ -144,6 +154,10 @@ public sealed class MainMenuSettingsController : MonoBehaviour
             {
                 vfxSlider = slider;
             }
+            else if (HasAncestorNamed(slider.transform, "Layout | Color"))
+            {
+                saturationSlider = slider;
+            }
         }
 
         foreach (Toggle toggle in GetComponentsInChildren<Toggle>(true))
@@ -166,6 +180,8 @@ public sealed class MainMenuSettingsController : MonoBehaviour
         sfxSlider?.onValueChanged.AddListener(SoundManager.PreviewSfxVolume);
         vfxSlider?.onValueChanged.AddListener(
             CombatAccessibilitySettings.PreviewPresentationIntensity);
+        saturationSlider?.onValueChanged.AddListener(
+            GraphicsSaturationSettings.PreviewSaturation);
         oldMovieToggle?.onValueChanged.AddListener(
             OldMoviePresentationSettings.PreviewEnabled);
     }
@@ -178,6 +194,8 @@ public sealed class MainMenuSettingsController : MonoBehaviour
         sfxSlider?.onValueChanged.RemoveListener(SoundManager.PreviewSfxVolume);
         vfxSlider?.onValueChanged.RemoveListener(
             CombatAccessibilitySettings.PreviewPresentationIntensity);
+        saturationSlider?.onValueChanged.RemoveListener(
+            GraphicsSaturationSettings.PreviewSaturation);
         oldMovieToggle?.onValueChanged.RemoveListener(
             OldMoviePresentationSettings.PreviewEnabled);
     }

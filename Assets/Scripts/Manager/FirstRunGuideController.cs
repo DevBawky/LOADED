@@ -14,6 +14,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private const string ShopGuideKey = "loaded.guide.shop.v1";
     private const string GuideDisabledKey = "loaded.guide.disabled.v1";
     private const float StepAdvanceDelay = 0.45f;
+    private const string PreferredGuideFontName = "Bold_Ko SDF";
+    private const string FallbackGuideFontName = "Galmuri9 SDF";
 
     private static FirstRunGuideController activeInstance;
 
@@ -2136,6 +2138,14 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
     private void ResolveFont()
     {
+        guideFont = FindLoadedFontAsset(PreferredGuideFontName)
+            ?? FindLoadedFontAsset(FallbackGuideFontName);
+
+        if (guideFont != null)
+        {
+            return;
+        }
+
         foreach (TMP_Text text in FindObjectsByType<TMP_Text>(
                      FindObjectsInactive.Include,
                      FindObjectsSortMode.None))
@@ -2146,6 +2156,20 @@ public sealed class FirstRunGuideController : MonoBehaviour
                 return;
             }
         }
+    }
+
+    private static TMP_FontAsset FindLoadedFontAsset(string fontAssetName)
+    {
+        foreach (TMP_FontAsset fontAsset
+                 in Resources.FindObjectsOfTypeAll<TMP_FontAsset>())
+        {
+            if (fontAsset != null && fontAsset.name == fontAssetName)
+            {
+                return fontAsset;
+            }
+        }
+
+        return null;
     }
 
     private void BuildInterface()
