@@ -40,7 +40,7 @@ MonoBehaviour:
     bulletData: {fileID: 0}
   behaviorType: 4
   preferredDistance: 2
-  maxQueuedAttacks: 1
+  maxQueuedAttacks: 3
   queuedActionInterval: 0.1
   queueElementRevealDuration: 0.15
   meleeAdditionalAttackChance: 0.5
@@ -72,13 +72,13 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 1ca315b0f4f347299ee45dc99ff3223a, type: 2}
   randomizeStartingActionIndex: 0
   bigBarrel:
-    phaseTwoHealthRatio: 0.6
-    bombDamage: 20
+    phaseTwoHealthRatio: 0.5
+    bombDamage: 15
     bossSelfExplosionDamage: 10
     bombExplosionRadius: 1
     bombFuseTurns: 3
     phaseTwoBombFuseTurns: 3
-    shotgunDamage: 15
+    shotgunDamage: 25
     bossBombPrefab: {fileID: 1000000000000000, guid: 3aebf47531e847b4b271281656ef0a7d, type: 3}
     bombArcHeight: 2
     bombTelegraphMaterial: {fileID: 2100000, guid: 2a5802554d894229a660bb78a851c43a, type: 2}

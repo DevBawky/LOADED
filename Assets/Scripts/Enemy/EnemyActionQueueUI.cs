@@ -36,6 +36,7 @@ public class EnemyActionQueueUI : MonoBehaviour
     private Material stunnedQueueMaterial;
     private bool isPrepared;
     private bool isStunned;
+    private int displayRevision;
 
     public int IconCount => spawnedIcons.Count;
     public Sprite NormalQueueSprite => normalQueueSprite;
@@ -63,6 +64,7 @@ public class EnemyActionQueueUI : MonoBehaviour
             return;
         }
 
+        displayRevision++;
         ApplyQueueSprite(normalQueueSprite);
         queueImage.gameObject.SetActive(true);
         RefreshEmphasis();
@@ -174,6 +176,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     public void ResetDisplay()
     {
+        displayRevision++;
         foreach (Image icon in spawnedIcons)
         {
             if (icon != null)
@@ -203,14 +206,27 @@ public class EnemyActionQueueUI : MonoBehaviour
             yield break;
         }
 
+        bool wasQueueVisible = queueImage.gameObject.activeSelf;
         ShowQueue();
+        int phaseTransitionRevision = displayRevision;
         Color originalColor = queueImage.color;
         queueImage.color = accentColor;
         yield return RevealGraphic(
             queueImage.gameObject,
             Mathf.Max(0.1f, duration));
         queueImage.color = originalColor;
-        ResetDisplay();
+
+        // A phase change can overlap the turn that creates the next attack queue.
+        // Do not let the transition coroutine erase that newly-created queue.
+        if (!wasQueueVisible && displayRevision == phaseTransitionRevision)
+        {
+            ResetDisplay();
+            yield break;
+        }
+
+        ApplyQueueSprite(isPrepared ? preparedQueueSprite : normalQueueSprite);
+        RefreshEmphasis();
+        RefreshQueueWidth();
     }
 
     private void ApplyQueueSprite(Sprite stateSprite)
