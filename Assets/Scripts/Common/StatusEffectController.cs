@@ -421,14 +421,14 @@ public class StatusEffectController : MonoBehaviour
         }
 
         icon.Initialize(
-            GetSprite(type),
+            GetStatusIconSprite(type),
             GetStacks(type),
             type,
             GetComponent<EnemyController>());
         return icon;
     }
 
-    private Sprite GetSprite(StatusEffectType type)
+    public Sprite GetStatusIconSprite(StatusEffectType type)
     {
         switch (type)
         {

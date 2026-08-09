@@ -143,6 +143,7 @@ internal static class EnemyActionTooltipView
         actionNameText.text = displayName;
         actionDescriptionText.text = description;
         actionDamageRangeBackground.SetActive(false);
+        tooltip.SetAsLastSibling();
         tooltip.gameObject.SetActive(true);
         PositionInsideScreen(pointerPosition);
     }
