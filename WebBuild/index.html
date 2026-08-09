@@ -6,10 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#090706">
     <title>LOADED</title>
-    <link rel="preload" href="Build/83d20a698279b6eecf2bceb7e6c9fbe2.loader.js" as="script">
-    <link rel="preload" href="Build/d7c4f7f58ecea262ef78c2d04f8429ba.data.unityweb" as="fetch" crossorigin>
+    <link rel="preload" href="Build/b53d0593d3b482dc626a01dcc2a5fd54.loader.js" as="script">
+    <link rel="preload" href="Build/b469baeb473e2387e094739e2b5dd050.data.unityweb" as="fetch" crossorigin>
     <link rel="preload" href="Build/4967f8819654e03c012d1a7a56107949.framework.js.unityweb" as="fetch" crossorigin>
-    <link rel="preload" href="Build/f9a0634aa7f3e9baa1f5c57edc1dc84c.wasm.unityweb" as="fetch" crossorigin>
+    <link rel="preload" href="Build/15876b561604b7771753d492b378d74b.wasm.unityweb" as="fetch" crossorigin>
     <style>
       :root {
         color-scheme: dark;
@@ -159,35 +159,6 @@
         border-color: #d7aa5b;
         box-shadow: inset 0 3px 8px #000, 0 0 18px rgba(215,170,91,0.7);
       }
-      .loading-cartridge {
-        position: absolute;
-        left: 50%;
-        top: -31px;
-        z-index: 3;
-        width: 18px;
-        height: 43px;
-        margin-left: -9px;
-        opacity: 0;
-        border: 1px solid #f0c87f;
-        border-radius: 5px 5px 8px 8px;
-        background:
-          linear-gradient(90deg, #6c3218 0%, #d28a3e 25%, #f2c673 48%, #9a5124 76%, #4b2112 100%);
-        box-shadow: inset 0 -7px 0 #6b2d18, 0 0 16px rgba(215,170,91,0.68);
-        pointer-events: none;
-      }
-      .loading-cartridge::before {
-        content: "";
-        position: absolute;
-        left: 3px;
-        right: 3px;
-        top: -8px;
-        height: 11px;
-        border-radius: 50% 50% 25% 25%;
-        background: linear-gradient(90deg, #7b3a1e, #e4a85d 52%, #6a2e18);
-      }
-      .cylinder.is-loading .loading-cartridge {
-        animation: cartridge-load 0.34s cubic-bezier(.25,.75,.2,1) both;
-      }
       #unity-loading.is-ready .cylinder-ring { animation: cylinder-lock 0.75s cubic-bezier(.2,.85,.2,1); }
 
       .sr-only {
@@ -244,15 +215,9 @@
         100% { transform: translate3d(0, 2%, 0); }
       }
       @keyframes cylinder-lock {
-        0% { transform: rotate(-300deg); }
-        68% { transform: rotate(-375deg); }
-        100% { transform: rotate(-360deg); }
-      }
-      @keyframes cartridge-load {
-        0% { opacity: 0; transform: translateY(-26px) scale(0.92); }
-        18% { opacity: 1; }
-        72% { opacity: 1; transform: translateY(38px) scale(1); }
-        100% { opacity: 0; transform: translateY(54px) scale(0.72); }
+        0% { transform: rotate(300deg); }
+        68% { transform: rotate(375deg); }
+        100% { transform: rotate(360deg); }
       }
 
       @media (max-width: 720px), (max-height: 540px) {
@@ -277,7 +242,6 @@
           <div class="brand">LOADED</div>
           <div class="brand-rule"></div>
           <div class="cylinder" role="progressbar" aria-label="실린더 장전 진행" aria-valuemin="0" aria-valuemax="6" aria-valuenow="0">
-            <span class="loading-cartridge" aria-hidden="true"></span>
             <div class="cylinder-ring">
               <span class="chamber" style="--index:0"></span>
               <span class="chamber" style="--index:1"></span>
@@ -378,28 +342,19 @@
         isLoadingChamber = true;
         const chamberIndex = loadedChambers;
         const rotationDelay = reduceMotion ? 0 : chamberIndex === 0 ? 70 : 280;
-        const loadingDelay = reduceMotion ? 0 : 340;
-        cylinderRing.style.transform = `rotate(${-chamberIndex * 60}deg)`;
+        cylinderRing.style.transform = `rotate(${chamberIndex * 60}deg)`;
         progressText.textContent = `${chamberIndex + 1}번 탄실 정렬 중`;
 
         setTimeout(() => {
           const chamber = chambers[chamberIndex];
           chamber.classList.add("is-seating");
-          cylinder.classList.remove("is-loading");
-          void cylinder.offsetWidth;
-          cylinder.classList.add("is-loading");
-          progressText.textContent = "탄환 장전 중";
-
-          setTimeout(() => {
-            chamber.classList.remove("is-seating");
-            chamber.classList.add("is-loaded");
-            cylinder.classList.remove("is-loading");
-            loadedChambers++;
-            cylinder.setAttribute("aria-valuenow", String(loadedChambers));
-            progressText.textContent = `탄환 ${loadedChambers}발 장전 완료`;
-            isLoadingChamber = false;
-            setTimeout(loadNextChamber, reduceMotion ? 0 : 70);
-          }, loadingDelay);
+          chamber.classList.add("is-loaded");
+          chamber.classList.remove("is-seating");
+          loadedChambers++;
+          cylinder.setAttribute("aria-valuenow", String(loadedChambers));
+          progressText.textContent = `탄환 ${loadedChambers}발 장전 완료`;
+          isLoadingChamber = false;
+          setTimeout(loadNextChamber, reduceMotion ? 0 : 70);
         }, rotationDelay);
       }
 
@@ -428,12 +383,12 @@
       }
 
       const buildUrl = "Build";
-      const loaderUrl = buildUrl + "/83d20a698279b6eecf2bceb7e6c9fbe2.loader.js";
+      const loaderUrl = buildUrl + "/b53d0593d3b482dc626a01dcc2a5fd54.loader.js";
       const config = {
         arguments: [],
-        dataUrl: buildUrl + "/d7c4f7f58ecea262ef78c2d04f8429ba.data.unityweb",
+        dataUrl: buildUrl + "/b469baeb473e2387e094739e2b5dd050.data.unityweb",
         frameworkUrl: buildUrl + "/4967f8819654e03c012d1a7a56107949.framework.js.unityweb",
-        codeUrl: buildUrl + "/f9a0634aa7f3e9baa1f5c57edc1dc84c.wasm.unityweb",
+        codeUrl: buildUrl + "/15876b561604b7771753d492b378d74b.wasm.unityweb",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "LOADED",

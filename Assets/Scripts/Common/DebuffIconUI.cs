@@ -24,6 +24,7 @@ public class DebuffIconUI : MonoBehaviour,
         StatusEffectType configuredEffectType,
         EnemyController configuredEnemyTarget)
     {
+        ResolveReferences();
         effectType = configuredEffectType;
         enemyTarget = configuredEnemyTarget;
 
@@ -35,6 +36,19 @@ public class DebuffIconUI : MonoBehaviour,
         }
 
         SetStacks(stacks);
+    }
+
+    private void ResolveReferences()
+    {
+        if (iconImage == null)
+        {
+            iconImage = GetComponent<Image>();
+        }
+
+        if (stackText == null)
+        {
+            stackText = GetComponentInChildren<TMP_Text>(true);
+        }
     }
 
     public void SetStacks(int stacks)
