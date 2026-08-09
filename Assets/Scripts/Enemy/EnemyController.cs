@@ -162,6 +162,53 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             && (bigBarrelStep == BigBarrelStep.ExecuteBomb
                 || bigBarrelStep == BigBarrelStep.ExecuteShotgun));
 
+    public bool WillPreparedAttackHitPlayer()
+    {
+        if (!isAttackPrepared || currentHealth <= 0 || enemyData == null
+            || playerMove == null || boardManager == null
+            || statusEffects != null && statusEffects.IsStunned
+            || enemyData.BehaviorType == EnemyBehaviorType.Porter)
+        {
+            return false;
+        }
+
+        if (!boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex))
+        {
+            return false;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
+        {
+            return preparedTargetTileIndex == playerTileIndex;
+        }
+
+        if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
+        {
+            return LoadedAttackAction != null
+                && LoadedAttackAction.ActionType
+                    == EnemyActionType.ShotgunAttack
+                && preparedShotgunTileIndices.Contains(playerTileIndex);
+        }
+
+        foreach (EnemyActionData action in queuedAttackActions)
+        {
+            if (TryGetAttackData(action, out EnemyAttackData attackData)
+                && TryGetAttackTarget(
+                    attackData,
+                    out _,
+                    out bool targetsPlayer,
+                    out _)
+                && targetsPlayer)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private void Awake()
     {
         lineColorProperties = new MaterialPropertyBlock();
@@ -573,14 +620,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (!isStunActive && isNowStunned)
         {
             actionQueueUI?.SetStunned(true);
-
-            if (isAttackPrepared)
-            {
-                isAttackPrepared = false;
-                actionQueueUI?.SetPrepared(false);
-                HideAttackTelegraph();
-                ResetBigBarrelPreparation();
-            }
         }
         else if (isStunActive && !isNowStunned)
         {
@@ -588,24 +627,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         isStunActive = isNowStunned;
-    }
-
-    private void ResetBigBarrelPreparation()
-    {
-        if (enemyData == null
-            || enemyData.BehaviorType != EnemyBehaviorType.BigBarrel)
-        {
-            return;
-        }
-
-        if (bigBarrelStep == BigBarrelStep.ExecuteBomb)
-        {
-            bigBarrelStep = BigBarrelStep.PrepareBomb;
-        }
-        else if (bigBarrelStep == BigBarrelStep.ExecuteShotgun)
-        {
-            bigBarrelStep = BigBarrelStep.PrepareShotgun;
-        }
     }
 
     private void ConfigureBigBarrelHud()
