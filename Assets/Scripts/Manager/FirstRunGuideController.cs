@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -99,6 +100,23 @@ public sealed class FirstRunGuideController : MonoBehaviour
         public TargetKind TargetKind { get; }
     }
 
+    private readonly struct PriorityMission
+    {
+        public PriorityMission(
+            string text,
+            string targetName,
+            TargetKind targetKind = TargetKind.Named)
+        {
+            Text = text;
+            TargetName = targetName;
+            TargetKind = targetKind;
+        }
+
+        public string Text { get; }
+        public string TargetName { get; }
+        public TargetKind TargetKind { get; }
+    }
+
     private static readonly GuidePage[] CombatSystemPages =
     {
         new GuidePage(
@@ -126,7 +144,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             TargetKind.Cylinder),
         new GuidePage(
             "디버프 종류",
-            "<color=#FF7D7D><b>표식: 받는 피해 50% 증가</b></color>\n<color=#78D987><b>독: 턴 종료 시 스택만큼 피해, 이후 1 감소</b></color>\n<color=#75C7FF><b>기절: 행동 불가, 행동할 때마다 1 감소</b></color>\n<color=#C69CFF><b>약화: 공격력 30% 감소</b></color>\n상태 아이콘에 <color=#FF5757><b>마우스 커서를 올려</b></color> 남은 스택을 확인하세요.",
+            "<color=#FF7D7D><b>표식: 받는 피해 50% 증가</b></color>\n<color=#78D987><b>독: 턴 종료 시 스택만큼 피해, 이후 1 감소</b></color>\n<color=#75C7FF><b>기절: 행동 불가, 행동할 때마다 1 감소</b></color>\n<color=#C69CFF><b>약화: 공격력 30% 감소</b></color>\n적에게 디버프가 있다면 아래와 같은 상태 아이콘이 표시됩니다.\n아이콘에 <color=#FF5757><b>마우스 커서를 올리면</b></color> 남은 스택을 확인할 수 있습니다.",
             null,
             null)
     };
@@ -251,6 +269,9 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private PlayerShoot playerShoot;
     private PlayerCylinderUI cylinderUI;
     private PlayerInventory playerInventory;
+    private DeckManager deckManager;
+    private BoardManager boardManager;
+    private WaveManager waveManager;
     private ShopManager shopManager;
     private Canvas rootCanvas;
     private TMP_FontAsset guideFont;
@@ -266,10 +287,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private GameObject cardMissionPanel;
     private TMP_Text cardMissionText;
     private Button cardBackButton;
-    private Button cardSkipButton;
-    private Button cardNeverShowButton;
+    private Button cardExitButton;
+    private Toggle neverShowToggle;
     private Button continueButton;
     private TMP_Text continueButtonText;
+    private Button missionGuideButton;
     private Button missionNextButton;
     private GameObject videoFrame;
     private RawImage videoDisplay;
@@ -278,6 +300,18 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private VideoPlayer videoPlayer;
     private GameObject missionBar;
     private TMP_Text missionText;
+    private Coroutine missionScaleCoroutine;
+    private GameObject warningDemoRoot;
+    private Button warningSoundButton;
+    private Image warningDemoTileImage;
+    private Image warningDemoAttackIcon;
+    private Image warningDemoReadyGlow;
+    private Sprite warningDemoNormalSprite;
+    private Sprite warningDemoPreparedSprite;
+    private Material warningDemoReadyMaterial;
+    private Coroutine warningDemoCoroutine;
+    private GameObject debuffLegendRoot;
+    private readonly Image[] debuffLegendIcons = new Image[4];
 
     private GuideMode mode;
     private int combatSystemPageIndex;
@@ -428,9 +462,10 @@ public sealed class FirstRunGuideController : MonoBehaviour
         }
 
         cardBackButton?.onClick.RemoveListener(HandleBack);
-        cardSkipButton?.onClick.RemoveListener(SkipCurrentGuide);
-        cardNeverShowButton?.onClick.RemoveListener(DisableAllGuides);
+        cardExitButton?.onClick.RemoveListener(SkipCurrentGuide);
+        missionGuideButton?.onClick.RemoveListener(ShowCurrentMissionGuide);
         missionNextButton?.onClick.RemoveListener(AdvanceCurrentMission);
+        warningSoundButton?.onClick.RemoveListener(PlayWarningDemo);
 
         if (videoPlayer != null)
         {
@@ -484,6 +519,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
             {
                 FinishItemGuide();
             }
+        }
+
+        if (missionActive && !pendingAdvance && IsPresentationSettled())
+        {
+            RefreshMissionBar();
         }
 
         UpdateHighlight();
@@ -643,6 +683,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
     {
         if (shopPageIndex >= ShopPages.Length)
         {
+            CommitNeverShowPreference();
             SaveCompleted(ShopGuideKey);
             HideGuide(false);
             return;
@@ -677,28 +718,38 @@ public sealed class FirstRunGuideController : MonoBehaviour
         inputBlocker.gameObject.SetActive(true);
         inputBlocker.raycastTarget = true;
         card.SetActive(true);
-        cardSkipButton.gameObject.SetActive(true);
-        cardNeverShowButton.gameObject.SetActive(true);
+        cardExitButton?.gameObject.SetActive(true);
+        neverShowToggle?.gameObject.SetActive(true);
         missionBar.SetActive(false);
         missionActive = false;
         pendingAdvance = false;
-        cardStepText.text = stepLabel;
-        cardTitleText.text = title;
-        cardBodyText.text = description;
+        cardStepText.text = RemoveBoldTags(stepLabel);
+        cardTitleText.text = RemoveBoldTags(title);
+        cardBodyText.text = RemoveBoldTags(description);
         bool hasMission = !string.IsNullOrWhiteSpace(mission);
         cardMissionPanel.SetActive(hasMission);
-        cardMissionText.text = hasMission
+        cardMissionText.text = RemoveBoldTags(hasMission
             ? "<color=#FFB347><b>MISSION</b></color>  "
                 + $"<color=#8FE6FF><b>{mission}</b></color>"
-            : string.Empty;
-        continueButtonText.text = continueLabel;
+            : string.Empty);
+        continueButtonText.text = RemoveBoldTags(continueLabel);
         SetCardVideo(videoPath);
         bool hasVideo = !string.IsNullOrWhiteSpace(videoPath);
+        bool showWarningDemo = mode == GuideMode.Combat
+            && showingCombatSystemPages
+            && combatSystemPageIndex == 1;
+        bool showDebuffLegend = mode == GuideMode.Combat
+            && showingCombatSystemPages
+            && combatSystemPageIndex == CombatSystemPages.Length - 1;
+        SetWarningDemoActive(showWarningDemo);
+        SetDebuffLegendActive(showDebuffLegend);
         SetAnchors(
             cardBodyText.rectTransform,
             0.08f,
-            hasMission ? hasVideo ? 0.18f : 0.23f
-                : hasVideo ? 0.13f : 0.17f,
+            showWarningDemo ? 0.29f
+                : showDebuffLegend ? 0.38f
+                : hasMission ? hasVideo ? 0.18f : 0.23f
+                    : hasVideo ? 0.13f : 0.17f,
             0.92f,
             hasVideo ? 0.30f : 0.72f);
         SetAnchors(
@@ -761,6 +812,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         }
 
         card.SetActive(false);
+        ResetWarningDemo();
         inputBlocker.gameObject.SetActive(false);
         inputBlocker.raycastTarget = false;
         missionBar.SetActive(true);
@@ -871,7 +923,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         missionActive = false;
         pendingAdvance = true;
         advanceAt = Time.unscaledTime + StepAdvanceDelay;
-        missionText.text = "<color=#76E38A><b>MISSION COMPLETE!</b></color>";
+        SetMissionPanelText(
+            "<color=#76E38A><b>MISSION COMPLETE!</b></color>");
         SetTutorialInputLocked(true);
     }
 
@@ -887,14 +940,92 @@ public sealed class FirstRunGuideController : MonoBehaviour
             && combatStepIndex < CombatSteps.Length)
         {
             GuideStepDefinition step = CombatSteps[combatStepIndex];
-            missionText.text = "<color=#FFD05A><b>MISSION</b></color>  "
-                + $"<color=#8FE6FF><b>{GetMissionText(step)}</b></color>";
+            if (TryGetPriorityMission(step.Step, out PriorityMission priority))
+            {
+                SetMissionPanelText(
+                    "<color=#FF4B4B><b>MISSION</b></color>  "
+                    + $"<color=#8FE6FF><b>{priority.Text}</b></color>");
+                ApplyMissionTarget(priority.TargetName, priority.TargetKind);
+            }
+            else
+            {
+                SetMissionPanelText(
+                    "<color=#FFD05A><b>MISSION</b></color>  "
+                    + $"<color=#8FE6FF><b>{GetMissionText(step)}</b></color>");
+                ApplyMissionTarget(step.TargetName, step.TargetKind);
+            }
         }
         else if (mode == GuideMode.Item)
         {
-            missionText.text = "<color=#FFD05A><b>MISSION</b></color>  "
-                + "<color=#8FE6FF><b>보유 아이템 한 번 사용</b></color>";
+            SetMissionPanelText(
+                "<color=#FFD05A><b>MISSION</b></color>  "
+                + "<color=#8FE6FF><b>보유 아이템 한 번 사용</b></color>");
         }
+    }
+
+    private void SetMissionPanelText(string text)
+    {
+        text = RemoveBoldTags(text);
+        if (missionText == null || missionText.text == text)
+        {
+            return;
+        }
+
+        missionText.text = text;
+        if (missionBar == null || !missionBar.activeInHierarchy)
+        {
+            return;
+        }
+
+        if (missionScaleCoroutine != null)
+        {
+            StopCoroutine(missionScaleCoroutine);
+        }
+
+        missionScaleCoroutine = StartCoroutine(PulseMissionPanel());
+    }
+
+    private IEnumerator PulseMissionPanel()
+    {
+        RectTransform panelRect = missionBar.transform as RectTransform;
+        if (panelRect == null)
+        {
+            missionScaleCoroutine = null;
+            yield break;
+        }
+
+        const float growDuration = 0.1f;
+        const float settleDuration = 0.16f;
+        Vector3 baseScale = Vector3.one;
+        Vector3 emphasizedScale = Vector3.one * 1.08f;
+        panelRect.localScale = baseScale;
+
+        float elapsed = 0f;
+        while (elapsed < growDuration)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / growDuration);
+            panelRect.localScale = Vector3.LerpUnclamped(
+                baseScale,
+                emphasizedScale,
+                1f - Mathf.Pow(1f - progress, 3f));
+        }
+
+        elapsed = 0f;
+        while (elapsed < settleDuration)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / settleDuration);
+            panelRect.localScale = Vector3.LerpUnclamped(
+                emphasizedScale,
+                baseScale,
+                1f - Mathf.Pow(1f - progress, 3f));
+        }
+
+        panelRect.localScale = baseScale;
+        missionScaleCoroutine = null;
     }
 
     private void AdvanceCurrentMission()
@@ -914,6 +1045,42 @@ public sealed class FirstRunGuideController : MonoBehaviour
         else if (mode == GuideMode.Item)
         {
             FinishItemGuide();
+        }
+    }
+
+    private void ShowCurrentMissionGuide()
+    {
+        if (!missionActive || pendingAdvance)
+        {
+            return;
+        }
+
+        if (mode == GuideMode.Combat
+            && combatStepIndex >= 0
+            && combatStepIndex < CombatSteps.Length)
+        {
+            GuideStepDefinition step = CombatSteps[combatStepIndex];
+            SetActiveTarget(step.TargetName, step.TargetKind);
+            ShowCard(
+                $"MISSION {combatStepIndex + 1}/{CombatSteps.Length}",
+                step.Title,
+                step.Description,
+                GetMissionText(step),
+                step.VideoPath,
+                "미션 재개");
+            return;
+        }
+
+        if (mode == GuideMode.Item)
+        {
+            SetActiveTarget("Layout | Inventory", TargetKind.Named);
+            ShowCard(
+                "ITEM GUIDE",
+                "아이템 사용",
+                "<color=#FF5757><b>1/2/3 키</b></color> 또는 <color=#FF5757><b>인벤토리 슬롯 클릭</b></color>으로 아이템을 사용합니다.\n<color=#FFD05A><b>사용 조건이 맞지 않으면 소비되지 않습니다.</b></color>\n적이 나온 뒤 다시 시도하세요.",
+                "보유 아이템 한 번 사용",
+                null,
+                "미션 재개");
         }
     }
 
@@ -946,8 +1113,421 @@ public sealed class FirstRunGuideController : MonoBehaviour
         };
     }
 
+    private void ApplyMissionTarget(string targetName, TargetKind targetKind)
+    {
+        if (activeTargetName == targetName && activeTargetKind == targetKind)
+        {
+            return;
+        }
+
+        SetActiveTarget(targetName, targetKind);
+    }
+
+    private bool TryGetPriorityMission(
+        CombatStep step,
+        out PriorityMission priority)
+    {
+        priority = default;
+        int loadedBulletCount = deckManager?.LoadedBullets.Count ?? 0;
+
+        // Avoiding guaranteed incoming damage always outranks instructional
+        // setup such as facing an enemy, entering range, waiting, or reloading.
+        if (IsPlayerInPreparedAttackDanger())
+        {
+            priority = new PriorityMission(
+                "적의 공격으로부터 회피하세요!",
+                null,
+                TargetKind.MoveButtons);
+            return true;
+        }
+
+        switch (step)
+        {
+            case CombatStep.Move:
+                return TryGetMovePriority(out priority);
+
+            case CombatStep.InspectEnemyAction:
+                if (!HasInspectableEnemyAction())
+                {
+                    priority = new PriorityMission(
+                        "적 행동 아이콘이 나타날 때까지 한 턴 진행",
+                        "Button | Wait");
+                    return true;
+                }
+
+                break;
+
+            case CombatStep.ReloadThree:
+                if (deckManager != null
+                    && reloadCount < 3
+                    && (loadedBulletCount >= deckManager.MaxReloadAmount
+                        || deckManager.ReloadableBulletCount <= 0))
+                {
+                    priority = new PriorityMission(
+                        "실린더를 발사해 장전 공간 만들기",
+                        "Button | Shoot");
+                    return true;
+                }
+
+                break;
+
+            case CombatStep.InspectBulletInfo:
+                if (loadedBulletCount <= 0)
+                {
+                    priority = new PriorityMission(
+                        "확인할 탄환 1발 장전",
+                        "Button | Reload");
+                    return true;
+                }
+
+                break;
+
+            case CombatStep.Fire:
+                if (loadedBulletCount <= 0)
+                {
+                    priority = new PriorityMission(
+                        "발사할 탄환 1발 장전",
+                        "Button | Reload");
+                    return true;
+                }
+
+                return TryGetAttackTargetPriority(
+                    loadedBulletCount,
+                    out priority);
+
+            case CombatStep.ReorderCylinder:
+                if (loadedBulletCount < 2)
+                {
+                    priority = new PriorityMission(
+                        "실린더에 탄환 2발 이상 장전",
+                        "Button | Reload");
+                    return true;
+                }
+
+                break;
+
+            case CombatStep.PreviewDamage:
+                return TryGetAttackTargetPriority(
+                    loadedBulletCount,
+                    out priority);
+
+            case CombatStep.UseItem:
+                if (!HasInventoryItem())
+                {
+                    EnsureTutorialStunItem();
+                    if (!HasInventoryItem())
+                    {
+                        priority = new PriorityMission(
+                            "사용할 아이템이 지급될 때까지 잠시 대기",
+                            "Layout | Inventory");
+                        return true;
+                    }
+                }
+
+                break;
+
+            case CombatStep.Kick:
+                return TryGetKickPriority(out priority);
+        }
+
+        return false;
+    }
+
+    private bool TryGetMovePriority(out PriorityMission priority)
+    {
+        priority = default;
+        if (playerMove == null || boardManager == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex))
+        {
+            return false;
+        }
+
+        int facingDirection = GetPlayerFacingDirection();
+        bool canMove = false;
+        bool canRotateToPush = false;
+
+        for (int direction = -1; direction <= 1; direction += 2)
+        {
+            int targetTileIndex = playerTileIndex + direction;
+            if (targetTileIndex < 0
+                || targetTileIndex >= boardManager.BoardCount)
+            {
+                continue;
+            }
+
+            if (waveManager.TryGetEnemyAtTile(
+                    targetTileIndex,
+                    out EnemyController _))
+            {
+                canMove |= direction == facingDirection && playerMove.CanPush;
+                canRotateToPush |= direction != facingDirection;
+                continue;
+            }
+
+            if (!waveManager.IsTileReservedForSpawn(targetTileIndex))
+            {
+                canMove = true;
+            }
+        }
+
+        if (canMove)
+        {
+            return false;
+        }
+
+        if (canRotateToPush && playerMove.CanPush)
+        {
+            priority = new PriorityMission(
+                "이동할 수 있도록 인접한 적 바라보기",
+                "Button | Rotate");
+        }
+        else
+        {
+            priority = new PriorityMission(
+                "이동 경로가 열릴 때까지 한 턴 대기",
+                "Button | Wait");
+        }
+
+        return true;
+    }
+
+    private bool TryGetAttackTargetPriority(
+        int loadedBulletCount,
+        out PriorityMission priority)
+    {
+        priority = default;
+        if (loadedBulletCount <= 0)
+        {
+            priority = new PriorityMission(
+                "예상 피해를 확인할 탄환 장전",
+                "Button | Reload");
+            return true;
+        }
+
+        int maximumRange = 1;
+        if (deckManager != null)
+        {
+            foreach (BulletInstance bullet in deckManager.LoadedBullets)
+            {
+                if (bullet != null)
+                {
+                    maximumRange = Mathf.Max(maximumRange, bullet.MaxRange);
+                }
+            }
+        }
+
+        int facingDirection = GetPlayerFacingDirection();
+        if (HasEnemyInDirection(facingDirection, maximumRange, true))
+        {
+            return false;
+        }
+
+        if (HasEnemyInDirection(-facingDirection, maximumRange, true)
+            || !HasEnemyInDirection(facingDirection, int.MaxValue, false)
+                && HasLivingEnemy())
+        {
+            priority = new PriorityMission(
+                "공격할 적 바라보기",
+                "Button | Rotate");
+            return true;
+        }
+
+        if (HasLivingEnemy())
+        {
+            priority = new PriorityMission(
+                $"적이 탄환 사거리 {maximumRange}칸 안에 들도록 이동",
+                null,
+                TargetKind.MoveButtons);
+        }
+        else
+        {
+            priority = new PriorityMission(
+                "적이 등장할 때까지 한 턴 진행",
+                "Button | Wait");
+        }
+
+        return true;
+    }
+
+    private bool TryGetKickPriority(out PriorityMission priority)
+    {
+        priority = default;
+        if (!TryGetNearestEnemy(out int direction, out int distance))
+        {
+            priority = new PriorityMission(
+                "적이 등장할 때까지 한 턴 진행",
+                "Button | Wait");
+            return true;
+        }
+
+        if (distance > 1)
+        {
+            priority = new PriorityMission(
+                "적 바로 앞까지 이동",
+                null,
+                TargetKind.MoveButtons);
+            return true;
+        }
+
+        if (direction != GetPlayerFacingDirection())
+        {
+            priority = new PriorityMission(
+                "인접한 적 바라보기",
+                "Button | Rotate");
+            return true;
+        }
+
+        if (playerMove != null && !playerMove.CanPush)
+        {
+            priority = new PriorityMission(
+                $"발차기 재사용까지 대기 ({playerMove.RemainingPushCooldownTurns}턴)",
+                "Button | Wait");
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool HasInspectableEnemyAction()
+    {
+        if (waveManager == null)
+        {
+            return false;
+        }
+
+        foreach (EnemyController enemy in waveManager.ActiveEnemies)
+        {
+            if (enemy != null && enemy.CurrentHealth > 0
+                && enemy.QueuedAttackActions.Count > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool HasLivingEnemy()
+    {
+        if (waveManager == null)
+        {
+            return false;
+        }
+
+        foreach (EnemyController enemy in waveManager.ActiveEnemies)
+        {
+            if (enemy != null && enemy.CurrentHealth > 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool IsPlayerInPreparedAttackDanger()
+    {
+        if (waveManager == null)
+        {
+            return false;
+        }
+
+        foreach (EnemyController enemy in waveManager.ActiveEnemies)
+        {
+            if (enemy != null && enemy.WillPreparedAttackHitPlayer())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool HasEnemyInDirection(
+        int direction,
+        int maximumRange,
+        bool enforceRange)
+    {
+        if (playerMove == null || boardManager == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex))
+        {
+            return false;
+        }
+
+        int normalizedDirection = direction >= 0 ? 1 : -1;
+        foreach (EnemyController enemy in waveManager.ActiveEnemies)
+        {
+            if (enemy == null || enemy.CurrentHealth <= 0
+                || !boardManager.TryGetTileIndex(
+                    enemy.transform.position,
+                    out int enemyTileIndex))
+            {
+                continue;
+            }
+
+            int offset = enemyTileIndex - playerTileIndex;
+            if (offset * normalizedDirection > 0
+                && (!enforceRange || Mathf.Abs(offset) <= maximumRange))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryGetNearestEnemy(out int direction, out int distance)
+    {
+        direction = 0;
+        distance = int.MaxValue;
+        if (playerMove == null || boardManager == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex))
+        {
+            return false;
+        }
+
+        foreach (EnemyController enemy in waveManager.ActiveEnemies)
+        {
+            if (enemy == null || enemy.CurrentHealth <= 0
+                || !boardManager.TryGetTileIndex(
+                    enemy.transform.position,
+                    out int enemyTileIndex))
+            {
+                continue;
+            }
+
+            int offset = enemyTileIndex - playerTileIndex;
+            int candidateDistance = Mathf.Abs(offset);
+            int candidateDirection = offset > 0 ? 1 : -1;
+            if (offset != 0
+                && (candidateDistance < distance
+                    || candidateDistance == distance
+                    && candidateDirection == GetPlayerFacingDirection()))
+            {
+                direction = candidateDirection;
+                distance = candidateDistance;
+            }
+        }
+
+        return direction != 0;
+    }
+
+    private int GetPlayerFacingDirection()
+    {
+        return playerMove == null || playerMove.transform.localScale.x >= 0f
+            ? 1
+            : -1;
+    }
+
     private void FinishCombatGuide()
     {
+        CommitNeverShowPreference();
         SaveCompleted(CombatGuideKey);
         SaveCompleted(ItemGuideKey);
         ShowCompletionCard(
@@ -957,6 +1537,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
     private void FinishItemGuide()
     {
+        CommitNeverShowPreference();
         SaveCompleted(ItemGuideKey);
         ShowCompletionCard(
             "아이템 가이드 완료",
@@ -969,7 +1550,6 @@ public sealed class FirstRunGuideController : MonoBehaviour
         ShowCard("GUIDE COMPLETE", title, description, null, null, "확인");
         completionCardOpen = true;
         cardBackButton.gameObject.SetActive(false);
-        cardSkipButton.gameObject.SetActive(false);
         continueButton.onClick.RemoveListener(HandleContinue);
         continueButton.onClick.AddListener(CloseCompletionCard);
     }
@@ -990,25 +1570,16 @@ public sealed class FirstRunGuideController : MonoBehaviour
             return;
         }
 
-        if (mode == GuideMode.Combat)
-        {
-            SaveCompleted(CombatGuideKey);
-            SaveCompleted(ItemGuideKey);
-        }
-        else if (mode == GuideMode.Item)
-        {
-            SaveCompleted(ItemGuideKey);
-        }
-        else if (mode == GuideMode.Shop)
-        {
-            SaveCompleted(ShopGuideKey);
-        }
-
         HideGuide(true);
     }
 
-    private void DisableAllGuides()
+    private void CommitNeverShowPreference()
     {
+        if (neverShowToggle == null || !neverShowToggle.isOn)
+        {
+            return;
+        }
+
         PlayerPrefs.SetInt(GuideDisabledKey, 1);
         PlayerPrefs.SetInt(CombatGuideKey, 1);
         PlayerPrefs.SetInt(ItemGuideKey, 1);
@@ -1017,11 +1588,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         combatGuideStarted = true;
         shopGuideStarted = true;
-        HideGuide(true);
     }
 
     private void HideGuide(bool unlockInput)
     {
+        CommitNeverShowPreference();
         GuideMode previousMode = mode;
         mode = GuideMode.None;
         missionActive = false;
@@ -1033,6 +1604,18 @@ public sealed class FirstRunGuideController : MonoBehaviour
         activeSecondaryTarget = null;
         activeTargetName = null;
         StopVideo();
+        ResetWarningDemo();
+
+        if (missionScaleCoroutine != null)
+        {
+            StopCoroutine(missionScaleCoroutine);
+            missionScaleCoroutine = null;
+        }
+
+        if (missionBar != null)
+        {
+            missionBar.transform.localScale = Vector3.one;
+        }
 
         if (guideRoot != null)
         {
@@ -1179,6 +1762,12 @@ public sealed class FirstRunGuideController : MonoBehaviour
         cylinderUI ??= FindFirstObjectByType<PlayerCylinderUI>(
             FindObjectsInactive.Include);
         playerInventory ??= FindFirstObjectByType<PlayerInventory>(
+            FindObjectsInactive.Include);
+        deckManager ??= FindFirstObjectByType<DeckManager>(
+            FindObjectsInactive.Include);
+        boardManager ??= FindFirstObjectByType<BoardManager>(
+            FindObjectsInactive.Include);
+        waveManager ??= FindFirstObjectByType<WaveManager>(
             FindObjectsInactive.Include);
         shopManager ??= FindFirstObjectByType<ShopManager>(
             FindObjectsInactive.Include);
@@ -1462,7 +2051,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         highlight.sizeDelta = new Vector2(
             Mathf.Abs(localMax.x - localMin.x) + padding * 2f,
             Mathf.Abs(localMax.y - localMin.y) + padding * 2f);
-        float pulse = 0.08f + 0.06f
+        float pulse = 0.05f + 0.14f
             * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f));
         Color color = highlightImage.color;
         color.a = pulse;
@@ -1579,14 +2168,14 @@ public sealed class FirstRunGuideController : MonoBehaviour
         highlightImage = CreateImage(
             "Image | Guide Highlight",
             guideRoot,
-            new Color(1f, 0.58f, 0.12f, 0.12f));
+            new Color(0.02f, 0.48f, 1f, 0.11f));
         highlight = highlightImage.rectTransform;
         highlight.anchorMin = new Vector2(0.5f, 0.5f);
         highlight.anchorMax = new Vector2(0.5f, 0.5f);
         highlight.pivot = new Vector2(0.5f, 0.5f);
         highlightImage.raycastTarget = false;
         Outline highlightOutline = highlight.gameObject.AddComponent<Outline>();
-        highlightOutline.effectColor = new Color(1f, 0.62f, 0.16f, 1f);
+        highlightOutline.effectColor = new Color(0.05f, 0.82f, 1f, 1f);
         highlightOutline.effectDistance = new Vector2(4f, -4f);
 
         card = CreateImage(
@@ -1612,7 +2201,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         cardTitleText = CreateText("Text | Guide Title", cardRect);
         SetAnchors(cardTitleText.rectTransform, 0.06f, 0.80f, 0.94f, 0.90f);
         cardTitleText.alignment = TextAlignmentOptions.Center;
-        cardTitleText.fontStyle = FontStyles.Bold;
+        cardTitleText.fontStyle = FontStyles.Normal;
         cardTitleText.fontSizeMax = 42f;
         cardTitleText.textWrappingMode = TextWrappingModes.NoWrap;
 
@@ -1680,6 +2269,138 @@ public sealed class FirstRunGuideController : MonoBehaviour
         cardMissionText.overflowMode = TextOverflowModes.Ellipsis;
         cardMissionPanel.SetActive(false);
 
+        RectTransform warningRootRect = CreateRect(
+            "Panel | Warning Sound Demo",
+            cardRect);
+        warningDemoRoot = warningRootRect.gameObject;
+        SetAnchors(warningRootRect, 0.27f, 0.125f, 0.73f, 0.27f);
+
+        warningSoundButton = CreateButton(
+            "Button | Play Enemy Warning",
+            warningRootRect,
+            "경고음 듣기",
+            new Color(0.42f, 0.11f, 0.08f, 1f),
+            out _);
+        SetAnchors(
+            (RectTransform)warningSoundButton.transform,
+            0f,
+            0.18f,
+            0.60f,
+            0.82f);
+        warningSoundButton.onClick.AddListener(PlayWarningDemo);
+
+        warningDemoTileImage = CreateImage(
+            "Image | Enemy Warning Tile",
+            warningRootRect,
+            new Color(0.18f, 0.15f, 0.13f, 1f));
+        SetAnchors(
+            warningDemoTileImage.rectTransform,
+            0.73f,
+            0.10f,
+            0.96f,
+            0.90f);
+        warningDemoTileImage.type = Image.Type.Simple;
+        warningDemoTileImage.preserveAspect = false;
+        warningDemoTileImage.raycastTarget = false;
+
+        warningDemoReadyGlow = CreateImage(
+            "Image | Enemy Warning Ready Glow",
+            warningDemoTileImage.rectTransform,
+            Color.white);
+        Stretch(warningDemoReadyGlow.rectTransform);
+        warningDemoReadyGlow.sprite = null;
+        warningDemoReadyGlow.type = Image.Type.Simple;
+        warningDemoReadyGlow.raycastTarget = false;
+        warningDemoReadyGlow.gameObject.SetActive(false);
+
+        warningDemoAttackIcon = CreateImage(
+            "Image | Melee Attack Icon",
+            warningDemoTileImage.rectTransform,
+            Color.white);
+        SetAnchors(
+            warningDemoAttackIcon.rectTransform,
+            0.20f,
+            0.20f,
+            0.80f,
+            0.80f);
+        warningDemoAttackIcon.preserveAspect = true;
+        warningDemoAttackIcon.raycastTarget = false;
+        warningDemoRoot.SetActive(false);
+
+        RectTransform debuffRootRect = CreateRect(
+            "Panel | Debuff Legend",
+            cardRect);
+        debuffLegendRoot = debuffRootRect.gameObject;
+        SetAnchors(debuffRootRect, 0.18f, 0.19f, 0.82f, 0.36f);
+        string[] debuffNames = { "표식", "독", "기절", "약화" };
+        Color[] debuffColors =
+        {
+            new Color(1f, 0.49f, 0.49f, 1f),
+            new Color(0.47f, 0.85f, 0.53f, 1f),
+            new Color(0.46f, 0.78f, 1f, 1f),
+            new Color(0.78f, 0.61f, 1f, 1f)
+        };
+        for (int i = 0; i < debuffLegendIcons.Length; i++)
+        {
+            RectTransform itemRect = CreateRect(
+                $"Item | Debuff {debuffNames[i]}",
+                debuffRootRect);
+            float minX = i / (float)debuffLegendIcons.Length;
+            float maxX = (i + 1f) / debuffLegendIcons.Length;
+            SetAnchors(itemRect, minX, 0f, maxX, 1f);
+
+            Image icon = CreateImage(
+                $"Image | Debuff {debuffNames[i]}",
+                itemRect,
+                Color.white);
+            SetAnchors(icon.rectTransform, 0.25f, 0.30f, 0.75f, 0.94f);
+            icon.preserveAspect = true;
+            icon.raycastTarget = true;
+            debuffLegendIcons[i] = icon;
+
+            TMP_Text stackText = CreateText(
+                "Text | Stack",
+                icon.rectTransform);
+            SetAnchors(stackText.rectTransform, 0.52f, 0f, 1f, 0.48f);
+            stackText.text = "1";
+            stackText.color = new Color(1f, 0.18f, 0.22f, 1f);
+            stackText.fontStyle = FontStyles.Normal;
+            stackText.fontSizeMin = 10f;
+            stackText.fontSizeMax = 18f;
+            stackText.alignment = TextAlignmentOptions.BottomRight;
+            stackText.textWrappingMode = TextWrappingModes.NoWrap;
+            icon.gameObject.AddComponent<DebuffIconUI>();
+
+            TMP_Text label = CreateText(
+                $"Text | Debuff {debuffNames[i]}",
+                itemRect);
+            SetAnchors(label.rectTransform, 0f, 0f, 1f, 0.30f);
+            label.text = debuffNames[i];
+            label.color = debuffColors[i];
+            label.fontStyle = FontStyles.Normal;
+            label.fontSizeMin = 11f;
+            label.fontSizeMax = 21f;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+        }
+        debuffLegendRoot.SetActive(false);
+
+        neverShowToggle = CreateNeverShowToggle(cardRect);
+        SetAnchors(
+            (RectTransform)neverShowToggle.transform,
+            0.035f,
+            0.895f,
+            0.28f,
+            0.965f);
+
+        cardExitButton = CreateGuideExitButton(cardRect);
+        SetAnchors(
+            (RectTransform)cardExitButton.transform,
+            0.91f,
+            0.895f,
+            0.975f,
+            0.965f);
+        cardExitButton.onClick.AddListener(SkipCurrentGuide);
+
         cardBackButton = CreateButton(
             "Button | Previous Guide",
             cardRect,
@@ -1688,39 +2409,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
             out _);
         SetAnchors(
             (RectTransform)cardBackButton.transform,
-            0.06f,
+            0.08f,
             0.035f,
-            0.22f,
+            0.32f,
             0.11f);
         cardBackButton.onClick.AddListener(HandleBack);
-
-        cardSkipButton = CreateButton(
-            "Button | Skip Guide",
-            cardRect,
-            "건너뛰기",
-            new Color(0.2f, 0.18f, 0.17f, 1f),
-            out _);
-        SetAnchors(
-            (RectTransform)cardSkipButton.transform,
-            0.24f,
-            0.035f,
-            0.42f,
-            0.11f);
-        cardSkipButton.onClick.AddListener(SkipCurrentGuide);
-
-        cardNeverShowButton = CreateButton(
-            "Button | Never Show Guide",
-            cardRect,
-            "다시 보지 않기",
-            new Color(0.36f, 0.12f, 0.1f, 1f),
-            out _);
-        SetAnchors(
-            (RectTransform)cardNeverShowButton.transform,
-            0.44f,
-            0.035f,
-            0.64f,
-            0.11f);
-        cardNeverShowButton.onClick.AddListener(DisableAllGuides);
 
         continueButton = CreateButton(
             "Button | Continue Guide",
@@ -1730,9 +2423,9 @@ public sealed class FirstRunGuideController : MonoBehaviour
             out continueButtonText);
         SetAnchors(
             (RectTransform)continueButton.transform,
-            0.66f,
+            0.68f,
             0.035f,
-            0.94f,
+            0.92f,
             0.11f);
         continueButton.onClick.AddListener(HandleContinue);
 
@@ -1748,12 +2441,26 @@ public sealed class FirstRunGuideController : MonoBehaviour
         missionOutline.effectDistance = new Vector2(2f, -2f);
 
         missionText = CreateText("Text | Guide Mission", missionImage.rectTransform);
-        SetAnchors(missionText.rectTransform, 0.04f, 0.12f, 0.50f, 0.88f);
+        SetAnchors(missionText.rectTransform, 0.04f, 0.12f, 0.62f, 0.88f);
         missionText.alignment = TextAlignmentOptions.MidlineLeft;
         missionText.fontSizeMin = 12f;
         missionText.fontSizeMax = 28f;
         missionText.textWrappingMode = TextWrappingModes.NoWrap;
         missionText.overflowMode = TextOverflowModes.Ellipsis;
+
+        missionGuideButton = CreateButton(
+            "Button | Show Current Guide",
+            missionImage.rectTransform,
+            "가이드 보기",
+            new Color(0.34f, 0.20f, 0.10f, 0.95f),
+            out _);
+        SetAnchors(
+            (RectTransform)missionGuideButton.transform,
+            0.64f,
+            0.18f,
+            0.80f,
+            0.82f);
+        missionGuideButton.onClick.AddListener(ShowCurrentMissionGuide);
 
         missionNextButton = CreateButton(
             "Button | Next Mission Guide",
@@ -1763,39 +2470,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
             out _);
         SetAnchors(
             (RectTransform)missionNextButton.transform,
-            0.52f,
+            0.82f,
             0.18f,
-            0.66f,
+            0.98f,
             0.82f);
         missionNextButton.onClick.AddListener(AdvanceCurrentMission);
-
-        Button missionSkip = CreateButton(
-            "Button | Skip Mission Guide",
-            missionImage.rectTransform,
-            "건너뛰기",
-            new Color(0.2f, 0.18f, 0.17f, 0.95f),
-            out _);
-        SetAnchors(
-            (RectTransform)missionSkip.transform,
-            0.67f,
-            0.18f,
-            0.80f,
-            0.82f);
-        missionSkip.onClick.AddListener(SkipCurrentGuide);
-
-        Button missionNeverShow = CreateButton(
-            "Button | Never Show Mission Guide",
-            missionImage.rectTransform,
-            "다시 보지 않기",
-            new Color(0.36f, 0.12f, 0.1f, 0.95f),
-            out _);
-        SetAnchors(
-            (RectTransform)missionNeverShow.transform,
-            0.81f,
-            0.18f,
-            0.97f,
-            0.82f);
-        missionNeverShow.onClick.AddListener(DisableAllGuides);
 
         GameObject playerObject = new GameObject("VideoPlayer | First Run Guide");
         playerObject.transform.SetParent(guideRoot, false);
@@ -1854,6 +2533,211 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (videoDisplay != null)
         {
             videoDisplay.texture = null;
+        }
+    }
+
+    private void SetWarningDemoActive(bool active)
+    {
+        ResetWarningDemo();
+        if (warningDemoRoot == null)
+        {
+            return;
+        }
+
+        warningDemoRoot.SetActive(active);
+        if (!active)
+        {
+            return;
+        }
+
+        ResolveWarningDemoVisuals();
+        ApplyWarningDemoRestState();
+    }
+
+    private void ResolveWarningDemoVisuals()
+    {
+        EnemyActionQueueUI queueUI = FindFirstObjectByType<EnemyActionQueueUI>(
+            FindObjectsInactive.Include);
+        if (queueUI != null)
+        {
+            warningDemoNormalSprite = queueUI.NormalQueueSprite;
+            warningDemoPreparedSprite = queueUI.PreparedQueueSprite;
+            warningDemoReadyMaterial = queueUI.QueueReadyMaterial;
+            if (warningDemoReadyGlow != null)
+            {
+                warningDemoReadyGlow.material = warningDemoReadyMaterial;
+            }
+        }
+
+        EnemyActionData meleeAction = null;
+        if (waveManager != null)
+        {
+            foreach (EnemyController enemy in waveManager.ActiveEnemies)
+            {
+                if (enemy?.Data == null)
+                {
+                    continue;
+                }
+
+                foreach (EnemyActionData action in enemy.Data.Actions)
+                {
+                    if (action != null
+                        && action.ActionType == EnemyActionType.MeleeAttack
+                        && action.Icon != null)
+                    {
+                        meleeAction = action;
+                        break;
+                    }
+                }
+
+                if (meleeAction != null)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (meleeAction == null)
+        {
+            foreach (EnemyActionData action in
+                     Resources.FindObjectsOfTypeAll<EnemyActionData>())
+            {
+                if (action != null
+                    && action.ActionType == EnemyActionType.MeleeAttack
+                    && action.Icon != null)
+                {
+                    meleeAction = action;
+                    break;
+                }
+            }
+        }
+
+        if (warningDemoAttackIcon != null)
+        {
+            warningDemoAttackIcon.sprite = meleeAction?.Icon;
+            warningDemoAttackIcon.gameObject.SetActive(
+                warningDemoAttackIcon.sprite != null);
+        }
+    }
+
+    private void SetDebuffLegendActive(bool active)
+    {
+        if (debuffLegendRoot == null)
+        {
+            return;
+        }
+
+        debuffLegendRoot.SetActive(active);
+        if (!active)
+        {
+            return;
+        }
+
+        EnemyController enemy = FindFirstObjectByType<EnemyController>(
+            FindObjectsInactive.Include);
+        StatusEffectController statusEffects = enemy != null
+            ? enemy.GetComponent<StatusEffectController>()
+            : FindFirstObjectByType<StatusEffectController>(
+                FindObjectsInactive.Include);
+        StatusEffectType[] types =
+        {
+            StatusEffectType.Mark,
+            StatusEffectType.Poison,
+            StatusEffectType.Stun,
+            StatusEffectType.Weakness
+        };
+
+        for (int i = 0; i < debuffLegendIcons.Length; i++)
+        {
+            Image icon = debuffLegendIcons[i];
+            if (icon == null)
+            {
+                continue;
+            }
+
+            icon.sprite = statusEffects != null
+                ? statusEffects.GetStatusIconSprite(types[i])
+                : null;
+            DebuffIconUI tooltipIcon = icon.GetComponent<DebuffIconUI>();
+            if (tooltipIcon != null)
+            {
+                tooltipIcon.Initialize(icon.sprite, 1, types[i], null);
+            }
+
+            icon.gameObject.SetActive(icon.sprite != null);
+        }
+    }
+
+    private void PlayWarningDemo()
+    {
+        if (warningDemoCoroutine != null || warningDemoRoot == null
+            || !warningDemoRoot.activeInHierarchy)
+        {
+            return;
+        }
+
+        warningDemoCoroutine = StartCoroutine(PlayWarningDemoRoutine());
+    }
+
+    private IEnumerator PlayWarningDemoRoutine()
+    {
+        warningSoundButton.interactable = false;
+        if (warningDemoTileImage != null)
+        {
+            warningDemoTileImage.sprite = warningDemoPreparedSprite;
+            warningDemoTileImage.color = Color.white;
+        }
+
+        if (warningDemoReadyGlow != null)
+        {
+            warningDemoReadyGlow.material = warningDemoReadyMaterial;
+            warningDemoReadyGlow.color = Color.white;
+            warningDemoReadyGlow.gameObject.SetActive(
+                warningDemoReadyMaterial != null);
+        }
+
+        SoundManager.PlaySfx("SFX_EnemyReady");
+        float elapsed = 0f;
+        const float previewDuration = 1.5f;
+
+        while (elapsed < previewDuration)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+        }
+
+        warningDemoCoroutine = null;
+        ApplyWarningDemoRestState();
+    }
+
+    private void ResetWarningDemo()
+    {
+        if (warningDemoCoroutine != null)
+        {
+            StopCoroutine(warningDemoCoroutine);
+            warningDemoCoroutine = null;
+        }
+
+        ApplyWarningDemoRestState();
+    }
+
+    private void ApplyWarningDemoRestState()
+    {
+        if (warningSoundButton != null)
+        {
+            warningSoundButton.interactable = true;
+        }
+
+        if (warningDemoTileImage != null)
+        {
+            warningDemoTileImage.sprite = warningDemoNormalSprite;
+            warningDemoTileImage.color = Color.white;
+            warningDemoTileImage.rectTransform.localScale = Vector3.one;
+        }
+
+        if (warningDemoReadyGlow != null)
+        {
+            warningDemoReadyGlow.gameObject.SetActive(false);
         }
     }
 
@@ -1939,6 +2823,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         }
 
         text.color = Color.white;
+        text.fontStyle = FontStyles.Normal;
         text.richText = true;
         text.enableAutoSizing = true;
         text.fontSizeMin = 14f;
@@ -1947,6 +2832,95 @@ public sealed class FirstRunGuideController : MonoBehaviour
         text.raycastTarget = false;
         text.textWrappingMode = TextWrappingModes.Normal;
         return text;
+    }
+
+    private Toggle CreateNeverShowToggle(Transform parent)
+    {
+        RectTransform root = CreateRect("Toggle | Never Show Guide", parent);
+        Toggle toggle = root.gameObject.AddComponent<Toggle>();
+
+        Image background = CreateImage(
+            "Image | Checkbox",
+            root,
+            new Color(0.08f, 0.07f, 0.055f, 0.98f));
+        SetAnchors(background.rectTransform, 0f, 0.16f, 0.18f, 0.84f);
+        Outline checkboxOutline = background.gameObject.AddComponent<Outline>();
+        checkboxOutline.effectColor = new Color(1f, 0.75f, 0.12f, 1f);
+        checkboxOutline.effectDistance = new Vector2(2f, -2f);
+
+        Image checkmark = CreateImage(
+            "Image | Checkmark",
+            background.rectTransform,
+            new Color(1f, 0.62f, 0.05f, 1f));
+        SetAnchors(checkmark.rectTransform, 0.2f, 0.2f, 0.8f, 0.8f);
+        checkmark.raycastTarget = false;
+
+        TMP_Text label = CreateText("Text | Never Show Guide", root);
+        SetAnchors(label.rectTransform, 0.23f, 0f, 1f, 1f);
+        label.text = "다시 보지 않기";
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.fontStyle = FontStyles.Normal;
+        label.fontSizeMin = 10f;
+        label.fontSizeMax = 20f;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Ellipsis;
+
+        toggle.targetGraphic = background;
+        toggle.graphic = checkmark;
+        toggle.transition = Selectable.Transition.ColorTint;
+        toggle.SetIsOnWithoutNotify(false);
+        checkmark.canvasRenderer.SetAlpha(0f);
+        return toggle;
+    }
+
+    private Button CreateGuideExitButton(Transform parent)
+    {
+        Button template = null;
+        foreach (Button candidate in FindObjectsByType<Button>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (candidate == null
+                || guideRoot != null
+                && candidate.transform.IsChildOf(guideRoot))
+            {
+                continue;
+            }
+
+            if (candidate.name == "Button _ Exit"
+                || candidate.name == "Button | Exit")
+            {
+                TMP_Text label = candidate.GetComponentInChildren<TMP_Text>(true);
+                if (label == null
+                    || !string.Equals(
+                        label.text?.Trim(),
+                        "X",
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                template = candidate;
+                break;
+            }
+        }
+
+        if (template == null)
+        {
+            return CreateButton(
+                "Button | Close Guide",
+                parent,
+                "X",
+                new Color(0.36f, 0.06f, 0.05f, 1f),
+                out _);
+        }
+
+        Button exitButton = Instantiate(template, parent, false);
+        exitButton.name = "Button | Close Guide";
+        exitButton.onClick = new Button.ButtonClickedEvent();
+        exitButton.transform.localScale = Vector3.one;
+        exitButton.gameObject.SetActive(true);
+        return exitButton;
     }
 
     private Button CreateButton(
@@ -1968,13 +2942,21 @@ public sealed class FirstRunGuideController : MonoBehaviour
         labelText = CreateText("Text | Label", image.rectTransform);
         Stretch(labelText.rectTransform);
         labelText.text = label;
-        labelText.fontStyle = FontStyles.Bold;
+        labelText.fontStyle = FontStyles.Normal;
         labelText.fontSizeMin = 9f;
         labelText.fontSizeMax = 26f;
         labelText.textWrappingMode = TextWrappingModes.NoWrap;
         labelText.overflowMode = TextOverflowModes.Ellipsis;
         labelText.margin = new Vector4(6f, 2f, 6f, 2f);
         return button;
+    }
+
+    private static string RemoveBoldTags(string value)
+    {
+        return string.IsNullOrEmpty(value)
+            ? value
+            : value.Replace("<b>", string.Empty)
+                .Replace("</b>", string.Empty);
     }
 
     private static void Stretch(RectTransform rect)

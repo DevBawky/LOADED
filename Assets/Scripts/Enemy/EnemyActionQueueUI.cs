@@ -38,6 +38,9 @@ public class EnemyActionQueueUI : MonoBehaviour
     private bool isStunned;
 
     public int IconCount => spawnedIcons.Count;
+    public Sprite NormalQueueSprite => normalQueueSprite;
+    public Sprite PreparedQueueSprite => preparedQueueSprite;
+    public Material QueueReadyMaterial => queueReadyMaterial;
 
     private void Awake()
     {
