@@ -75,7 +75,7 @@ LOADED의 주요 구조는 데이터, 런타임 상태, 전투 실행, 표시 �
 
 ```text
 ScriptableObject 원본 데이터
-BulletData / EnemyData / EnemyActionData / EnemyAttackData / StageData / ItemData
+BulletData / EnemyData / EnemyActionData / EnemyAttackData / BattleData / StageData / ItemData
                 ↓
 개별 런타임 상태
 BulletInstance / EnemyController / StatusEffectManager / BattleSaveData
@@ -116,7 +116,52 @@ PlayerCylinderUI / CombatFeedback / ActionTileUI / FirstRunGuide / WebGL Templat
 
 초기에는 적 종류마다 완성 프리팹을 두는 구조가 일부 남아 있었다. 개발자는 적을 추가할 때마다 프리팹을 복제하는 방식을 유지보수 위험으로 판단했다. 이후 `BattleData → EnemyData → WaveManager → 공용 Enemy 프리팹 → Initialize(data)` 흐름으로 바꾸었고, AI는 기존 42개 웨이브 참조를 새 구조로 옮기고 누락된 아바타 및 Animator를 경고하도록 구현했다. 새로운 적은 데이터 에셋과 아바타만으로 추가할 수 있게 되었다.
 
-### 5.4 AI 산출물에 대한 책임 범위
+### 5.4 BattleData와 StageData: 전투 구성과 진행 순서의 데이터화
+
+전투 콘텐츠는 씬 안에 직접 고정하지 않고 `BattleData`와 `StageData` ScriptableObject로 분리했다. 개발자는 새로운 전투를 추가할 때 씬과 Manager 코드를 복제하는 방식보다, 전투 규칙을 데이터 에셋으로 조립하는 방식이 반복 제작과 밸런스 조정에 적합하다고 판단했다.
+
+| 구성 요소 | 저장하는 정보 | 런타임에서의 역할 |
+| --- | --- | --- |
+| `BattleData` | 전투 ID, 표시 이름, 시작 및 클리어 안내, 일반전 또는 보스전 구분, 보드 칸 수, 타일 프리팹, 적 등장 간격, 웨이브 배열 | `BoardManager`가 보드를 구성하고 `WaveManager`가 웨이브와 등장 간격을 적용할 때 사용하는 한 전투의 원본 설정이다. |
+| `StageData` | 스테이지 ID, 표시 이름, 순서가 정해진 `BattleData` 배열 | 여러 전투를 하나의 스테이지로 묶고 다음 전투 및 다음 스테이지로 진행할 순서를 정의한다. |
+| `StateManager` | 현재 스테이지 인덱스, 현재 전투 인덱스와 `GameFlowState` | `StageData`와 `BattleData`를 읽어 전투 시작, 전투 클리어, 상점, 다음 전투, 다음 스테이지 및 런 종료를 전환한다. |
+
+실제 데이터 흐름은 다음과 같다.
+
+```text
+StateManager의 StageData 배열
+        → 현재 StageData 선택
+        → 현재 BattleData 선택
+        → BoardCount와 TilePrefab으로 보드 구성
+        → Waves와 SpawnTerm으로 WaveManager 시작
+        → Battle Clear
+        → Shop
+        → 다음 BattleData 또는 다음 StageData
+        → 더 이상 전투가 없으면 Run Complete
+```
+
+이 구조를 만들 때 개발자가 AI에 전달한 주요 조건은 다음과 같은 형태였다.
+
+> 하나의 Stage는 여러 `BattleData`로 구성하고, 각 전투마다 보드, 전투 타입과 웨이브를 Inspector에서 설정할 수 있게 한다. 일반 전투와 보스 전투 모두 `Battle Clear → Shop → 다음 전투 또는 다음 Stage` 순서로 진행한다. 상태 전환 중에는 이동, 장전 및 발사 입력을 잠그고, 진행 중인 공격이 끝나기 전에 다음 전투가 시작되지 않게 한다. 기존 씬과 에셋 참조를 유지하고 잘못된 데이터는 실행 전에 검증한다.
+
+AI는 기존 `BoardManager`, `WaveManager`, 상점, 보상 및 입력 잠금 코드를 조사하고 이 조건을 `StateManager`, `BattleData`와 `StageData` 사이의 책임으로 나누었다. 또한 전투가 끝나는 순간 남은 발사 코루틴과 상태 전환이 경쟁하지 않도록 행동 종료를 기다린 뒤 상태를 변경하고, 현재 인덱스를 기준으로 다음 전투 위치를 계산하는 흐름을 구현했다.
+
+개발자는 다음 설계와 콘텐츠 값을 직접 판단했다.
+
+- 한 스테이지에 몇 개의 전투를 배치하고 어떤 순서로 진행할지
+- 각 전투의 보드 크기, 적 조합, 웨이브 순서와 등장 간격
+- 마지막 전투만 보스전으로 구성하고 보스전 종료 뒤에도 상점을 거칠지
+- 스테이지가 바뀔 때 덱 상태 중 무엇을 유지하고 무엇을 새 주기에 맞게 정리할지
+- 전투 시작 및 클리어 문구와 스테이지 표시 이름
+- 실제 플레이에서 적 밀도와 보드 크기가 회피 및 사거리 판단에 적절한지
+
+AI가 담당한 부분은 이 판단을 재사용 가능한 데이터 구조와 안전한 전환 코드로 옮기는 작업이었다. `StateManager`의 구성 검사는 비어 있는 전투, 누락된 타일 프리팹, 비어 있는 웨이브, 잘못된 적 데이터, 보드에 들어갈 수 없는 적 수와 보스 위치 규칙을 실행 전에 차단한다. 한 웨이브의 적 수는 플레이어가 사용할 한 칸을 제외한 `BoardCount - 1`을 넘지 않아야 하며, 각 스테이지의 마지막 전투만 `Boss` 유형이어야 한다.
+
+저장 및 불러오기에서는 `stageIndex`와 `battleIndex`를 런타임 저장 데이터에 기록한다. 불러올 때 해당 인덱스가 현재 `StageData`와 `BattleData` 범위 안에 있는지 먼저 검사한 뒤, 같은 보드와 웨이브 구성을 사용해 전투를 복원한다. 사운드 시스템도 `StageId`, 전투 인덱스, `BattleId`와 `IsBoss`를 읽어 일반 전투 및 보스전 BGM을 선택한다. 따라서 이 두 데이터는 단순한 목록이 아니라 전투 구성, 진행, 저장, 화면 안내와 사운드를 연결하는 기준 데이터다.
+
+초기 AI 결과를 그대로 확정한 것은 아니다. 구매 성공 뒤 상점 상품이 사라지던 동작은 개발자가 의도와 다르다고 판단해 버튼을 유지하고 상호작용만 막도록 다시 지시했다. 마지막 전투 이후 즉시 런을 끝내지 않고 상점을 이용한 뒤 `Run Complete`로 전환하는 규칙도 개발자 피드백으로 확정했다. 이를 통해 AI가 흐름을 임의로 결정한 것이 아니라, 개발자가 플레이 순서와 보상 리듬을 정하고 AI가 상태 전환과 예외 처리를 구현했다는 점을 구분할 수 있다.
+
+### 5.5 AI 산출물에 대한 책임 범위
 
 개발 기록 중 일부에는 “사용자가 직접 수정한 코드는 없음”이라고 적혀 있다. 이는 키보드로 C# 코드를 직접 입력하지 않았다는 뜻이지, AI가 게임을 자율적으로 설계했다는 뜻은 아니다. 다음 항목은 일관되게 개발자가 결정했다.
 
@@ -406,6 +451,7 @@ AI 결과는 작업 성격에 따라 다음 단계로 검증했다.
 | 피해 예상치 | 실제 발사와 같은 스냅샷과 확정 확률만 사용하는지 | 체력바 표시 길이, 색상 및 구간이 실제 피해와 직관적으로 맞는지 |
 | 적 AI | 한 턴에 한 단계만 진행하는지, 고정 대상과 점유 검사가 유지되는지 | 공격 예고를 읽고 이동하여 회피할 수 있는지, 적별 패턴이 구분되는지 |
 | 보스 | 11단계 순서, 페이즈 전환, 폭탄 연쇄 중복 방지 | 학습 가능한 난이도인지, 예고와 실제 폭발 위치가 맞는지 |
+| `BattleData` 및 `StageData` | 현재 인덱스 범위, 마지막 전투의 보스 여부, 타일 프리팹과 웨이브 유효성, 적 수가 보드 수용량을 넘지 않는지 | 전투, 상점, 다음 전투 및 다음 스테이지의 순서가 의도한 플레이 리듬과 맞는지 |
 | 튜토리얼 | 현재 상태에 따라 우선 미션 조건이 정확히 선택되는지 | 강조가 배경에서 보이는지, 안내가 위험한 행동을 요구하지 않는지 |
 | 저장 | 저장한 런타임 필드와 복원 순서, 이전 버전 데이터의 기본값 | 이어하기 후 같은 전투 판단과 행동을 계속할 수 있는지 |
 | WebGL | 템플릿 파일 반영, 브라우저 저장 및 오디오 초기화 | 실제 배포 URL의 로딩 연출, 입력, 해상도와 프레임 진행 |
@@ -497,6 +543,7 @@ AI 생성 결과물도 생성 도구, 생성 계정, 생성 시점과 적용 위
 
 - BoardManager와 타일 배치: `Docs/Dev/0715_LD_BoardManager.md`
 - 플레이어 이동과 밀치기: `Docs/Dev/0715_Player_PlayerMove.md`, `Docs/Dev/0718_Combat_PushSystem.md`
+- `BattleData`, `StageData`, 상점 및 전투 진행: `Docs/Dev/0718_Shop_Reward_StageSystem.md`
 - 탄환 원본 데이터와 관통 의미: `Docs/Dev/0717_Combat_BulletData.md`
 - 탄환 덱과 발사 시스템: `Docs/Dev/0717_Combat_DeckManager_PlayerShoot.md`
 - 탄환 효과: `Docs/Dev/0718_Combat_BulletEffects.md`

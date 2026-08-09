@@ -14,7 +14,11 @@ public sealed class LoadingTransitionController : MonoBehaviour
     private const string EndingSceneName = "Ending";
     private const string MainMenuSceneName = "MainMenu";
     private const string EndingMainButtonName = "Button _ Main";
+    private const string SaturationShaderResourcePath =
+        "Shaders/LoadingUISaturation";
     private const int ChamberCount = 6;
+    private static readonly int SaturationId =
+        Shader.PropertyToID("_Saturation");
 
     [Header("UI References")]
     [SerializeField] private CanvasGroup transitionCanvasGroup;
@@ -67,6 +71,8 @@ public sealed class LoadingTransitionController : MonoBehaviour
     private float currentCylinderAngle;
     private Coroutine transitionCoroutine;
     private Button endingMainButton;
+    private Canvas transitionCanvas;
+    private Material saturationMaterial;
 
     public static LoadingTransitionController Instance { get; private set; }
     public static bool IsTransitioning => Instance != null && Instance.transitionCoroutine != null;
@@ -130,6 +136,7 @@ public sealed class LoadingTransitionController : MonoBehaviour
         DontDestroyOnLoad(gameObject);
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         SceneManager.sceneLoaded += HandleSceneLoaded;
+        ConfigureTopmostOverlay();
         CacheBulletRestStates();
         ResetPresentation();
         BindEndingMainButton(SceneManager.GetActiveScene());
@@ -139,6 +146,12 @@ public sealed class LoadingTransitionController : MonoBehaviour
     {
         SceneManager.sceneLoaded -= HandleSceneLoaded;
 
+        if (saturationMaterial != null)
+        {
+            Destroy(saturationMaterial);
+            saturationMaterial = null;
+        }
+
         if (Instance == this)
         {
             Instance = null;
@@ -147,7 +160,59 @@ public sealed class LoadingTransitionController : MonoBehaviour
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode _)
     {
+        ConfigureTopmostOverlay();
         BindEndingMainButton(scene);
+    }
+
+    private void ConfigureTopmostOverlay()
+    {
+        transitionCanvas ??= GetComponent<Canvas>();
+
+        if (transitionCanvas == null)
+        {
+            return;
+        }
+
+        // A camera-space canvas is rendered before Screen Space Overlay UI.
+        // Keep loading in the highest overlay layer so no world renderer or
+        // gameplay canvas can be drawn over it.
+        transitionCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        transitionCanvas.worldCamera = null;
+        transitionCanvas.sortingLayerName = "Loading";
+        transitionCanvas.sortingOrder = short.MaxValue;
+        ApplySaturationMaterial();
+    }
+
+    private void ApplySaturationMaterial()
+    {
+        if (saturationMaterial == null)
+        {
+            Shader shader = Resources.Load<Shader>(
+                SaturationShaderResourcePath);
+
+            if (shader == null)
+            {
+                Debug.LogWarning(
+                    "The loading UI saturation shader was not found.",
+                    this);
+                return;
+            }
+
+            saturationMaterial = new Material(shader)
+            {
+                name = "Loading UI Saturation (Runtime)",
+                hideFlags = HideFlags.HideAndDontSave
+            };
+
+            foreach (Image image in GetComponentsInChildren<Image>(true))
+            {
+                image.material = saturationMaterial;
+            }
+        }
+
+        saturationMaterial.SetFloat(
+            SaturationId,
+            GraphicsSaturationSettings.Saturation);
     }
 
     private void BindEndingMainButton(Scene scene)
@@ -298,6 +363,7 @@ public sealed class LoadingTransitionController : MonoBehaviour
             return false;
         }
 
+        ConfigureTopmostOverlay();
         transitionCoroutine = StartCoroutine(TransitionRoutine(
             coveredAction,
             completed,

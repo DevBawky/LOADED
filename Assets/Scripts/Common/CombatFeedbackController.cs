@@ -613,10 +613,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
             ? firingSequenceFeedbackMultiplier
             : 1f;
         float overkillPercent = targetMaxHealth <= 0
-            || targetHealthBeforeDamage < 0
-                ? 0f
-                : Mathf.Max(0f, appliedDamage - targetHealthBeforeDamage)
-                    * 100f / targetMaxHealth;
+            ? 0f
+            : Mathf.Max(0f, appliedDamage - targetMaxHealth)
+                * 100f / targetMaxHealth;
         DefeatPerformanceRecorded?.Invoke(
             comboCount,
             firingSequenceDefeatCount,
