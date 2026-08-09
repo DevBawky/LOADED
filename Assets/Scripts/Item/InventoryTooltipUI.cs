@@ -512,13 +512,18 @@ public class InventoryTooltipUI : MonoBehaviour
             previewedCylinderBullet = null;
             previewedCylinderBulletIndex = -1;
         }
-        else if (!ReferenceEquals(previewedCylinderBullet, bullet)
-            || previewedCylinderBulletIndex != loadedBulletIndex)
+        else
         {
-            playerShoot?.ClearLoadedBulletDamagePreview();
-            playerShoot?.ShowLoadedBulletDamagePreview(loadedBulletIndex);
-            previewedCylinderBullet = bullet;
-            previewedCylinderBulletIndex = loadedBulletIndex;
+            playerShoot?.ShowLoadedBulletRangePreview(loadedBulletIndex);
+
+            if (!ReferenceEquals(previewedCylinderBullet, bullet)
+                || previewedCylinderBulletIndex != loadedBulletIndex)
+            {
+                playerShoot?.ClearLoadedBulletDamagePreview();
+                playerShoot?.ShowLoadedBulletDamagePreview(loadedBulletIndex);
+                previewedCylinderBullet = bullet;
+                previewedCylinderBulletIndex = loadedBulletIndex;
+            }
         }
     }
 

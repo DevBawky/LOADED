@@ -15,6 +15,15 @@ public class PlayerShoot : MonoBehaviour
     public event Action LoadedBulletDamagePreviewShown;
 
     private const float BulletFeedbackStartAlpha = 0.2f;
+    private const float RangePreviewLineWidth = 0.08f;
+    private static readonly int BaseColorId =
+        Shader.PropertyToID("_BaseColor");
+    private static readonly int GridColorId =
+        Shader.PropertyToID("_GridColor");
+    private static readonly int BeamColorId =
+        Shader.PropertyToID("_BeamColor");
+    private static readonly int DashCountId =
+        Shader.PropertyToID("_DashCount");
 
     private readonly struct DamageReservation
     {
@@ -26,6 +35,20 @@ public class PlayerShoot : MonoBehaviour
 
         public EnemyController Enemy { get; }
         public int Damage { get; }
+    }
+
+    private readonly struct BulletHitTarget
+    {
+        public BulletHitTarget(EnemyController enemy)
+        {
+            Enemy = enemy;
+            InstanceId = enemy.GetInstanceID();
+            InitialPosition = enemy.transform.position;
+        }
+
+        public EnemyController Enemy { get; }
+        public int InstanceId { get; }
+        public Vector3 InitialPosition { get; }
     }
 
     private readonly struct ManagedEffectDefeatResult
@@ -177,6 +200,10 @@ public class PlayerShoot : MonoBehaviour
     private int criticalShotsThisCylinder;
     private bool bulletDestroyedThisCylinder;
     private int pendingSaverGold;
+    private LineRenderer rangePreviewLine;
+    private LineRenderer secondaryRangePreviewLine;
+    private Material rangePreviewMaterial;
+    private Material rangePreviewDashedMaterial;
 
     public bool IsFiring => isFiring;
     public int InitialLoadedBulletCount => isFiring
@@ -265,6 +292,21 @@ public class PlayerShoot : MonoBehaviour
         ResetBulletFeedback();
         reservedDamageByEnemy.Clear();
         pendingEffectDefeats.Clear();
+    }
+
+    private void OnDestroy()
+    {
+        if (rangePreviewMaterial != null)
+        {
+            Destroy(rangePreviewMaterial);
+            rangePreviewMaterial = null;
+        }
+
+        if (rangePreviewDashedMaterial != null)
+        {
+            Destroy(rangePreviewDashedMaterial);
+            rangePreviewDashedMaterial = null;
+        }
     }
 
     private void HandlePlayerIndirectDamageDealt(int damage)
@@ -441,6 +483,7 @@ public class PlayerShoot : MonoBehaviour
             return false;
         }
 
+        ShowLoadedBulletRangePreview(loadedBulletIndex);
         InitializeDamagePreviewState();
         SimulateLoadedBulletDamage(loadedBulletIndex);
         bool displayedAnyDamage = false;
@@ -467,6 +510,8 @@ public class PlayerShoot : MonoBehaviour
 
     public void ClearLoadedBulletDamagePreview()
     {
+        HideLoadedBulletRangePreview();
+
         foreach (EnemyController enemy in previewedEnemies)
         {
             if (enemy != null)
@@ -476,6 +521,458 @@ public class PlayerShoot : MonoBehaviour
         }
 
         previewedEnemies.Clear();
+    }
+
+    public bool ShowLoadedBulletRangePreview(int loadedBulletIndex)
+    {
+        if (isFiring || deckManager == null || boardManager == null
+            || loadedBulletIndex < 0
+            || loadedBulletIndex >= deckManager.LoadedBullets.Count)
+        {
+            HideLoadedBulletRangePreview();
+            return false;
+        }
+
+        BulletInstance bullet = ResolveLoadedBulletForRangePreview(
+            loadedBulletIndex);
+
+        if (bullet == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int playerTileIndex))
+        {
+            HideLoadedBulletRangePreview();
+            return false;
+        }
+
+        LineRenderer line = GetOrCreateRangePreviewLine();
+
+        if (line == null)
+        {
+            return false;
+        }
+
+        Vector3 startPosition;
+
+        if (firePoint != null)
+        {
+            startPosition = firePoint.position;
+        }
+        else if (boardManager.TryGetTilePosition(
+                     playerTileIndex,
+                     out startPosition))
+        {
+            startPosition.y += 0.15f;
+        }
+        else
+        {
+            HideLoadedBulletRangePreview();
+            return false;
+        }
+
+        ApplyRangePreviewColors(bullet);
+
+        if (IsBoardWideShot(bullet))
+        {
+            LineRenderer secondaryLine =
+                GetOrCreateSecondaryRangePreviewLine();
+
+            if (secondaryLine == null
+                || !boardManager.TryGetTilePosition(
+                    0,
+                    out Vector3 leftEndPosition)
+                || !boardManager.TryGetTilePosition(
+                    boardManager.BoardCount - 1,
+                    out Vector3 rightEndPosition))
+            {
+                HideLoadedBulletRangePreview();
+                return false;
+            }
+
+            leftEndPosition.y = startPosition.y;
+            leftEndPosition.z = startPosition.z;
+            rightEndPosition.y = startPosition.y;
+            rightEndPosition.z = startPosition.z;
+            SetRangePreviewLine(
+                line,
+                startPosition,
+                leftEndPosition,
+                rangePreviewMaterial,
+                RangePreviewLineWidth,
+                1f);
+            SetRangePreviewLine(
+                secondaryLine,
+                startPosition,
+                rightEndPosition,
+                rangePreviewMaterial,
+                RangePreviewLineWidth,
+                1f);
+            return true;
+        }
+
+        int direction = transform.localScale.x >= 0f ? 1 : -1;
+        int endTileIndex = Mathf.Clamp(
+            playerTileIndex + direction * bullet.MaxRange,
+            0,
+            boardManager.BoardCount - 1);
+
+        if (endTileIndex == playerTileIndex
+            || !boardManager.TryGetTilePosition(
+                endTileIndex,
+                out Vector3 endPosition))
+        {
+            HideLoadedBulletRangePreview();
+            return false;
+        }
+
+        endPosition.y = startPosition.y;
+        endPosition.z = startPosition.z;
+        targetBuffer.Clear();
+
+        if (waveManager != null)
+        {
+            waveManager.GetEnemiesInDirection(
+                transform.position,
+                direction,
+                bullet.MaxRange,
+                targetBuffer);
+        }
+
+        Vector3 solidEndPosition = endPosition;
+        Vector3 dashedStartPosition = Vector3.zero;
+        Vector3 dashedEndPosition = Vector3.zero;
+        bool hasDashedRange = false;
+        float dashedAlpha = 1f;
+
+        for (int targetIndex = 0;
+             targetIndex < targetBuffer.Count;
+             targetIndex++)
+        {
+            EnemyController target = targetBuffer[targetIndex];
+            Vector3 targetNearPosition = GetRangePreviewEnemyEdge(
+                target,
+                startPosition,
+                direction,
+                false);
+            solidEndPosition = targetNearPosition;
+            float penetrationChance = GetPenetrationPreviewChance(
+                bullet,
+                targetIndex);
+
+            if (penetrationChance >= 100f)
+            {
+                if (targetIndex == targetBuffer.Count - 1)
+                {
+                    solidEndPosition = endPosition;
+                }
+
+                continue;
+            }
+
+            if (penetrationChance <= 0f)
+            {
+                break;
+            }
+
+            hasDashedRange = true;
+            dashedAlpha = penetrationChance / 100f;
+            dashedStartPosition = GetRangePreviewEnemyEdge(
+                target,
+                startPosition,
+                direction,
+                true);
+            dashedEndPosition = endPosition;
+
+            for (int uncertainTargetIndex = targetIndex + 1;
+                 uncertainTargetIndex < targetBuffer.Count;
+                 uncertainTargetIndex++)
+            {
+                EnemyController uncertainTarget =
+                    targetBuffer[uncertainTargetIndex];
+                dashedEndPosition = GetRangePreviewEnemyEdge(
+                    uncertainTarget,
+                    startPosition,
+                    direction,
+                    false);
+                float nextPenetrationChance =
+                    GetPenetrationPreviewChance(
+                        bullet,
+                        uncertainTargetIndex);
+
+                if (nextPenetrationChance <= 0f)
+                {
+                    break;
+                }
+
+                if (uncertainTargetIndex == targetBuffer.Count - 1)
+                {
+                    dashedEndPosition = endPosition;
+                }
+            }
+
+            break;
+        }
+
+        SetRangePreviewLine(
+            line,
+            startPosition,
+            solidEndPosition,
+            rangePreviewMaterial,
+            RangePreviewLineWidth,
+            1f);
+
+        if (hasDashedRange)
+        {
+            LineRenderer dashedLine =
+                GetOrCreateSecondaryRangePreviewLine();
+
+            if (dashedLine == null)
+            {
+                HideLoadedBulletRangePreview();
+                return false;
+            }
+
+            float dashCount = Mathf.Max(
+                2f,
+                Vector3.Distance(
+                    dashedStartPosition,
+                    dashedEndPosition)
+                / Mathf.Max(0.01f, boardManager.BoardDistance)
+                * 4f);
+            rangePreviewDashedMaterial.SetFloat(
+                DashCountId,
+                dashCount);
+            SetRangePreviewLine(
+                dashedLine,
+                dashedStartPosition,
+                dashedEndPosition,
+                rangePreviewDashedMaterial,
+                RangePreviewLineWidth * 0.5f,
+                dashedAlpha);
+        }
+        else if (secondaryRangePreviewLine != null)
+        {
+            secondaryRangePreviewLine.enabled = false;
+        }
+
+        return true;
+    }
+
+    private Vector3 GetRangePreviewEnemyEdge(
+        EnemyController enemy,
+        Vector3 linePosition,
+        int direction,
+        bool farSide)
+    {
+        Vector3 position = enemy.transform.position;
+        float edgeOffset = boardManager.BoardDistance * 0.2f;
+        position.x += (farSide ? direction : -direction) * edgeOffset;
+        position.y = linePosition.y;
+        position.z = linePosition.z;
+        return position;
+    }
+
+    private static float GetPenetrationPreviewChance(
+        BulletInstance bullet,
+        int hitIndex)
+    {
+        if (bullet == null || hitIndex < 0
+            || hitIndex >= bullet.PenetrationChances.Count)
+        {
+            return 0f;
+        }
+
+        PenetrationChanceData chanceData =
+            bullet.PenetrationChances[hitIndex];
+        return chanceData == null
+            ? 0f
+            : Mathf.Clamp(chanceData.Chance, 0f, 100f);
+    }
+
+    private static void SetRangePreviewLine(
+        LineRenderer line,
+        Vector3 startPosition,
+        Vector3 endPosition,
+        Material material,
+        float widthMultiplier,
+        float alpha)
+    {
+        line.sharedMaterial = material;
+        line.widthMultiplier = widthMultiplier;
+        Color lineColor = Color.white;
+        lineColor.a = Mathf.Clamp01(alpha);
+        line.startColor = lineColor;
+        line.endColor = lineColor;
+        line.positionCount = 2;
+        line.SetPosition(0, startPosition);
+        line.SetPosition(1, endPosition);
+        line.enabled = true;
+    }
+
+    private BulletInstance ResolveLoadedBulletForRangePreview(
+        int loadedBulletIndex)
+    {
+        BulletInstance previousResolvedBullet = null;
+
+        for (int index = deckManager.LoadedBullets.Count - 1;
+             index >= loadedBulletIndex;
+             index--)
+        {
+            previousResolvedBullet = ResolveShotBullet(
+                deckManager.LoadedBullets[index],
+                previousResolvedBullet);
+        }
+
+        return previousResolvedBullet;
+    }
+
+    private LineRenderer GetOrCreateRangePreviewLine()
+    {
+        if (rangePreviewLine != null)
+        {
+            return rangePreviewLine;
+        }
+
+        Shader shader = Shader.Find("Loaded/Enemy Warning Flow");
+
+        if (shader == null)
+        {
+            Debug.LogWarning(
+                "The player bullet range preview shader was not found.",
+                this);
+            return null;
+        }
+
+        rangePreviewMaterial = new Material(shader)
+        {
+            name = "Player Bullet Range Preview (Runtime)",
+            hideFlags = HideFlags.HideAndDontSave
+        };
+        rangePreviewMaterial.SetFloat("_BaseIntensity", 0.65f);
+        rangePreviewMaterial.SetFloat("_OverallAlpha", 0.62f);
+        rangePreviewMaterial.SetFloat("_GridColumns", 14f);
+        rangePreviewMaterial.SetFloat("_GridRows", 2f);
+        rangePreviewMaterial.SetFloat("_GridLineWidth", 0.08f);
+        rangePreviewMaterial.SetFloat("_GridSoftness", 0.025f);
+        rangePreviewMaterial.SetFloat("_GridIntensity", 1.8f);
+        rangePreviewMaterial.SetFloat("_GridScrollSpeed", 1.6f);
+        rangePreviewMaterial.SetFloat("_BeamRepeat", 3f);
+        rangePreviewMaterial.SetFloat("_BeamWidth", 0.35f);
+        rangePreviewMaterial.SetFloat("_BeamSoftness", 0.14f);
+        rangePreviewMaterial.SetFloat("_BeamIntensity", 2.4f);
+        rangePreviewMaterial.SetFloat("_BeamScrollSpeed", 0.65f);
+        rangePreviewMaterial.SetFloat("_PulseAmount", 0.12f);
+        rangePreviewMaterial.SetFloat("_PulseFrequency", 2f);
+        rangePreviewMaterial.SetFloat("_EdgeSoftness", 0.22f);
+        rangePreviewMaterial.SetFloat("_EndFade", 0.035f);
+        rangePreviewMaterial.SetFloat("_DashEnabled", 0f);
+        rangePreviewDashedMaterial = new Material(rangePreviewMaterial)
+        {
+            name = "Player Bullet Range Preview Dashed (Runtime)",
+            hideFlags = HideFlags.HideAndDontSave
+        };
+        rangePreviewDashedMaterial.SetFloat("_DashEnabled", 1f);
+        rangePreviewDashedMaterial.SetFloat("_DashFill", 0.72f);
+        rangePreviewDashedMaterial.SetFloat("_DashSoftness", 0.04f);
+        rangePreviewLine = CreateRangePreviewLine(
+            "Line | Bullet Range Preview");
+        return rangePreviewLine;
+    }
+
+    private LineRenderer GetOrCreateSecondaryRangePreviewLine()
+    {
+        if (secondaryRangePreviewLine != null)
+        {
+            return secondaryRangePreviewLine;
+        }
+
+        if (GetOrCreateRangePreviewLine() == null)
+        {
+            return null;
+        }
+
+        secondaryRangePreviewLine = CreateRangePreviewLine(
+            "Line | Bullet Range Preview Secondary");
+        return secondaryRangePreviewLine;
+    }
+
+    private LineRenderer CreateRangePreviewLine(string objectName)
+    {
+        GameObject lineObject = new GameObject(objectName);
+        lineObject.transform.SetParent(transform, false);
+        LineRenderer line = lineObject.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.loop = false;
+        line.alignment = LineAlignment.View;
+        line.textureMode = LineTextureMode.Stretch;
+        line.widthMultiplier = RangePreviewLineWidth;
+        line.numCapVertices = 2;
+        line.startColor = Color.white;
+        line.endColor = Color.white;
+        line.enabled = false;
+
+        SpriteRenderer playerRenderer =
+            GetComponentInChildren<SpriteRenderer>();
+
+        if (playerRenderer != null)
+        {
+            line.sortingLayerID = playerRenderer.sortingLayerID;
+            line.sortingOrder = playerRenderer.sortingOrder + 20;
+        }
+        else
+        {
+            line.sortingOrder = 20;
+        }
+
+        line.sharedMaterial = rangePreviewMaterial;
+        return line;
+    }
+
+    private void ApplyRangePreviewColors(BulletInstance bullet)
+    {
+        if (rangePreviewMaterial == null || bullet == null)
+        {
+            return;
+        }
+
+        ApplyRangePreviewColor(
+            rangePreviewMaterial,
+            bullet.SecondaryLineColor);
+        ApplyRangePreviewColor(
+            rangePreviewDashedMaterial,
+            bullet.SecondaryLineColor);
+    }
+
+    private static void ApplyRangePreviewColor(
+        Material material,
+        Color secondaryLineColor)
+    {
+        if (material == null)
+        {
+            return;
+        }
+
+        Color baseColor = secondaryLineColor;
+        Color gridColor = secondaryLineColor;
+        Color beamColor = secondaryLineColor;
+        baseColor.a *= 0.55f;
+        gridColor.a *= 0.9f;
+        material.SetColor(BaseColorId, baseColor);
+        material.SetColor(GridColorId, gridColor);
+        material.SetColor(BeamColorId, beamColor);
+    }
+
+    private void HideLoadedBulletRangePreview()
+    {
+        if (rangePreviewLine != null)
+        {
+            rangePreviewLine.enabled = false;
+        }
+
+        if (secondaryRangePreviewLine != null)
+        {
+            secondaryRangePreviewLine.enabled = false;
+        }
     }
 
     private IEnumerator ShootLoadedBullets(int horizontalDirection)
@@ -1685,12 +2182,34 @@ public class PlayerShoot : MonoBehaviour
             yield break;
         }
 
-        for (int hitIndex = 0; hitIndex < hitBuffer.Count; hitIndex++)
+        List<BulletHitTarget> shotTargets =
+            new List<BulletHitTarget>(hitBuffer.Count);
+
+        foreach (EnemyController hitTarget in hitBuffer)
         {
-            EnemyController enemy = hitBuffer[hitIndex];
+            if (hitTarget != null && hitTarget.CurrentHealth > 0)
+            {
+                shotTargets.Add(new BulletHitTarget(hitTarget));
+            }
+        }
+
+        HashSet<int> processedDefeatIds = new HashSet<int>();
+
+        for (int hitIndex = 0; hitIndex < shotTargets.Count; hitIndex++)
+        {
+            BulletHitTarget shotTarget = shotTargets[hitIndex];
+            EnemyController enemy = shotTarget.Enemy;
 
             if (enemy == null || enemy.CurrentHealth <= 0)
             {
+                yield return ApplyDefeatTriggeredAbilities(
+                    bulletData,
+                    enemy,
+                    shotTarget.InstanceId,
+                    horizontalDirection,
+                    0,
+                    shotTarget.InitialPosition,
+                    processedDefeatIds);
                 continue;
             }
 
@@ -1757,14 +2276,14 @@ public class PlayerShoot : MonoBehaviour
                             && waveManager.ActiveEnemies.Count <= 1,
                         GetCurrentCylinderBuild());
                 }
-                yield return ApplyConditionalEvents(
+                yield return ApplyDefeatTriggeredAbilities(
                     bulletData,
-                    BulletConditionalTrigger.EnemyDefeated,
                     enemy,
+                    shotTarget.InstanceId,
                     horizontalDirection,
                     0,
-                    enemySnapshot.Position);
-                GrantDevourerStack(bulletData);
+                    enemySnapshot.Position,
+                    processedDefeatIds);
                 continue;
             }
 
@@ -1820,11 +2339,12 @@ public class PlayerShoot : MonoBehaviour
             }
             ManagedEffectDefeatResult managedEffectDefeat = default;
 
-            ApplyWallImpactDamageTransfer(
+            yield return ApplyWallImpactDamageTransfer(
                 bulletData,
                 sourceTileIndex,
                 horizontalDirection,
-                attackDamage);
+                attackDamage,
+                processedDefeatIds);
 
             IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
 
@@ -1916,18 +2436,14 @@ public class PlayerShoot : MonoBehaviour
                     }
                 }
 
-                yield return ApplyConditionalEvents(
+                yield return ApplyDefeatTriggeredAbilities(
                     bulletData,
-                    BulletConditionalTrigger.EnemyDefeated,
                     enemy,
+                    shotTarget.InstanceId,
                     horizontalDirection,
                     appliedDamage,
-                    enemySnapshot.Position);
-
-                if (defeatedByAttack || defeatedByManagedEffect)
-                {
-                    GrantDevourerStack(bulletData);
-                }
+                    enemySnapshot.Position,
+                    processedDefeatIds);
             }
         }
     }
@@ -1964,11 +2480,12 @@ public class PlayerShoot : MonoBehaviour
         return multiplier;
     }
 
-    private void ApplyWallImpactDamageTransfer(
+    private IEnumerator ApplyWallImpactDamageTransfer(
         BulletInstance bullet,
         int sourceTileIndex,
         int horizontalDirection,
-        int sourceAttackDamage)
+        int sourceAttackDamage,
+        HashSet<int> processedDefeatIds)
     {
         BulletEffectData effect = FindSpecialEffect(
             bullet,
@@ -1978,7 +2495,7 @@ public class PlayerShoot : MonoBehaviour
             || sourceAttackDamage <= 0 || boardManager == null
             || waveManager == null)
         {
-            return;
+            yield break;
         }
 
         int direction = horizontalDirection >= 0 ? 1 : -1;
@@ -2023,6 +2540,7 @@ public class PlayerShoot : MonoBehaviour
                     : combatPresentation.CaptureEnemy(targetEnemy);
             int healthBeforeTransfer = targetEnemy.CurrentHealth;
             int targetMaxHealth = targetEnemy.MaxHealth;
+            int targetInstanceId = targetEnemy.GetInstanceID();
             int reportedDamage = targetEnemy.PredictAttackDamage(
                 transferDamage);
             int appliedDamage = targetEnemy.ApplyAttackDamage(
@@ -2064,6 +2582,14 @@ public class PlayerShoot : MonoBehaviour
                     waveManager.ActiveEnemies.Count <= 1,
                     GetCurrentCylinderBuild(),
                     healthBeforeTransfer);
+                yield return ApplyDefeatTriggeredAbilities(
+                    bullet,
+                    targetEnemy,
+                    targetInstanceId,
+                    horizontalDirection,
+                    reportedDamage,
+                    targetSnapshot.Position,
+                    processedDefeatIds);
             }
             else if (appliedDamage > 0)
             {
@@ -2076,6 +2602,31 @@ public class PlayerShoot : MonoBehaviour
                     GetCurrentCylinderBuild());
             }
         }
+    }
+
+    private IEnumerator ApplyDefeatTriggeredAbilities(
+        BulletInstance bullet,
+        EnemyController enemy,
+        int enemyInstanceId,
+        int horizontalDirection,
+        int appliedDamage,
+        Vector3 worldPosition,
+        HashSet<int> processedDefeatIds)
+    {
+        if (bullet == null || processedDefeatIds == null
+            || !processedDefeatIds.Add(enemyInstanceId))
+        {
+            yield break;
+        }
+
+        yield return ApplyConditionalEvents(
+            bullet,
+            BulletConditionalTrigger.EnemyDefeated,
+            enemy,
+            horizontalDirection,
+            appliedDamage,
+            worldPosition);
+        GrantDevourerStack(bullet);
     }
 
     private static float GetWallImpactTransferPercent(

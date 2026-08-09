@@ -36,6 +36,12 @@ Shader "Loaded/Enemy Warning Flow"
         _EdgeSoftness("Side Edge Softness", Range(0.001, 1.0)) = 0.22
         _EndFade("Start End Fade", Range(0.0, 0.5)) = 0.04
 
+        [Header(Dashes)]
+        [Toggle] _DashEnabled("Dash Enabled", Float) = 0
+        _DashCount("Dash Count", Range(1.0, 64.0)) = 12.0
+        _DashFill("Dash Fill", Range(0.05, 0.95)) = 0.55
+        _DashSoftness("Dash Softness", Range(0.001, 0.25)) = 0.04
+
         [Header(Rendering)]
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend("Source Blend", Float) = 5
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend("Destination Blend", Float) = 10
@@ -106,6 +112,10 @@ Shader "Loaded/Enemy Warning Flow"
                 float _PulseAmount;
                 float _EdgeSoftness;
                 float _EndFade;
+                float _DashEnabled;
+                float _DashCount;
+                float _DashFill;
+                float _DashSoftness;
             CBUFFER_END
 
             float RepeatingBorder(
@@ -189,6 +199,16 @@ Shader "Loaded/Enemy Warning Flow"
                     time * _PulseFrequency * 6.2831853);
                 float pulse = lerp(1.0 - _PulseAmount, 1.0, pulseWave);
                 float bodyMask = sideMask * endMask;
+                float dashCoordinate = input.uv.x * _DashCount;
+                float dashPhase = frac(dashCoordinate);
+                float dashMask = 1.0 - smoothstep(
+                    _DashFill,
+                    min(1.0, _DashFill + _DashSoftness),
+                    dashPhase);
+                bodyMask *= lerp(
+                    1.0,
+                    dashMask,
+                    saturate(_DashEnabled));
 
                 half3 color = _BaseColor.rgb * _BaseIntensity;
                 color += _GridColor.rgb * gridMask * _GridIntensity;
