@@ -1,11 +1,11 @@
 > [!WARNING]
-> This repository is publicly accessible solely for `NAN 2026` & `OpenAI GAME BUILDERS SEOUL` <br>
+> This repository is publicly accessible solely for contest <br>
 > It is not open-source software. <br>
 > Copying, redistribution, modification, commercial use, or use in another project is prohibited. <br>
 > Copyright © 2026 Bawky Studio. All rights reserved. <br>
 >
 > 
-> 이 저장소는 `NAN 2026`과  `OpenAI GAME BUILDERS SEOUL` 제출 및 심사 목적으로만 공개되어 있습니다. <br>
+> 이 저장소는 공모전 제출 및 심사 목적으로만 공개되어 있습니다. <br>
 > 본 프로젝트는 오픈소스 소프트웨어가 아닙니다. <br>
 > 코드와 에셋의 복제, 수정, 재배포, 상업적 이용, 다른 프로젝트에서의 사용을 금지합니다. <br>
 > Copyright © 2026 Bawky Studio. 모든 권리 보유.
