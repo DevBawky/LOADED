@@ -16,5 +16,6 @@ MonoBehaviour:
   actionType: 8
   movementDistance: 0
   attackData: {fileID: 0}
-  icon: {fileID: 0}
-  description: "\uC900\uBE44 \uC2DC\uC810\uC5D0 \uACE0\uC815\uD55C \uBCF4\uC2A4 \uC591\uC606 \uD0C0\uC77C\uC744 \uB3D9\uC2DC\uC5D0 \uACF5\uACA9\uD569\uB2C8\uB2E4."
+  icon: {fileID: -2163733324433952796, guid: 4bf015918238730429f9621aed54d0dc, type: 3}
+  description: "\uD050\uC5D0 \uB4F1\uB85D\uD55C \uB4A4 \uD50C\uB808\uC774\uC5B4\uC5D0\uAC8C \uC778\uC811\uD560 \uB54C\uAE4C\uC9C0
+    \uC811\uADFC\uD558\uC5EC \uC591\uC606 \uD0C0\uC77C\uC744 \uB3D9\uC2DC\uC5D0 \uACF5\uACA9\uD569\uB2C8\uB2E4."

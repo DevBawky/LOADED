@@ -35,7 +35,7 @@ public static class BigBarrelAssetBuilder
             "ShotgunAttack",
             EnemyActionType.ShotgunAttack,
             "산탄 사격",
-            "준비 시점에 고정한 보스 양옆 타일을 공격합니다.");
+            "보스의 현재 위치 양옆 타일을 동시에 공격합니다.");
         EnemyActionData bossReload = CreateActionIfMissing(
             "BossReload",
             EnemyActionType.Reload,
@@ -148,7 +148,7 @@ public static class BigBarrelAssetBuilder
         serialized.FindProperty("behaviorType").enumValueIndex =
             (int)EnemyBehaviorType.BigBarrel;
         serialized.FindProperty("preferredDistance").intValue = 2;
-        serialized.FindProperty("maxQueuedAttacks").intValue = 1;
+        serialized.FindProperty("maxQueuedAttacks").intValue = 3;
         serialized.FindProperty("recoveryTurns").intValue = 2;
         serialized.FindProperty("thrownProjectileDuration").floatValue = 0.45f;
         serialized.FindProperty("explosionVfxPrefab").objectReferenceValue =
