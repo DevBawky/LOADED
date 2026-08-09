@@ -26,7 +26,9 @@ Shader "Loaded/UI/Enemy Queue Ready Flame"
     {
         Tags
         {
-            "Queue" = "Transparent+120"
+            // Keep the effect in the normal UI queue so Canvas hierarchy
+            // order can place it behind the queued attack icons.
+            "Queue" = "Transparent"
             "RenderType" = "Transparent"
             "RenderPipeline" = "UniversalPipeline"
             "IgnoreProjector" = "True"
