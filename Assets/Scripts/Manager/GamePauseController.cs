@@ -13,6 +13,7 @@ public class GamePauseController : MonoBehaviour
     [SerializeField] private Slider bgmVolumeSlider;
     [SerializeField] private Slider sfxVolumeSlider;
     [SerializeField] private Slider vfxIntensitySlider;
+    [SerializeField] private Slider saturationSlider;
     [SerializeField] private Toggle oldMovieToggle;
 
     private readonly List<Button> pauseButtons = new List<Button>();
@@ -276,6 +277,10 @@ public class GamePauseController : MonoBehaviour
             {
                 vfxIntensitySlider = slider;
             }
+            else if (HasAncestorNamed(slider.transform, "Layout | Color"))
+            {
+                saturationSlider = slider;
+            }
         }
 
         foreach (Toggle toggle in pausedPanel.GetComponentsInChildren<Toggle>(true))
@@ -330,6 +335,14 @@ public class GamePauseController : MonoBehaviour
                 CombatAccessibilitySettings.PresentationIntensity);
             vfxIntensitySlider.onValueChanged.AddListener(
                 CombatAccessibilitySettings.SetPresentationIntensity);
+        }
+
+        if (saturationSlider != null)
+        {
+            saturationSlider.SetValueWithoutNotify(
+                GraphicsSaturationSettings.Saturation);
+            saturationSlider.onValueChanged.AddListener(
+                GraphicsSaturationSettings.SetSaturation);
         }
 
         if (oldMovieToggle != null)
