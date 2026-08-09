@@ -630,6 +630,7 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (!isStunActive && isNowStunned)
         {
             actionQueueUI?.SetStunned(true);
+            CancelAttackPreparation();
         }
         else if (isStunActive && !isNowStunned)
         {
@@ -637,6 +638,35 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         isStunActive = isNowStunned;
+    }
+
+    private void CancelAttackPreparation()
+    {
+        if (!isAttackPrepared)
+        {
+            return;
+        }
+
+        // Stun interrupts only the ready state. The registered attacks and
+        // their icons stay queued so the enemy must prepare them again later.
+        isAttackPrepared = false;
+        actionQueueUI?.SetPrepared(false);
+        HideAttackTelegraph();
+
+        if (enemyData == null
+            || enemyData.BehaviorType != EnemyBehaviorType.BigBarrel)
+        {
+            return;
+        }
+
+        if (bigBarrelStep == BigBarrelStep.ExecuteBomb)
+        {
+            bigBarrelStep = BigBarrelStep.PrepareBomb;
+        }
+        else if (bigBarrelStep == BigBarrelStep.ExecuteShotgun)
+        {
+            bigBarrelStep = BigBarrelStep.PrepareShotgun;
+        }
     }
 
     private void ConfigureBigBarrelHud()
