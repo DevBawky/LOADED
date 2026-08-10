@@ -1,18 +1,18 @@
 > [!WARNING]
-> 이 저장소는 심사 목적으로 공개되어 있습니다.
-> 오픈소스 소프트웨어가 아니며, 코드와 에셋의 복제·수정·재배포·상업적 이용 및 다른 프로젝트에서의 사용을 금지합니다.
+> 이 저장소는 심사 목적으로 공개되어 있습니다. <br>
+> 오픈소스 소프트웨어가 아니며, 코드와 에셋의 복제,수정,재배포,상업적 이용 및 다른 프로젝트에서의 사용을 금지합니다. <br>
 > Copyright © 2026 Bawky Studio. All rights reserved.
 
 # LOADED
 
-상점에서 탄환을 선택하고 강화해 덱을 구성한 뒤, 전투에서 무작위로 장전되는 탄환의 조합과 발사 타이밍으로 적의 예고 공격을 돌파하는 턴제 불릿 빌딩 로그라이크입니다.
+상점에서 탄환을 선택하고 강화해 덱을 구성한 뒤,<br> 전투에서 무작위로 장전되는 탄환의 조합과 발사 타이밍으로 적의 예고 공격을 돌파하는 <br> __`턴제 불릿 빌딩 로그라이크`__ 입니다.
 
 ## 플레이
 
-- [LOADED WebGL 데모](https://devbawky.github.io/LOADED/)
-- [59초 플레이 영상](https://www.youtube.com/watch?v=UC7fXD5tF34)
-- [전체 소스 코드](https://github.com/DevBawky/LOADED)
-- 플랫폼: PC WebGL, 키보드 및 마우스
+- #### [LOADED WebGL 빌드](https://devbawky.github.io/LOADED/)
+- #### [1분 플레이 영상](https://www.youtube.com/watch?v=UC7fXD5tF34)
+- #### [저장소](https://github.com/DevBawky/LOADED)
+- 플랫폼: WebGL(**`PC 권장`**), 키보드 및 마우스
 
 ## 핵심 플레이
 
