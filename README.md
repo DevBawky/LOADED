@@ -1,5 +1,5 @@
 > [!WARNING]
-> 이 저장소는 `NAN 2026` 및 `OpenAI GAME BUILDERS SEOUL` 출품작의 심사 목적으로 공개되어 있습니다.
+> 이 저장소는 심사 목적으로 공개되어 있습니다.
 > 오픈소스 소프트웨어가 아니며, 코드와 에셋의 복제·수정·재배포·상업적 이용 및 다른 프로젝트에서의 사용을 금지합니다.
 > Copyright © 2026 Bawky Studio. All rights reserved.
 
@@ -10,7 +10,9 @@
 ## 플레이
 
 - [LOADED WebGL 데모](https://devbawky.github.io/LOADED/)
-- 플랫폼: PC WebGL
+- [59초 플레이 영상](https://www.youtube.com/watch?v=UC7fXD5tF34)
+- [전체 소스 코드](https://github.com/DevBawky/LOADED)
+- 플랫폼: PC WebGL, 키보드 및 마우스
 
 ## 핵심 플레이
 
@@ -38,10 +40,25 @@
 - 빌드 씬: `MainMenu` → `Stage 1` → `Ending`
 
 1. Unity Hub에서 저장소 루트를 Unity `6000.3.21f1`로 엽니다.
-2. 서드파티 에셋이 없는 환경에서는 `Assets/DamageNumbersPro`, `Assets/OldMovie`, `Assets/Package`에 필요한 에셋을 다시 임포트합니다.
-3. `Assets/Scenes/MainMenu.unity`를 열고 Play Mode를 실행합니다.
+2. 아래 서드파티 에셋 중 코드 및 렌더링 의존성인 `Damage Numbers Pro`와 `Old Movie - Old Film Screen Effect`를 임포트합니다.
+3. 원본과 동일한 사운드 구성이 필요하면 아래 오디오 에셋 3종을 추가로 임포트합니다.
+4. `Assets/Scenes/MainMenu.unity`를 열고 Play Mode를 실행합니다.
 
 `main` 브랜치의 `WebBuild/` 변경 사항은 GitHub Actions를 통해 GitHub Pages에 배포됩니다.
+
+## 서드파티 에셋
+
+Unity Asset Store 에셋의 원본 파일은 재배포할 수 없어 공개 저장소에서 제외했습니다. 웹 데모와 플레이 영상은 별도의 에셋 설치 없이 확인할 수 있으며, Unity 프로젝트를 직접 실행하려면 각 에셋을 정식으로 내려받아 임포트해야 합니다.
+
+| 에셋 | 용도 | 소스 재현 시 필요 여부 |
+| --- | --- | --- |
+| [Damage Numbers Pro](https://assetstore.unity.com/packages/2d/gui/damage-numbers-pro-186447) | 대미지 텍스트 팝업 | 필수 |
+| [Old Movie - Old Film Screen Effect](https://assetstore.unity.com/packages/vfx/shaders/fullscreen-camera-effects/old-movie-old-film-screen-effect-270021) | 필름 노이즈 및 화면 효과 | 필수 |
+| [Free Deadly Kombat](https://assetstore.unity.com/packages/audio/sound-fx/free-deadly-kombat-228835) | 피격 및 근접 효과음 | 원본 사운드 재현 시 필요 |
+| [WEAPON & GUN SOUND EFFECTS](https://assetstore.unity.com/packages/audio/sound-fx/weapon-gun-sound-effects-225044) | 총격 및 장전 효과음 | 원본 사운드 재현 시 필요 |
+| [Gun Sounds Pack Vol 1](https://assetstore.unity.com/packages/audio/sound-fx/weapons/gun-sounds-pack-vol-1-289021) | 총격, 실린더 및 폭발 효과음 | 원본 사운드 재현 시 필요 |
+
+해당 에셋은 각각의 제공자 라이선스와 Unity Asset Store EULA를 따릅니다.
 
 ## 저장소 구조
 
