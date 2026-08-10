@@ -2521,6 +2521,14 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
             yield break;
         }
 
+        // Lock the hit result when the throw begins. The projectile is only a
+        // presentation delay; movement or position refreshes during its flight
+        // must not invalidate a player who occupied the warned tile at launch.
+        bool targetsPlayer = boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex)
+            && playerTileIndex == preparedTargetTileIndex;
+
         PlayThrowerAttackAnimation();
         yield return PlayThrownProjectile(preparedTargetPosition);
         SoundManager.PlaySfx("SFX_Thrower_Bomb");
@@ -2540,10 +2548,6 @@ public class EnemyController : MonoBehaviour, IStatusEffectTarget
                 Quaternion.identity);
         }
 
-        bool targetsPlayer = boardManager.TryGetTileIndex(
-                playerMove.transform.position,
-                out int playerTileIndex)
-            && playerTileIndex == preparedTargetTileIndex;
         EnemyController enemyTarget = null;
 
         if (!targetsPlayer)

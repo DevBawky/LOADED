@@ -328,6 +328,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private float advanceAt;
     private bool videoShouldPlay;
     private bool completionCardOpen;
+    private bool isMandatoryGuideSession;
     private string activeTargetName;
     private TargetKind activeTargetKind;
     private RectTransform activeTarget;
@@ -416,6 +417,13 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (activeInstance == null || activeInstance.mode == GuideMode.None)
         {
             return false;
+        }
+
+        if (activeInstance.isMandatoryGuideSession)
+        {
+            // Consume Escape without closing or opening another panel while
+            // an automatically started early-game tutorial is in progress.
+            return true;
         }
 
         activeInstance.SkipCurrentGuide();
@@ -559,6 +567,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         itemUsed = false;
         tutorialStunItemGranted = false;
         mode = GuideMode.Combat;
+        isMandatoryGuideSession = true;
         combatSystemPageIndex = 0;
         combatStepIndex = 0;
         combatReviewStepIndex = -1;
@@ -583,6 +592,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         itemUsed = false;
         mode = GuideMode.Item;
+        isMandatoryGuideSession = true;
         SetActiveTarget("Layout | Inventory", TargetKind.Named);
         ShowCard(
             "ITEM GUIDE",
@@ -605,6 +615,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         shopGuideStarted = true;
         mode = GuideMode.Shop;
+        isMandatoryGuideSession = true;
         shopPageIndex = 0;
         ShowShopPage();
     }
@@ -720,8 +731,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         inputBlocker.gameObject.SetActive(true);
         inputBlocker.raycastTarget = true;
         card.SetActive(true);
-        cardExitButton?.gameObject.SetActive(true);
-        neverShowToggle?.gameObject.SetActive(true);
+        cardExitButton?.gameObject.SetActive(!isMandatoryGuideSession);
+        neverShowToggle?.gameObject.SetActive(!isMandatoryGuideSession);
         missionBar.SetActive(false);
         missionActive = false;
         pendingAdvance = false;
@@ -1566,6 +1577,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
     private void SkipCurrentGuide()
     {
+        if (isMandatoryGuideSession)
+        {
+            return;
+        }
+
         if (completionCardOpen)
         {
             CloseCompletionCard();
@@ -1602,6 +1618,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         completionCardOpen = false;
         showingCombatSystemPages = false;
         combatReviewStepIndex = -1;
+        isMandatoryGuideSession = false;
         activeTarget = null;
         activeSecondaryTarget = null;
         activeTargetName = null;
