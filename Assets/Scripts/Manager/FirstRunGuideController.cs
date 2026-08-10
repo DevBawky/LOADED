@@ -13,6 +13,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private const string ItemGuideKey = "loaded.guide.item.v1";
     private const string ShopGuideKey = "loaded.guide.shop.v1";
     private const string GuideDisabledKey = "loaded.guide.disabled.v1";
+    private const string FirstTutorialRunStartedKey =
+        "loaded.guide.first_run_started.v1";
     private const float StepAdvanceDelay = 0.45f;
     private const string PreferredGuideFontName = "Bold_Ko SDF";
     private const string FallbackGuideFontName = "Galmuri9 SDF";
@@ -329,6 +331,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private bool videoShouldPlay;
     private bool completionCardOpen;
     private bool isMandatoryGuideSession;
+    private bool tutorialRunResolved;
+    private bool isFirstTutorialRun;
     private string activeTargetName;
     private TargetKind activeTargetKind;
     private RectTransform activeTarget;
@@ -436,6 +440,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         PlayerPrefs.DeleteKey(ItemGuideKey);
         PlayerPrefs.DeleteKey(ShopGuideKey);
         PlayerPrefs.DeleteKey(GuideDisabledKey);
+        PlayerPrefs.DeleteKey(FirstTutorialRunStartedKey);
         PlayerPrefs.Save();
     }
 
@@ -567,7 +572,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         itemUsed = false;
         tutorialStunItemGranted = false;
         mode = GuideMode.Combat;
-        isMandatoryGuideSession = true;
+        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
         combatSystemPageIndex = 0;
         combatStepIndex = 0;
         combatReviewStepIndex = -1;
@@ -592,7 +597,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         itemUsed = false;
         mode = GuideMode.Item;
-        isMandatoryGuideSession = true;
+        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
         SetActiveTarget("Layout | Inventory", TargetKind.Named);
         ShowCard(
             "ITEM GUIDE",
@@ -615,7 +620,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         shopGuideStarted = true;
         mode = GuideMode.Shop;
-        isMandatoryGuideSession = true;
+        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
         shopPageIndex = 0;
         ShowShopPage();
     }
@@ -1893,6 +1898,31 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private static bool IsGuideDisabled()
     {
         return PlayerPrefs.GetInt(GuideDisabledKey, 0) != 0;
+    }
+
+    private bool IsFirstTutorialPlaythrough()
+    {
+        if (tutorialRunResolved)
+        {
+            return isFirstTutorialRun;
+        }
+
+        tutorialRunResolved = true;
+        bool hasPreviousTutorialRun = PlayerPrefs.GetInt(
+                FirstTutorialRunStartedKey,
+                0) != 0
+            || IsCompleted(CombatGuideKey)
+            || IsCompleted(ItemGuideKey)
+            || IsCompleted(ShopGuideKey);
+        isFirstTutorialRun = !hasPreviousTutorialRun;
+
+        if (isFirstTutorialRun)
+        {
+            PlayerPrefs.SetInt(FirstTutorialRunStartedKey, 1);
+            PlayerPrefs.Save();
+        }
+
+        return isFirstTutorialRun;
     }
 
     private static void SaveCompleted(string key)
