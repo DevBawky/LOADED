@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_stun
   displayName: "\uBC88\uAC1C"
-  description: "\uAE30\uC808 +1"
+  description: "\uAE30\uC808 +2"
   cylinderIcon: {fileID: 1695419753724365386, guid: 214810496b6e64b4aafeb20294d44b99, type: 3}
   price: 6
   grade: 1
@@ -31,7 +31,7 @@ MonoBehaviour:
   - effectType: 1
     target: 0
     activationChance: 100
-    stackCount: 1
+    stackCount: 2
     knockbackDistance: 1
     amount: 1
     secondTransferPercent: 0
@@ -46,7 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uAE30\uC808 +1\n\uCE58\uBA85\uD0C0 \uC2DC \uCD94\uAC00\uB85C \uAE30\uC808
+  - description: "\uAE30\uC808 +2\n\uCE58\uBA85\uD0C0 \uC2DC \uCD94\uAC00\uB85C \uAE30\uC808
       +1"
     damage: 5
     maxRange: 3
@@ -56,7 +56,7 @@ MonoBehaviour:
     - effectType: 1
       target: 0
       activationChance: 100
-      stackCount: 1
+      stackCount: 2
       knockbackDistance: 1
       amount: 1
       secondTransferPercent: 0
@@ -108,7 +108,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "\uAE30\uC808 +2\n\uCE58\uBA85\uD0C0 \uC2DC \uCD94\uAC00\uB85C \uAE30\uC808
+  - description: "\uAE30\uC808 +3\n\uCE58\uBA85\uD0C0 \uC2DC \uCD94\uAC00\uB85C \uAE30\uC808
       +1, \uACE8\uB4DC +2\n\uC5F0\uC18D \uAD00\uD1B5 (50%)\n\uC7AC\uC7A5\uC804 \uC2DC
       \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
     damage: 10
@@ -119,7 +119,7 @@ MonoBehaviour:
     - effectType: 1
       target: 0
       activationChance: 100
-      stackCount: 2
+      stackCount: 3
       knockbackDistance: 1
       amount: 1
       secondTransferPercent: 0
