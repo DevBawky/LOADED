@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8a11d19cd1b46158a0908ee4d20e96d, type: 3}
-  m_Name: Stage 1 Entry
+  m_Name: Stage 1 -1
   m_EditorClassIdentifier: Assembly-CSharp::BattleData
   battleId: stage_1_battle_01
   displayName: 1-1

@@ -457,12 +457,6 @@ public class DeckManager : MonoBehaviour
             return deck[deck.Count - 1];
         }
 
-        // A short deck can be entirely loaded before this UI is enabled (for
-        // example after removing bullets in the shop or restoring a battle).
-        // Rebuild a missing reservation here as a final invariant guard so the
-        // next-bullet preview never depends on the last reload notification.
-        CreateNextCycleOrderIfNeeded();
-
         foreach (BulletInstance bullet in nextCycleOrder)
         {
             if (Contains(bullet))
