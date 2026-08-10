@@ -1,102 +1,75 @@
 > [!WARNING]
-> This repository is publicly accessible solely for contest <br>
-> It is not open-source software. <br>
-> Copying, redistribution, modification, commercial use, or use in another project is prohibited. <br>
-> Copyright © 2026 Bawky Studio. All rights reserved. <br>
->
-> 
-> 이 저장소는 공모전 제출 및 심사 목적으로만 공개되어 있습니다. <br>
-> 본 프로젝트는 오픈소스 소프트웨어가 아닙니다. <br>
-> 코드와 에셋의 복제, 수정, 재배포, 상업적 이용, 다른 프로젝트에서의 사용을 금지합니다. <br>
-> Copyright © 2026 Bawky Studio. 모든 권리 보유.
-
-
-
-# 게임 플레이 링크
-> ### [LOADED DEMO](https://devbawky.github.io/LOADED/)
-
-## github Commit ConventionPermalink
-
-
+> 이 저장소는 `NAN 2026` 및 `OpenAI GAME BUILDERS SEOUL` 출품작의 심사 목적으로 공개되어 있습니다.
+> 오픈소스 소프트웨어가 아니며, 코드와 에셋의 복제·수정·재배포·상업적 이용 및 다른 프로젝트에서의 사용을 금지합니다.
+> Copyright © 2026 Bawky Studio. All rights reserved.
 
 # LOADED
 
-무작위로 장전되는 탄환의 순서와 발사 타이밍을 관리하는 턴제 탄창 빌딩 로그라이크.
+상점에서 탄환을 선택하고 강화해 덱을 구성한 뒤, 전투에서 무작위로 장전되는 탄환의 조합과 발사 타이밍으로 적의 예고 공격을 돌파하는 턴제 불릿 빌딩 로그라이크입니다.
 
-## Play
+## 플레이
 
-- Web Build: 준비 중
-- Gameplay Video: 준비 중
+- [LOADED WebGL 데모](https://devbawky.github.io/LOADED/)
+- 플랫폼: PC WebGL
 
-## Core Concept
+## 핵심 플레이
 
-플레이어는 이동, 방향 변경, 무작위 장전, 전체 발사 중 하나를 선택한다.
-탄환은 보유 덱에서 무작위로 장전되며 순서를 변경할 수 없다.
-플레이어는 위험을 감수하고 더 장전할지, 현재 탄창을 발사할지 결정한다.
+- 이동, 방향 전환, 대기, 장전, 발사 중 하나를 선택하면 턴이 진행됩니다.
+- 보유한 탄환은 무작위로 실린더에 장전되며, 탄환 효과와 발사 순서의 조합이 전투 결과를 결정합니다.
+- 전투 보상과 상점을 통해 탄환을 구매하고 강화해 덱을 발전시킵니다.
+- 적의 다음 행동과 예상 피해를 확인하고 장전과 발사 사이의 위험을 판단합니다.
 
-## Player Actions
+## 조작법
 
-1. Move
-2. Turn
-3. Load
-4. Fire
+| 입력 | 동작 |
+| --- | --- |
+| `A` / `D` | 왼쪽 / 오른쪽 이동 |
+| `W` 또는 마우스 가운데 버튼 | 방향 전환 |
+| `S` | 대기 |
+| `R` | 탄환 장전 |
+| `Space` 또는 마우스 왼쪽 버튼 | 장전된 탄환 발사 |
 
-## Controls
+게임 화면의 액션 버튼으로도 조작할 수 있습니다.
 
-PC와 모바일의 실제 입력 키 및 버튼 배치는 구현 후 기록한다.
+## 실행 방법
 
-## Project Goals
+- Unity: `6000.3.21f1`
+- 시작 씬: `Assets/Scenes/MainMenu.unity`
+- 빌드 씬: `MainMenu` → `Stage 1` → `Ending`
 
-- 10초 안에 이해되는 플레이
-- PC와 모바일에서 동일한 조작
-- 짧고 반복 가능한 로그라이크 세션
-- 최소한의 그래픽 리소스
-- 일일 도전 및 랭킹 확장 가능성
+1. Unity Hub에서 저장소 루트를 Unity `6000.3.21f1`로 엽니다.
+2. 서드파티 에셋이 없는 환경에서는 `Assets/DamageNumbersPro`, `Assets/OldMovie`, `Assets/Package`에 필요한 에셋을 다시 임포트합니다.
+3. `Assets/Scenes/MainMenu.unity`를 열고 Play Mode를 실행합니다.
 
-## How to Run
+`main` 브랜치의 `WebBuild/` 변경 사항은 GitHub Actions를 통해 GitHub Pages에 배포됩니다.
 
-- Unity Version: 6000.3.15f1
-- Start Scene: 미정. 현재 후보는 `Assets/Scenes/SampleScene.unity`
-- Web Build URL: 준비 중
+## 저장소 구조
 
-Unity Hub에서 프로젝트를 Unity 6000.3.15f1로 열고, 시작 Scene이 확정되면 이 절을 갱신한다.
-
-## Repository Structure
-
-- `Assets/`: Unity 게임 코드와 리소스
-- `Docs/Game/`: 게임 설계 문서
-- `Docs/Development/`: 일정, 테스트, 이슈 기록
-- `Docs/AI/`: AI 활용 및 프롬프트 기록
-- `Docs/Submission/`: NAN 2026 제출 자료 초안
-- `Docs/References/`: 외부 에셋과 오픈소스 출처
+- `Assets/Scripts/`: 게임플레이 및 UI 코드
+- `Assets/Scenes/`: 메인 메뉴, 전투, 엔딩 씬
+- `Assets/Tests/`: Unity 테스트
+- `Assets/StreamingAssets/`: 튜토리얼 및 연출 영상
+- `Docs/Art/`: 아트 및 UI 기록
+- `Docs/Dev/`: 날짜별 구현·수정 기록
+- `Docs/Submission/`: 출품 및 AI 활용 문서
 - `Tools/BalanceSimulation/`: 밸런스 분석 도구
+- `WebBuild/`: 배포용 WebGL 빌드
 
-## Development Environment
+## 문서
 
-- Engine: Unity
-- Editor Version: 6000.3.15f1
-- Target Platform: PC Web, Mobile Web
+- [탄환 덱 생명주기](Docs/BulletDeckLifecycle.md)
+- [첫 실행 가이드 구현 기록](Docs/Dev/0809_FirstRunGuide.md)
+- [WebGL 저장 및 로딩 구현 기록](Docs/Dev/0809_WebGL_Save_And_Loading.md)
+- [AI 활용 기술 문서](Docs/Submission/AI_USAGE_TECHNICAL_DOCUMENT.md)
+- [개발 및 커밋 규칙](CONTRIBUTING.md)
 
-## Documentation
+## 기술 환경
 
-- [Game Overview](Docs/Game/GAME_OVERVIEW.md)
-- [Game Rules](Docs/Game/GAME_RULES.md)
-- [Content Specification](Docs/Game/CONTENT_SPEC.md)
-- [AI Usage Overview](Docs/AI/AI_USAGE_OVERVIEW.md)
-- [AI Usage Log](Docs/AI/AI_USAGE_LOG.md)
-- [Submission Checklist](Docs/Submission/SUBMISSION_CHECKLIST.md)
+- Unity `6000.3.21f1`
+- Universal Render Pipeline 2D
+- Unity Input System
+- WebGL / GitHub Pages
 
-## AI Usage
+## 라이선스
 
-AI는 시스템 설계, 코드 구현 보조, 테스트 케이스 도출, 밸런스 시뮬레이션, 문서화에 활용한다.
-
-AI 출력은 그대로 신뢰하지 않고 코드 리뷰, 테스트, 플레이 테스트를 통해 검증한다.
-
-자세한 내용은 [AI Usage Overview](Docs/AI/AI_USAGE_OVERVIEW.md)를 참고한다.
-
-## Third-Party Assets
-
-외부 에셋과 오픈소스 사용 내역은 아래 문서에서 관리한다.
-
-- [Third-Party Assets](Docs/References/THIRD_PARTY_ASSETS.md)
-- [Open Source Licenses](Docs/References/OPEN_SOURCE_LICENSES.md)
+이 프로젝트는 평가 목적으로만 사용할 수 있습니다. 자세한 내용은 [LICENSE](LICENSE)를 확인하세요. 포함되거나 참조된 서드파티 패키지와 에셋에는 각각의 라이선스가 적용됩니다.
