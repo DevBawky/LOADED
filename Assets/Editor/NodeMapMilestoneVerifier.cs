@@ -61,10 +61,39 @@ public static class NodeMapMilestoneVerifier
 
         EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
 
-        if (UnityEngine.Object.FindFirstObjectByType<TController>() == null)
+        TController controller = UnityEngine.Object
+            .FindFirstObjectByType<TController>();
+
+        if (controller == null)
         {
             throw new InvalidOperationException(
                 $"Scene '{path}' does not contain {typeof(TController).Name}.");
+        }
+
+        Camera camera = UnityEngine.Object.FindFirstObjectByType<Camera>();
+
+        if (camera == null || !camera.CompareTag("MainCamera"))
+        {
+            string foundCamera = camera == null
+                ? "none"
+                : $"{camera.name}/{camera.tag}";
+            throw new InvalidOperationException(
+                $"Scene '{path}' requires a tagged Main Camera "
+                + $"(found: {foundCamera}).");
+        }
+
+        if (controller is StandaloneShopController)
+        {
+            SerializedProperty canvasPrefab = new SerializedObject(controller)
+                .FindProperty("stageOneCanvasPrefab");
+
+            if (canvasPrefab?.objectReferenceValue == null
+                || AssetDatabase.GetAssetPath(canvasPrefab.objectReferenceValue)
+                    != "Assets/Prefabs/UI/Canvas.prefab")
+            {
+                throw new InvalidOperationException(
+                    "Shop must reuse the Stage 1 Canvas prefab.");
+            }
         }
     }
 

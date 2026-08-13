@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem.UI;
@@ -9,12 +11,21 @@ using UnityEngine.UI;
 public sealed class StandaloneShopController : MonoBehaviour
 {
     private const int BulletOfferCount = 3;
-    private const int ItemOfferCount = 3;
+    private const int ItemOfferCount = 2;
+    [SerializeField] private GameObject stageOneCanvasPrefab;
     private RunSaveData saveData;
     private ShopCatalog catalog;
-    private Font font;
-    private Text moneyText;
-    private readonly List<Button> offerButtons = new List<Button>();
+    private TMP_Text moneyText;
+    private TMP_Text bulletCountText;
+    private readonly List<OfferView> bulletOfferViews = new List<OfferView>();
+    private readonly List<OfferView> itemOfferViews = new List<OfferView>();
+
+    private sealed class OfferView
+    {
+        public Button button;
+        public Image icon;
+        public TMP_Text costText;
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void RegisterBootstrap()
@@ -66,12 +77,15 @@ public sealed class StandaloneShopController : MonoBehaviour
 
     private void EnsureOffers()
     {
-        if (saveData.shop.bulletOfferAssetNames.Count == 0)
+        TrimOffers(saveData.shop.bulletOfferAssetNames, BulletOfferCount);
+        TrimOffers(saveData.shop.itemOfferAssetNames, ItemOfferCount);
+
+        if (saveData.shop.bulletOfferAssetNames.Count < BulletOfferCount)
         {
             FillDistinctBulletOffers();
         }
 
-        if (saveData.shop.itemOfferAssetNames.Count == 0)
+        if (saveData.shop.itemOfferAssetNames.Count < ItemOfferCount)
         {
             FillDistinctItemOffers();
         }
@@ -88,13 +102,19 @@ public sealed class StandaloneShopController : MonoBehaviour
     {
         List<int> indices = CreateShuffledIndices(catalog.Bullets.Count);
 
-        for (int index = 0; index < Mathf.Min(BulletOfferCount, indices.Count); index++)
+        foreach (int index in indices)
         {
-            BulletData bullet = catalog.Bullets[indices[index]];
+            BulletData bullet = catalog.Bullets[index];
 
-            if (bullet != null)
+            if (bullet != null
+                && !saveData.shop.bulletOfferAssetNames.Contains(bullet.name))
             {
                 saveData.shop.bulletOfferAssetNames.Add(bullet.name);
+            }
+
+            if (saveData.shop.bulletOfferAssetNames.Count >= BulletOfferCount)
+            {
+                break;
             }
         }
     }
@@ -103,13 +123,19 @@ public sealed class StandaloneShopController : MonoBehaviour
     {
         List<int> indices = CreateShuffledIndices(catalog.Items.Count);
 
-        for (int index = 0; index < Mathf.Min(ItemOfferCount, indices.Count); index++)
+        foreach (int index in indices)
         {
-            ItemData item = catalog.Items[indices[index]];
+            ItemData item = catalog.Items[index];
 
-            if (item != null)
+            if (item != null
+                && !saveData.shop.itemOfferAssetNames.Contains(item.name))
             {
                 saveData.shop.itemOfferAssetNames.Add(item.name);
+            }
+
+            if (saveData.shop.itemOfferAssetNames.Count >= ItemOfferCount)
+            {
+                break;
             }
         }
     }
@@ -117,50 +143,155 @@ public sealed class StandaloneShopController : MonoBehaviour
     private void BuildScreen()
     {
         EnsureEventSystem();
-        font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        Canvas canvas = new GameObject("Canvas | Shop", typeof(Canvas),
-            typeof(CanvasScaler), typeof(GraphicRaycaster)).GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        CanvasScaler scaler = canvas.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
 
-        Image background = CreateImage(canvas.transform, "Background",
-            new Color(0.055f, 0.045f, 0.04f, 1f));
-        Stretch(background.rectTransform);
-        CreateText(canvas.transform, "TRADER", 56,
-            new Vector2(0f, 450f), new Vector2(800f, 80f));
-        moneyText = CreateText(canvas.transform, string.Empty, 34,
-            new Vector2(0f, 365f), new Vector2(500f, 60f));
-
-        for (int index = 0; index < saveData.shop.bulletOfferAssetNames.Count; index++)
+        if (!TryCreateStageOneShopCanvas(out Transform shopPanel))
         {
-            int captured = index;
-            BulletData bullet = catalog.FindBullet(
-                saveData.shop.bulletOfferAssetNames[index]);
-            Button button = CreateOfferButton(canvas.transform,
-                new Vector2(-480f + index * 480f, 130f),
-                bullet == null ? "UNKNOWN BULLET" :
-                    $"{bullet.DisplayName}\n$ {bullet.Price}",
-                () => TryBuyBullet(captured));
-            offerButtons.Add(button);
+            Debug.LogError(
+                "The Stage 1 Shop Canvas prefab could not be initialized.",
+                this);
+            RunManager.Instance.ReturnToMap();
+            return;
         }
 
-        for (int index = 0; index < saveData.shop.itemOfferAssetNames.Count; index++)
-        {
-            int captured = index;
-            ItemData item = catalog.FindItem(saveData.shop.itemOfferAssetNames[index]);
-            Button button = CreateOfferButton(canvas.transform,
-                new Vector2(-480f + index * 480f, -120f),
-                item == null ? "UNKNOWN ITEM" :
-                    $"{item.DisplayName}\n$ {item.Price}",
-                () => TryBuyItem(captured));
-            offerButtons.Add(button);
-        }
-
-        CreateOfferButton(canvas.transform, new Vector2(0f, -365f),
-            "RETURN TO MAP", ExitShop, new Vector2(420f, 90f));
+        ConfigureShopControls(shopPanel);
         Refresh();
+    }
+
+    private bool TryCreateStageOneShopCanvas(out Transform shopPanel)
+    {
+        shopPanel = null;
+
+        if (stageOneCanvasPrefab == null)
+        {
+            return false;
+        }
+
+        GameObject inactiveOwner = new GameObject("Shop Canvas Setup");
+        inactiveOwner.SetActive(false);
+        GameObject canvasObject = Instantiate(
+            stageOneCanvasPrefab,
+            inactiveOwner.transform);
+        canvasObject.name = "Canvas | Shop";
+        canvasObject.SetActive(false);
+        canvasObject.transform.localScale = Vector3.one;
+
+        foreach (MonoBehaviour behaviour in canvasObject
+                     .GetComponents<MonoBehaviour>())
+        {
+            if (behaviour is CanvasScaler || behaviour is GraphicRaycaster)
+            {
+                continue;
+            }
+
+            behaviour.enabled = false;
+        }
+
+        shopPanel = FindDescendant(canvasObject.transform, "Panel | Shop");
+        Transform moneyPanel = FindDescendant(
+            canvasObject.transform,
+            "Panel | Money");
+
+        if (shopPanel == null || moneyPanel == null)
+        {
+            Destroy(canvasObject);
+            Destroy(inactiveOwner);
+            return false;
+        }
+
+        KeepOnlyPaths(canvasObject.transform, shopPanel, moneyPanel);
+        Canvas canvas = canvasObject.GetComponent<Canvas>();
+
+        if (canvas != null)
+        {
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = Camera.main;
+            canvas.planeDistance = 10f;
+        }
+
+        shopPanel.gameObject.SetActive(true);
+        moneyPanel.gameObject.SetActive(true);
+        canvasObject.transform.SetParent(null, false);
+        Destroy(inactiveOwner);
+        canvasObject.SetActive(true);
+        moneyText = FindDescendant(moneyPanel, "Text | Current Money")
+            ?.GetComponent<TMP_Text>();
+        return true;
+    }
+
+    private void ConfigureShopControls(Transform shopPanel)
+    {
+        Button[] buttons = shopPanel.GetComponentsInChildren<Button>(true);
+        Button[] bulletButtons = buttons
+            .Where(button => button.name == "Button | Bullet Item")
+            .Take(BulletOfferCount)
+            .ToArray();
+        Button[] itemButtons = buttons
+            .Where(button => button.name == "Button | Shop Item")
+            .Take(ItemOfferCount)
+            .ToArray();
+
+        if (bulletButtons.Length != BulletOfferCount
+            || itemButtons.Length != ItemOfferCount)
+        {
+            throw new InvalidOperationException(
+                "The Stage 1 Shop Canvas offer slots do not match the catalog layout.");
+        }
+
+        bulletCountText = FindDescendant(shopPanel, "Text | My Bullet Count")
+            ?.GetComponent<TMP_Text>();
+
+        for (int index = 0; index < bulletButtons.Length; index++)
+        {
+            int captured = index;
+            OfferView view = CreateOfferView(bulletButtons[index]);
+            view.button.onClick.RemoveAllListeners();
+            view.button.onClick.AddListener(() => TryBuyBullet(captured));
+            bulletOfferViews.Add(view);
+        }
+
+        for (int index = 0; index < itemButtons.Length; index++)
+        {
+            int captured = index;
+            OfferView view = CreateOfferView(itemButtons[index]);
+            view.button.onClick.RemoveAllListeners();
+            view.button.onClick.AddListener(() => TryBuyItem(captured));
+            itemOfferViews.Add(view);
+        }
+
+        SetNamedButtonActive(buttons, "Button | Refresh", false);
+        SetNamedButtonActive(buttons, "Button | Manage Bullet", false);
+        Transform managePanel = FindDescendant(shopPanel, "Panel | Manage Bullets");
+        managePanel?.gameObject.SetActive(false);
+
+        Button exitButton = buttons.FirstOrDefault(
+            button => button.name == "Button | Go To Battle");
+
+        if (exitButton == null)
+        {
+            throw new InvalidOperationException(
+                "The Stage 1 Shop Canvas return button is missing.");
+        }
+
+        exitButton.onClick.RemoveAllListeners();
+        exitButton.onClick.AddListener(ExitShop);
+        TMP_Text exitText = exitButton.GetComponentInChildren<TMP_Text>(true);
+
+        if (exitText != null)
+        {
+            exitText.text = "RETURN TO MAP";
+        }
+    }
+
+    private static OfferView CreateOfferView(Button button)
+    {
+        return new OfferView
+        {
+            button = button,
+            icon = FindDescendant(button.transform, "Image | Sprite")
+                ?.GetComponent<Image>(),
+            costText = FindDescendant(button.transform, "Text | Cost")
+                ?.GetComponent<TMP_Text>()
+        };
     }
 
     private void TryBuyBullet(int offerIndex)
@@ -285,97 +416,108 @@ public sealed class StandaloneShopController : MonoBehaviour
             moneyText.text = $"$ {Mathf.Max(0, saveData.money)}";
         }
 
-        int buttonIndex = 0;
+        if (bulletCountText != null)
+        {
+            bulletCountText.text =
+                $"{saveData.bullets.Count}/{DeckManager.MaximumOwnedBulletCount}";
+        }
 
-        for (int index = 0; index < saveData.shop.bulletOfferAssetNames.Count; index++)
+        for (int index = 0; index < bulletOfferViews.Count; index++)
         {
             BulletData bullet = catalog.FindBullet(saveData.shop.bulletOfferAssetNames[index]);
             bool purchased = saveData.shop.purchasedBulletOffers[index];
-            Button button = offerButtons[buttonIndex++];
-            button.interactable = !purchased && bullet != null
+            bool canPurchase = !purchased && bullet != null
                 && saveData.money >= bullet.Price
                 && saveData.bullets.Count < DeckManager.MaximumOwnedBulletCount;
-            SetButtonText(button, purchased ? "PURCHASED" :
-                bullet == null ? "UNAVAILABLE" : $"{bullet.DisplayName}\n$ {bullet.Price}");
+            SetOfferView(
+                bulletOfferViews[index],
+                bullet == null ? null : bullet.CylinderIcon,
+                bullet == null ? 0 : bullet.Price,
+                purchased,
+                canPurchase);
         }
 
-        for (int index = 0; index < saveData.shop.itemOfferAssetNames.Count; index++)
+        for (int index = 0; index < itemOfferViews.Count; index++)
         {
             ItemData item = catalog.FindItem(saveData.shop.itemOfferAssetNames[index]);
             bool purchased = saveData.shop.purchasedItemOffers[index];
-            Button button = offerButtons[buttonIndex++];
-            button.interactable = !purchased && item != null
+            bool canPurchase = !purchased && item != null
                 && saveData.money >= item.Price && FindEmptyInventorySlot() >= 0;
-            SetButtonText(button, purchased ? "PURCHASED" :
-                item == null ? "UNAVAILABLE" : $"{item.DisplayName}\n$ {item.Price}");
+            SetOfferView(
+                itemOfferViews[index],
+                item == null ? null : item.Icon,
+                item == null ? 0 : item.Price,
+                purchased,
+                canPurchase);
         }
     }
 
-    private Button CreateOfferButton(
-        Transform parent,
-        Vector2 position,
-        string label,
-        UnityEngine.Events.UnityAction clicked,
-        Vector2? size = null)
+    private static void SetOfferView(
+        OfferView view,
+        Sprite icon,
+        int price,
+        bool purchased,
+        bool canPurchase)
     {
-        Image image = CreateImage(parent, "Button | Offer",
-            new Color(0.72f, 0.16f, 0.09f, 1f));
-        image.rectTransform.anchorMin = image.rectTransform.anchorMax =
-            new Vector2(0.5f, 0.5f);
-        image.rectTransform.anchoredPosition = position;
-        image.rectTransform.sizeDelta = size ?? new Vector2(400f, 180f);
-        Button button = image.gameObject.AddComponent<Button>();
-        button.onClick.AddListener(clicked);
-        CreateText(image.transform, label, 28, Vector2.zero,
-            image.rectTransform.sizeDelta);
-        return button;
-    }
+        view.button.interactable = canPurchase;
 
-    private Text CreateText(
-        Transform parent,
-        string value,
-        int size,
-        Vector2 position,
-        Vector2 dimensions)
-    {
-        Text text = new GameObject("Text", typeof(RectTransform),
-            typeof(CanvasRenderer), typeof(Text)).GetComponent<Text>();
-        text.transform.SetParent(parent, false);
-        text.font = font;
-        text.text = value;
-        text.fontSize = size;
-        text.alignment = TextAnchor.MiddleCenter;
-        text.color = new Color(0.96f, 0.9f, 0.78f, 1f);
-        text.rectTransform.anchorMin = text.rectTransform.anchorMax =
-            new Vector2(0.5f, 0.5f);
-        text.rectTransform.anchoredPosition = position;
-        text.rectTransform.sizeDelta = dimensions;
-        return text;
-    }
-
-    private static Image CreateImage(Transform parent, string name, Color color)
-    {
-        Image image = new GameObject(name, typeof(RectTransform),
-            typeof(CanvasRenderer), typeof(Image)).GetComponent<Image>();
-        image.transform.SetParent(parent, false);
-        image.color = color;
-        return image;
-    }
-
-    private static void Stretch(RectTransform rect)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.offsetMin = rect.offsetMax = Vector2.zero;
-    }
-
-    private static void SetButtonText(Button button, string value)
-    {
-        Text text = button == null ? null : button.GetComponentInChildren<Text>();
-
-        if (text != null)
+        if (view.icon != null)
         {
-            text.text = value;
+            view.icon.sprite = icon;
+            view.icon.enabled = icon != null && !purchased;
+        }
+
+        if (view.costText != null)
+        {
+            view.costText.text = purchased
+                ? "SOLD"
+                : icon == null
+                    ? "N/A"
+                    : $"$ {price}";
+        }
+    }
+
+    private static void SetNamedButtonActive(
+        IEnumerable<Button> buttons,
+        string buttonName,
+        bool active)
+    {
+        Button button = buttons.FirstOrDefault(
+            candidate => candidate.name == buttonName);
+        button?.gameObject.SetActive(active);
+    }
+
+    private static Transform FindDescendant(Transform root, string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform candidate in root.GetComponentsInChildren<Transform>(true))
+        {
+            if (candidate.name == objectName)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static void KeepOnlyPaths(Transform root, params Transform[] targets)
+    {
+        foreach (Transform child in root)
+        {
+            bool keepWholeBranch = targets.Contains(child);
+            bool keepPath = keepWholeBranch
+                || targets.Any(target => target != null && target.IsChildOf(child));
+            child.gameObject.SetActive(keepPath);
+
+            if (keepPath && !keepWholeBranch)
+            {
+                KeepOnlyPaths(child, targets);
+            }
         }
     }
 
@@ -407,6 +549,14 @@ public sealed class StandaloneShopController : MonoBehaviour
         if (flags.Count > count)
         {
             flags.RemoveRange(count, flags.Count - count);
+        }
+    }
+
+    private static void TrimOffers(List<string> offers, int count)
+    {
+        if (offers.Count > count)
+        {
+            offers.RemoveRange(count, offers.Count - count);
         }
     }
 
