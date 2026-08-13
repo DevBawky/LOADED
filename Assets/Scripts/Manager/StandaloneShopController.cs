@@ -160,25 +160,39 @@ public sealed class StandaloneShopController : MonoBehaviour
     private bool TryCreateStageOneShopCanvas(out Transform shopPanel)
     {
         shopPanel = null;
+        PersistentGameCanvas persistentCanvas = PersistentGameCanvas.Instance;
+        GameObject canvasObject;
 
-        if (stageOneCanvasPrefab == null)
+        if (persistentCanvas != null)
         {
-            return false;
+            canvasObject = persistentCanvas.Root;
+        }
+        else
+        {
+            if (stageOneCanvasPrefab == null)
+            {
+                return false;
+            }
+
+            GameObject inactiveOwner = new GameObject("Game Canvas Setup");
+            inactiveOwner.SetActive(false);
+            canvasObject = Instantiate(
+                stageOneCanvasPrefab,
+                inactiveOwner.transform);
+            canvasObject.name = "Canvas | Game";
+            canvasObject.transform.SetParent(null, false);
+            Destroy(inactiveOwner);
         }
 
-        GameObject inactiveOwner = new GameObject("Shop Canvas Setup");
-        inactiveOwner.SetActive(false);
-        GameObject canvasObject = Instantiate(
-            stageOneCanvasPrefab,
-            inactiveOwner.transform);
-        canvasObject.name = "Canvas | Shop";
         canvasObject.SetActive(false);
         canvasObject.transform.localScale = Vector3.one;
 
         foreach (MonoBehaviour behaviour in canvasObject
                      .GetComponents<MonoBehaviour>())
         {
-            if (behaviour is CanvasScaler || behaviour is GraphicRaycaster)
+            if (behaviour is CanvasScaler
+                || behaviour is GraphicRaycaster
+                || behaviour is PersistentGameCanvas)
             {
                 continue;
             }
@@ -187,32 +201,25 @@ public sealed class StandaloneShopController : MonoBehaviour
         }
 
         shopPanel = FindDescendant(canvasObject.transform, "Panel | Shop");
+        Transform floatingPanel = FindDescendant(
+            canvasObject.transform,
+            "Panel | Floating");
         Transform moneyPanel = FindDescendant(
             canvasObject.transform,
             "Panel | Money");
 
-        if (shopPanel == null || moneyPanel == null)
+        if (shopPanel == null || floatingPanel == null || moneyPanel == null)
         {
-            Destroy(canvasObject);
-            Destroy(inactiveOwner);
+            if (persistentCanvas == null)
+            {
+                Destroy(canvasObject);
+            }
+
             return false;
         }
 
-        KeepOnlyPaths(canvasObject.transform, shopPanel, moneyPanel);
-        Canvas canvas = canvasObject.GetComponent<Canvas>();
-
-        if (canvas != null)
-        {
-            canvas.renderMode = RenderMode.ScreenSpaceCamera;
-            canvas.worldCamera = Camera.main;
-            canvas.planeDistance = 10f;
-        }
-
-        shopPanel.gameObject.SetActive(true);
-        moneyPanel.gameObject.SetActive(true);
-        canvasObject.transform.SetParent(null, false);
-        Destroy(inactiveOwner);
-        canvasObject.SetActive(true);
+        persistentCanvas = PersistentGameCanvas.Adopt(canvasObject, false);
+        persistentCanvas.ShowShopMode();
         moneyText = FindDescendant(moneyPanel, "Text | Current Money")
             ?.GetComponent<TMP_Text>();
         return true;
@@ -503,22 +510,6 @@ public sealed class StandaloneShopController : MonoBehaviour
         }
 
         return null;
-    }
-
-    private static void KeepOnlyPaths(Transform root, params Transform[] targets)
-    {
-        foreach (Transform child in root)
-        {
-            bool keepWholeBranch = targets.Contains(child);
-            bool keepPath = keepWholeBranch
-                || targets.Any(target => target != null && target.IsChildOf(child));
-            child.gameObject.SetActive(keepPath);
-
-            if (keepPath && !keepWholeBranch)
-            {
-                KeepOnlyPaths(child, targets);
-            }
-        }
     }
 
     private static List<int> CreateShuffledIndices(int count)

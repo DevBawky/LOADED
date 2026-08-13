@@ -319,6 +319,8 @@ public sealed class RunManager : MonoBehaviour
 
     private static void LoadScene(string sceneName)
     {
+        PersistentGameCanvas.PrepareForScene(sceneName);
+
         if (!LoadingTransitionController.LoadScene(sceneName))
         {
             SceneManager.LoadScene(sceneName);

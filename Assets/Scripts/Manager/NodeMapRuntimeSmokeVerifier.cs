@@ -64,7 +64,10 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
         yield return null;
         yield return null;
 
-        GameObject shopCanvas = GameObject.Find("Canvas | Shop");
+        PersistentGameCanvas persistentCanvas = PersistentGameCanvas.Instance;
+        GameObject shopCanvas = persistentCanvas == null
+            ? null
+            : persistentCanvas.Root;
         StandaloneShopController shopController =
             FindFirstObjectByType<StandaloneShopController>();
         Button[] shopButtons = shopCanvas == null
@@ -77,21 +80,54 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
         bool hasStageOneShopPanel = shopCanvas != null
             && shopCanvas.GetComponentsInChildren<Transform>(true)
                 .Any(candidate => candidate.name == "Panel | Shop");
+        bool hasActiveFloatingPanel = shopCanvas != null
+            && shopCanvas.GetComponentsInChildren<Transform>(true)
+                .Any(candidate => candidate.name == "Panel | Floating"
+                    && candidate.gameObject.activeInHierarchy);
+        bool hasActiveMainGamePanel = shopCanvas != null
+            && shopCanvas.GetComponentsInChildren<Transform>(true)
+                .Any(candidate => candidate.name == "Panel | MainGame"
+                    && candidate.gameObject.activeInHierarchy);
 
         if (Camera.main == null || shopController == null
-            || !hasStageOneShopPanel || bulletOffers != 3 || itemOffers != 2)
+            || !hasStageOneShopPanel || !hasActiveFloatingPanel
+            || hasActiveMainGamePanel
+            || bulletOffers != 3 || itemOffers != 2)
         {
             Fail(
                 $"shop camera={Camera.main != null}, "
                 + $"controller={shopController != null}, "
                 + $"stageOnePanel={hasStageOneShopPanel}, "
+                + $"floating={hasActiveFloatingPanel}, "
+                + $"mainGame={hasActiveMainGamePanel}, "
                 + $"bulletOffers={bulletOffers}, itemOffers={itemOffers}");
             yield break;
         }
 
         Debug.Log(
-            "SHOP_RUNTIME_SMOKE_PASSED: Stage 1 Canvas, Main Camera, "
-            + "3 bullet offers, 2 item offers");
+            "SHOP_RUNTIME_SMOKE_PASSED: persistent Stage 1 Canvas, "
+            + "Shop + Floating panels, Main Camera, 3 bullet offers, "
+            + "2 item offers");
+
+        SceneManager.LoadScene(RunManager.NodeMapSceneName);
+        yield return null;
+        yield return null;
+
+        bool canvasSurvived = PersistentGameCanvas.Instance != null
+            && PersistentGameCanvas.Instance.Root == shopCanvas;
+        bool canvasHiddenOnMap = canvasSurvived && !shopCanvas.activeSelf;
+
+        if (!canvasSurvived || !canvasHiddenOnMap)
+        {
+            Fail(
+                $"persistent canvas survived={canvasSurvived}, "
+                + $"hiddenOnMap={canvasHiddenOnMap}");
+            yield break;
+        }
+
+        Debug.Log(
+            "PERSISTENT_CANVAS_RUNTIME_SMOKE_PASSED: the same Canvas "
+            + "survived Shop -> NodeMap and was hidden on the map");
         RestoreSaves();
         Application.Quit(0);
     }
