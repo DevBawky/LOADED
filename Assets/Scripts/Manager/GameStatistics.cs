@@ -129,7 +129,7 @@ public sealed class RunShopSaveData
 [Serializable]
 public sealed class RunSaveData
 {
-    public int version = 3;
+    public int version = 4;
     public int flowState = (int)GameFlowState.Battle;
     public int stageIndex;
     public int battleIndex;
@@ -169,6 +169,7 @@ public sealed class RunSaveData
     public bool statisticsCylinderActive;
     public long statisticsCurrentCylinderDamage;
     public RunShopSaveData shop = new RunShopSaveData();
+    public RunMapState map = new RunMapState();
 }
 
 public enum RunStartMode
@@ -185,9 +186,9 @@ public enum RunStartMode
 /// </summary>
 public static class RunSaveSystem
 {
-    private const int CurrentVersion = 3;
+    private const int CurrentVersion = 4;
     private const string SaveFileName = "loaded_run_save.json";
-    private const string WebSaveKey = "loaded.run.save.v3";
+    private const string WebSaveKey = "loaded.run.save.v4";
     private static RunStartMode requestedStartMode;
 
     public static string SavePath => Path.Combine(
@@ -305,6 +306,8 @@ public static class RunSaveSystem
             saveData.droppedItems ??= new List<RunDroppedItemSaveData>();
             saveData.combatReport ??= new RunCombatReportSaveData();
             saveData.shop ??= new RunShopSaveData();
+            saveData.map ??= new RunMapState();
+            saveData.map.Normalize();
             saveData.shop.bulletOfferAssetNames ??= new List<string>();
             saveData.shop.purchasedBulletOffers ??= new List<bool>();
             saveData.shop.itemOfferAssetNames ??= new List<string>();

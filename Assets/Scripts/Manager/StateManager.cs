@@ -13,7 +13,8 @@ public enum GameFlowState
     BattleClear = 2,
     Shop = 3,
     RunComplete = 4,
-    RunFailed = 5
+    RunFailed = 5,
+    Map = 6
 }
 
 [DefaultExecutionOrder(-100)]
@@ -173,13 +174,14 @@ public class StateManager : MonoBehaviour
             return;
         }
 
+        RunSaveData saveData = null;
         bool restored = startMode == RunStartMode.Continue
-            && RunSaveSystem.TryLoad(out RunSaveData saveData)
+            && RunSaveSystem.TryLoad(out saveData)
             && TryRestoreRun(saveData);
 
         if (restored)
         {
-            GameStatistics.ResumeRun(pendingRestoredRun);
+            GameStatistics.ResumeRun(saveData);
         }
         else
         {
@@ -207,6 +209,15 @@ public class StateManager : MonoBehaviour
             {
                 GameStatistics.BeginFreshRun();
             }
+        }
+
+        ApplySelectedMapBattle();
+
+        int pendingGold = RunManager.Instance.ConsumePendingGold();
+
+        if (pendingGold > 0)
+        {
+            currencyManager.AddMoney(pendingGold);
         }
 
         if (restored)
@@ -301,6 +312,7 @@ public class StateManager : MonoBehaviour
         GameStatistics.CaptureRunState(saveData);
         rewardManager?.CaptureRunState(saveData.droppedItems);
         shopManager?.CaptureRunState(saveData);
+        RunManager.Instance.ApplyToSave(saveData);
         bool saved = saveData.bullets.Count > 0
             && RunSaveSystem.Save(saveData);
 
@@ -324,6 +336,7 @@ public class StateManager : MonoBehaviour
             || savedFlow != GameFlowState.Battle
                 && savedFlow != GameFlowState.BattleClear
                 && savedFlow != GameFlowState.Shop
+                && savedFlow != GameFlowState.Map
             || saveData.stageIndex < 0
             || saveData.stageIndex >= stages.Length)
         {
@@ -361,13 +374,16 @@ public class StateManager : MonoBehaviour
             {
                 return false;
             }
+
         }
         else
         {
             shopManager.RestoreRunState(saveData.shopRefreshCost);
         }
 
-        pendingRestoredRun = saveData;
+        pendingRestoredRun = savedFlow == GameFlowState.Map
+            ? null
+            : saveData;
         return true;
     }
 
@@ -683,6 +699,7 @@ public class StateManager : MonoBehaviour
 
         GameStatistics.SaveCheckpoint();
         SetInputLocked(true);
+
         LoadingTransitionController.RunTransition(ContinueToBattle);
     }
 
@@ -846,7 +863,6 @@ public class StateManager : MonoBehaviour
             return;
         }
 
-        RunSaveSystem.DeleteSave();
         StopBattleStartPresentation();
         SetInputLocked(true);
         battleClearCoroutine = StartCoroutine(ShowBattleClearWhenSettled());
@@ -876,7 +892,7 @@ public class StateManager : MonoBehaviour
         SetInputLocked(true);
         StateChanged?.Invoke();
         bool isFinalBossBattle = battle.IsBoss
-            && !TryGetNextBattlePosition(out _, out _);
+            && RunManager.Instance.ActiveNode != null;
 
         if (gameStartUI != null)
         {
@@ -899,7 +915,15 @@ public class StateManager : MonoBehaviour
             yield break;
         }
 
-        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
+        RunManager.Instance.CompleteActiveNode();
+
+        if (!SaveProgressBetweenNodes())
+        {
+            ShowRunComplete("SAVE ERROR");
+            yield break;
+        }
+
+        RunManager.Instance.ReturnToMap();
     }
 
     private void CompleteRunAndLoadEnding()
@@ -910,6 +934,8 @@ public class StateManager : MonoBehaviour
         }
 
         suppressExitSave = true;
+        RunManager.Instance.CompleteActiveNode();
+        RunManager.Instance.ClearRun();
         RunSaveSystem.DeleteSave();
         GameStatistics.EndRun(true);
         currentState = GameFlowState.RunComplete;
@@ -921,6 +947,89 @@ public class StateManager : MonoBehaviour
         {
             SceneManager.LoadScene("Ending");
         }
+    }
+
+    private void ApplySelectedMapBattle()
+    {
+        MapNodeData selectedNode = RunManager.Instance.ActiveNode;
+
+        if (selectedNode == null
+            || selectedNode.NodeType != MapNodeType.NormalBattle
+                && selectedNode.NodeType != MapNodeType.EliteBattle
+                && selectedNode.NodeType != MapNodeType.Boss)
+        {
+            return;
+        }
+
+        int selectedStageIndex = selectedNode.StageIndex;
+        int selectedBattleIndex = selectedNode.BattleIndex;
+
+        if (stages == null
+            || selectedStageIndex < 0
+            || selectedStageIndex >= stages.Length
+            || stages[selectedStageIndex] == null
+            || selectedBattleIndex < 0
+            || selectedBattleIndex >= stages[selectedStageIndex].Battles.Count)
+        {
+            Debug.LogError(
+                $"Map node '{selectedNode.NodeId}' points to an invalid battle.",
+                this);
+            return;
+        }
+
+        currentStageIndex = selectedStageIndex;
+        currentBattleIndex = selectedBattleIndex;
+    }
+
+    private bool SaveProgressBetweenNodes()
+    {
+        if (deckManager == null || playerHealth == null
+            || currencyManager == null || playerInventory == null
+            || deckManager.TotalBulletCount < DeckManager.MinimumOwnedBulletCount)
+        {
+            return false;
+        }
+
+        currencyManager.FlushPendingMoney();
+        RunSaveData saveData = new RunSaveData
+        {
+            flowState = (int)GameFlowState.Map,
+            stageIndex = Mathf.Max(0, currentStageIndex),
+            battleIndex = Mathf.Max(0, currentBattleIndex),
+            currentHealth = playerHealth.CurrentHealth,
+            maxHealth = playerHealth.MaxHealth,
+            money = currencyManager.CurrentMoney,
+            paidBulletRemovalCount = deckManager.PaidBulletRemovalCount,
+            shopRefreshCost = shopManager == null
+                ? 0
+                : shopManager.CurrentRefreshCost,
+            playerFacingRight = playerMove == null
+                || playerMove.transform.localScale.x >= 0f,
+            playerTurnCount = playerMove == null ? 0 : playerMove.TurnCount,
+            nextPushAvailableTurn = playerMove == null
+                ? 0
+                : playerMove.NextPushAvailableTurn,
+            playerStatusEffects = playerHealth.CaptureStatusRunState(),
+            combatReport = gameStartUI == null
+                ? new RunCombatReportSaveData()
+                : gameStartUI.CaptureRunState(),
+            randomStateJson = JsonUtility.ToJson(UnityEngine.Random.state)
+        };
+        deckManager.CaptureRunState(
+            saveData.bullets,
+            saveData.nextCycleAcquisitionOrders);
+        playerInventory.CaptureRunState(saveData.inventoryItemAssetNames);
+        GameStatistics.CaptureRunState(saveData);
+        shopManager?.CaptureRunState(saveData);
+        RunManager.Instance.ApplyToSave(saveData);
+        bool saved = RunSaveSystem.Save(saveData);
+
+        if (saved)
+        {
+            GameStatistics.SaveCheckpoint();
+        }
+
+        return saved;
     }
 
     private void HandleBattleFailed()
@@ -974,6 +1083,7 @@ public class StateManager : MonoBehaviour
 
         waveManager.StopBattle();
         suppressExitSave = true;
+        RunManager.Instance.ClearRun();
         RunSaveSystem.DeleteSave();
         GameStatistics.EndRun(false);
         currentState = GameFlowState.RunFailed;

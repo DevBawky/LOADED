@@ -215,6 +215,8 @@ public sealed class MainMenuVideoController : MonoBehaviour
 
         gameStartRequested = true;
         RunSaveSystem.RequestStart(startMode);
+        RunManager.Instance.Begin(startMode);
+        gameSceneName = RunManager.NodeMapSceneName;
 
         if (loadGamePanel != null)
         {

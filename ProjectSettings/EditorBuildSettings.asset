@@ -9,8 +9,17 @@ EditorBuildSettings:
     path: Assets/Scenes/MainMenu.unity
     guid: a3a2bd4300b428b42ae1d2c842479c82
   - enabled: 1
+    path: Assets/Scenes/NodeMap.unity
+    guid: 4c254e10a5bb4eef88ddfc7d85a92ca1
+  - enabled: 1
     path: Assets/Scenes/Stage 1.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/Scenes/Shop.unity
+    guid: 902f7bfb0197409081482efe77b4a7b6
+  - enabled: 1
+    path: Assets/Scenes/Event.unity
+    guid: 4dfc2727daec46dca3118299d33b03ac
   - enabled: 1
     path: Assets/Scenes/Ending.unity
     guid: 728b641cf89e2a84b8f7814bb05e091c
