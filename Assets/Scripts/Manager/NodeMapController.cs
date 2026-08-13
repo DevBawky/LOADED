@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public sealed class NodeMapController : MonoBehaviour
@@ -10,11 +12,16 @@ public sealed class NodeMapController : MonoBehaviour
     private RunManager runManager;
     private Font font;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Bootstrap()
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void RegisterBootstrap()
     {
-        if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
-            == RunManager.NodeMapSceneName
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == RunManager.NodeMapSceneName
             && FindFirstObjectByType<NodeMapController>() == null)
         {
             new GameObject("Node Map Controller")
@@ -25,6 +32,13 @@ public sealed class NodeMapController : MonoBehaviour
     private void Awake()
     {
         runManager = RunManager.Instance;
+
+        if (runManager.State == null)
+        {
+            runManager.Begin(RunSaveSystem.HasValidSave
+                ? RunStartMode.Continue
+                : RunStartMode.New);
+        }
 
         if (runManager.ActiveNode != null && runManager.ResumeActiveNode())
         {
@@ -229,8 +243,8 @@ public sealed class NodeMapController : MonoBehaviour
     {
         if (EventSystem.current == null)
         {
-            new GameObject("EventSystem", typeof(EventSystem),
-                typeof(StandaloneInputModule));
+            GameObject owner = new GameObject("EventSystem", typeof(EventSystem));
+            owner.AddComponent<InputSystemUIInputModule>().AssignDefaultActions();
         }
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -15,10 +16,16 @@ public sealed class StandaloneShopController : MonoBehaviour
     private Text moneyText;
     private readonly List<Button> offerButtons = new List<Button>();
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Bootstrap()
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void RegisterBootstrap()
     {
-        if (SceneManager.GetActiveScene().name == RunManager.ShopSceneName
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == RunManager.ShopSceneName
             && FindFirstObjectByType<StandaloneShopController>() == null)
         {
             new GameObject("Standalone Shop Controller")
@@ -407,8 +414,8 @@ public sealed class StandaloneShopController : MonoBehaviour
     {
         if (EventSystem.current == null)
         {
-            new GameObject("EventSystem", typeof(EventSystem),
-                typeof(StandaloneInputModule));
+            GameObject owner = new GameObject("EventSystem", typeof(EventSystem));
+            owner.AddComponent<InputSystemUIInputModule>().AssignDefaultActions();
         }
     }
 }

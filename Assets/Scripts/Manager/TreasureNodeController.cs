@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -7,10 +8,16 @@ public sealed class TreasureNodeController : MonoBehaviour
 {
     private bool claimed;
 
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void Bootstrap()
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void RegisterBootstrap()
     {
-        if (SceneManager.GetActiveScene().name == RunManager.EventSceneName
+        SceneManager.sceneLoaded -= HandleSceneLoaded;
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+    }
+
+    private static void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (scene.name == RunManager.EventSceneName
             && FindFirstObjectByType<TreasureNodeController>() == null)
         {
             new GameObject("Treasure Node Controller")
@@ -59,8 +66,8 @@ public sealed class TreasureNodeController : MonoBehaviour
     {
         if (EventSystem.current == null)
         {
-            new GameObject("EventSystem", typeof(EventSystem),
-                typeof(StandaloneInputModule));
+            GameObject owner = new GameObject("EventSystem", typeof(EventSystem));
+            owner.AddComponent<InputSystemUIInputModule>().AssignDefaultActions();
         }
 
         Canvas canvas = new GameObject("Canvas | Treasure", typeof(Canvas),

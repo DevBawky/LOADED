@@ -4,16 +4,46 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEditor;
+using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
 public static class NodeMapMilestoneVerifier
 {
+    public static void BuildRuntimeSmokePlayer()
+    {
+        string projectRoot = System.IO.Path.GetFullPath(
+            System.IO.Path.Combine(Application.dataPath, ".."));
+        string outputPath = System.IO.Path.Combine(
+            projectRoot,
+            "NodeMapSmokeBuild",
+            "LOADED.exe");
+        string[] scenes = EditorBuildSettings.scenes
+            .Where(scene => scene.enabled)
+            .Select(scene => scene.path)
+            .ToArray();
+        BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
+        {
+            scenes = scenes,
+            locationPathName = outputPath,
+            target = BuildTarget.StandaloneWindows64,
+            options = BuildOptions.Development
+        });
+
+        if (report.summary.result != BuildResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Node map runtime smoke build failed: {report.summary.result}");
+        }
+
+        Debug.Log($"NODE_MAP_RUNTIME_SMOKE_BUILD_PASSED: {outputPath}");
+    }
+
     public static void Verify()
     {
-        VerifyScene("Assets/Scenes/NodeMap.unity");
-        VerifyScene("Assets/Scenes/Shop.unity");
-        VerifyScene("Assets/Scenes/Event.unity");
+        VerifyScene<NodeMapController>("Assets/Scenes/NodeMap.unity");
+        VerifyScene<StandaloneShopController>("Assets/Scenes/Shop.unity");
+        VerifyScene<TreasureNodeController>("Assets/Scenes/Event.unity");
         VerifyBuildSettings();
         VerifyCatalog();
         VerifyProgressRules();
@@ -21,7 +51,8 @@ public static class NodeMapMilestoneVerifier
         Debug.Log("NODE_MAP_MILESTONE_VERIFICATION_PASSED");
     }
 
-    private static void VerifyScene(string path)
+    private static void VerifyScene<TController>(string path)
+        where TController : Component
     {
         if (AssetDatabase.LoadAssetAtPath<SceneAsset>(path) == null)
         {
@@ -29,6 +60,12 @@ public static class NodeMapMilestoneVerifier
         }
 
         EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+
+        if (UnityEngine.Object.FindFirstObjectByType<TController>() == null)
+        {
+            throw new InvalidOperationException(
+                $"Scene '{path}' does not contain {typeof(TController).Name}.");
+        }
     }
 
     private static void VerifyBuildSettings()
