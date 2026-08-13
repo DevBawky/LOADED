@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -38,17 +39,24 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
         yield return null;
 
         NodeMapController controller = FindFirstObjectByType<NodeMapController>();
+        EventSystem globalEventSystem = PersistentEventSystem.Instance.EventSystem;
         GameObject canvas = GameObject.Find("Canvas | Node Map");
         int nodeButtonCount = FindObjectsByType<Button>(
             FindObjectsInactive.Exclude,
             FindObjectsSortMode.None).Count(button =>
                 button.name.StartsWith("Node | "));
 
-        if (controller == null || canvas == null || nodeButtonCount < 6)
+        int activeEventSystems = FindObjectsByType<EventSystem>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None).Length;
+
+        if (controller == null || canvas == null || nodeButtonCount < 6
+            || globalEventSystem == null || activeEventSystems != 1)
         {
             Fail(
                 $"node map controller={controller != null}, "
-                + $"canvas={canvas != null}, nodeButtons={nodeButtonCount}");
+                + $"canvas={canvas != null}, nodeButtons={nodeButtonCount}, "
+                + $"eventSystems={activeEventSystems}");
             yield break;
         }
 
@@ -61,6 +69,7 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
         }
 
         RunSaveSystem.RequestStart(RunStartMode.Continue);
+        PersistentEventSystem.PrepareForScene(RunManager.CombatSceneName);
         SceneManager.LoadScene(RunManager.CombatSceneName);
 
         for (int frame = 0; frame < 120
@@ -142,6 +151,10 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
         if (Camera.main == null || shopController == null
             || runContext == null || shopManager == null
             || bulletManagement == null
+            || EventSystem.current != globalEventSystem
+            || FindObjectsByType<EventSystem>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None).Length != 1
             || !hasStageOneShopPanel || !hasActiveFloatingPanel
             || hasActiveMainGamePanel
             || shopItemsLayout == null
@@ -295,15 +308,20 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
         bool resumedBattle = SceneManager.GetActiveScene().name
                 == RunManager.CombatSceneName
             && stateManager.CurrentState == GameFlowState.Battle;
+        bool sameEventSystem = EventSystem.current == globalEventSystem
+            && FindObjectsByType<EventSystem>(
+                FindObjectsInactive.Exclude,
+                FindObjectsSortMode.None).Length == 1;
 
         if (!sameRunContext || !sameStateManager || !sameShopManager
-            || !resumedBattle)
+            || !resumedBattle || !sameEventSystem)
         {
             Fail(
                 $"sameContext={sameRunContext}, "
                 + $"sameStateManager={sameStateManager}, "
                 + $"sameShopManager={sameShopManager}, "
-                + $"resumedBattle={resumedBattle}");
+                + $"resumedBattle={resumedBattle}, "
+                + $"sameEventSystem={sameEventSystem}");
             yield break;
         }
 

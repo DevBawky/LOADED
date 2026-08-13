@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 
 [DefaultExecutionOrder(-1200)]
@@ -106,6 +107,11 @@ public sealed class PersistentRunContext : MonoBehaviour
         foreach (GameObject root in scene.GetRootGameObjects())
         {
             if (root == null)
+            {
+                continue;
+            }
+
+            if (root.GetComponentInChildren<EventSystem>(true) != null)
             {
                 continue;
             }

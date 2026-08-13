@@ -320,6 +320,7 @@ public sealed class RunManager : MonoBehaviour
 
     private static void LoadScene(string sceneName)
     {
+        PersistentEventSystem.PrepareForScene(sceneName);
         PersistentRunContext.PrepareForScene(sceneName);
         PersistentGameCanvas.PrepareForScene(sceneName);
 
