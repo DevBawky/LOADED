@@ -22,6 +22,11 @@ public sealed class PersistentGameCanvas : MonoBehaviour
     {
         if (scene.name == RunManager.CombatSceneName)
         {
+            if (PersistentRunContext.Instance != null)
+            {
+                return;
+            }
+
             GameObject stageCanvas = FindGameCanvas(scene);
 
             if (stageCanvas != null)

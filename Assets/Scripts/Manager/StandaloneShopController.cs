@@ -47,10 +47,31 @@ public sealed class StandaloneShopController : MonoBehaviour
     private void Awake()
     {
         if (RunManager.Instance.ActiveNode == null
-            || RunManager.Instance.ActiveNode.NodeType != MapNodeType.Shop
-            || !RunSaveSystem.TryLoad(out saveData))
+            || RunManager.Instance.ActiveNode.NodeType != MapNodeType.Shop)
         {
-            Debug.LogError("The standalone shop requires an active shop node and a valid run save.", this);
+            Debug.LogError("The standalone shop requires an active shop node.", this);
+            RunManager.Instance.ReturnToMap();
+            return;
+        }
+
+        if (PersistentRunContext.Instance != null)
+        {
+            if (!PersistentRunContext.Instance.EnterMapShop())
+            {
+                Debug.LogError(
+                    "The persistent Stage 1 managers could not open the shop.",
+                    this);
+                RunManager.Instance.ReturnToMap();
+            }
+
+            return;
+        }
+
+        if (!RunSaveSystem.TryLoad(out saveData))
+        {
+            Debug.LogError(
+                "The standalone shop requires a valid run save.",
+                this);
             RunManager.Instance.ReturnToMap();
             return;
         }

@@ -54,14 +54,51 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
 
         Debug.Log(
             $"NODE_MAP_RUNTIME_SMOKE_PASSED: nodeButtons={nodeButtonCount}");
-        if (!PrepareShopRun())
+        if (!PrepareBattleRun())
         {
-            Fail("shop smoke save could not be created");
+            Fail("persistent manager smoke save could not be created");
             yield break;
         }
 
-        SceneManager.LoadScene(RunManager.ShopSceneName);
-        yield return null;
+        RunSaveSystem.RequestStart(RunStartMode.Continue);
+        SceneManager.LoadScene(RunManager.CombatSceneName);
+
+        for (int frame = 0; frame < 120
+             && (PersistentRunContext.Instance == null
+                 || PersistentRunContext.Instance.StateManager == null
+                 || PersistentRunContext.Instance.StateManager.CurrentState
+                    != GameFlowState.Battle); frame++)
+        {
+            yield return null;
+        }
+
+        PersistentRunContext runContext = PersistentRunContext.Instance;
+        StateManager stateManager = runContext?.StateManager;
+
+        if (stateManager == null
+            || stateManager.CurrentState != GameFlowState.Battle)
+        {
+            Fail("Stage 1 managers were not captured after the first battle");
+            yield break;
+        }
+
+        FindFirstObjectByType<WaveManager>()?.StopBattle();
+
+        if (!RunManager.Instance.CompleteActiveNode()
+            || !RunManager.Instance.TryEnterNode("shop"))
+        {
+            Fail("the completed first battle could not enter the shop node");
+            yield break;
+        }
+
+        float shopLoadDeadline = Time.realtimeSinceStartup + 15f;
+
+        while (SceneManager.GetActiveScene().name != RunManager.ShopSceneName
+               && Time.realtimeSinceStartup < shopLoadDeadline)
+        {
+            yield return null;
+        }
+
         yield return null;
 
         PersistentGameCanvas persistentCanvas = PersistentGameCanvas.Instance;
@@ -70,6 +107,9 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
             : persistentCanvas.Root;
         StandaloneShopController shopController =
             FindFirstObjectByType<StandaloneShopController>();
+        ShopManager shopManager = FindFirstObjectByType<ShopManager>();
+        BulletManagementUI bulletManagement =
+            FindFirstObjectByType<BulletManagementUI>();
         Button[] shopButtons = shopCanvas == null
             ? System.Array.Empty<Button>()
             : shopCanvas.GetComponentsInChildren<Button>(true);
@@ -88,29 +128,122 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
             && shopCanvas.GetComponentsInChildren<Transform>(true)
                 .Any(candidate => candidate.name == "Panel | MainGame"
                     && candidate.gameObject.activeInHierarchy);
+        Transform shopItemsLayout = shopCanvas == null
+            ? null
+            : shopCanvas.GetComponentsInChildren<Transform>(true)
+                .FirstOrDefault(candidate =>
+                    candidate.name == "Layout | Shop Items"
+                    && candidate.gameObject.activeInHierarchy);
+        Button refreshButton = shopButtons.FirstOrDefault(
+            button => button.name == "Button | Refresh");
+        Button manageButton = shopButtons.FirstOrDefault(
+            button => button.name == "Button | Manage Bullet");
 
         if (Camera.main == null || shopController == null
+            || runContext == null || shopManager == null
+            || bulletManagement == null
             || !hasStageOneShopPanel || !hasActiveFloatingPanel
             || hasActiveMainGamePanel
+            || shopItemsLayout == null
+            || !shopItemsLayout.gameObject.activeInHierarchy
+            || refreshButton == null
+            || !refreshButton.gameObject.activeInHierarchy
+            || manageButton == null
+            || !manageButton.gameObject.activeInHierarchy
             || bulletOffers != 3 || itemOffers != 2)
         {
             Fail(
                 $"shop camera={Camera.main != null}, "
+                + $"scene={SceneManager.GetActiveScene().name}, "
                 + $"controller={shopController != null}, "
                 + $"stageOnePanel={hasStageOneShopPanel}, "
                 + $"floating={hasActiveFloatingPanel}, "
                 + $"mainGame={hasActiveMainGamePanel}, "
+                + $"shopItems={shopItemsLayout != null && shopItemsLayout.gameObject.activeInHierarchy}, "
+                + $"refresh={refreshButton != null && refreshButton.gameObject.activeInHierarchy}, "
+                + $"manage={manageButton != null && manageButton.gameObject.activeInHierarchy}, "
                 + $"bulletOffers={bulletOffers}, itemOffers={itemOffers}");
+            yield break;
+        }
+
+        int refreshCost = shopManager.CurrentRefreshCost;
+        int offersChangedCount = 0;
+        System.Action handleOffersChanged = () => offersChangedCount++;
+        shopManager.OffersChanged += handleOffersChanged;
+
+        if (!shopManager.TryRefreshOffers())
+        {
+            shopManager.OffersChanged -= handleOffersChanged;
+            Fail("the persistent ShopManager could not refresh offers");
+            yield break;
+        }
+
+        float refreshDeadline = Time.realtimeSinceStartup + 10f;
+
+        while (shopManager.IsRefreshing
+               && Time.realtimeSinceStartup < refreshDeadline)
+        {
+            yield return null;
+        }
+
+        shopManager.OffersChanged -= handleOffersChanged;
+
+        if (shopManager.IsRefreshing
+            || offersChangedCount == 0)
+        {
+            Fail(
+                $"shop refresh completed={!shopManager.IsRefreshing}, "
+                + $"offersChanged={offersChangedCount}, "
+                + $"cost={refreshCost}->{shopManager.CurrentRefreshCost}");
+            yield break;
+        }
+
+        bulletManagement.Open();
+        yield return null;
+        bool managementOpened = bulletManagement.IsOpen
+            && !shopItemsLayout.gameObject.activeInHierarchy;
+        bulletManagement.Close();
+        yield return null;
+        bool managementClosed = !bulletManagement.IsOpen
+            && shopItemsLayout.gameObject.activeInHierarchy;
+
+        if (!managementOpened || !managementClosed)
+        {
+            Fail(
+                $"bullet management opened={managementOpened}, "
+                + $"closed={managementClosed}");
             yield break;
         }
 
         Debug.Log(
             "SHOP_RUNTIME_SMOKE_PASSED: persistent Stage 1 Canvas, "
-            + "Shop + Floating panels, Main Camera, 3 bullet offers, "
-            + "2 item offers");
+            + "Shop + Floating panels, existing managers, refresh, "
+            + "bullet management, 3 bullet offers, 2 item offers");
 
-        SceneManager.LoadScene(RunManager.NodeMapSceneName);
-        yield return null;
+        float transitionDeadline = Time.realtimeSinceStartup + 30f;
+
+        while (LoadingTransitionController.IsTransitioning
+               && Time.realtimeSinceStartup < transitionDeadline)
+        {
+            yield return null;
+        }
+
+        if (LoadingTransitionController.IsTransitioning)
+        {
+            Fail("the shop entrance transition did not settle");
+            yield break;
+        }
+
+        stateManager.GoToBattle();
+
+        float mapLoadDeadline = Time.realtimeSinceStartup + 15f;
+
+        while (SceneManager.GetActiveScene().name != RunManager.NodeMapSceneName
+               && Time.realtimeSinceStartup < mapLoadDeadline)
+        {
+            yield return null;
+        }
+
         yield return null;
 
         bool canvasSurvived = PersistentGameCanvas.Instance != null
@@ -128,11 +261,61 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
         Debug.Log(
             "PERSISTENT_CANVAS_RUNTIME_SMOKE_PASSED: the same Canvas "
             + "survived Shop -> NodeMap and was hidden on the map");
+
+        transitionDeadline = Time.realtimeSinceStartup + 30f;
+
+        while (LoadingTransitionController.IsTransitioning
+               && Time.realtimeSinceStartup < transitionDeadline)
+        {
+            yield return null;
+        }
+
+        if (LoadingTransitionController.IsTransitioning
+            || !RunManager.Instance.TryEnterNode("battle_2"))
+        {
+            Fail("the second battle could not be entered from the map");
+            yield break;
+        }
+
+        float battleLoadDeadline = Time.realtimeSinceStartup + 20f;
+
+        while ((SceneManager.GetActiveScene().name
+                    != RunManager.CombatSceneName
+                || stateManager.CurrentState != GameFlowState.Battle)
+               && Time.realtimeSinceStartup < battleLoadDeadline)
+        {
+            yield return null;
+        }
+
+        bool sameRunContext = PersistentRunContext.Instance == runContext;
+        bool sameStateManager = PersistentRunContext.Instance?.StateManager
+            == stateManager;
+        bool sameShopManager = FindFirstObjectByType<ShopManager>()
+            == shopManager;
+        bool resumedBattle = SceneManager.GetActiveScene().name
+                == RunManager.CombatSceneName
+            && stateManager.CurrentState == GameFlowState.Battle;
+
+        if (!sameRunContext || !sameStateManager || !sameShopManager
+            || !resumedBattle)
+        {
+            Fail(
+                $"sameContext={sameRunContext}, "
+                + $"sameStateManager={sameStateManager}, "
+                + $"sameShopManager={sameShopManager}, "
+                + $"resumedBattle={resumedBattle}");
+            yield break;
+        }
+
+        Debug.Log(
+            "PERSISTENT_MANAGERS_RUNTIME_SMOKE_PASSED: the first battle "
+            + "StateManager and ShopManager resumed the second battle");
+        FindFirstObjectByType<WaveManager>()?.StopBattle();
         RestoreSaves();
         Application.Quit(0);
     }
 
-    private bool PrepareShopRun()
+    private bool PrepareBattleRun()
     {
         ShopCatalog catalog = Resources.Load<ShopCatalog>("Run/ShopCatalog");
         BulletData starter = catalog.Bullets.First(bullet => bullet != null);
@@ -140,14 +323,14 @@ public sealed class NodeMapRuntimeSmokeVerifier : MonoBehaviour
         {
             actId = "act_1",
             currentNodeId = "battle_1",
-            activeNodeId = "shop",
-            visitedNodeIds = new List<string> { "start", "battle_1", "shop" },
-            completedNodeIds = new List<string> { "battle_1" }
+            activeNodeId = "battle_1",
+            visitedNodeIds = new List<string> { "start", "battle_1" },
+            completedNodeIds = new List<string>()
         };
         RunManager.Instance.Restore(mapState);
         RunSaveData saveData = new RunSaveData
         {
-            flowState = (int)GameFlowState.Shop,
+            flowState = (int)GameFlowState.Map,
             stageIndex = 0,
             battleIndex = 0,
             currentHealth = 10,

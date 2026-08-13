@@ -223,6 +223,7 @@ public sealed class RunManager : MonoBehaviour
 
     public void ClearRun()
     {
+        PersistentRunContext.MarkRunEnded();
         PlayerPrefs.DeleteKey(MapSaveKey);
         PlayerPrefs.Save();
         progress = null;
@@ -319,6 +320,7 @@ public sealed class RunManager : MonoBehaviour
 
     private static void LoadScene(string sceneName)
     {
+        PersistentRunContext.PrepareForScene(sceneName);
         PersistentGameCanvas.PrepareForScene(sceneName);
 
         if (!LoadingTransitionController.LoadScene(sceneName))

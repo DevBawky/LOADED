@@ -62,6 +62,7 @@ public class StateManager : MonoBehaviour
     private Coroutine webAutosaveCoroutine;
     private RunSaveData pendingRestoredRun;
     private bool suppressExitSave;
+    private bool isMapNodeShop;
     private RunStartMode currentRunStartMode = RunStartMode.None;
 
     public event Action StateChanged;
@@ -700,7 +701,100 @@ public class StateManager : MonoBehaviour
         GameStatistics.SaveCheckpoint();
         SetInputLocked(true);
 
+        if (isMapNodeShop)
+        {
+            LoadingTransitionController.RunTransition(ExitMapNodeShop);
+            return;
+        }
+
         LoadingTransitionController.RunTransition(ContinueToBattle);
+    }
+
+    public bool EnterMapNodeShop()
+    {
+        MapNodeData activeNode = RunManager.Instance.ActiveNode;
+
+        if (activeNode == null || activeNode.NodeType != MapNodeType.Shop
+            || shopManager == null)
+        {
+            return false;
+        }
+
+        if (currentState == GameFlowState.Shop && isMapNodeShop)
+        {
+            return true;
+        }
+
+        StopBattleStartPresentation();
+        waveManager?.StopBattle();
+        isMapNodeShop = true;
+        currentState = GameFlowState.Shop;
+        SetPanels(false, false, true);
+        SetInputLocked(true);
+
+        if (goToBattleButton != null)
+        {
+            goToBattleButton.interactable = true;
+        }
+
+        if (goToBattleText != null)
+        {
+            goToBattleText.text = "RETURN TO MAP";
+        }
+
+        shopManager.OpenShop();
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    public bool ResumeMapNodeBattle()
+    {
+        MapNodeData activeNode = RunManager.Instance.ActiveNode;
+
+        if (activeNode == null
+            || activeNode.NodeType != MapNodeType.NormalBattle
+                && activeNode.NodeType != MapNodeType.EliteBattle
+                && activeNode.NodeType != MapNodeType.Boss)
+        {
+            return false;
+        }
+
+        isMapNodeShop = false;
+        pendingRestoredRun = null;
+        ApplySelectedMapBattle();
+
+        int pendingGold = RunManager.Instance.ConsumePendingGold();
+
+        if (pendingGold > 0)
+        {
+            currencyManager.AddMoney(pendingGold);
+        }
+
+        StartCurrentBattle();
+        return currentState == GameFlowState.Battle;
+    }
+
+    private void ExitMapNodeShop()
+    {
+        if (currentState != GameFlowState.Shop || !isMapNodeShop)
+        {
+            return;
+        }
+
+        if (!RunManager.Instance.CompleteActiveNode())
+        {
+            return;
+        }
+
+        isMapNodeShop = false;
+
+        if (!SaveProgressBetweenNodes())
+        {
+            ShowRunComplete("SAVE ERROR");
+            return;
+        }
+
+        RunManager.Instance.ReturnToMap();
     }
 
     private void ContinueToBattle()
