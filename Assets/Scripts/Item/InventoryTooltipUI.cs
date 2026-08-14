@@ -105,6 +105,124 @@ public class InventoryTooltipUI : MonoBehaviour
     private Vector2 debuffDescriptionInitialPosition;
     private bool hasDebuffDescriptionInitialPosition;
 
+    public void ConfigureDedicatedShop(
+        Transform runtimeCanvasRoot,
+        PlayerInventory runtimeInventory,
+        ShopManager runtimeShopManager,
+        DeckManager runtimeDeckManager,
+        CurrencyManager runtimeCurrencyManager,
+        StateManager runtimeStateManager)
+    {
+        if (deckManager != null)
+        {
+            deckManager.StateChanged -= RefreshNextChip;
+        }
+
+        if (stateManager != null)
+        {
+            stateManager.StateChanged -= HandleFlowStateChanged;
+        }
+
+        playerInventory = runtimeInventory;
+        shopManager = runtimeShopManager;
+        deckManager = runtimeDeckManager;
+        currencyManager = runtimeCurrencyManager;
+        stateManager = runtimeStateManager;
+        canvasRect = runtimeCanvasRoot as RectTransform;
+        inventoryPanel = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Inventory");
+        itemSlots = FindScopedRectTransforms(
+            runtimeCanvasRoot,
+            "Image | ItemSlot",
+            "Layout | Inventory");
+        shopItemSlots = FindScopedRectTransforms(
+            runtimeCanvasRoot,
+            "Button | Shop Item",
+            "Layout | Shop Items");
+        shopBulletSlots = FindScopedRectTransforms(
+            runtimeCanvasRoot,
+            "Button | Bullet Item",
+            "Layout | Shop Items");
+        tooltip = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Item Tooltip");
+        bulletTooltip = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Bullet Tooltip");
+        cylinderBulletTooltip = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Cylinder Bullet Tooltip");
+        debuffDescriptionPanel = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Debuff Desciption");
+        bulletManagementUI = runtimeCanvasRoot == null
+            ? null
+            : runtimeCanvasRoot.GetComponentInChildren<BulletManagementUI>(
+                true);
+
+        itemIcon = FindNamedChild<Image>(tooltip, "Image | Item Sprite");
+        itemNameText = FindNamedChild<TextMeshProUGUI>(
+            tooltip,
+            "Text | Item Name");
+        itemDescriptionText = FindNamedChild<TextMeshProUGUI>(
+            tooltip,
+            "Text | Item Description");
+        bulletIcon = FindNamedChild<Image>(
+            bulletTooltip,
+            "Image | Bullet Sprite");
+        bulletCylinderIcon = FindNamedChild<Image>(
+            bulletTooltip,
+            "Image | Bullet Cylinder Sprite");
+        bulletNameText = FindNamedChild<TextMeshProUGUI>(
+            bulletTooltip,
+            "Text | Bullet Name");
+        bulletGradeText = FindNamedChild<TextMeshProUGUI>(
+            bulletTooltip,
+            "Text | Bullet Grade");
+        bulletDescriptionText = FindNamedChild<TextMeshProUGUI>(
+            bulletTooltip,
+            "Text | Bullet Description");
+
+        rootCanvas = canvasRect == null
+            ? null
+            : canvasRect.GetComponentInParent<Canvas>();
+        if (rootCanvas != null)
+        {
+            rootCanvas = rootCanvas.rootCanvas;
+        }
+
+        DisableRaycasts(tooltip);
+        DisableRaycasts(bulletTooltip);
+        DisableRaycasts(cylinderBulletTooltip);
+        DisableRaycasts(debuffDescriptionPanel);
+
+        if (isActiveAndEnabled)
+        {
+            if (deckManager != null)
+            {
+                deckManager.StateChanged += RefreshNextChip;
+            }
+
+            if (stateManager != null)
+            {
+                stateManager.StateChanged += HandleFlowStateChanged;
+            }
+        }
+
+        RefreshNextChip();
+        RefreshBulletStatusVisibility();
+        HideAll();
+
+        if (tooltip == null || bulletTooltip == null
+            || shopItemSlots.Length == 0 || shopBulletSlots.Length == 0)
+        {
+            Debug.LogError(
+                "Dedicated Shop tooltip UI is missing tooltip panels or hover targets.",
+                this);
+        }
+    }
+
     private void OnEnable()
     {
         ResolveReferences();
@@ -1350,6 +1468,56 @@ public class InventoryTooltipUI : MonoBehaviour
                 && rectTransform.parent.name == parentName)
             {
                 matches.Add(rectTransform);
+            }
+        }
+
+        matches.Sort((left, right) =>
+            left.GetSiblingIndex().CompareTo(right.GetSiblingIndex()));
+        return matches.ToArray();
+    }
+
+    private static RectTransform FindScopedRectTransform(
+        Transform root,
+        string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (RectTransform candidate in
+                 root.GetComponentsInChildren<RectTransform>(true))
+        {
+            if (candidate != null && candidate.name == objectName)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static RectTransform[] FindScopedRectTransforms(
+        Transform root,
+        string namePrefix,
+        string parentName)
+    {
+        List<RectTransform> matches = new List<RectTransform>();
+
+        if (root == null)
+        {
+            return matches.ToArray();
+        }
+
+        foreach (RectTransform candidate in
+                 root.GetComponentsInChildren<RectTransform>(true))
+        {
+            if (candidate != null
+                && candidate.name.StartsWith(namePrefix)
+                && candidate.parent != null
+                && candidate.parent.name == parentName)
+            {
+                matches.Add(candidate);
             }
         }
 

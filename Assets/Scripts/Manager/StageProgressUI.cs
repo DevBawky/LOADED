@@ -27,6 +27,13 @@ public class StageProgressUI : MonoBehaviour
     private readonly List<RectTransform> battleIcons =
         new List<RectTransform>();
     private StageData displayedStage;
+    private string externalStageTitle;
+
+    public void SetExternalStageTitle(string title)
+    {
+        externalStageTitle = title;
+        UpdateStageTitle();
+    }
 
     private void Awake()
     {
@@ -85,6 +92,17 @@ public class StageProgressUI : MonoBehaviour
 
         if (stageTitleText == null || stateManager == null)
         {
+            if (stageTitleText != null
+                && !string.IsNullOrEmpty(externalStageTitle))
+            {
+                stageTitleText.text = externalStageTitle;
+            }
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(externalStageTitle))
+        {
+            stageTitleText.text = externalStageTitle;
             return;
         }
 

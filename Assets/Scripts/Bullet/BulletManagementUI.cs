@@ -110,6 +110,69 @@ public class BulletManagementUI : MonoBehaviour
         RefreshOwnedBullets();
     }
 
+    public bool ConfigureDedicatedShop(
+        Transform runtimeShopRoot,
+        DeckManager runtimeDeckManager,
+        CurrencyManager runtimeCurrencyManager)
+    {
+        // The dedicated Shop canvas and its nested panel can deserialize in a
+        // different order from the legacy Battle canvas. Rebind both manager
+        // events and UI button events after every required object exists.
+        UnbindEvents();
+        deckManager = runtimeDeckManager;
+        currencyManager = runtimeCurrencyManager;
+        shopPanel = runtimeShopRoot == null
+            ? null
+            : runtimeShopRoot.gameObject;
+        shopItemsLayout = FindShopItemsLayout(runtimeShopRoot);
+        manageBulletsPanel = FindNamedGameObject(
+            runtimeShopRoot,
+            "Panel | Manage Bullets");
+        manageBulletsButton = FindNamedChild<Button>(
+            runtimeShopRoot,
+            "Button | Manage Bullet");
+        closeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null
+                ? null
+                : manageBulletsPanel.transform,
+            "Button | Close");
+        removeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null
+                ? null
+                : manageBulletsPanel.transform,
+            "Button | Remove");
+        upgradeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null
+                ? null
+                : manageBulletsPanel.transform,
+            "Button | Upgrade");
+        upgradeTooltip = FindNamedChild<RectTransform>(
+            runtimeShopRoot,
+            "Panel | Upgrade Tooltip");
+        ResolveReferences();
+        BindEvents();
+        DisableRaycasts(upgradeTooltip);
+        HideUpgradeTooltip();
+
+        bool configured = manageBulletsButton != null
+            && closeButton != null
+            && manageBulletsPanel != null;
+
+        if (!configured)
+        {
+            Debug.LogError(
+                "Dedicated Shop bullet management UI is missing its open button, close button, or management panel.",
+                this);
+        }
+
+        if (IsOpen)
+        {
+            RefreshOwnedBullets();
+        }
+
+        return configured;
+    }
+
     public void Close()
     {
         SetManagementView(false);
@@ -605,6 +668,7 @@ public class BulletManagementUI : MonoBehaviour
         playerHealth ??= FindSceneObject<PlayerHealth>();
         playerShoot ??= FindSceneObject<PlayerShoot>();
         shopPanel ??= FindGameObject("Panel | Shop");
+        shopPanel ??= FindGameObject("Panel_Shop");
         shopItemsLayout ??= FindGameObject("Layout | Shop Items");
         manageBulletsPanel ??= FindGameObject("Panel | Manage Bullets");
         manageBulletsButton ??= FindButton("Button | Manage Bullet");
@@ -988,6 +1052,61 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         return null;
+    }
+
+    private static GameObject FindNamedGameObject(
+        Transform root,
+        string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform candidate in
+                 root.GetComponentsInChildren<Transform>(true))
+        {
+            if (candidate != null && candidate.name == objectName)
+            {
+                return candidate.gameObject;
+            }
+        }
+
+        return null;
+    }
+
+    private static GameObject FindShopItemsLayout(Transform shopRoot)
+    {
+        if (shopRoot == null)
+        {
+            return null;
+        }
+
+        GameObject fallback = null;
+
+        foreach (Transform candidate in
+                 shopRoot.GetComponentsInChildren<Transform>(true))
+        {
+            if (candidate == null || candidate.name != "Layout | Shop Items")
+            {
+                continue;
+            }
+
+            fallback ??= candidate.gameObject;
+
+            foreach (Button button in
+                     candidate.GetComponentsInChildren<Button>(true))
+            {
+                if (button != null
+                    && (button.name == "Button | Bullet Item"
+                        || button.name == "Button | Shop Item"))
+                {
+                    return candidate.gameObject;
+                }
+            }
+        }
+
+        return fallback;
     }
 
     private static Sprite GetPreferredIcon(BulletInstance bullet)

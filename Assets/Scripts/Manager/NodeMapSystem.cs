@@ -6,6 +6,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 public enum NodeMapNodeType
@@ -19,13 +20,22 @@ public enum NodeMapNodeType
     Boss
 }
 
+public enum NodeMapBattleProgressSection
+{
+    Early,
+    Middle,
+    Late
+}
+
 [Serializable]
 public sealed class NodeMapGenerationRule
 {
     public NodeMapNodeType nodeType = NodeMapNodeType.NormalBattle;
+    [Tooltip("최소 개수를 먼저 배치한 뒤 남은 슬롯을 선택할 상대 가중치입니다.")]
     [Min(0)] public int weight = 1;
+    [Tooltip("가중치와 관계없이 우선 보장할 최소 개수입니다.")]
     [Min(0)] public int minimumCount;
-    [Tooltip("-1이면 최대 개수 제한이 없습니다.")]
+    [Tooltip("-1이면 제한이 없습니다. 0 이상이면 Weight가 높아도 이 개수를 넘지 않습니다.")]
     [Min(-1)] public int maximumCount = -1;
 }
 
@@ -44,6 +54,7 @@ public sealed class NodeMapNodeData
 public sealed class NodeMapRunData
 {
     public int version = 1;
+    public int generationSettingsHash;
     public int seed;
     public int stageIndex;
     public int currentNodeId;
@@ -97,11 +108,23 @@ public static class NodeMapGenerator
         int columnCount = 12,
         int maximumRows = 4,
         int battleCount = 1,
-        IReadOnlyList<NodeMapGenerationRule> generationRules = null)
+        IReadOnlyList<NodeMapGenerationRule> generationRules = null,
+        int middleBattleCount = -1,
+        int lateBattleCount = -1,
+        int eliteBattleCount = -1)
     {
         columnCount = Mathf.Max(3, columnCount);
         maximumRows = Mathf.Max(2, maximumRows);
         battleCount = Mathf.Max(1, battleCount);
+        middleBattleCount = middleBattleCount < 0
+            ? battleCount
+            : Mathf.Max(1, middleBattleCount);
+        lateBattleCount = lateBattleCount < 0
+            ? battleCount
+            : Mathf.Max(1, lateBattleCount);
+        eliteBattleCount = eliteBattleCount < 0
+            ? battleCount
+            : Mathf.Max(1, eliteBattleCount);
         System.Random random = new System.Random(seed);
         NodeMapRunData map = new NodeMapRunData
         {
@@ -154,6 +177,10 @@ public static class NodeMapGenerator
             middleNodes,
             generationRules,
             battleCount,
+            middleBattleCount,
+            lateBattleCount,
+            eliteBattleCount,
+            columnCount - 1,
             random);
 
         for (int column = 0; column < columns.Count - 1; column++)
@@ -173,7 +200,11 @@ public static class NodeMapGenerator
     private static void AssignMiddleNodeTypes(
         List<NodeMapNodeData> nodes,
         IReadOnlyList<NodeMapGenerationRule> configuredRules,
-        int battleCount,
+        int earlyBattleCount,
+        int middleBattleCount,
+        int lateBattleCount,
+        int eliteBattleCount,
+        int maximumColumn,
         System.Random random)
     {
         List<NodeMapGenerationRule> rules = (configuredRules == null
@@ -193,42 +224,82 @@ public static class NodeMapGenerator
 
         Dictionary<NodeMapNodeType, int> counts = rules.ToDictionary(
             rule => rule.nodeType, _ => 0);
-        List<NodeMapNodeType> assignments = new List<NodeMapNodeType>(
-            nodes.Count);
 
-        foreach (NodeMapGenerationRule rule in rules)
+        // Every branch immediately after Start must begin with a normal
+        // battle. These forced nodes take priority over configured weights.
+        List<NodeMapNodeData> unassignedNodes = new List<NodeMapNodeData>();
+        foreach (NodeMapNodeData node in nodes)
+        {
+            if (node.column == 1)
+            {
+                node.type = NodeMapNodeType.NormalBattle;
+                IncrementCount(counts, node.type);
+            }
+            else
+            {
+                unassignedNodes.Add(node);
+            }
+        }
+
+        // Constrained types are placed first so their minimum count cannot be
+        // consumed by types that are valid in every playable column.
+        foreach (NodeMapGenerationRule rule in rules
+                     .OrderBy(rule => unassignedNodes.Count(node =>
+                         CanAssignType(node, rule.nodeType, maximumColumn))))
         {
             int maximum = rule.maximumCount < 0
                 ? nodes.Count
                 : Mathf.Max(0, rule.maximumCount);
             int required = Mathf.Min(
                 Mathf.Max(0, rule.minimumCount), maximum);
-            required = Mathf.Min(required, nodes.Count - assignments.Count);
-            for (int index = 0; index < required; index++)
+            required = Mathf.Max(
+                0,
+                required - GetCount(counts, rule.nodeType));
+
+            while (required > 0)
             {
-                assignments.Add(rule.nodeType);
-                counts[rule.nodeType]++;
+                List<NodeMapNodeData> eligibleNodes = unassignedNodes
+                    .Where(node => CanAssignType(
+                        node,
+                        rule.nodeType,
+                        maximumColumn))
+                    .ToList();
+                if (eligibleNodes.Count == 0)
+                {
+                    break;
+                }
+
+                NodeMapNodeData selectedNode = eligibleNodes[
+                    random.Next(eligibleNodes.Count)];
+                selectedNode.type = rule.nodeType;
+                unassignedNodes.Remove(selectedNode);
+                IncrementCount(counts, rule.nodeType);
+                required--;
             }
         }
 
-        while (assignments.Count < nodes.Count)
+        foreach (NodeMapNodeData node in unassignedNodes
+                     .OrderBy(_ => random.Next()))
         {
             List<NodeMapGenerationRule> candidates = rules
                 .Where(rule => rule.weight > 0
+                    && CanAssignType(node, rule.nodeType, maximumColumn)
                     && (rule.maximumCount < 0
-                        || counts[rule.nodeType] < rule.maximumCount))
+                        || GetCount(counts, rule.nodeType)
+                            < rule.maximumCount))
                 .ToList();
             if (candidates.Count == 0)
             {
                 NodeMapGenerationRule fallback = rules.FirstOrDefault(
-                    rule => rule.maximumCount < 0)
-                    ?? DefaultRules[0];
-                assignments.Add(fallback.nodeType);
-                if (!counts.ContainsKey(fallback.nodeType))
-                {
-                    counts[fallback.nodeType] = 0;
-                }
-                counts[fallback.nodeType]++;
+                    rule => rule.maximumCount < 0
+                        && CanAssignType(
+                            node,
+                            rule.nodeType,
+                            maximumColumn));
+                node.type = fallback == null
+                    ? NodeMapNodeType.NormalBattle
+                    : fallback.nodeType;
+                IncrementCount(counts, node.type);
                 continue;
             }
 
@@ -244,21 +315,91 @@ public static class NodeMapGenerator
                 }
                 roll -= candidate.weight;
             }
-            assignments.Add(selected.nodeType);
-            counts[selected.nodeType]++;
+            node.type = selected.nodeType;
+            IncrementCount(counts, node.type);
         }
 
-        assignments = assignments.OrderBy(_ => random.Next()).ToList();
-        for (int index = 0; index < nodes.Count; index++)
+        foreach (NodeMapNodeData node in nodes)
         {
-            NodeMapNodeData node = nodes[index];
-            node.type = assignments[index];
-            if (node.type == NodeMapNodeType.NormalBattle
-                || node.type == NodeMapNodeType.EliteBattle)
+            if (node.type == NodeMapNodeType.NormalBattle)
             {
-                node.battleIndex = random.Next(Mathf.Max(1, battleCount));
+                int poolCount = GetNormalBattleProgressSection(
+                    node.column,
+                    maximumColumn) switch
+                {
+                    NodeMapBattleProgressSection.Middle => middleBattleCount,
+                    NodeMapBattleProgressSection.Late => lateBattleCount,
+                    _ => earlyBattleCount
+                };
+                node.battleIndex = random.Next(Mathf.Max(1, poolCount));
+            }
+            else if (node.type == NodeMapNodeType.EliteBattle)
+            {
+                node.battleIndex = random.Next(
+                    Mathf.Max(1, eliteBattleCount));
             }
         }
+    }
+
+    private static bool CanAssignType(
+        NodeMapNodeData node,
+        NodeMapNodeType type,
+        int maximumColumn)
+    {
+        if (node == null)
+        {
+            return false;
+        }
+
+        if (node.column == 1)
+        {
+            return type == NodeMapNodeType.NormalBattle;
+        }
+
+        return type != NodeMapNodeType.Treasure
+            || GetNormalBattleProgressSection(
+                node.column,
+                maximumColumn) != NodeMapBattleProgressSection.Early;
+    }
+
+    private static int GetCount(
+        IReadOnlyDictionary<NodeMapNodeType, int> counts,
+        NodeMapNodeType type)
+    {
+        return counts.TryGetValue(type, out int count) ? count : 0;
+    }
+
+    private static void IncrementCount(
+        IDictionary<NodeMapNodeType, int> counts,
+        NodeMapNodeType type)
+    {
+        counts.TryGetValue(type, out int count);
+        counts[type] = count + 1;
+    }
+
+    public static NodeMapBattleProgressSection GetNormalBattleProgressSection(
+        int column,
+        int maximumColumn)
+    {
+        int firstPlayableColumn = 1;
+        int lastPlayableColumn = Mathf.Max(
+            firstPlayableColumn,
+            maximumColumn - 1);
+        float progress = lastPlayableColumn == firstPlayableColumn
+            ? 0f
+            : Mathf.InverseLerp(
+                firstPlayableColumn,
+                lastPlayableColumn,
+                Mathf.Clamp(column, firstPlayableColumn, lastPlayableColumn));
+
+        if (progress < 1f / 3f)
+        {
+            return NodeMapBattleProgressSection.Early;
+        }
+
+        return progress < 2f / 3f
+            ? NodeMapBattleProgressSection.Middle
+            : NodeMapBattleProgressSection.Late;
     }
 
     private static NodeMapNodeData CreateNode(
@@ -436,6 +577,36 @@ public static class NodeMapSaveSystem
         return true;
     }
 
+    public static bool TryGetActiveNodeScene(out string sceneName)
+    {
+        sceneName = string.Empty;
+
+        if (!TryLoad(out NodeMapRunData data) || data.activeNodeId < 0)
+        {
+            return false;
+        }
+
+        NodeMapNodeData activeNode = data.nodes.FirstOrDefault(
+            node => node != null && node.id == data.activeNodeId);
+
+        if (activeNode == null)
+        {
+            return false;
+        }
+
+        sceneName = activeNode.type switch
+        {
+            NodeMapNodeType.Shop => "Shop",
+            NodeMapNodeType.Treasure => "Treasure",
+            NodeMapNodeType.Event => "Event",
+            NodeMapNodeType.NormalBattle => "Battle",
+            NodeMapNodeType.EliteBattle => "Battle",
+            NodeMapNodeType.Boss => "Battle",
+            _ => string.Empty
+        };
+        return !string.IsNullOrEmpty(sceneName);
+    }
+
     public static void DeleteSave()
     {
         try
@@ -459,7 +630,18 @@ public static class NodeMapSaveSystem
 public class NodeMapSettingsDefinition : ScriptableObject
 {
     [SerializeField] private StageData stage;
-    [SerializeField] private BattleData[] normalBattles = Array.Empty<BattleData>();
+    [Header("Normal Battles by Map Progress")]
+    [Tooltip("0% 이상 33% 미만 구간의 일반 전투 목록입니다.")]
+    [FormerlySerializedAs("normalBattles")]
+    [SerializeField] private BattleData[] earlyNormalBattles =
+        Array.Empty<BattleData>();
+    [Tooltip("33% 이상 66% 미만 구간의 일반 전투 목록입니다.")]
+    [SerializeField] private BattleData[] middleNormalBattles =
+        Array.Empty<BattleData>();
+    [Tooltip("66% 이상 100% 구간의 일반 전투 목록입니다.")]
+    [SerializeField] private BattleData[] lateNormalBattles =
+        Array.Empty<BattleData>();
+    [Header("Special Battles")]
     [SerializeField] private BattleData[] eliteBattles = Array.Empty<BattleData>();
     [SerializeField] private BattleData bossBattle;
     [Header("Node Generation Rules")]
@@ -514,8 +696,14 @@ public class NodeMapSettingsDefinition : ScriptableObject
     [Min(2)] [SerializeField] private int rows = 4;
 
     public StageData Stage => stage;
-    public IReadOnlyList<BattleData> NormalBattles => normalBattles;
-    public IReadOnlyList<BattleData> EliteBattles => eliteBattles;
+    public IReadOnlyList<BattleData> EarlyNormalBattles =>
+        earlyNormalBattles ?? Array.Empty<BattleData>();
+    public IReadOnlyList<BattleData> MiddleNormalBattles =>
+        middleNormalBattles ?? Array.Empty<BattleData>();
+    public IReadOnlyList<BattleData> LateNormalBattles =>
+        lateNormalBattles ?? Array.Empty<BattleData>();
+    public IReadOnlyList<BattleData> EliteBattles =>
+        eliteBattles ?? Array.Empty<BattleData>();
     public BattleData BossBattle => bossBattle;
     public IReadOnlyList<NodeMapGenerationRule> GenerationRules =>
         generationRules ?? Array.Empty<NodeMapGenerationRule>();
@@ -532,6 +720,68 @@ public class NodeMapSettingsDefinition : ScriptableObject
     };
     public int Columns => Mathf.Max(3, columns);
     public int Rows => Mathf.Max(2, rows);
+    public int GenerationSettingsHash
+    {
+        get
+        {
+            unchecked
+            {
+                const int GenerationAlgorithmRevision = 2;
+                int hash = 17;
+                hash = hash * 31 + GenerationAlgorithmRevision;
+                hash = hash * 31 + Columns;
+                hash = hash * 31 + Rows;
+                hash = hash * 31 + EarlyNormalBattles.Count;
+                hash = hash * 31 + MiddleNormalBattles.Count;
+                hash = hash * 31 + LateNormalBattles.Count;
+                hash = hash * 31 + EliteBattles.Count;
+
+                foreach (NodeMapGenerationRule rule in GenerationRules)
+                {
+                    if (rule == null)
+                    {
+                        hash *= 31;
+                        continue;
+                    }
+
+                    hash = hash * 31 + (int)rule.nodeType;
+                    hash = hash * 31 + Mathf.Max(0, rule.weight);
+                    hash = hash * 31 + Mathf.Max(0, rule.minimumCount);
+                    hash = hash * 31 + Mathf.Max(-1, rule.maximumCount);
+                }
+
+                return hash;
+            }
+        }
+    }
+
+    public IReadOnlyList<BattleData> GetNormalBattles(
+        NodeMapBattleProgressSection section)
+    {
+        IReadOnlyList<BattleData> selected = section switch
+        {
+            NodeMapBattleProgressSection.Middle => MiddleNormalBattles,
+            NodeMapBattleProgressSection.Late => LateNormalBattles,
+            _ => EarlyNormalBattles
+        };
+
+        if (selected.Count > 0)
+        {
+            return selected;
+        }
+
+        if (EarlyNormalBattles.Count > 0)
+        {
+            return EarlyNormalBattles;
+        }
+
+        if (MiddleNormalBattles.Count > 0)
+        {
+            return MiddleNormalBattles;
+        }
+
+        return LateNormalBattles;
+    }
 }
 
 [DisallowMultipleComponent]
@@ -653,9 +903,18 @@ public class NodeMapControllerDefinition : MonoBehaviour
 
         EnsureEventSystem();
         ConfigureViewportAndCanvas();
-        if (regenerateMapOnStart || !NodeMapSaveSystem.TryLoad(out map))
+        bool loadedSavedMap = NodeMapSaveSystem.TryLoad(out map);
+        int settingsHash = settings.GenerationSettingsHash;
+        bool settingsChangedBeforeFirstMove = loadedSavedMap
+            && map.generationSettingsHash != settingsHash
+            && CanRegenerateUnstartedMap(map);
+
+        if (regenerateMapOnStart || !loadedSavedMap
+            || settingsChangedBeforeFirstMove)
         {
-            int battleCount = Mathf.Max(1, settings.NormalBattles.Count);
+            int earlyBattleCount = Mathf.Max(
+                1,
+                settings.EarlyNormalBattles.Count);
             int seed = generationSeed != 0
                 ? generationSeed
                 : unchecked((int)DateTime.UtcNow.Ticks);
@@ -664,12 +923,29 @@ public class NodeMapControllerDefinition : MonoBehaviour
                 0,
                 settings.Columns,
                 settings.Rows,
-                battleCount,
-                settings.GenerationRules);
+                earlyBattleCount,
+                settings.GenerationRules,
+                Mathf.Max(1, settings.MiddleNormalBattles.Count),
+                Mathf.Max(1, settings.LateNormalBattles.Count),
+                Mathf.Max(1, settings.EliteBattles.Count));
+            map.generationSettingsHash = settingsHash;
             NodeMapSaveSystem.Save(map);
         }
 
         BuildMap();
+    }
+
+    private static bool CanRegenerateUnstartedMap(NodeMapRunData runData)
+    {
+        return runData != null
+            && runData.activeNodeId < 0
+            && runData.awaitingNodeSelection
+            && runData.nodes != null
+            && runData.completedNodeIds != null
+            && runData.completedNodeIds.Count == 1
+            && runData.nodes.Any(node => node != null
+                && node.id == runData.currentNodeId
+                && node.type == NodeMapNodeType.Start);
     }
 
     private void BuildMap()
@@ -1271,12 +1547,19 @@ public class NodeMapControllerDefinition : MonoBehaviour
 
     private int ResolveStageBattleIndex(NodeMapNodeData node)
     {
+        int maximumColumn = map.nodes.Max(candidate => candidate.column);
+        IReadOnlyList<BattleData> normalBattles = settings.GetNormalBattles(
+            NodeMapGenerator.GetNormalBattleProgressSection(
+                node.column,
+                maximumColumn));
         BattleData selected = node.type switch
         {
             NodeMapNodeType.Boss => settings.BossBattle,
             NodeMapNodeType.EliteBattle when settings.EliteBattles.Count > 0 =>
                 settings.EliteBattles[Mathf.Abs(node.battleIndex) % settings.EliteBattles.Count],
-            _ => settings.NormalBattles[Mathf.Abs(node.battleIndex) % settings.NormalBattles.Count]
+            NodeMapNodeType.NormalBattle when normalBattles.Count > 0 =>
+                normalBattles[Mathf.Abs(node.battleIndex) % normalBattles.Count],
+            _ => null
         };
 
         for (int index = 0; index < settings.Stage.Battles.Count; index++)

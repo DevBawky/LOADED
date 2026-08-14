@@ -51,6 +51,96 @@ public sealed class NodeMapGeneratorTests
     }
 
     [Test]
+    public void Generate_MakesEveryFirstPlayableNodeANormalBattle()
+    {
+        NodeMapGenerationRule[] rules =
+        {
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.Event,
+                weight = 1,
+                maximumCount = -1
+            }
+        };
+
+        NodeMapRunData map = NodeMapGenerator.Generate(
+            8142026, 0, 12, 4, 3, rules);
+        List<NodeMapNodeData> firstNodes = map.nodes
+            .Where(node => node.column == 1)
+            .ToList();
+
+        Assert.That(firstNodes, Is.Not.Empty);
+        Assert.That(firstNodes.All(node =>
+            node.type == NodeMapNodeType.NormalBattle), Is.True);
+    }
+
+    [Test]
+    public void Generate_PlacesTreasureOnlyInMiddleOrLateColumns()
+    {
+        NodeMapGenerationRule[] rules =
+        {
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.Treasure,
+                weight = 100,
+                minimumCount = 2,
+                maximumCount = -1
+            },
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.NormalBattle,
+                weight = 1,
+                maximumCount = -1
+            }
+        };
+
+        NodeMapRunData map = NodeMapGenerator.Generate(
+            20260814, 0, 12, 4, 3, rules);
+        int maximumColumn = map.nodes.Max(node => node.column);
+        List<NodeMapNodeData> treasures = map.nodes
+            .Where(node => node.type == NodeMapNodeType.Treasure)
+            .ToList();
+
+        Assert.That(treasures, Is.Not.Empty);
+        Assert.That(treasures.All(node =>
+            NodeMapGenerator.GetNormalBattleProgressSection(
+                node.column,
+                maximumColumn) != NodeMapBattleProgressSection.Early),
+            Is.True);
+    }
+
+    [Test]
+    public void Generate_UsesWeightForSlotsOutsideForcedMinimums()
+    {
+        NodeMapGenerationRule[] rules =
+        {
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.NormalBattle,
+                weight = 0,
+                maximumCount = -1
+            },
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.Event,
+                weight = 100,
+                maximumCount = -1
+            }
+        };
+
+        NodeMapRunData map = NodeMapGenerator.Generate(
+            50100, 0, 10, 4, 3, rules);
+        List<NodeMapNodeData> weightedNodes = map.nodes
+            .Where(node => node.column > 1
+                && node.type != NodeMapNodeType.Boss)
+            .ToList();
+
+        Assert.That(weightedNodes, Is.Not.Empty);
+        Assert.That(weightedNodes.All(node =>
+            node.type == NodeMapNodeType.Event), Is.True);
+    }
+
+    [Test]
     public void Generate_RespectsConfiguredMinimumAndMaximumCounts()
     {
         NodeMapGenerationRule[] rules =
@@ -86,5 +176,89 @@ public sealed class NodeMapGeneratorTests
 
         Assert.That(normalCount, Is.InRange(3, 4));
         Assert.That(eliteCount, Is.EqualTo(2));
+    }
+
+    [TestCase(1, NodeMapBattleProgressSection.Early)]
+    [TestCase(3, NodeMapBattleProgressSection.Early)]
+    [TestCase(4, NodeMapBattleProgressSection.Middle)]
+    [TestCase(6, NodeMapBattleProgressSection.Middle)]
+    [TestCase(7, NodeMapBattleProgressSection.Late)]
+    [TestCase(9, NodeMapBattleProgressSection.Late)]
+    public void ProgressSection_UsesPlayableColumnsOnly(
+        int column,
+        NodeMapBattleProgressSection expected)
+    {
+        Assert.That(
+            NodeMapGenerator.GetNormalBattleProgressSection(column, 10),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void Generate_AssignsNormalBattleIndexFromProgressPool()
+    {
+        NodeMapGenerationRule[] rules =
+        {
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.NormalBattle,
+                weight = 1,
+                maximumCount = -1
+            }
+        };
+        NodeMapRunData map = NodeMapGenerator.Generate(
+            20260814,
+            0,
+            11,
+            4,
+            2,
+            rules,
+            3,
+            4,
+            5);
+
+        foreach (NodeMapNodeData node in map.nodes.Where(
+                     node => node.type == NodeMapNodeType.NormalBattle))
+        {
+            int expectedPoolCount =
+                NodeMapGenerator.GetNormalBattleProgressSection(
+                    node.column,
+                    10) switch
+                {
+                    NodeMapBattleProgressSection.Middle => 3,
+                    NodeMapBattleProgressSection.Late => 4,
+                    _ => 2
+                };
+            Assert.That(node.battleIndex, Is.InRange(0, expectedPoolCount - 1));
+        }
+    }
+
+    [Test]
+    public void Generate_EliteBattleIndexIgnoresProgressPools()
+    {
+        NodeMapGenerationRule[] rules =
+        {
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.EliteBattle,
+                weight = 1,
+                maximumCount = -1
+            }
+        };
+        NodeMapRunData map = NodeMapGenerator.Generate(
+            777,
+            0,
+            11,
+            4,
+            2,
+            rules,
+            3,
+            4,
+            5);
+
+        foreach (NodeMapNodeData node in map.nodes.Where(
+                     node => node.type == NodeMapNodeType.EliteBattle))
+        {
+            Assert.That(node.battleIndex, Is.InRange(0, 4));
+        }
     }
 }

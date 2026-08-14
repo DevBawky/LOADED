@@ -62,6 +62,7 @@ public class StateManager : MonoBehaviour
     private RunSaveData pendingRestoredRun;
     private bool suppressExitSave;
     private RunStartMode currentRunStartMode = RunStartMode.None;
+    private int turnCountBeforeCurrentBattle;
 
     public event Action StateChanged;
 
@@ -93,6 +94,22 @@ public class StateManager : MonoBehaviour
     public void LockInputForExitSave()
     {
         SetInputLocked(true);
+    }
+
+    /// <summary>
+    /// Exposes read-only run progress to shared UI in a non-Battle scene.
+    /// The component itself may remain disabled so its Battle lifecycle does
+    /// not start in that scene.
+    /// </summary>
+    public void ConfigureExternalSceneState(
+        int stageIndex,
+        int battleIndex,
+        GameFlowState flowState)
+    {
+        currentStageIndex = stageIndex;
+        currentBattleIndex = battleIndex;
+        currentState = flowState;
+        StateChanged?.Invoke();
     }
 
     private void Awake()
@@ -286,6 +303,8 @@ public class StateManager : MonoBehaviour
             playerTileIndex = playerTileIndex,
             playerFacingRight = playerMove.transform.localScale.x >= 0f,
             playerTurnCount = playerMove.TurnCount,
+            cumulativeBattleTurnCount = turnCountBeforeCurrentBattle
+                + playerMove.TurnCount,
             nextPushAvailableTurn = playerMove.NextPushAvailableTurn,
             playerStatusEffects = playerHealth.CaptureStatusRunState(),
             combatReport = gameStartUI == null
@@ -352,6 +371,12 @@ public class StateManager : MonoBehaviour
 
         currentStageIndex = saveData.stageIndex;
         currentBattleIndex = saveData.battleIndex;
+        turnCountBeforeCurrentBattle = saveData.startSelectedBattleFresh
+            ? Mathf.Max(0, saveData.cumulativeBattleTurnCount)
+            : Mathf.Max(
+                0,
+                saveData.cumulativeBattleTurnCount
+                    - saveData.playerTurnCount);
         playerHealth.RestoreRunHealth(
             saveData.currentHealth,
             saveData.maxHealth);

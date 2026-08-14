@@ -5,6 +5,15 @@ public class TurnCountText : MonoBehaviour
 {
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private TextMeshProUGUI turnCountText;
+    private int externalTurnCount;
+    private bool useExternalTurnCount;
+
+    public void SetExternalTurnCount(int turnCount)
+    {
+        externalTurnCount = Mathf.Max(0, turnCount);
+        useExternalTurnCount = true;
+        Refresh();
+    }
 
     private void Awake()
     {
@@ -41,11 +50,20 @@ public class TurnCountText : MonoBehaviour
 
     private void Refresh()
     {
-        if (playerMove == null || turnCountText == null)
+        if (turnCountText == null)
         {
             return;
         }
 
-        turnCountText.text = $"Turn {playerMove.TurnCount}";
+        if (useExternalTurnCount)
+        {
+            turnCountText.text = $"Turn {externalTurnCount}";
+            return;
+        }
+
+        if (playerMove != null)
+        {
+            turnCountText.text = $"Turn {playerMove.TurnCount}";
+        }
     }
 }

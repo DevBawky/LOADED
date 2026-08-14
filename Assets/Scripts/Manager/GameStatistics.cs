@@ -145,6 +145,7 @@ public sealed class RunSaveData
     public int playerTileIndex;
     public bool playerFacingRight;
     public int playerTurnCount;
+    public int cumulativeBattleTurnCount;
     public int nextPushAvailableTurn;
     public RunStatusEffectSaveData playerStatusEffects =
         new RunStatusEffectSaveData();
@@ -226,6 +227,11 @@ public static class RunSaveSystem
         saveData.battleIndex = Mathf.Max(0, battleIndex);
         saveData.flowState = (int)GameFlowState.Battle;
         saveData.startSelectedBattleFresh = true;
+        saveData.cumulativeBattleTurnCount = Mathf.Max(
+            saveData.cumulativeBattleTurnCount,
+            saveData.playerTurnCount);
+        saveData.playerTurnCount = 0;
+        saveData.nextPushAvailableTurn = 0;
         saveData.currentWaveIndex = 0;
         saveData.remainingSpawnTurns = 0;
         saveData.isWaitingForNextWave = false;
@@ -270,6 +276,7 @@ public static class RunSaveSystem
 
             File.WriteAllText(SavePath, json);
 #endif
+            RunSession.Instance.SetSnapshot(saveData);
             return true;
         }
         catch (Exception exception)
@@ -286,6 +293,12 @@ public static class RunSaveSystem
 
         try
         {
+            if (RunSession.Instance.TryGetSnapshot(out saveData))
+            {
+                NormalizeSaveData(saveData);
+                return IsValidSaveData(saveData);
+            }
+
 #if UNITY_WEBGL && !UNITY_EDITOR
             string json = PlayerPrefs.GetString(WebSaveKey, string.Empty);
 
@@ -319,21 +332,16 @@ public static class RunSaveSystem
                 return false;
             }
 
-            saveData.bullets ??= new List<RunBulletSaveData>();
-            saveData.nextCycleAcquisitionOrders ??= new List<int>();
-            saveData.inventoryItemAssetNames ??= new List<string>();
-            saveData.playerStatusEffects ??= new RunStatusEffectSaveData();
-            saveData.reservedSpawnTileIndices ??= new List<int>();
-            saveData.enemies ??= new List<RunEnemySaveData>();
-            saveData.bombs ??= new List<RunBombSaveData>();
-            saveData.droppedItems ??= new List<RunDroppedItemSaveData>();
-            saveData.combatReport ??= new RunCombatReportSaveData();
-            saveData.shop ??= new RunShopSaveData();
-            saveData.shop.bulletOfferAssetNames ??= new List<string>();
-            saveData.shop.purchasedBulletOffers ??= new List<bool>();
-            saveData.shop.itemOfferAssetNames ??= new List<string>();
-            saveData.shop.purchasedItemOffers ??= new List<bool>();
-            return saveData.bullets.Count > 0;
+            NormalizeSaveData(saveData);
+
+            if (!IsValidSaveData(saveData))
+            {
+                saveData = null;
+                return false;
+            }
+
+            RunSession.Instance.SetSnapshot(saveData);
+            return true;
         }
         catch (Exception exception)
         {
@@ -346,6 +354,8 @@ public static class RunSaveSystem
 
     public static void DeleteSave()
     {
+        RunSession.Instance.Clear();
+
         try
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -371,6 +381,43 @@ public static class RunSaveSystem
 #else
         return File.Exists(SavePath);
 #endif
+    }
+
+    private static bool IsValidSaveData(RunSaveData saveData)
+    {
+        return saveData != null
+            && saveData.version == CurrentVersion
+            && saveData.stageIndex >= 0
+            && saveData.battleIndex >= 0
+            && saveData.bullets != null
+            && saveData.bullets.Count > 0;
+    }
+
+    private static void NormalizeSaveData(RunSaveData saveData)
+    {
+        if (saveData == null)
+        {
+            return;
+        }
+
+        saveData.bullets ??= new List<RunBulletSaveData>();
+        saveData.nextCycleAcquisitionOrders ??= new List<int>();
+        saveData.inventoryItemAssetNames ??= new List<string>();
+        saveData.playerTurnCount = Mathf.Max(0, saveData.playerTurnCount);
+        saveData.cumulativeBattleTurnCount = Mathf.Max(
+            saveData.playerTurnCount,
+            saveData.cumulativeBattleTurnCount);
+        saveData.playerStatusEffects ??= new RunStatusEffectSaveData();
+        saveData.reservedSpawnTileIndices ??= new List<int>();
+        saveData.enemies ??= new List<RunEnemySaveData>();
+        saveData.bombs ??= new List<RunBombSaveData>();
+        saveData.droppedItems ??= new List<RunDroppedItemSaveData>();
+        saveData.combatReport ??= new RunCombatReportSaveData();
+        saveData.shop ??= new RunShopSaveData();
+        saveData.shop.bulletOfferAssetNames ??= new List<string>();
+        saveData.shop.purchasedBulletOffers ??= new List<bool>();
+        saveData.shop.itemOfferAssetNames ??= new List<string>();
+        saveData.shop.purchasedItemOffers ??= new List<bool>();
     }
 }
 

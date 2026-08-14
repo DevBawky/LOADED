@@ -216,11 +216,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
 
         gameStartRequested = true;
         RunSaveSystem.RequestStart(startMode);
-        gameSceneName = startMode == RunStartMode.New
-            || NodeMapSaveSystem.IsAwaitingSelection
-            || !RunSaveSystem.HasValidSave
-                ? "NodeMap"
-                : "Battle";
+        gameSceneName = ResolveRunEntryScene(startMode);
 
         if (loadGamePanel != null)
         {
@@ -233,6 +229,21 @@ public sealed class MainMenuVideoController : MonoBehaviour
         }
         FadeOutButtons();
         PlayVideo(PlaybackState.Ready, readyVideoPath, false);
+    }
+
+    private static string ResolveRunEntryScene(RunStartMode startMode)
+    {
+        if (startMode == RunStartMode.New
+            || NodeMapSaveSystem.IsAwaitingSelection
+            || !RunSaveSystem.HasValidSave)
+        {
+            return "NodeMap";
+        }
+
+        return NodeMapSaveSystem.TryGetActiveNodeScene(
+            out string activeScene)
+                ? activeScene
+                : "Battle";
     }
 
     private void ShowLoadGamePanel()

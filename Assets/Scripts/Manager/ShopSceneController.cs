@@ -1,0 +1,344 @@
+using TMPro;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+/// <summary>
+/// Owns the scene lifecycle for a map Shop node. The Battle manager hierarchy
+/// is present for shared systems, while its combat-only behaviours stay
+/// disabled. Run data is hydrated into the Shop-facing managers here.
+/// </summary>
+[DefaultExecutionOrder(-200)]
+[DisallowMultipleComponent]
+public sealed class ShopSceneController : MonoBehaviour
+{
+    private const string NodeMapSceneName = "NodeMap";
+    private const string ShopPanelName = "Panel | Shop";
+    private const string LegacyShopPanelName = "Panel_Shop";
+    private const string ExitButtonName = "Button | Go To Battle";
+
+    [Header("Scene-local Managers")]
+    [SerializeField] private ShopManager shopManager;
+    [SerializeField] private DeckManager deckManager;
+    [SerializeField] private CurrencyManager currencyManager;
+    [SerializeField] private PlayerInventory playerInventory;
+    [SerializeField] private StateManager stateManager;
+
+    [Header("Navigation")]
+    [SerializeField] private Button exitButton;
+    [SerializeField] private TMP_Text exitButtonText;
+    [SerializeField] private string exitLabel = "TO MAP";
+
+    private RunSaveData runData;
+    private GameObject shopPanel;
+    private bool initialized;
+    private bool leaving;
+
+    private void Awake()
+    {
+        ResolveReferences();
+        shopManager?.ConfigureStandaloneShop();
+
+        shopPanel = FindSceneGameObject(ShopPanelName);
+        shopPanel ??= FindSceneGameObject(LegacyShopPanelName);
+        if (shopPanel != null)
+        {
+            shopPanel.SetActive(true);
+        }
+
+        if (exitButtonText != null)
+        {
+            exitButtonText.text = exitLabel;
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (exitButton != null)
+        {
+            exitButton.onClick.AddListener(ReturnToNodeMap);
+        }
+
+        if (shopManager != null)
+        {
+            shopManager.OffersChanged += HandleShopChanged;
+            shopManager.PurchaseCompleted += HandleShopChanged;
+        }
+    }
+
+    private void Start()
+    {
+        if (!TryInitializeShop())
+        {
+            Debug.LogError(
+                "Shop scene could not restore the current run. Returning to the node map.",
+                this);
+            LoadNodeMap();
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (!leaving)
+        {
+            SaveShopState();
+        }
+
+        if (exitButton != null)
+        {
+            exitButton.onClick.RemoveListener(ReturnToNodeMap);
+        }
+
+        if (shopManager != null)
+        {
+            shopManager.OffersChanged -= HandleShopChanged;
+            shopManager.PurchaseCompleted -= HandleShopChanged;
+        }
+    }
+
+    private void OnApplicationPause(bool paused)
+    {
+        if (paused)
+        {
+            SaveShopState();
+        }
+    }
+
+    private void OnApplicationQuit()
+    {
+        SaveShopState();
+    }
+
+    public void ReturnToNodeMap()
+    {
+        if (leaving || !initialized
+            || shopManager != null && shopManager.IsRefreshing)
+        {
+            return;
+        }
+
+        leaving = true;
+
+        if (exitButton != null)
+        {
+            exitButton.interactable = false;
+        }
+
+        SaveShopState();
+        NodeMapSaveSystem.CompleteActiveNode();
+        LoadNodeMap();
+    }
+
+    private bool TryInitializeShop()
+    {
+        if (shopManager == null || deckManager == null
+            || currencyManager == null || playerInventory == null
+            || !RunSaveSystem.TryLoad(out runData)
+            || !deckManager.RestoreRunState(
+                runData.bullets,
+                shopManager.ResolveSavedBullet,
+                runData.paidBulletRemovalCount,
+                runData.nextCycleAcquisitionOrders))
+        {
+            return false;
+        }
+
+        currencyManager.RestoreRunMoney(runData.money);
+        playerInventory.RestoreRunState(
+            runData.inventoryItemAssetNames,
+            shopManager.ResolveSavedItem);
+        stateManager?.ConfigureExternalSceneState(
+            runData.stageIndex,
+            runData.battleIndex,
+            GameFlowState.Shop);
+
+        bool resumeExistingVisit = runData.flowState
+                == (int)GameFlowState.Shop
+            && runData.shop != null
+            && runData.shop.bulletOfferAssetNames != null
+            && runData.shop.itemOfferAssetNames != null
+            && runData.shop.bulletOfferAssetNames.Count > 0
+            && runData.shop.itemOfferAssetNames.Count > 0;
+
+        if (resumeExistingVisit)
+        {
+            if (!shopManager.RestoreShopRunState(
+                    runData.shop,
+                    runData.shopRefreshCost))
+            {
+                return false;
+            }
+        }
+        else
+        {
+            shopManager.RestoreRunState(runData.shopRefreshCost);
+            shopManager.OpenShop();
+        }
+
+        foreach (BulletManagementUI managementUI in
+                 FindObjectsByType<BulletManagementUI>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            managementUI.ConfigureDedicatedShop(
+                shopPanel == null ? null : shopPanel.transform,
+                deckManager,
+                currencyManager);
+        }
+
+        Canvas rootCanvas = shopPanel == null
+            ? FindFirstObjectByType<Canvas>(FindObjectsInactive.Include)
+            : shopPanel.GetComponentInParent<Canvas>();
+        Transform canvasRoot = rootCanvas == null
+            ? null
+            : rootCanvas.rootCanvas.transform;
+
+        foreach (InventoryTooltipUI tooltipUI in
+                 FindObjectsByType<InventoryTooltipUI>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            tooltipUI.ConfigureDedicatedShop(
+                canvasRoot,
+                playerInventory,
+                shopManager,
+                deckManager,
+                currencyManager,
+                stateManager);
+        }
+
+        foreach (StageProgressUI progressUI in
+                 FindObjectsByType<StageProgressUI>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            progressUI.SetExternalStageTitle("마을. 상점");
+        }
+
+        int cumulativeTurns = Mathf.Max(
+            runData.cumulativeBattleTurnCount,
+            runData.playerTurnCount);
+        runData.cumulativeBattleTurnCount = cumulativeTurns;
+
+        foreach (TurnCountText turnText in
+                 FindObjectsByType<TurnCountText>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            turnText.SetExternalTurnCount(cumulativeTurns);
+        }
+
+        initialized = true;
+        SaveShopState();
+        return true;
+    }
+
+    private void HandleShopChanged()
+    {
+        if (initialized)
+        {
+            SaveShopState();
+        }
+    }
+
+    private bool SaveShopState()
+    {
+        if (!initialized || runData == null || deckManager == null
+            || currencyManager == null || playerInventory == null)
+        {
+            return false;
+        }
+
+        currencyManager.FlushPendingMoney();
+        runData.flowState = (int)GameFlowState.Shop;
+        runData.startSelectedBattleFresh = false;
+        runData.money = currencyManager.CurrentMoney;
+        runData.paidBulletRemovalCount = deckManager.PaidBulletRemovalCount;
+        runData.shopRefreshCost = shopManager == null
+            ? runData.shopRefreshCost
+            : shopManager.CurrentRefreshCost;
+        deckManager.CaptureRunState(
+            runData.bullets,
+            runData.nextCycleAcquisitionOrders);
+        playerInventory.CaptureRunState(runData.inventoryItemAssetNames);
+        shopManager?.CaptureRunState(runData);
+        return RunSaveSystem.Save(runData);
+    }
+
+    private void ResolveReferences()
+    {
+        shopManager ??= FindFirstObjectByType<ShopManager>(
+            FindObjectsInactive.Include);
+        deckManager ??= FindFirstObjectByType<DeckManager>(
+            FindObjectsInactive.Include);
+        currencyManager ??= FindFirstObjectByType<CurrencyManager>(
+            FindObjectsInactive.Include);
+        playerInventory ??= FindFirstObjectByType<PlayerInventory>(
+            FindObjectsInactive.Include);
+        stateManager ??= FindFirstObjectByType<StateManager>(
+            FindObjectsInactive.Include);
+
+        if (exitButton == null)
+        {
+            foreach (Button button in FindObjectsByType<Button>(
+                         FindObjectsInactive.Include,
+                         FindObjectsSortMode.None))
+            {
+                if (button != null && button.gameObject.scene.IsValid()
+                    && button.name == ExitButtonName
+                    && HasNamedAncestor(button.transform, ShopPanelName))
+                {
+                    exitButton = button;
+                    break;
+                }
+            }
+        }
+
+        exitButtonText ??= exitButton == null
+            ? null
+            : exitButton.GetComponentInChildren<TMP_Text>(true);
+    }
+
+    private static GameObject FindSceneGameObject(string objectName)
+    {
+        foreach (Transform transform in FindObjectsByType<Transform>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (transform != null && transform.gameObject.scene.IsValid()
+                && transform.name == objectName)
+            {
+                return transform.gameObject;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool HasNamedAncestor(
+        Transform transform,
+        string objectName)
+    {
+        Transform current = transform;
+
+        while (current != null)
+        {
+            if (current.name == objectName)
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
+        return false;
+    }
+
+    private static void LoadNodeMap()
+    {
+        if (!LoadingTransitionController.LoadScene(NodeMapSceneName))
+        {
+            SceneManager.LoadScene(NodeMapSceneName);
+        }
+    }
+}

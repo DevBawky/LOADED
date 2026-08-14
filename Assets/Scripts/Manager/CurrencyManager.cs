@@ -29,6 +29,7 @@ public class CurrencyManager : MonoBehaviour
 
     private const string FlyingGoldResourcePath = "UI/Flying Gold";
     private const string MoneyPanelName = "Panel | Money";
+    private const string MoneyTextName = "Text | Current Money";
     private RectTransform moneyPanel;
     private RectTransform rootCanvasRect;
     private Canvas rootCanvas;
@@ -193,6 +194,16 @@ public class CurrencyManager : MonoBehaviour
                     break;
                 }
             }
+        }
+
+        if (currentMoneyText == null && moneyPanel != null)
+        {
+            Transform moneyText = FindDescendant(
+                moneyPanel,
+                MoneyTextName);
+            currentMoneyText = moneyText == null
+                ? null
+                : moneyText.GetComponent<TMP_Text>();
         }
 
         if (moneyPanel != null)
