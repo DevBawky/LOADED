@@ -173,13 +173,14 @@ public class StateManager : MonoBehaviour
             return;
         }
 
+        RunSaveData restoredSaveData = null;
         bool restored = startMode == RunStartMode.Continue
-            && RunSaveSystem.TryLoad(out RunSaveData saveData)
-            && TryRestoreRun(saveData);
+            && RunSaveSystem.TryLoad(out restoredSaveData)
+            && TryRestoreRun(restoredSaveData);
 
         if (restored)
         {
-            GameStatistics.ResumeRun(pendingRestoredRun);
+            GameStatistics.ResumeRun(restoredSaveData);
         }
         else
         {
@@ -197,7 +198,12 @@ public class StateManager : MonoBehaviour
                 return;
             }
 
-            currentBattleIndex = 0;
+            if (!NodeMapSaveSystem.TryGetSelectedBattle(
+                    out currentStageIndex,
+                    out currentBattleIndex))
+            {
+                currentBattleIndex = 0;
+            }
 
             if (startMode == RunStartMode.None)
             {
@@ -367,7 +373,9 @@ public class StateManager : MonoBehaviour
             shopManager.RestoreRunState(saveData.shopRefreshCost);
         }
 
-        pendingRestoredRun = saveData;
+        pendingRestoredRun = saveData.startSelectedBattleFresh
+            ? null
+            : saveData;
         return true;
     }
 
@@ -452,7 +460,11 @@ public class StateManager : MonoBehaviour
             yield break;
         }
 
-        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
+        NodeMapSaveSystem.CompleteActiveNode();
+        if (!LoadingTransitionController.LoadScene("NodeMap"))
+        {
+            SceneManager.LoadScene("NodeMap");
+        }
     }
 
     private void StartRestoredShop()
@@ -846,7 +858,6 @@ public class StateManager : MonoBehaviour
             return;
         }
 
-        RunSaveSystem.DeleteSave();
         StopBattleStartPresentation();
         SetInputLocked(true);
         battleClearCoroutine = StartCoroutine(ShowBattleClearWhenSettled());
@@ -899,7 +910,12 @@ public class StateManager : MonoBehaviour
             yield break;
         }
 
-        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
+        SaveCurrentRun();
+        NodeMapSaveSystem.CompleteActiveNode();
+        if (!LoadingTransitionController.LoadScene("NodeMap"))
+        {
+            SceneManager.LoadScene("NodeMap");
+        }
     }
 
     private void CompleteRunAndLoadEnding()
@@ -911,6 +927,7 @@ public class StateManager : MonoBehaviour
 
         suppressExitSave = true;
         RunSaveSystem.DeleteSave();
+        NodeMapSaveSystem.DeleteSave();
         GameStatistics.EndRun(true);
         currentState = GameFlowState.RunComplete;
         SetPanels(false, false, false);
@@ -975,6 +992,7 @@ public class StateManager : MonoBehaviour
         waveManager.StopBattle();
         suppressExitSave = true;
         RunSaveSystem.DeleteSave();
+        NodeMapSaveSystem.DeleteSave();
         GameStatistics.EndRun(false);
         currentState = GameFlowState.RunFailed;
         SetPanels(false, true, false);

@@ -133,6 +133,7 @@ public sealed class RunSaveData
     public int flowState = (int)GameFlowState.Battle;
     public int stageIndex;
     public int battleIndex;
+    public bool startSelectedBattleFresh;
     public int currentHealth;
     public int maxHealth;
     public int money;
@@ -212,6 +213,29 @@ public static class RunSaveSystem
     public static void RequestStart(RunStartMode mode)
     {
         requestedStartMode = mode;
+    }
+
+    public static bool PrepareForSelectedBattle(int stageIndex, int battleIndex)
+    {
+        if (!TryLoad(out RunSaveData saveData))
+        {
+            return false;
+        }
+
+        saveData.stageIndex = Mathf.Max(0, stageIndex);
+        saveData.battleIndex = Mathf.Max(0, battleIndex);
+        saveData.flowState = (int)GameFlowState.Battle;
+        saveData.startSelectedBattleFresh = true;
+        saveData.currentWaveIndex = 0;
+        saveData.remainingSpawnTurns = 0;
+        saveData.isWaitingForNextWave = false;
+        saveData.isBattleCompletionPending = false;
+        saveData.currentEnemyTurnCycle = 0;
+        saveData.reservedSpawnTileIndices.Clear();
+        saveData.enemies.Clear();
+        saveData.bombs.Clear();
+        saveData.droppedItems.Clear();
+        return Save(saveData);
     }
 
     public static RunStartMode ConsumeRequestedStartMode()
