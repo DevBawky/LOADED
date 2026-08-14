@@ -38,6 +38,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private CombatFeedbackController combatFeedback;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private RelicManager relicManager;
     [SerializeField] private GameStartUI gameStartUI;
 
     [Header("Panels")]
@@ -125,6 +126,15 @@ public class StateManager : MonoBehaviour
             FindObjectsInactive.Include);
         combatFeedback ??= FindFirstObjectByType<CombatFeedbackController>(
             FindObjectsInactive.Include);
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
+        if (relicManager == null)
+        {
+            relicManager = gameObject.AddComponent<RelicManager>();
+        }
+
+        relicManager.BindPlayerMove(playerMove);
 
         gameStartUI ??= FindFirstObjectByType<GameStartUI>(
             FindObjectsInactive.Include);
@@ -318,6 +328,7 @@ public class StateManager : MonoBehaviour
             saveData.nextCycleAcquisitionOrders);
         playerInventory.CaptureRunState(
             saveData.inventoryItemAssetNames);
+        relicManager?.CaptureRunState(saveData.relics);
         if (isBattle)
         {
             waveManager.CaptureRunState(saveData);
@@ -365,7 +376,9 @@ public class StateManager : MonoBehaviour
                 saveData.bullets,
                 shopManager.ResolveSavedBullet,
                 saveData.paidBulletRemovalCount,
-                saveData.nextCycleAcquisitionOrders))
+                saveData.nextCycleAcquisitionOrders)
+            || relicManager != null && !relicManager.RestoreRunState(
+                saveData.relics))
         {
             return false;
         }
@@ -808,6 +821,7 @@ public class StateManager : MonoBehaviour
         }
 
         bool beganBattle;
+        bool restoringBattle = pendingRestoredRun != null;
 
         if (pendingRestoredRun != null)
         {
@@ -827,6 +841,15 @@ public class StateManager : MonoBehaviour
             RunSaveSystem.DeleteSave();
             ShowRunComplete("CONFIGURATION ERROR");
             return;
+        }
+
+        if (!restoringBattle)
+        {
+            relicManager?.BeginBattle();
+        }
+        else
+        {
+            relicManager?.ResumeBattle();
         }
 
         SetInputLocked(false);
@@ -885,6 +908,7 @@ public class StateManager : MonoBehaviour
         }
 
         StopBattleStartPresentation();
+        relicManager?.EndBattle();
         SetInputLocked(true);
         battleClearCoroutine = StartCoroutine(ShowBattleClearWhenSettled());
     }

@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Gold Panner
+  m_EditorClassIdentifier:
+  relicId: gold_panner
+  displayName: 사금 선별기
+  description: 골드 1개당 10% 확률로 금덩이를 얻습니다. 3개가 모이면 다음 탄환은 치명타가 확정되고 최종 피해가 5배가 됩니다.
+  icon: {fileID: 0}
+  lifetimeType: 0
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 16
+    finalDamageMultiplier: 5
+    goldNuggetChance: 10
+    nuggetsRequired: 3

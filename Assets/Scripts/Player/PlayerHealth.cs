@@ -33,6 +33,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
 
     private StatusEffectController statusEffects;
     private CombatFeedbackController combatFeedback;
+    private RelicManager relicManager;
     private Volume damageFlashVolume;
     private VolumeProfile damageFlashProfile;
     private float damageFlashElapsed = -1f;
@@ -54,6 +55,8 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
     {
         statusEffects = GetComponent<StatusEffectController>();
         combatFeedback = FindFirstObjectByType<CombatFeedbackController>();
+        relicManager = FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
         ResolveUIReferences();
         currentHealth = Mathf.Clamp(startingHealth, 0, maxHealth);
         CreateDamageFlashVolume();
@@ -100,10 +103,15 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
             ? damage
             : statusEffects.ModifyIncomingAttackDamage(damage);
         int previousHealth = currentHealth;
-        SetCurrentHealth(currentHealth - modifiedDamage);
+        SetCurrentHealth(ResolveDamageTargetHealth(modifiedDamage));
 
         if (currentHealth < previousHealth)
         {
+            relicManager ??= FindFirstObjectByType<RelicManager>(
+                FindObjectsInactive.Include);
+            relicManager?.NotifyPlayerHealthLost(
+                previousHealth - currentHealth,
+                maxHealth);
             SoundManager.PlayHit();
             PlayDamageScreenFlash();
             combatFeedback ??= FindFirstObjectByType<CombatFeedbackController>();
@@ -121,10 +129,15 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         }
 
         int previousHealth = currentHealth;
-        SetCurrentHealth(currentHealth - damage);
+        SetCurrentHealth(ResolveDamageTargetHealth(damage));
 
         if (currentHealth < previousHealth)
         {
+            relicManager ??= FindFirstObjectByType<RelicManager>(
+                FindObjectsInactive.Include);
+            relicManager?.NotifyPlayerHealthLost(
+                previousHealth - currentHealth,
+                maxHealth);
             SoundManager.PlayHit();
             PlayDamageScreenFlash();
         }
@@ -201,6 +214,28 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         {
             Defeated?.Invoke();
         }
+    }
+
+    private int ResolveDamageTargetHealth(int damage)
+    {
+        if (damage <= 0)
+        {
+            return currentHealth;
+        }
+
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
+        if (relicManager != null && relicManager.TryPreventLethalDamage(
+                damage,
+                currentHealth,
+                out int survivingHealth))
+        {
+            return survivingHealth;
+        }
+
+        long remainingHealth = (long)currentHealth - damage;
+        return remainingHealth <= 0L ? 0 : (int)remainingHealth;
     }
 
     private void RefreshUI()

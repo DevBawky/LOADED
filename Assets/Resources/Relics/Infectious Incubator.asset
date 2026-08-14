@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Infectious Incubator
+  m_EditorClassIdentifier:
+  relicId: infectious_incubator
+  displayName: 감염성 배양기
+  description: 디버프 상태의 적이 죽으면 남아 있던 각 디버프 스택의 50%를 가장 가까운 적에게 이전합니다.
+  icon: {fileID: 0}
+  lifetimeType: 0
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 12
+    debuffTransferPercent: 50

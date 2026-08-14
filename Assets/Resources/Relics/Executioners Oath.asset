@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Executioners Oath
+  m_EditorClassIdentifier:
+  relicId: executioners_oath
+  displayName: 처형자의 서약
+  description: 탄환으로 적을 연속 처치하면 다음 탄환의 최종 피해가 단계별로 1.5배, 2배, 3배, 최대 5배가 됩니다. 처치 실패 시 초기화됩니다.
+  icon: {fileID: 0}
+  lifetimeType: 0
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 21
+    executionDamageMultipliers:
+    - 1.5
+    - 2
+    - 3
+    - 5

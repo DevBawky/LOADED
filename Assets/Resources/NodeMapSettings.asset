@@ -26,7 +26,7 @@ MonoBehaviour:
   bossBattle: {fileID: 11400000, guid: 5a34671060124aaa84b424139632763d, type: 2}
   generationRules:
   - nodeType: 1
-    weight: 50
+    weight: 35
     minimumCount: 5
     maximumCount: -1
   - nodeType: 2

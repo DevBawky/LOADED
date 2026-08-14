@@ -36,6 +36,7 @@ public class CurrencyManager : MonoBehaviour
     private Coroutine moneyPanelPunchCoroutine;
     private Vector3 moneyPanelBaseScale = Vector3.one;
     private bool capturedMoneyPanelScale;
+    private RelicManager relicManager;
     private readonly List<GameObject> spawnedFlyingGold =
         new List<GameObject>();
 
@@ -47,6 +48,8 @@ public class CurrencyManager : MonoBehaviour
     {
         currentMoney = Mathf.Max(0, startingMoney);
         pendingAnimatedMoney = 0;
+        relicManager = FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
         BindPresentation();
         RefreshText();
     }
@@ -387,6 +390,9 @@ public class CurrencyManager : MonoBehaviour
     private void CommitMoney(int amount)
     {
         currentMoney = SaturatingAdd(currentMoney, amount);
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        relicManager?.NotifyGoldGained(amount);
         NotifyMoneyChanged();
     }
 

@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Closed Circuit
+  m_EditorClassIdentifier:
+  relicId: closed_circuit
+  displayName: 폐쇄 회로
+  description: 실제 사격 5회마다 가장 오래전에 사용한 탄환 하나를 빈 약실에 즉시 장전합니다. 실린더당 최대 2회 발동합니다.
+  icon: {fileID: 0}
+  lifetimeType: 0
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 11
+    circuitShotThreshold: 5
+    circuitMaxReloadsPerCylinder: 2

@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Running Spur
+  m_EditorClassIdentifier:
+  relicId: running_spur
+  displayName: 질주의 박차
+  description: 이동한 타일마다 이동 스택을 얻습니다. 다음 사격의 최종 피해가 스택마다 1.1배가 되며 사용한 스택은 사격 후 사라집니다.
+  icon: {fileID: 0}
+  lifetimeType: 0
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 2
+    finalDamageMultiplier: 2
+    movementDamageMultiplierPerStack: 1.1
+    survivingHealth: 1
+    movementSources: 3
+    movementStackReset: 0

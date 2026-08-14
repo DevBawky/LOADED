@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Carriage
+  m_EditorClassIdentifier:
+  relicId: carriage
+  displayName: 마차
+  description: 일반 이동과 위치 변경 탄환으로 5칸 이동할 때마다 무료 장전 1회를 얻습니다. 최대 2회 저장합니다.
+  icon: {fileID: 0}
+  lifetimeType: 0
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 15
+    movementTilesPerFreeReload: 5
+    freeReloadStorageLimit: 2
+    movementSources: 3

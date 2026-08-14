@@ -100,6 +100,22 @@ public sealed class RunDroppedItemSaveData
 }
 
 [Serializable]
+public sealed class RunRelicSaveData
+{
+    public string relicId;
+    public int stackCount = 1;
+    public int remainingCharges;
+    public int movementStacks;
+    public long storedDamage;
+    public int primaryCounter;
+    public int secondaryCounter;
+    public double storedValue;
+    public bool runtimeFlag;
+    public List<int> trackedBulletAcquisitionOrders = new List<int>();
+    public int acquisitionOrder;
+}
+
+[Serializable]
 public sealed class RunCombatReportSaveData
 {
     public int cumulativeDamage;
@@ -142,6 +158,7 @@ public sealed class RunSaveData
     public List<RunBulletSaveData> bullets = new List<RunBulletSaveData>();
     public List<int> nextCycleAcquisitionOrders = new List<int>();
     public List<string> inventoryItemAssetNames = new List<string>();
+    public List<RunRelicSaveData> relics = new List<RunRelicSaveData>();
     public int playerTileIndex;
     public bool playerFacingRight;
     public int playerTurnCount;
@@ -410,6 +427,7 @@ public static class RunSaveSystem
         saveData.bullets ??= new List<RunBulletSaveData>();
         saveData.nextCycleAcquisitionOrders ??= new List<int>();
         saveData.inventoryItemAssetNames ??= new List<string>();
+        saveData.relics ??= new List<RunRelicSaveData>();
         saveData.playerTurnCount = Mathf.Max(0, saveData.playerTurnCount);
         saveData.cumulativeBattleTurnCount = Mathf.Max(
             saveData.playerTurnCount,
