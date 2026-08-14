@@ -401,6 +401,7 @@ public class ShopManager : MonoBehaviour
     public void OpenShop()
     {
         currencyManager?.FlushPendingMoney();
+        currentRefreshCost = Mathf.Max(0, initialRefreshCost);
         ResetOfferButtonsForNewVisit();
         GenerateOffers();
         GenerateItemOffers();

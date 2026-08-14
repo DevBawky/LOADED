@@ -560,6 +560,20 @@ public static class NodeMapSaveSystem
         return Save(data);
     }
 
+    public static int GetCompletedNodeCount(NodeMapNodeType type)
+    {
+        if (!TryLoad(out NodeMapRunData data)
+            || data.completedNodeIds == null || data.nodes == null)
+        {
+            return 0;
+        }
+
+        HashSet<int> completedIds = new HashSet<int>(
+            data.completedNodeIds);
+        return data.nodes.Count(node => node != null
+            && node.type == type && completedIds.Contains(node.id));
+    }
+
     public static bool TryGetSelectedBattle(
         out int stageIndex,
         out int battleIndex)

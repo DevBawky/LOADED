@@ -27,14 +27,14 @@ MonoBehaviour:
   generationRules:
   - nodeType: 1
     weight: 50
-    minimumCount: 3
+    minimumCount: 5
     maximumCount: -1
   - nodeType: 2
     weight: 10
     minimumCount: 1
     maximumCount: 3
   - nodeType: 3
-    weight: 999
+    weight: 20
     minimumCount: 1
     maximumCount: 3
   - nodeType: 4

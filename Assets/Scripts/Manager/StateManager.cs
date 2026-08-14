@@ -13,7 +13,8 @@ public enum GameFlowState
     BattleClear = 2,
     Shop = 3,
     RunComplete = 4,
-    RunFailed = 5
+    RunFailed = 5,
+    Event = 6
 }
 
 [DefaultExecutionOrder(-100)]

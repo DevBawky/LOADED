@@ -104,6 +104,7 @@ public class InventoryTooltipUI : MonoBehaviour
     private int previewedCylinderBulletIndex = -1;
     private Vector2 debuffDescriptionInitialPosition;
     private bool hasDebuffDescriptionInitialPosition;
+    private bool externalEventPreviewActive;
 
     public void ConfigureDedicatedShop(
         Transform runtimeCanvasRoot,
@@ -215,12 +216,72 @@ public class InventoryTooltipUI : MonoBehaviour
         HideAll();
 
         if (tooltip == null || bulletTooltip == null
-            || shopItemSlots.Length == 0 || shopBulletSlots.Length == 0)
+            || runtimeShopManager != null
+            && (shopItemSlots.Length == 0 || shopBulletSlots.Length == 0))
         {
             Debug.LogError(
                 "Dedicated Shop tooltip UI is missing tooltip panels or hover targets.",
                 this);
         }
+    }
+
+    public void ConfigureEventScene(
+        Transform runtimeCanvasRoot,
+        PlayerInventory runtimeInventory,
+        DeckManager runtimeDeckManager,
+        CurrencyManager runtimeCurrencyManager,
+        StateManager runtimeStateManager)
+    {
+        ConfigureDedicatedShop(
+            runtimeCanvasRoot,
+            runtimeInventory,
+            null,
+            runtimeDeckManager,
+            runtimeCurrencyManager,
+            runtimeStateManager);
+    }
+
+    public void ShowEventRewardPreview(
+        BulletData bullet,
+        ItemData item,
+        RectTransform hoverTarget)
+    {
+        if (hoverTarget == null || bullet == null && item == null)
+        {
+            HideEventRewardPreview();
+            return;
+        }
+
+        externalEventPreviewActive = true;
+        hoverTarget.GetWorldCorners(tooltipCorners);
+        Vector2 topLeft = RectTransformUtility.WorldToScreenPoint(
+            GetCanvasCamera(),
+            tooltipCorners[1]);
+
+        if (bullet != null)
+        {
+            ShowBullet(
+                bullet,
+                topLeft,
+                TooltipPointerAnchor.BottomRight);
+        }
+        else
+        {
+            ShowItem(
+                item,
+                topLeft,
+                TooltipPointerAnchor.BottomRight,
+                false);
+        }
+    }
+
+    public void HideEventRewardPreview()
+    {
+        externalEventPreviewActive = false;
+        HideItemTooltip();
+        HideBulletTooltip();
+        HideCylinderBulletTooltip();
+        HideDebuffDescription();
     }
 
     private void OnEnable()
@@ -265,6 +326,8 @@ public class InventoryTooltipUI : MonoBehaviour
 
     private void OnDisable()
     {
+        externalEventPreviewActive = false;
+
         if (deckManager != null)
         {
             deckManager.StateChanged -= RefreshNextChip;
@@ -285,6 +348,11 @@ public class InventoryTooltipUI : MonoBehaviour
             || cylinderUI != null && cylinderUI.IsDragging)
         {
             HideAll();
+            return;
+        }
+
+        if (externalEventPreviewActive)
+        {
             return;
         }
 

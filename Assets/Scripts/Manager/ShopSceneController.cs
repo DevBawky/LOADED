@@ -29,6 +29,10 @@ public sealed class ShopSceneController : MonoBehaviour
     [SerializeField] private TMP_Text exitButtonText;
     [SerializeField] private string exitLabel = "TO MAP";
 
+    [Header("Run HUD")]
+    [SerializeField] private Image playerHealthFillImage;
+    [SerializeField] private TMP_Text playerHealthText;
+
     private RunSaveData runData;
     private GameObject shopPanel;
     private bool initialized;
@@ -125,6 +129,9 @@ public sealed class ShopSceneController : MonoBehaviour
         }
 
         SaveShopState();
+        runData.shopVisitActive = false;
+        runData.shop = new RunShopSaveData();
+        RunSaveSystem.Save(runData);
         NodeMapSaveSystem.CompleteActiveNode();
         LoadNodeMap();
     }
@@ -147,12 +154,14 @@ public sealed class ShopSceneController : MonoBehaviour
         playerInventory.RestoreRunState(
             runData.inventoryItemAssetNames,
             shopManager.ResolveSavedItem);
+        RefreshHealthPresentation();
         stateManager?.ConfigureExternalSceneState(
             runData.stageIndex,
             runData.battleIndex,
             GameFlowState.Shop);
 
-        bool resumeExistingVisit = runData.flowState
+        bool resumeExistingVisit = runData.shopVisitActive
+            && runData.flowState
                 == (int)GameFlowState.Shop
             && runData.shop != null
             && runData.shop.bulletOfferAssetNames != null
@@ -171,9 +180,10 @@ public sealed class ShopSceneController : MonoBehaviour
         }
         else
         {
-            shopManager.RestoreRunState(runData.shopRefreshCost);
             shopManager.OpenShop();
         }
+
+        runData.shopVisitActive = true;
 
         foreach (BulletManagementUI managementUI in
                  FindObjectsByType<BulletManagementUI>(
@@ -251,6 +261,7 @@ public sealed class ShopSceneController : MonoBehaviour
 
         currencyManager.FlushPendingMoney();
         runData.flowState = (int)GameFlowState.Shop;
+        runData.shopVisitActive = true;
         runData.startSelectedBattleFresh = false;
         runData.money = currencyManager.CurrentMoney;
         runData.paidBulletRemovalCount = deckManager.PaidBulletRemovalCount;
@@ -277,6 +288,10 @@ public sealed class ShopSceneController : MonoBehaviour
             FindObjectsInactive.Include);
         stateManager ??= FindFirstObjectByType<StateManager>(
             FindObjectsInactive.Include);
+        playerHealthFillImage ??= FindSceneComponent<Image>(
+            "Image | Fill Amount");
+        playerHealthText ??= FindSceneComponent<TMP_Text>(
+            "Text | Player HP");
 
         if (exitButton == null)
         {
@@ -313,6 +328,50 @@ public sealed class ShopSceneController : MonoBehaviour
         }
 
         return null;
+    }
+
+    private static T FindSceneComponent<T>(string objectName)
+        where T : Component
+    {
+        foreach (T component in FindObjectsByType<T>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (component != null && component.gameObject.scene.IsValid()
+                && component.name == objectName)
+            {
+                return component;
+            }
+        }
+
+        return null;
+    }
+
+    private void RefreshHealthPresentation()
+    {
+        if (runData == null)
+        {
+            return;
+        }
+
+        int maximumHealth = Mathf.Max(1, runData.maxHealth);
+        runData.maxHealth = maximumHealth;
+        runData.currentHealth = Mathf.Clamp(
+            runData.currentHealth,
+            1,
+            maximumHealth);
+
+        if (playerHealthFillImage != null)
+        {
+            playerHealthFillImage.fillAmount =
+                (float)runData.currentHealth / maximumHealth;
+        }
+
+        if (playerHealthText != null)
+        {
+            playerHealthText.text =
+                $"{runData.currentHealth}/{maximumHealth}";
+        }
     }
 
     private static bool HasNamedAncestor(

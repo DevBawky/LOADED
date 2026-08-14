@@ -171,6 +171,13 @@ public sealed class RunSaveData
     public bool statisticsCylinderActive;
     public long statisticsCurrentCylinderDamage;
     public RunShopSaveData shop = new RunShopSaveData();
+    public bool shopVisitActive;
+    public string activeEventId;
+    public bool eventChoiceResolved;
+    public string eventOutcomeText;
+    public List<int> eventChoiceSelectionCounts = new List<int>();
+    public List<int> eventChoiceFailureCounts = new List<int>();
+    public List<string> completedEventIds = new List<string>();
 }
 
 public enum RunStartMode
@@ -418,6 +425,27 @@ public static class RunSaveSystem
         saveData.shop.purchasedBulletOffers ??= new List<bool>();
         saveData.shop.itemOfferAssetNames ??= new List<string>();
         saveData.shop.purchasedItemOffers ??= new List<bool>();
+        saveData.activeEventId ??= string.Empty;
+        saveData.eventOutcomeText ??= string.Empty;
+        saveData.eventChoiceSelectionCounts ??= new List<int>();
+        saveData.eventChoiceFailureCounts ??= new List<int>();
+        for (int index = 0;
+             index < saveData.eventChoiceSelectionCounts.Count;
+             index++)
+        {
+            saveData.eventChoiceSelectionCounts[index] = Mathf.Max(
+                0,
+                saveData.eventChoiceSelectionCounts[index]);
+        }
+        for (int index = 0;
+             index < saveData.eventChoiceFailureCounts.Count;
+             index++)
+        {
+            saveData.eventChoiceFailureCounts[index] = Mathf.Max(
+                0,
+                saveData.eventChoiceFailureCounts[index]);
+        }
+        saveData.completedEventIds ??= new List<string>();
     }
 }
 
