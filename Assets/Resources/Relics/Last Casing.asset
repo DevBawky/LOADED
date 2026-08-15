@@ -15,7 +15,7 @@ MonoBehaviour:
   relicId: last_casing
   displayName: "\uCD5C\uD6C4\uC758 \uD0C4\uD53C"
   description: "\uB9C8\uC9C0\uB9C9 \uD0C4\uD658 \uCD5C\uC885 \uD53C\uD574 x2"
-  icon: {fileID: 0}
+  icon: {fileID: 7654252820059296971, guid: 1206b3660e29ecf4d951aa3261484bf3, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0

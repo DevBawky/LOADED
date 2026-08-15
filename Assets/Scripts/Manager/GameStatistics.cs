@@ -195,6 +195,10 @@ public sealed class RunSaveData
     public List<int> eventChoiceSelectionCounts = new List<int>();
     public List<int> eventChoiceFailureCounts = new List<int>();
     public List<string> completedEventIds = new List<string>();
+    public bool treasureVisitActive;
+    public bool treasureChestOpened;
+    public bool treasureChoiceResolved;
+    public List<string> treasureOfferRelicIds = new List<string>();
 }
 
 public enum RunStartMode
@@ -464,6 +468,7 @@ public static class RunSaveSystem
                 saveData.eventChoiceFailureCounts[index]);
         }
         saveData.completedEventIds ??= new List<string>();
+        saveData.treasureOfferRelicIds ??= new List<string>();
     }
 }
 

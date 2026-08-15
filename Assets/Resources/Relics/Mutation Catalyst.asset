@@ -11,11 +11,14 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
   m_Name: Mutation Catalyst
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   relicId: mutation_catalyst
-  displayName: 변이 촉매
-  description: 대상의 서로 다른 활성 디버프 하나당 15% 확률로 해당 대상에게 주는 현재 피해가 3배가 됩니다. 확률은 최대 60%입니다.
-  icon: {fileID: 0}
+  displayName: "\uBCC0\uC774 \uCD09\uB9E4"
+  description: "\uB300\uC0C1\uC758 \uC11C\uB85C \uB2E4\uB978 \uD65C\uC131 \uB514\uBC84\uD504
+    \uD558\uB098\uB2F9 15% \uD655\uB960\uB85C \uD574\uB2F9 \uB300\uC0C1\uC5D0\uAC8C
+    \uC8FC\uB294 \uD604\uC7AC \uD53C\uD574\uAC00 3\uBC30\uAC00 \uB429\uB2C8\uB2E4.
+    \uD655\uB960\uC740 \uCD5C\uB300 60%\uC785\uB2C8\uB2E4."
+  icon: {fileID: 3082983114703229126, guid: d216fcf3fe437d14ba28a96bc3abe9b1, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
@@ -23,5 +26,30 @@ MonoBehaviour:
   effects:
   - effectType: 22
     finalDamageMultiplier: 3
+    movementDamageMultiplierPerStack: 1.1
+    survivingHealth: 1
+    movementSources: 3
+    movementStackReset: 0
+    circuitShotThreshold: 5
+    circuitMaxReloadsPerCylinder: 2
+    debuffTransferPercent: 50
+    stormDamagePercent: 40
+    movementTilesPerFreeReload: 5
+    freeReloadStorageLimit: 2
+    goldNuggetChance: 10
+    nuggetsRequired: 3
+    primerBaseChance: 5
+    primerFailureChanceBonus: 5
+    scaleMaximumDamagePercent: 100
+    memorialDamagePercentPerBullet: 20
+    memorialMaximumDamagePercent: 100
+    executionDamageMultipliers:
+    - 1.5
+    - 2
+    - 3
+    - 5
     mutationChancePerDebuffType: 15
     mutationMaximumChance: 60
+    brinkHealthThresholdPercent: 25
+    brinkBaseChance: 30
+    brinkFailureChanceBonus: 10

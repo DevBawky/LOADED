@@ -14,7 +14,8 @@ public enum GameFlowState
     Shop = 3,
     RunComplete = 4,
     RunFailed = 5,
-    Event = 6
+    Event = 6,
+    Treasure = 7
 }
 
 [DefaultExecutionOrder(-100)]

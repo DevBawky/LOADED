@@ -3897,6 +3897,7 @@ GameObject:
   - component: {fileID: 4012796633962611354}
   - component: {fileID: 2317708993118078193}
   - component: {fileID: 2163771465122791078}
+  - component: {fileID: 8702309483227639951}
   m_Layer: 5
   m_Name: Panel | Relics
   m_TagString: Untagged
@@ -3987,6 +3988,21 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!114 &8702309483227639951
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1524464015254638691}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5b8a90bd7534c53868272dd5fe7c46f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RelicInventoryUI
+  relicContainer: {fileID: 3577624809357629801}
+  relicPrefab: {fileID: 7365361337853700759, guid: ef20bd005aaf12e42bc589d1c679fa42, type: 3}
+  relicManager: {fileID: 0}
 --- !u!1 &1535161506793905619
 GameObject:
   m_ObjectHideFlags: 0

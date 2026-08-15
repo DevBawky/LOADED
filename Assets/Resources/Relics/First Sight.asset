@@ -11,11 +11,12 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
   m_Name: First Sight
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   relicId: first_sight
-  displayName: 초탄 조준경
-  description: 한 실린더의 첫 사격이 주는 최종 피해가 2배가 됩니다.
-  icon: {fileID: 0}
+  displayName: "\uCD08\uD0C4 \uC870\uC900\uACBD"
+  description: "\uD55C \uC2E4\uB9B0\uB354\uC758 \uCCAB \uC0AC\uACA9\uC774 \uC8FC\uB294
+    \uCD5C\uC885 \uD53C\uD574\uAC00 2\uBC30\uAC00 \uB429\uB2C8\uB2E4."
+  icon: {fileID: 7992578565702372793, guid: f0a13cfddc45f244f8c3cba4c936929b, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
@@ -27,3 +28,26 @@ MonoBehaviour:
     survivingHealth: 1
     movementSources: 3
     movementStackReset: 0
+    circuitShotThreshold: 5
+    circuitMaxReloadsPerCylinder: 2
+    debuffTransferPercent: 50
+    stormDamagePercent: 40
+    movementTilesPerFreeReload: 5
+    freeReloadStorageLimit: 2
+    goldNuggetChance: 10
+    nuggetsRequired: 3
+    primerBaseChance: 5
+    primerFailureChanceBonus: 5
+    scaleMaximumDamagePercent: 100
+    memorialDamagePercentPerBullet: 20
+    memorialMaximumDamagePercent: 100
+    executionDamageMultipliers:
+    - 1.5
+    - 2
+    - 3
+    - 5
+    mutationChancePerDebuffType: 15
+    mutationMaximumChance: 60
+    brinkHealthThresholdPercent: 25
+    brinkBaseChance: 30
+    brinkFailureChanceBonus: 10

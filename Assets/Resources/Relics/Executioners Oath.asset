@@ -11,19 +11,45 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
   m_Name: Executioners Oath
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   relicId: executioners_oath
-  displayName: 처형자의 서약
-  description: 탄환으로 적을 연속 처치하면 다음 탄환의 최종 피해가 단계별로 1.5배, 2배, 3배, 최대 5배가 됩니다. 처치 실패 시 초기화됩니다.
-  icon: {fileID: 0}
+  displayName: "\uCC98\uD615\uC790\uC758 \uC11C\uC57D"
+  description: "\uD0C4\uD658\uC73C\uB85C \uC801\uC744 \uC5F0\uC18D \uCC98\uCE58\uD558\uBA74
+    \uB2E4\uC74C \uD0C4\uD658\uC758 \uCD5C\uC885 \uD53C\uD574\uAC00 \uB2E8\uACC4\uBCC4\uB85C
+    1.5\uBC30, 2\uBC30, 3\uBC30, \uCD5C\uB300 5\uBC30\uAC00 \uB429\uB2C8\uB2E4. \uCC98\uCE58
+    \uC2E4\uD328 \uC2DC \uCD08\uAE30\uD654\uB429\uB2C8\uB2E4."
+  icon: {fileID: 3657601744593346515, guid: 3b52c6bcdbd855e47ac5864a257d9b75, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
   maxStack: 1
   effects:
   - effectType: 21
+    finalDamageMultiplier: 2
+    movementDamageMultiplierPerStack: 1.1
+    survivingHealth: 1
+    movementSources: 3
+    movementStackReset: 0
+    circuitShotThreshold: 5
+    circuitMaxReloadsPerCylinder: 2
+    debuffTransferPercent: 50
+    stormDamagePercent: 40
+    movementTilesPerFreeReload: 5
+    freeReloadStorageLimit: 2
+    goldNuggetChance: 10
+    nuggetsRequired: 3
+    primerBaseChance: 5
+    primerFailureChanceBonus: 5
+    scaleMaximumDamagePercent: 100
+    memorialDamagePercentPerBullet: 20
+    memorialMaximumDamagePercent: 100
     executionDamageMultipliers:
     - 1.5
     - 2
     - 3
     - 5
+    mutationChancePerDebuffType: 15
+    mutationMaximumChance: 60
+    brinkHealthThresholdPercent: 25
+    brinkBaseChance: 30
+    brinkFailureChanceBonus: 10

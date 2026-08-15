@@ -287,12 +287,12 @@ MonoBehaviour:
   activeNodeHoverScale: 1.15
   activeNodeHoverDuration: 0.12
   startIcon: {fileID: -3764558647745528456, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  normalBattleIcon: {fileID: 5638554280527815675, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  eliteBattleIcon: {fileID: 8137023920255244971, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  shopIcon: {fileID: 4155087365185008038, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  treasureIcon: {fileID: -2323235933190528792, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  eventIcon: {fileID: -7778529729076754945, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  bossIcon: {fileID: 1136793851880326518, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
+  normalBattleIcon: {fileID: 354016729513242704, guid: fbaf128253f7a9342be7e80274543d99, type: 3}
+  eliteBattleIcon: {fileID: 1856344591294532619, guid: 641181f891e3d3445b7778fa90b7dcf6, type: 3}
+  shopIcon: {fileID: -5419993759424957379, guid: 66e5c5168d4921b45a879a78a12b66ec, type: 3}
+  treasureIcon: {fileID: -7430330322050283292, guid: dc4a2b09149823b44a53868e05f8553d, type: 3}
+  eventIcon: {fileID: -6180303875081228106, guid: 9f3a08291739aad4c9bf2de4225d49c8, type: 3}
+  bossIcon: {fileID: -527412901192673245, guid: cd923333f019aa744a04b863ae2f9731, type: 3}
   pathMaterial: {fileID: 0}
   pathColor: {r: 0.72, g: 0.61, b: 0.45, a: 0.9}
   completedPathColor: {r: 0.25, g: 0.8, b: 0.38, a: 1}

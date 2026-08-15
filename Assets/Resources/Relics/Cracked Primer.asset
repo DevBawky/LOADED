@@ -11,11 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
   m_Name: Cracked Primer
-  m_EditorClassIdentifier:
+  m_EditorClassIdentifier: 
   relicId: cracked_primer
-  displayName: 금이 간 뇌관
-  description: 사격마다 5% 확률로 최종 피해가 3배가 됩니다. 실패할 때마다 확률이 5%p 증가하며 성공하면 초기화됩니다.
-  icon: {fileID: 0}
+  displayName: "\uAE08\uC774 \uAC04 \uB1CC\uAD00"
+  description: "\uC0AC\uACA9\uB9C8\uB2E4 5% \uD655\uB960\uB85C \uCD5C\uC885 \uD53C\uD574\uAC00
+    3\uBC30\uAC00 \uB429\uB2C8\uB2E4. \uC2E4\uD328\uD560 \uB54C\uB9C8\uB2E4 \uD655\uB960\uC774
+    5%p \uC99D\uAC00\uD558\uBA70 \uC131\uACF5\uD558\uBA74 \uCD08\uAE30\uD654\uB429\uB2C8\uB2E4."
+  icon: {fileID: 693051727126636872, guid: b596cc87f76283043a386ccf6d27576c, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
@@ -23,5 +25,30 @@ MonoBehaviour:
   effects:
   - effectType: 17
     finalDamageMultiplier: 3
+    movementDamageMultiplierPerStack: 1.1
+    survivingHealth: 1
+    movementSources: 3
+    movementStackReset: 0
+    circuitShotThreshold: 5
+    circuitMaxReloadsPerCylinder: 2
+    debuffTransferPercent: 50
+    stormDamagePercent: 40
+    movementTilesPerFreeReload: 5
+    freeReloadStorageLimit: 2
+    goldNuggetChance: 10
+    nuggetsRequired: 3
     primerBaseChance: 5
     primerFailureChanceBonus: 5
+    scaleMaximumDamagePercent: 100
+    memorialDamagePercentPerBullet: 20
+    memorialMaximumDamagePercent: 100
+    executionDamageMultipliers:
+    - 1.5
+    - 2
+    - 3
+    - 5
+    mutationChancePerDebuffType: 15
+    mutationMaximumChance: 60
+    brinkHealthThresholdPercent: 25
+    brinkBaseChance: 30
+    brinkFailureChanceBonus: 10
