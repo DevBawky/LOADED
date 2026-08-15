@@ -149,8 +149,16 @@ public class BulletManagementUI : MonoBehaviour
         upgradeButton = FindNamedChild<Button>(
             manageBulletsPanel == null ? null : manageBulletsPanel.transform,
             "Button | Upgrade");
+        upgradeTooltip = FindNamedChild<RectTransform>(
+            manageBulletsPanel == null ? null : manageBulletsPanel.transform,
+            "Panel | Upgrade Tooltip");
+        upgradeTooltipDescriptionText = FindNamedChild<TextMeshProUGUI>(
+            upgradeTooltip,
+            "Text | Bullet Description");
         ResolveReferences();
         BindEvents();
+        DisableRaycasts(upgradeTooltip);
+        HideUpgradeTooltip();
 
         eventSelectionMode = mode;
         eventConfirmCallback = onConfirm;

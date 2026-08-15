@@ -154,7 +154,7 @@ public sealed class EventDefinition : ScriptableObject
 
     [Header("Appearance Weight")]
     [Min(0f)] public float baseWeight = 10f;
-    [Tooltip("선택을 마친 이벤트가 같은 런에서 다시 나오지 않게 합니다.")]
+    [Tooltip("기존 이벤트 에셋 호환용입니다. 완료한 이벤트는 이 값과 관계없이 같은 런에서 다시 나오지 않습니다.")]
     public bool oncePerRun = true;
     [Tooltip("위에서 아래 순서로 가중치 연산을 적용합니다.")]
     public EventWeightRule[] weightRules = Array.Empty<EventWeightRule>();
@@ -262,8 +262,8 @@ public static class EventSelector
 
         foreach (EventDefinition definition in events)
         {
-            if (definition == null || definition.oncePerRun
-                && completedEventIds != null
+            if (definition == null
+                || completedEventIds != null
                 && completedEventIds.Contains(definition.StableId))
             {
                 continue;
