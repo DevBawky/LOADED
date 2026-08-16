@@ -247,6 +247,21 @@ public sealed class NodeMapGeneratorTests
     }
 
     [Test]
+    public void ProgressSection_UsesRequestedThirdBoundaries()
+    {
+        const int bossColumn = 14;
+
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            5, bossColumn), Is.EqualTo(NodeMapBattleProgressSection.Early));
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            6, bossColumn), Is.EqualTo(NodeMapBattleProgressSection.Middle));
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            9, bossColumn), Is.EqualTo(NodeMapBattleProgressSection.Middle));
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            10, bossColumn), Is.EqualTo(NodeMapBattleProgressSection.Late));
+    }
+
+    [Test]
     public void Generate_AssignsNormalBattleIndexFromProgressPool()
     {
         NodeMapGenerationRule[] rules =

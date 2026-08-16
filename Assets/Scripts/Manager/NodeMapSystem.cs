@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -25,6 +26,16 @@ public enum NodeMapBattleProgressSection
     Early,
     Middle,
     Late
+}
+
+[Serializable]
+public sealed class NodeMapNodeDescription
+{
+    public NodeMapNodeType nodeType;
+    [Tooltip("Panel | Node Description의 Text | Node Type에 표시할 이름입니다.")]
+    public string displayName;
+    [Tooltip("Panel | Node Description의 Text | Node Description에 표시할 설명입니다.")]
+    [TextArea(2, 5)] public string description;
 }
 
 [Serializable]
@@ -453,12 +464,12 @@ public static class NodeMapGenerator
                 lastPlayableColumn,
                 Mathf.Clamp(column, firstPlayableColumn, lastPlayableColumn));
 
-        if (progress < 1f / 3f)
+        if (progress <= 1f / 3f)
         {
             return NodeMapBattleProgressSection.Early;
         }
 
-        return progress < 2f / 3f
+        return progress <= 2f / 3f
             ? NodeMapBattleProgressSection.Middle
             : NodeMapBattleProgressSection.Late;
     }
@@ -767,6 +778,54 @@ public class NodeMapSettingsDefinition : ScriptableObject
     [SerializeField] private Sprite treasureIcon;
     [SerializeField] private Sprite eventIcon;
     [SerializeField] private Sprite bossIcon;
+
+    [Header("Node Type Descriptions")]
+    [Tooltip("노드 타입별 표시 이름과 설명입니다. 아이콘은 Node Type Icons 설정을 사용합니다.")]
+    [SerializeField] private NodeMapNodeDescription[] nodeDescriptions =
+    {
+        new NodeMapNodeDescription
+        {
+            nodeType = NodeMapNodeType.Start,
+            displayName = "시작",
+            description = "여정이 시작되는 지점입니다."
+        },
+        new NodeMapNodeDescription
+        {
+            nodeType = NodeMapNodeType.NormalBattle,
+            displayName = "전투",
+            description = "일반 적들과 전투를 진행합니다."
+        },
+        new NodeMapNodeDescription
+        {
+            nodeType = NodeMapNodeType.EliteBattle,
+            displayName = "정예 전투",
+            description = "강력한 정예 적들과 전투를 진행합니다."
+        },
+        new NodeMapNodeDescription
+        {
+            nodeType = NodeMapNodeType.Shop,
+            displayName = "상점",
+            description = "아이템을 구매하고 전열을 정비합니다."
+        },
+        new NodeMapNodeDescription
+        {
+            nodeType = NodeMapNodeType.Treasure,
+            displayName = "보물",
+            description = "보물상자를 열어 유물을 획득합니다."
+        },
+        new NodeMapNodeDescription
+        {
+            nodeType = NodeMapNodeType.Event,
+            displayName = "이벤트",
+            description = "특별한 사건과 선택지를 만납니다."
+        },
+        new NodeMapNodeDescription
+        {
+            nodeType = NodeMapNodeType.Boss,
+            displayName = "보스",
+            description = "스테이지의 보스와 결전을 치릅니다."
+        }
+    };
     [Min(3)] [SerializeField] private int columns = 12;
     [Min(2)] [SerializeField] private int rows = 4;
 
@@ -782,6 +841,8 @@ public class NodeMapSettingsDefinition : ScriptableObject
     public BattleData BossBattle => bossBattle;
     public IReadOnlyList<NodeMapGenerationRule> GenerationRules =>
         generationRules ?? Array.Empty<NodeMapGenerationRule>();
+    public IReadOnlyList<NodeMapNodeDescription> NodeDescriptions =>
+        nodeDescriptions ?? Array.Empty<NodeMapNodeDescription>();
     public Sprite GetIcon(NodeMapNodeType type) => type switch
     {
         NodeMapNodeType.Start => startIcon,
@@ -801,7 +862,7 @@ public class NodeMapSettingsDefinition : ScriptableObject
         {
             unchecked
             {
-                const int GenerationAlgorithmRevision = 3;
+                const int GenerationAlgorithmRevision = 4;
                 int hash = 17;
                 hash = hash * 31 + GenerationAlgorithmRevision;
                 hash = hash * 31 + Columns;
@@ -911,6 +972,13 @@ public class NodeMapControllerDefinition : MonoBehaviour
     [SerializeField] private Sprite eventIcon;
     [SerializeField] private Sprite bossIcon;
 
+    [Header("Node Description Panel")]
+    [Tooltip("비워두면 씬의 Panel | Node Description을 자동으로 찾습니다.")]
+    [SerializeField] private GameObject nodeDescriptionPanel;
+    [SerializeField] private Image nodeDescriptionIcon;
+    [SerializeField] private TMP_Text nodeDescriptionTypeText;
+    [SerializeField] private TMP_Text nodeDescriptionText;
+
     [Header("Dotted Path (LineRenderer)")]
     [Tooltip("비워두면 Sprites/Default 셰이더로 런타임 머티리얼을 만듭니다.")]
     [SerializeField] private Material pathMaterial;
@@ -934,6 +1002,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
     private Texture2D runtimeDashTexture;
     private Coroutine scrollAlignmentCoroutine;
     private int hoveredNodeId = -1;
+    private int describedNodeId = -1;
     private readonly List<NodeMapPathView> pathViews =
         new List<NodeMapPathView>();
     private readonly HashSet<int> availableNodeIds = new HashSet<int>();
@@ -969,6 +1038,8 @@ public class NodeMapControllerDefinition : MonoBehaviour
             : Resources.Load<NodeMapSettings>(SettingsResourceName);
         scrollRect = FindFirstObjectByType<ScrollRect>();
         content = scrollRect == null ? null : scrollRect.content;
+        ResolveNodeDescriptionPanel();
+        HideNodeDescription();
 
         if (settings == null || settings.Stage == null || content == null)
         {
@@ -1026,6 +1097,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
     private void BuildMap()
     {
         hoveredNodeId = -1;
+        HideNodeDescription();
         pathViews.Clear();
         availableNodeIds.Clear();
         foreach (Transform child in content)
@@ -1578,7 +1650,125 @@ public class NodeMapControllerDefinition : MonoBehaviour
             available,
             activeNodeHoverScale,
             activeNodeHoverDuration,
-            hovered => SetHoveredNode(node.id, hovered));
+            hovered => HandleNodeHover(node, hovered));
+    }
+
+    private void HandleNodeHover(NodeMapNodeData node, bool hovered)
+    {
+        if (node == null)
+        {
+            return;
+        }
+
+        SetHoveredNode(node.id, hovered);
+        if (hovered)
+        {
+            ShowNodeDescription(node);
+        }
+        else if (describedNodeId == node.id)
+        {
+            HideNodeDescription();
+        }
+    }
+
+    private void ShowNodeDescription(NodeMapNodeData node)
+    {
+        ResolveNodeDescriptionPanel();
+        if (nodeDescriptionPanel == null)
+        {
+            return;
+        }
+
+        NodeMapNodeDescription description = settings.NodeDescriptions
+            .FirstOrDefault(entry => entry != null
+                && entry.nodeType == node.type);
+        if (nodeDescriptionIcon != null)
+        {
+            nodeDescriptionIcon.sprite = GetNodeIcon(node.type);
+            nodeDescriptionIcon.preserveAspect = true;
+            nodeDescriptionIcon.enabled = nodeDescriptionIcon.sprite != null;
+        }
+        if (nodeDescriptionTypeText != null)
+        {
+            nodeDescriptionTypeText.text = description == null
+                || string.IsNullOrWhiteSpace(description.displayName)
+                    ? GetNodeLabel(node.type)
+                    : description.displayName;
+        }
+        if (nodeDescriptionText != null)
+        {
+            nodeDescriptionText.text = description?.description
+                ?? string.Empty;
+        }
+
+        describedNodeId = node.id;
+        nodeDescriptionPanel.SetActive(true);
+    }
+
+    private void HideNodeDescription()
+    {
+        describedNodeId = -1;
+        if (nodeDescriptionPanel != null)
+        {
+            nodeDescriptionPanel.SetActive(false);
+        }
+    }
+
+    private void ResolveNodeDescriptionPanel()
+    {
+        if (nodeDescriptionPanel == null)
+        {
+            RectTransform panel = FindSceneComponent<RectTransform>(
+                "Panel | Node Description");
+            nodeDescriptionPanel = panel == null
+                ? null
+                : panel.gameObject;
+        }
+
+        if (nodeDescriptionPanel == null)
+        {
+            return;
+        }
+
+        nodeDescriptionIcon ??= FindChildComponent<Image>(
+            nodeDescriptionPanel.transform,
+            "Image | Node Icon");
+        nodeDescriptionTypeText ??= FindChildComponent<TMP_Text>(
+            nodeDescriptionPanel.transform,
+            "Text | Node Type");
+        nodeDescriptionText ??= FindChildComponent<TMP_Text>(
+            nodeDescriptionPanel.transform,
+            "Text | Node Description");
+    }
+
+    private static T FindSceneComponent<T>(string objectName)
+        where T : Component
+    {
+        foreach (T candidate in FindObjectsByType<T>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (candidate.name == objectName)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static T FindChildComponent<T>(Transform root, string objectName)
+        where T : Component
+    {
+        foreach (T candidate in root.GetComponentsInChildren<T>(true))
+        {
+            if (candidate.name == objectName)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     private void SelectNode(int nodeId)

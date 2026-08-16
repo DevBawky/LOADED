@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f8a11d19cd1b46158a0908ee4d20e96d, type: 3}
-  m_Name: Stage 1 Battle 01
+  m_Name: Stage 1 Entry
   m_EditorClassIdentifier: Assembly-CSharp::BattleData
   battleId: stage_1_battle_01
-  displayName: 1-2
+  displayName: "\uCD08\uC785"
   noticeDescription: "\uC801\uB4E4\uC744 \uBAA8\uB450 \uC18C\uD0D5\uD558\uC2ED\uC2DC\uC624."
   clearNoticeTitle: BATTLE CLEAR
   clearNoticeDescription: "\uBAA8\uB4E0 \uC801\uC744 \uC18C\uD0D5\uD588\uC2B5\uB2C8\uB2E4!"
@@ -27,10 +27,7 @@ MonoBehaviour:
       count: 1
   - enemies:
     - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 2
-  - enemies:
-    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 1
   - enemies:
     - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 3
+      count: 2

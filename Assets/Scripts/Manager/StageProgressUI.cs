@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class StageProgressUI : MonoBehaviour
@@ -28,6 +29,53 @@ public class StageProgressUI : MonoBehaviour
         new List<RectTransform>();
     private StageData displayedStage;
     private string externalStageTitle;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+    private static void EnsureBattleSceneBinding()
+    {
+        if (SceneManager.GetActiveScene().name != "Battle")
+        {
+            return;
+        }
+
+        TMP_Text fallbackTitle = null;
+        foreach (TMP_Text candidate in FindObjectsByType<TMP_Text>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (candidate.name != "Text | Stage Title")
+            {
+                continue;
+            }
+
+            fallbackTitle ??= candidate;
+            if (candidate.gameObject.activeInHierarchy)
+            {
+                fallbackTitle = candidate;
+                break;
+            }
+        }
+
+        if (fallbackTitle == null)
+        {
+            return;
+        }
+
+        foreach (StageProgressUI existing in FindObjectsByType<StageProgressUI>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            existing.ResolveStageTitleText();
+            if (existing.stageTitleText == fallbackTitle)
+            {
+                return;
+            }
+        }
+
+        StageProgressUI binding = fallbackTitle.gameObject
+            .AddComponent<StageProgressUI>();
+        binding.stageTitleText = fallbackTitle;
+    }
 
     public void SetExternalStageTitle(string title)
     {
@@ -115,8 +163,10 @@ public class StageProgressUI : MonoBehaviour
         StageData stage = stateManager.CurrentStage;
         BattleData battle = stateManager.CurrentBattle;
 
-        if (stateManager.CurrentState != GameFlowState.Battle
-            || stage == null || battle == null)
+        // Keep the Battle scene title bound to its data for the whole scene,
+        // including the battle-clear transition. The flow state can change
+        // before this shared panel finishes refreshing.
+        if (stage == null || battle == null)
         {
             stageTitleText.text = string.Empty;
             return;

@@ -317,8 +317,13 @@ public sealed class RelicInventoryUI : MonoBehaviour
         TMP_Text stackText = FindStackText(relicObject.transform);
         if (stackText != null)
         {
-            bool showStack = relic.StackCount > 1;
-            stackText.text = relic.StackCount.ToString();
+            int stackCount = relic.Data.CanStack
+                ? relic.StackCount
+                : 0;
+            bool showStack = stackCount > 0;
+            stackText.text = showStack
+                ? stackCount.ToString()
+                : string.Empty;
             stackText.gameObject.SetActive(showStack);
         }
     }
