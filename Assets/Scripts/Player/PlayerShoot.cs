@@ -340,7 +340,8 @@ public class PlayerShoot : MonoBehaviour
             enemy,
             isFiring ? currentConsumedBullet : null,
             waveManager == null ? null : waveManager.ActiveEnemies,
-            boardManager);
+            boardManager,
+            deckManager);
 
         if (!isFiring)
         {
@@ -2616,6 +2617,7 @@ public class PlayerShoot : MonoBehaviour
                     : combatPresentation.CaptureEnemy(enemy);
             int healthBeforeDamage = enemy.CurrentHealth;
             int targetMaxHealth = enemy.MaxHealth;
+            int enemyInstanceId = enemy.GetInstanceID();
             int reportedDamage = enemy.PredictAttackDamage(stormDamage);
             int appliedDamage = enemy.ApplyAttackDamage(stormDamage, false);
 
@@ -2658,7 +2660,9 @@ public class PlayerShoot : MonoBehaviour
                     enemy,
                     null,
                     waveManager.ActiveEnemies,
-                    boardManager);
+                    boardManager,
+                    deckManager,
+                    enemyInstanceId);
             }
             else if (appliedDamage > 0)
             {
@@ -2821,7 +2825,9 @@ public class PlayerShoot : MonoBehaviour
             enemy,
             currentConsumedBullet ?? bullet,
             waveManager == null ? null : waveManager.ActiveEnemies,
-            boardManager);
+            boardManager,
+            deckManager,
+            enemyInstanceId);
 
         yield return ApplyConditionalEvents(
             bullet,

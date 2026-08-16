@@ -22,6 +22,8 @@ public class DeckManager : MonoBehaviour
         new List<BulletInstance>();
     private readonly List<BulletInstance> nextCycleOrder =
         new List<BulletInstance>();
+    private readonly List<BulletInstance> priorityReloadBullets =
+        new List<BulletInstance>();
     [SerializeField] private int nextAcquisitionOrder;
     [Min(0)]
     [SerializeField] private int paidBulletRemovalCount;
@@ -66,6 +68,22 @@ public class DeckManager : MonoBehaviour
             return false;
         }
 
+        BulletInstance priorityBullet = TakeNextPriorityReloadBullet();
+
+        if (priorityBullet != null)
+        {
+            deck.Remove(priorityBullet);
+            graveyard.Remove(priorityBullet);
+            nextCycleOrder.Remove(priorityBullet);
+            priorityBullet.BeginCylinderShotTracking();
+            loadedBullets.Add(priorityBullet);
+            RecycleGraveyardIfDeckEmpty();
+            CreateNextCycleOrderIfNeeded();
+            loadedBullet = priorityBullet;
+            StateChanged?.Invoke();
+            return true;
+        }
+
         RecycleGraveyardIfDeckEmpty();
 
         if (deck.Count == 0)
@@ -96,6 +114,7 @@ public class DeckManager : MonoBehaviour
 
         loadedBullet = graveyard[0];
         graveyard.RemoveAt(0);
+        priorityReloadBullets.Remove(loadedBullet);
         loadedBullet?.BeginCylinderShotTracking();
         loadedBullets.Add(loadedBullet);
         nextCycleOrder.Remove(loadedBullet);
@@ -117,6 +136,12 @@ public class DeckManager : MonoBehaviour
         graveyard.Remove(bullet);
         nextCycleOrder.Remove(bullet);
         deck.Add(bullet);
+
+        if (!priorityReloadBullets.Contains(bullet))
+        {
+            priorityReloadBullets.Add(bullet);
+        }
+
         StateChanged?.Invoke();
         return true;
     }
@@ -237,6 +262,7 @@ public class DeckManager : MonoBehaviour
         }
 
         nextCycleOrder.Clear();
+        priorityReloadBullets.Remove(bullet);
         StateChanged?.Invoke();
         return true;
     }
@@ -275,6 +301,7 @@ public class DeckManager : MonoBehaviour
         }
 
         nextCycleOrder.Remove(bullet);
+        priorityReloadBullets.Remove(bullet);
         StateChanged?.Invoke();
         return true;
     }
@@ -428,6 +455,7 @@ public class DeckManager : MonoBehaviour
         loadedBullets.Clear();
         graveyard.Clear();
         nextCycleOrder.Clear();
+        priorityReloadBullets.Clear();
         restoredBullets.Sort((left, right) =>
         {
             int locationComparison = left.Save.location.CompareTo(
@@ -521,6 +549,13 @@ public class DeckManager : MonoBehaviour
 
     public BulletInstance PeekNextBullet()
     {
+        BulletInstance priorityBullet = PeekPriorityReloadBullet();
+
+        if (priorityBullet != null)
+        {
+            return priorityBullet;
+        }
+
         if (deck.Count > 0)
         {
             return deck[deck.Count - 1];
@@ -579,6 +614,7 @@ public class DeckManager : MonoBehaviour
         loadedBullets.Clear();
         graveyard.Clear();
         nextCycleOrder.Clear();
+        priorityReloadBullets.Clear();
         nextAcquisitionOrder = 0;
         paidBulletRemovalCount = 0;
 
@@ -652,6 +688,37 @@ public class DeckManager : MonoBehaviour
         {
             RecycleGraveyard();
         }
+    }
+
+    private BulletInstance TakeNextPriorityReloadBullet()
+    {
+        while (priorityReloadBullets.Count > 0)
+        {
+            BulletInstance bullet = priorityReloadBullets[0];
+            priorityReloadBullets.RemoveAt(0);
+
+            if (bullet != null
+                && (deck.Contains(bullet) || graveyard.Contains(bullet)))
+            {
+                return bullet;
+            }
+        }
+
+        return null;
+    }
+
+    private BulletInstance PeekPriorityReloadBullet()
+    {
+        foreach (BulletInstance bullet in priorityReloadBullets)
+        {
+            if (bullet != null
+                && (deck.Contains(bullet) || graveyard.Contains(bullet)))
+            {
+                return bullet;
+            }
+        }
+
+        return null;
     }
 
     private void CreateNextCycleOrderIfNeeded()

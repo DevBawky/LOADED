@@ -201,6 +201,64 @@ public sealed class RelicManagerTests
     }
 
     [Test]
+    public void PredatorHolster_KillingBulletIsNextAndReloadsForFree()
+    {
+        GameObject deckObject = new GameObject("Holster Deck Test");
+        GameObject enemyObject = new GameObject("Holster Enemy Test");
+        BulletData bulletData = ScriptableObject.CreateInstance<BulletData>();
+
+        try
+        {
+            DeckManager deckManager = deckObject.AddComponent<DeckManager>();
+            EnemyController enemy = enemyObject.AddComponent<EnemyController>();
+            RelicData holster = CreateRelic(
+                "predator-holster",
+                effectType: RelicEffectType.PredatorHolster);
+            manager.TryAcquire(holster);
+            Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+            Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+            Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+            Assert.That(deckManager.TryReload(out _), Is.True);
+            Assert.That(deckManager.TryReload(out _), Is.True);
+            Assert.That(deckManager.TryFireLoadedBullet(
+                out BulletInstance killingBullet), Is.True);
+            int defeatedEnemyInstanceId = enemy.GetInstanceID();
+            Object.DestroyImmediate(enemyObject);
+            enemyObject = null;
+
+            manager.NotifyEnemyDefeated(
+                enemy,
+                killingBullet,
+                null,
+                null,
+                deckManager,
+                defeatedEnemyInstanceId);
+
+            Assert.That(deckManager.PeekNextBullet(), Is.SameAs(killingBullet));
+            Assert.That(deckManager.TryFireLoadedBullet(out _), Is.True);
+            deckManager.CompleteFiringSequence();
+            manager.NotifyCylinderCompleted(deckManager);
+            Assert.That(deckManager.ReshuffleDeck(), Is.True);
+            Assert.That(deckManager.PeekNextBullet(), Is.SameAs(killingBullet));
+            Assert.That(deckManager.TryReload(
+                out BulletInstance reloadedBullet), Is.True);
+            Assert.That(reloadedBullet, Is.SameAs(killingBullet));
+            Assert.That(manager.ShouldReloadConsumeTurn(
+                reloadedBullet,
+                true), Is.False);
+            Assert.That(
+                manager.OwnedRelics[0].TrackedBulletAcquisitionOrders,
+                Is.Empty);
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemyObject);
+            Object.DestroyImmediate(deckObject);
+            Object.DestroyImmediate(bulletData);
+        }
+    }
+
+    [Test]
     public void GoldPanner_ConsumesNuggetsForCriticalFiveTimesShot()
     {
         RelicData panner = CreateRelic(

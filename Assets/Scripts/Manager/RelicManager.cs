@@ -1014,9 +1014,15 @@ public sealed class RelicManager : MonoBehaviour
         EnemyController defeatedEnemy,
         BulletInstance killingBullet,
         IReadOnlyList<EnemyController> activeEnemies,
-        BoardManager boardManager)
+        BoardManager boardManager,
+        DeckManager deckManager = null,
+        int defeatedEnemyInstanceId = 0)
     {
-        if (defeatedEnemy == null)
+        int enemyInstanceId = defeatedEnemy != null
+            ? defeatedEnemy.GetInstanceID()
+            : defeatedEnemyInstanceId;
+
+        if (enemyInstanceId == 0)
         {
             return;
         }
@@ -1026,7 +1032,7 @@ public sealed class RelicManager : MonoBehaviour
             activeShotDefeatedEnemy = true;
         }
 
-        if (!processedEnemyDefeatIds.Add(defeatedEnemy.GetInstanceID()))
+        if (!processedEnemyDefeatIds.Add(enemyInstanceId))
         {
             return;
         }
@@ -1037,13 +1043,20 @@ public sealed class RelicManager : MonoBehaviour
                 out RelicInstance holsterRelic,
                 out RelicEffectData holsterEffect))
         {
-            holsterRelic.AddTrackedBullet(killingBullet.AcquisitionOrder);
-            if (!pendingHolsterBulletOrders.Contains(
-                    killingBullet.AcquisitionOrder))
+            int acquisitionOrder = killingBullet.AcquisitionOrder;
+            holsterRelic.AddTrackedBullet(acquisitionOrder);
+            bool queuedImmediately = deckManager != null
+                && deckManager.QueueBulletForNextReload(acquisitionOrder);
+
+            if (queuedImmediately)
             {
-                pendingHolsterBulletOrders.Add(
-                    killingBullet.AcquisitionOrder);
+                pendingHolsterBulletOrders.Remove(acquisitionOrder);
             }
+            else if (!pendingHolsterBulletOrders.Contains(acquisitionOrder))
+            {
+                pendingHolsterBulletOrders.Add(acquisitionOrder);
+            }
+
             Trigger(holsterRelic, holsterEffect);
         }
 

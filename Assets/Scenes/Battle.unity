@@ -1805,7 +1805,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RelicManager
   relicCatalog: []
   playerMove: {fileID: 0}
-  ownedRelics: []
+  ownedRelics:
+  - data: {fileID: 11400000, guid: 10000000000000000000000000000010, type: 2}
+    stackCount: 0
+    remainingCharges: 0
+    movementStacks: 0
+    storedDamage: 0
+    primaryCounter: 0
+    secondaryCounter: 0
+    storedValue: 0
+    runtimeFlag: 0
+    trackedBulletAcquisitionOrders: 
+    acquisitionOrder: 0
 --- !u!1001 &350554640947637847
 PrefabInstance:
   m_ObjectHideFlags: 0

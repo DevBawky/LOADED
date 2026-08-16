@@ -246,6 +246,29 @@ public sealed class RelicInventoryUI : MonoBehaviour
         RelicInstance relic,
         RelicEffectData effect)
     {
+        if (effect?.EffectType == RelicEffectType.PredatorHolster)
+        {
+            StartCoroutine(PlayDelayedRelicActivation(relic, effect));
+            return;
+        }
+
+        PlayRelicActivation(relic, effect);
+    }
+
+    private IEnumerator PlayDelayedRelicActivation(
+        RelicInstance relic,
+        RelicEffectData effect)
+    {
+        // 처치 처리 직후 실행되는 인벤토리 갱신과 겹치지 않게 한 프레임
+        // 미룬 뒤, 해당 탄환으로 적을 처치한 순간의 연출을 보여 준다.
+        yield return null;
+        PlayRelicActivation(relic, effect);
+    }
+
+    private void PlayRelicActivation(
+        RelicInstance relic,
+        RelicEffectData effect)
+    {
         if (relic == null || !relicIcons.TryGetValue(
                 relic,
                 out RectTransform icon)
@@ -497,7 +520,8 @@ public sealed class RelicInventoryUI : MonoBehaviour
             RelicEffectType.Carriage
                 or RelicEffectType.ClosedCircuit
                 or RelicEffectType.EmptyBeat
-                or RelicEffectType.LuckyChamber => cylinderActivationColor,
+                or RelicEffectType.LuckyChamber
+                or RelicEffectType.PredatorHolster => cylinderActivationColor,
             RelicEffectType.InfectiousIncubator
                 or RelicEffectType.MutationCatalyst
                 or RelicEffectType.FamilyWill => specialActivationColor,
