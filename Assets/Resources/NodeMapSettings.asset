@@ -26,7 +26,7 @@ MonoBehaviour:
   bossBattle: {fileID: 11400000, guid: 5a34671060124aaa84b424139632763d, type: 2}
   generationRules:
   - nodeType: 1
-    weight: 35
+    weight: 25
     minimumCount: 5
     maximumCount: -1
   - nodeType: 2
@@ -35,16 +35,16 @@ MonoBehaviour:
     maximumCount: 3
   - nodeType: 3
     weight: 20
-    minimumCount: 1
-    maximumCount: 3
-  - nodeType: 4
-    weight: 10
-    minimumCount: 1
-    maximumCount: 3
+    minimumCount: 3
+    maximumCount: 6
   - nodeType: 5
     weight: 20
-    minimumCount: 2
+    minimumCount: 5
     maximumCount: -1
+  - nodeType: 4
+    weight: 10
+    minimumCount: 0
+    maximumCount: 0
   startIcon: {fileID: -3764558647745528456, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
   battleIcon: {fileID: 5638554280527815675, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
   eliteIcon: {fileID: 5638554280527815675, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
@@ -52,5 +52,5 @@ MonoBehaviour:
   treasureIcon: {fileID: -2323235933190528792, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
   eventIcon: {fileID: -7778529729076754945, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
   bossIcon: {fileID: 1136793851880326518, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  columns: 9
+  columns: 12
   rows: 4

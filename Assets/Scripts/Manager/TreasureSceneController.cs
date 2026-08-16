@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -45,11 +46,16 @@ public sealed class TreasureSceneController : MonoBehaviour
 
     private readonly List<RelicData> offers = new List<RelicData>();
     private RunSaveData runData;
+    private RelicTooltipUI relicTooltip;
+    private bool ownsClosedChestSprite;
+    private bool ownsOpenedChestSprite;
     private bool initialized;
     private bool leaving;
 
     private void Awake()
     {
+        ResolveReferences();
+        EnsureRuntimeUi();
         ResolveReferences();
         BindButtons();
         ShowClosedChest();
@@ -69,6 +75,8 @@ public sealed class TreasureSceneController : MonoBehaviour
     private void OnDestroy()
     {
         UnbindButtons();
+        DestroyGeneratedSprite(closedChestSprite, ownsClosedChestSprite);
+        DestroyGeneratedSprite(openedChestSprite, ownsOpenedChestSprite);
     }
 
     private void OnDisable()
@@ -96,8 +104,8 @@ public sealed class TreasureSceneController : MonoBehaviour
 
         runData.treasureChestOpened = true;
         ResolveReferences();
-        PopulateOffers();
         ShowOpenedChest();
+        PopulateOffers();
         SaveTreasureState();
     }
 
@@ -114,19 +122,26 @@ public sealed class TreasureSceneController : MonoBehaviour
         if (result != RelicAcquireResult.Acquired
             && result != RelicAcquireResult.Stacked)
         {
-            instructionText.text = result == RelicAcquireResult.InventoryFull
-                ? "유물 보관함이 가득 찼습니다."
-                : "이 유물을 획득할 수 없습니다.";
+            if (instructionText != null)
+            {
+                instructionText.text = result == RelicAcquireResult.InventoryFull
+                    ? "유물 보관함이 가득 찼습니다."
+                    : "이 유물을 획득할 수 없습니다.";
+            }
             return;
         }
 
         runData.treasureChoiceResolved = true;
-        instructionText.text = $"{selected.DisplayName}을(를) 획득했습니다.";
+        if (instructionText != null)
+        {
+            instructionText.text = $"{selected.DisplayName}을(를) 획득했습니다.";
+        }
         SetChoiceButtonsInteractable(false);
         if (continueButton != null)
         {
             continueButton.gameObject.SetActive(true);
             continueButton.interactable = true;
+            continueButton.transform.SetAsLastSibling();
         }
 
         SaveTreasureState();
@@ -212,8 +227,15 @@ public sealed class TreasureSceneController : MonoBehaviour
         {
             runData.treasureChoiceResolved = true;
             ShowOpenedChest();
-            instructionText.text = "획득할 수 있는 유물이 없습니다.";
-            continueButton.gameObject.SetActive(true);
+            if (instructionText != null)
+            {
+                instructionText.text = "획득할 수 있는 유물이 없습니다.";
+            }
+            if (continueButton != null)
+            {
+                continueButton.gameObject.SetActive(true);
+                continueButton.transform.SetAsLastSibling();
+            }
         }
         else if (runData.treasureChestOpened)
         {
@@ -227,7 +249,11 @@ public sealed class TreasureSceneController : MonoBehaviour
         if (runData.treasureChoiceResolved)
         {
             SetChoiceButtonsInteractable(false);
-            continueButton.gameObject.SetActive(true);
+            if (continueButton != null)
+            {
+                continueButton.gameObject.SetActive(true);
+                continueButton.transform.SetAsLastSibling();
+            }
         }
 
         SaveTreasureState();
@@ -247,6 +273,13 @@ public sealed class TreasureSceneController : MonoBehaviour
 
             if (!visible)
             {
+                continue;
+            }
+            if (button == null)
+            {
+                Debug.LogWarning(
+                    $"Treasure relic choice button {index + 1} is missing.",
+                    this);
                 continue;
             }
 
@@ -269,6 +302,16 @@ public sealed class TreasureSceneController : MonoBehaviour
                     ? relic.Description
                     : effect;
             }
+
+            TreasureRelicChoiceUI interaction =
+                button.GetComponent<TreasureRelicChoiceUI>();
+            interaction ??= button.gameObject.AddComponent<
+                TreasureRelicChoiceUI>();
+            TMP_Text fontSource = index < relicNames.Length
+                ? relicNames[index]
+                : null;
+            relicTooltip ??= RelicTooltipUI.GetOrCreate(button, fontSource);
+            interaction.Initialize(relicTooltip, relic);
         }
     }
 
@@ -370,15 +413,24 @@ public sealed class TreasureSceneController : MonoBehaviour
             ? null
             : chestButton.GetComponent<Image>();
         chestLabel ??= FindNamed<TMP_Text>("Text | Chest Label");
+        choicesPanel ??= FindNamed<RectTransform>("Panel | Relic Choice")
+            ?.gameObject;
         choicesPanel ??= FindNamed<RectTransform>("Panel | Relic Choices")
             ?.gameObject;
         instructionText ??= FindNamed<TMP_Text>("Text | Treasure Instruction");
         continueButton ??= FindNamed<Button>("Button | Treasure Continue");
 
-        relicButtons = FindIndexed<Button>("Button | Relic Choice ");
+        relicButtons = FindRelicButtons(choicesPanel);
         relicIcons = FindIndexed<Image>("Image | Relic Icon ");
         relicNames = FindIndexed<TMP_Text>("Text | Relic Name ");
         relicDescriptions = FindIndexed<TMP_Text>("Text | Relic Description ");
+        for (int index = 0; index < relicButtons.Length; index++)
+        {
+            if (relicIcons[index] == null && relicButtons[index] != null)
+            {
+                relicIcons[index] = relicButtons[index].image;
+            }
+        }
     }
 
     private void BindButtons()
@@ -461,5 +513,263 @@ public sealed class TreasureSceneController : MonoBehaviour
             }
         }
         return results;
+    }
+
+    private void EnsureRuntimeUi()
+    {
+        Transform parent = choicesPanel == null
+            ? FindFirstObjectByType<Canvas>(FindObjectsInactive.Include)
+                ?.rootCanvas.transform
+            : choicesPanel.transform.parent;
+        if (parent == null)
+        {
+            return;
+        }
+
+        if (chestButton == null)
+        {
+            chestButton = CreateRuntimeButton(
+                "Button | Treasure Chest",
+                parent,
+                new Vector2(0.38f, 0.28f),
+                new Vector2(0.62f, 0.72f),
+                "보물 상자");
+            chestImage = chestButton.image;
+            chestLabel = chestButton.GetComponentInChildren<TMP_Text>(true);
+            if (choicesPanel != null)
+            {
+                chestButton.transform.SetSiblingIndex(
+                    choicesPanel.transform.GetSiblingIndex());
+            }
+        }
+
+        if (continueButton == null)
+        {
+            continueButton = CreateRuntimeButton(
+                "Button | Treasure Continue",
+                parent,
+                new Vector2(0.42f, 0.07f),
+                new Vector2(0.58f, 0.15f),
+                "노드맵으로");
+            continueButton.gameObject.SetActive(false);
+        }
+
+        if (closedChestSprite == null)
+        {
+            closedChestSprite = CreateFallbackChestSprite(false);
+            ownsClosedChestSprite = true;
+        }
+        if (openedChestSprite == null)
+        {
+            openedChestSprite = CreateFallbackChestSprite(true);
+            ownsOpenedChestSprite = true;
+        }
+    }
+
+    private static Button[] FindRelicButtons(GameObject panel)
+    {
+        Button[] results = new Button[RewardChoiceCount];
+
+        // The current Treasure scene renames the three prefab buttons through
+        // scene overrides. Resolve those final scene names first so an inactive
+        // choice panel does not leave the controller with an empty button list.
+        for (int index = 0; index < results.Length; index++)
+        {
+            int number = index + 1;
+            results[index] = FindNamed<Button>($"Button | Relic {number}");
+            results[index] ??= FindNamed<Button>(
+                $"Button | Relic Choice {number}");
+        }
+        if (Array.TrueForAll(results, button => button != null))
+        {
+            return results;
+        }
+
+        List<Button> candidates = new List<Button>();
+        Button[] availableButtons = panel == null
+            ? FindObjectsByType<Button>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None)
+            : panel.GetComponentsInChildren<Button>(true);
+        foreach (Button button in availableButtons)
+        {
+            if (button != null && button.name.StartsWith(
+                    "Button | Relic",
+                    StringComparison.Ordinal)
+                && button.name != "Button | Relic Dictionary")
+            {
+                candidates.Add(button);
+            }
+        }
+        candidates.Sort((left, right) => left.transform.GetSiblingIndex()
+            .CompareTo(right.transform.GetSiblingIndex()));
+        for (int index = 0; index < results.Length && index < candidates.Count;
+             index++)
+        {
+            results[index] ??= candidates[index];
+        }
+        return results;
+    }
+
+    private static Button CreateRuntimeButton(
+        string objectName,
+        Transform parent,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        string label)
+    {
+        GameObject buttonObject = new GameObject(
+            objectName,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button));
+        buttonObject.layer = parent.gameObject.layer;
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image image = buttonObject.GetComponent<Image>();
+        image.color = Color.white;
+        Button button = buttonObject.GetComponent<Button>();
+        button.targetGraphic = image;
+
+        GameObject labelObject = new GameObject(
+            objectName == "Button | Treasure Chest"
+                ? "Text | Chest Label"
+                : "Text | Continue",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+        labelObject.layer = buttonObject.layer;
+        RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+        labelRect.SetParent(rect, false);
+        labelRect.anchorMin = new Vector2(0.05f, 0.05f);
+        labelRect.anchorMax = new Vector2(0.95f, 0.95f);
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+        TextMeshProUGUI text = labelObject.GetComponent<TextMeshProUGUI>();
+        text.text = label;
+        text.fontSize = 24f;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = new Color(1f, 0.86f, 0.48f, 1f);
+        text.raycastTarget = false;
+        return button;
+    }
+
+    private static Sprite CreateFallbackChestSprite(bool opened)
+    {
+        const int width = 32;
+        const int height = 24;
+        Texture2D texture = new Texture2D(
+            width,
+            height,
+            TextureFormat.RGBA32,
+            false)
+        {
+            name = opened
+                ? "Generated Treasure Chest Open"
+                : "Generated Treasure Chest Closed",
+            filterMode = FilterMode.Point
+        };
+        Color clear = new Color(0f, 0f, 0f, 0f);
+        Color outline = new Color(0.16f, 0.07f, 0.025f, 1f);
+        Color wood = new Color(0.52f, 0.23f, 0.06f, 1f);
+        Color gold = new Color(0.92f, 0.64f, 0.12f, 1f);
+        Color[] pixels = new Color[width * height];
+        for (int index = 0; index < pixels.Length; index++)
+        {
+            pixels[index] = clear;
+        }
+
+        DrawRect(pixels, width, 3, 2, 29, 13, outline);
+        DrawRect(pixels, width, 5, 4, 27, 12, wood);
+        DrawRect(pixels, width, 14, 2, 18, 13, gold);
+        if (opened)
+        {
+            DrawRect(pixels, width, 4, 15, 28, 19, outline);
+            DrawRect(pixels, width, 6, 17, 27, 22, wood);
+            DrawRect(pixels, width, 14, 17, 18, 22, gold);
+        }
+        else
+        {
+            DrawRect(pixels, width, 3, 13, 29, 20, outline);
+            DrawRect(pixels, width, 5, 14, 27, 19, wood);
+            DrawRect(pixels, width, 14, 14, 18, 20, gold);
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply(false, false);
+        return Sprite.Create(
+            texture,
+            new Rect(0f, 0f, width, height),
+            new Vector2(0.5f, 0.5f),
+            32f);
+    }
+
+    private static void DrawRect(
+        Color[] pixels,
+        int width,
+        int minX,
+        int minY,
+        int maxX,
+        int maxY,
+        Color color)
+    {
+        for (int y = minY; y < maxY; y++)
+        {
+            for (int x = minX; x < maxX; x++)
+            {
+                pixels[y * width + x] = color;
+            }
+        }
+    }
+
+    private static void DestroyGeneratedSprite(Sprite sprite, bool owned)
+    {
+        if (!owned || sprite == null)
+        {
+            return;
+        }
+        Texture texture = sprite.texture;
+        Destroy(sprite);
+        if (texture != null)
+        {
+            Destroy(texture);
+        }
+    }
+}
+
+[DisallowMultipleComponent]
+public sealed class TreasureRelicChoiceUI : MonoBehaviour,
+    IPointerEnterHandler,
+    IPointerExitHandler,
+    IPointerMoveHandler
+{
+    private RelicTooltipUI tooltip;
+    private RelicData relic;
+
+    public void Initialize(RelicTooltipUI value, RelicData relicData)
+    {
+        tooltip = value;
+        relic = relicData;
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        tooltip?.Show(relic, eventData.position);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        tooltip?.Hide(relic);
+    }
+
+    public void OnPointerMove(PointerEventData eventData)
+    {
+        tooltip?.Move(relic, eventData.position);
     }
 }

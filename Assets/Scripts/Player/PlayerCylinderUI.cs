@@ -21,6 +21,11 @@ public class PlayerCylinderUI : MonoBehaviour
     [SerializeField] private List<Image> bulletImages = new List<Image>();
     [SerializeField] private Animator playerAnimator;
 
+    [Header("Relic Presentation")]
+    [SerializeField] private RelicManager relicManager;
+    [SerializeField] private Color luckyChamberEffectColor =
+        new Color(0.25f, 1f, 0.42f, 1f);
+
     [Header("Rotation")]
     [Min(0f)]
     [SerializeField] private float rotationStep = 60f;
@@ -54,6 +59,8 @@ public class PlayerCylinderUI : MonoBehaviour
         new Dictionary<RectTransform, Coroutine>();
     private readonly Dictionary<Image, GameObject> bulletEffects =
         new Dictionary<Image, GameObject>();
+    private readonly Dictionary<Image, Color> bulletEffectDefaultColors =
+        new Dictionary<Image, Color>();
     private int displayedBulletCount;
     private bool isInitialized;
     private bool isSubscribed;
@@ -76,6 +83,8 @@ public class PlayerCylinderUI : MonoBehaviour
         playerShoot = GetComponent<PlayerShoot>();
         playerHealth = GetComponent<PlayerHealth>();
         currencyManager = FindFirstObjectByType<CurrencyManager>();
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
         playerAnimator ??= GetComponent<Animator>();
         SetAnimatorBulletCount(0);
         ResolveMovedCylinderReferences();
@@ -260,6 +269,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
         chamberLocalPositions.Clear();
         bulletEffects.Clear();
+        bulletEffectDefaultColors.Clear();
 
         foreach (Image bulletImage in bulletImages)
         {
@@ -314,6 +324,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
         if (effectTransform.TryGetComponent(out Image effectImage))
         {
+            bulletEffectDefaultColors[bulletImage] = effectImage.color;
             effectImage.raycastTarget = false;
             effectImage.preserveAspect = false;
         }
@@ -874,6 +885,9 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void RefreshBulletEffects()
     {
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
         if (deckManager == null)
         {
             foreach (Image bulletImage in bulletImages)
@@ -887,25 +901,53 @@ public class PlayerCylinderUI : MonoBehaviour
         IReadOnlyList<BulletInstance> loadedBullets =
             deckManager.LoadedBullets;
         int loadedCount = Mathf.Min(loadedBullets.Count, bulletImages.Count);
+        int initialLoadedCount = playerShoot == null
+            ? loadedCount
+            : Mathf.Max(loadedCount, playerShoot.InitialLoadedBulletCount);
 
         for (int index = 0; index < bulletImages.Count; index++)
         {
-            bool active = index < loadedCount
+            bool luckyChamber = index < loadedCount
+                && relicManager != null
+                && relicManager.IsLuckyChamberLoadedBullet(
+                    index,
+                    initialLoadedCount);
+            bool active = luckyChamber
+                || index < loadedCount
                 && ShouldShowBulletEffect(loadedBullets, index);
-            SetBulletEffectActive(bulletImages[index], active);
+            SetBulletEffectActive(
+                bulletImages[index],
+                active,
+                luckyChamber);
         }
     }
 
-    private void SetBulletEffectActive(Image bulletImage, bool active)
+    private void SetBulletEffectActive(
+        Image bulletImage,
+        bool active,
+        bool luckyChamber = false)
     {
         if (bulletImage != null
             && bulletEffects.TryGetValue(
                 bulletImage,
                 out GameObject effectObject)
-            && effectObject != null
-            && effectObject.activeSelf != active)
+            && effectObject != null)
         {
-            effectObject.SetActive(active);
+            if (effectObject.TryGetComponent(out Image effectImage))
+            {
+                effectImage.color = luckyChamber
+                    ? luckyChamberEffectColor
+                    : bulletEffectDefaultColors.TryGetValue(
+                        bulletImage,
+                        out Color defaultColor)
+                        ? defaultColor
+                        : Color.white;
+            }
+
+            if (effectObject.activeSelf != active)
+            {
+                effectObject.SetActive(active);
+            }
         }
     }
 

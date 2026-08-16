@@ -62,6 +62,47 @@ public sealed class RelicManager : MonoBehaviour
     public bool CurrentShotForcesCritical => activeShotForcesCritical;
     public int LuckyChamberBulletIndex => luckyChamberBulletIndex;
 
+    public bool IsLuckyChamberShot(int shotOrderIndex)
+    {
+        return shotOrderIndex >= 0
+            && shotOrderIndex == luckyChamberBulletIndex;
+    }
+
+    public bool IsLuckyChamberLoadedBullet(
+        int loadedBulletIndex,
+        int initialLoadedCount)
+    {
+        if (loadedBulletIndex < 0 || initialLoadedCount <= 0
+            || luckyChamberBulletIndex < 0)
+        {
+            return false;
+        }
+
+        // LoadedBullets fires from the highest index down, while the relic
+        // records its choice as a zero-based firing-order index.
+        int selectedLoadedIndex = initialLoadedCount
+            - 1
+            - luckyChamberBulletIndex;
+        return loadedBulletIndex == selectedLoadedIndex;
+    }
+
+    public string GetLuckyChamberBulletTooltip()
+    {
+        if (!FindFirstEffect(
+                RelicEffectType.LuckyChamber,
+                out _,
+                out RelicEffectData effect))
+        {
+            return string.Empty;
+        }
+
+        double bonusPercent = Math.Max(
+            0d,
+            (effect.FinalDamageMultiplier - 1d) * 100d);
+        return "<color=#58E879><b>행운의 약실 적용</b></color>\n"
+            + $"<color=#A8F5B8>최종 피해 +{bonusPercent:0.#}%</color>";
+    }
+
     private void Awake()
     {
         ownedRelics ??= new List<RelicInstance>();

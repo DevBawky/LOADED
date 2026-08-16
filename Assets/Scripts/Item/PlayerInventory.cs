@@ -19,6 +19,7 @@ public class PlayerInventory : MonoBehaviour
 
     private ItemData[] items;
     private InputAction useItemHotkeyAction;
+    private Func<int, bool> externalHeal;
 
     public event Action Changed;
     public event Action<int, ItemData> ItemUsed;
@@ -143,11 +144,21 @@ public class PlayerInventory : MonoBehaviour
     {
         ItemData item = GetItem(slotIndex);
 
-        if (item == null || !item.TryApply(
-                playerHealth,
-                deckManager,
-                playerMove,
-                waveManager))
+        if (item == null)
+        {
+            return false;
+        }
+
+        bool applied = item.EffectType == ItemEffectType.Heal
+            && playerHealth == null
+            && externalHeal != null
+                ? externalHeal(item.EffectAmount)
+                : item.TryApply(
+                    playerHealth,
+                    deckManager,
+                    playerMove,
+                    waveManager);
+        if (!applied)
         {
             return false;
         }
@@ -156,6 +167,11 @@ public class PlayerInventory : MonoBehaviour
         Changed?.Invoke();
         ItemUsed?.Invoke(slotIndex, item);
         return true;
+    }
+
+    public void ConfigureExternalHealing(Func<int, bool> healHandler)
+    {
+        externalHeal = healHandler;
     }
 
     public bool TryRemove(int slotIndex)

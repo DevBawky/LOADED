@@ -21,9 +21,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
         new Dictionary<RelicInstance, RectTransform>();
     private readonly Dictionary<RelicInstance, Coroutine> pulseAnimations =
         new Dictionary<RelicInstance, Coroutine>();
-    private RectTransform tooltip;
-    private TMP_Text tooltipNameText;
-    private TMP_Text tooltipDescriptionText;
+    private RelicTooltipUI tooltip;
     private RelicInstance hoveredRelic;
 
     private void Awake()
@@ -45,10 +43,12 @@ public sealed class RelicInventoryUI : MonoBehaviour
         }
 
         Refresh();
+        StartCoroutine(RefreshAfterSceneInitialization());
     }
 
     private void OnDisable()
     {
+        StopAllCoroutines();
         if (relicManager != null)
         {
             relicManager.InventoryChanged -= Refresh;
@@ -64,20 +64,48 @@ public sealed class RelicInventoryUI : MonoBehaviour
             FindObjectsInactive.Include);
     }
 
+    private IEnumerator RefreshAfterSceneInitialization()
+    {
+        // Dedicated Shop/Event managers and restored run data are prepared by
+        // their scene controllers. Retry once after that initialization so the
+        // floating inventory is not left empty because of Awake/OnEnable order.
+        yield return null;
+        ResolveRelicManager();
+
+        if (relicManager != null)
+        {
+            relicManager.InventoryChanged -= Refresh;
+            relicManager.InventoryChanged += Refresh;
+            relicManager.RelicTriggered -= HandleRelicTriggered;
+            relicManager.RelicTriggered += HandleRelicTriggered;
+        }
+
+        Refresh();
+    }
+
     private void Refresh()
     {
-        ClearSpawnedRelics();
-
         if (relicContainer == null || relicPrefab == null
             || relicManager == null)
         {
+            ClearSpawnedRelics();
             return;
         }
 
+        HashSet<RelicInstance> currentRelics =
+            new HashSet<RelicInstance>();
         foreach (RelicInstance relic in relicManager.OwnedRelics)
         {
             if (relic?.Data == null)
             {
+                continue;
+            }
+
+            currentRelics.Add(relic);
+            if (relicIcons.TryGetValue(relic, out RectTransform existingIcon)
+                && existingIcon != null)
+            {
+                ConfigureRelic(existingIcon.gameObject, relic);
                 continue;
             }
 
@@ -91,6 +119,40 @@ public sealed class RelicInventoryUI : MonoBehaviour
             spawnedRelics.Add(relicObject);
             relicIcons[relic] = relicObject.transform as RectTransform;
         }
+
+        List<RelicInstance> removedRelics = new List<RelicInstance>();
+        foreach (KeyValuePair<RelicInstance, RectTransform> entry in relicIcons)
+        {
+            if (!currentRelics.Contains(entry.Key))
+            {
+                removedRelics.Add(entry.Key);
+            }
+        }
+
+        foreach (RelicInstance removedRelic in removedRelics)
+        {
+            if (!relicIcons.TryGetValue(
+                    removedRelic,
+                    out RectTransform removedIcon))
+            {
+                continue;
+            }
+
+            if (pulseAnimations.TryGetValue(
+                    removedRelic,
+                    out Coroutine pulse)
+                && pulse != null)
+            {
+                StopCoroutine(pulse);
+            }
+            pulseAnimations.Remove(removedRelic);
+            relicIcons.Remove(removedRelic);
+            GameObject removedObject = removedIcon == null
+                ? null
+                : removedIcon.gameObject;
+            spawnedRelics.Remove(removedObject);
+            DestroyRelicObject(removedObject);
+        }
     }
 
     private void ClearSpawnedRelics()
@@ -102,24 +164,28 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
         foreach (GameObject relicObject in spawnedRelics)
         {
-            if (relicObject == null)
-            {
-                continue;
-            }
-
-            relicObject.SetActive(false);
-
-            if (Application.isPlaying)
-            {
-                Destroy(relicObject);
-            }
-            else
-            {
-                DestroyImmediate(relicObject);
-            }
+            DestroyRelicObject(relicObject);
         }
 
         spawnedRelics.Clear();
+    }
+
+    private static void DestroyRelicObject(GameObject relicObject)
+    {
+        if (relicObject == null)
+        {
+            return;
+        }
+
+        relicObject.SetActive(false);
+        if (Application.isPlaying)
+        {
+            Destroy(relicObject);
+        }
+        else
+        {
+            DestroyImmediate(relicObject);
+        }
     }
 
     private void HandleRelicTriggered(
@@ -197,23 +263,15 @@ public sealed class RelicInventoryUI : MonoBehaviour
         }
 
         hoveredRelic = relic;
-        tooltipNameText.text = relic.Data.DisplayName;
-        string effect = relic.Data.BuildEffectSummary();
-        tooltipDescriptionText.text = TooltipTextFormatter.Format(
-            string.IsNullOrWhiteSpace(effect)
-                ? relic.Data.Description
-                : effect);
-        tooltip.gameObject.SetActive(true);
-        tooltip.SetAsLastSibling();
-        PositionTooltip(pointerPosition);
+        tooltip.Show(relic.Data, pointerPosition);
     }
 
     internal void MoveTooltip(RelicInstance relic, Vector2 pointerPosition)
     {
         if (ReferenceEquals(hoveredRelic, relic)
-            && tooltip != null && tooltip.gameObject.activeSelf)
+            && tooltip != null)
         {
-            PositionTooltip(pointerPosition);
+            tooltip.Move(relic.Data, pointerPosition);
         }
     }
 
@@ -227,7 +285,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
         hoveredRelic = null;
         if (tooltip != null)
         {
-            tooltip.gameObject.SetActive(false);
+            tooltip.Hide(relic?.Data);
         }
     }
 
@@ -238,131 +296,10 @@ public sealed class RelicInventoryUI : MonoBehaviour
             return;
         }
 
-        Canvas canvas = GetComponentInParent<Canvas>();
-        if (canvas == null)
-        {
-            return;
-        }
-
-        Canvas rootCanvas = canvas.rootCanvas;
-        GameObject tooltipObject = new GameObject(
-            "Panel | Relic Tooltip",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image),
-            typeof(VerticalLayoutGroup),
-            typeof(ContentSizeFitter));
-        tooltipObject.layer = gameObject.layer;
-        tooltip = tooltipObject.GetComponent<RectTransform>();
-        tooltip.SetParent(rootCanvas.transform, false);
-        tooltip.anchorMin = Vector2.zero;
-        tooltip.anchorMax = Vector2.zero;
-        tooltip.pivot = new Vector2(0f, 0.5f);
-        tooltip.sizeDelta = new Vector2(340f, 0f);
-
-        Image background = tooltipObject.GetComponent<Image>();
-        background.color = new Color(0.055f, 0.045f, 0.035f, 0.96f);
-        background.raycastTarget = false;
-
-        VerticalLayoutGroup layout =
-            tooltipObject.GetComponent<VerticalLayoutGroup>();
-        layout.padding = new RectOffset(16, 16, 13, 13);
-        layout.spacing = 7f;
-        layout.childAlignment = TextAnchor.UpperLeft;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        layout.childForceExpandWidth = true;
-        layout.childForceExpandHeight = false;
-
-        ContentSizeFitter fitter =
-            tooltipObject.GetComponent<ContentSizeFitter>();
-        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
         TMP_Text fontSource = relicPrefab == null
             ? null
             : relicPrefab.GetComponentInChildren<TMP_Text>(true);
-        tooltipNameText = CreateTooltipText(
-            "Text | Relic Name",
-            tooltip,
-            fontSource,
-            21f,
-            FontStyles.Bold,
-            new Color(1f, 0.84f, 0.3f, 1f));
-        tooltipDescriptionText = CreateTooltipText(
-            "Text | Relic Description",
-            tooltip,
-            fontSource,
-            16f,
-            FontStyles.Normal,
-            Color.white);
-        tooltip.gameObject.SetActive(false);
-    }
-
-    private static TMP_Text CreateTooltipText(
-        string objectName,
-        Transform parent,
-        TMP_Text fontSource,
-        float fontSize,
-        FontStyles style,
-        Color color)
-    {
-        GameObject textObject = new GameObject(
-            objectName,
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(TextMeshProUGUI));
-        textObject.layer = parent.gameObject.layer;
-        textObject.transform.SetParent(parent, false);
-        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
-        if (fontSource != null)
-        {
-            text.font = fontSource.font;
-            text.fontSharedMaterial = fontSource.fontSharedMaterial;
-        }
-        text.fontSize = fontSize;
-        text.fontStyle = style;
-        text.color = color;
-        text.richText = true;
-        text.textWrappingMode = TextWrappingModes.Normal;
-        text.raycastTarget = false;
-        text.alignment = TextAlignmentOptions.TopLeft;
-        return text;
-    }
-
-    private void PositionTooltip(Vector2 pointerPosition)
-    {
-        Canvas canvas = tooltip == null
-            ? null
-            : tooltip.GetComponentInParent<Canvas>();
-        RectTransform canvasRect = canvas == null
-            ? null
-            : canvas.rootCanvas.transform as RectTransform;
-        if (canvasRect == null)
-        {
-            return;
-        }
-
-        Canvas.ForceUpdateCanvases();
-        Camera camera = canvas.rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay
-            ? null
-            : canvas.rootCanvas.worldCamera;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            canvasRect,
-            pointerPosition,
-            camera,
-            out Vector2 localPoint);
-
-        Rect bounds = canvasRect.rect;
-        float width = tooltip.rect.width;
-        float height = tooltip.rect.height;
-        bool placeLeft = localPoint.x + 14f + width > bounds.xMax - 8f;
-        tooltip.pivot = new Vector2(placeLeft ? 1f : 0f, 0.5f);
-        float x = localPoint.x + (placeLeft ? -14f : 14f);
-        float y = Mathf.Clamp(
-            localPoint.y,
-            bounds.yMin + height * 0.5f + 8f,
-            bounds.yMax - height * 0.5f - 8f);
-        tooltip.anchoredPosition = new Vector2(x, y);
+        tooltip = RelicTooltipUI.GetOrCreate(this, fontSource);
     }
 
     private static void ConfigureRelic(

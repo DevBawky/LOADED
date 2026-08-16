@@ -22,6 +22,7 @@ public sealed class ShopSceneController : MonoBehaviour
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private CurrencyManager currencyManager;
     [SerializeField] private PlayerInventory playerInventory;
+    [SerializeField] private RelicManager relicManager;
     [SerializeField] private StateManager stateManager;
 
     [Header("Navigation")]
@@ -68,6 +69,10 @@ public sealed class ShopSceneController : MonoBehaviour
             shopManager.OffersChanged += HandleShopChanged;
             shopManager.PurchaseCompleted += HandleShopChanged;
         }
+        if (playerInventory != null)
+        {
+            playerInventory.ItemUsed += HandleInventoryItemUsed;
+        }
     }
 
     private void Start()
@@ -97,6 +102,11 @@ public sealed class ShopSceneController : MonoBehaviour
         {
             shopManager.OffersChanged -= HandleShopChanged;
             shopManager.PurchaseCompleted -= HandleShopChanged;
+        }
+        if (playerInventory != null)
+        {
+            playerInventory.ItemUsed -= HandleInventoryItemUsed;
+            playerInventory.ConfigureExternalHealing(null);
         }
     }
 
@@ -140,12 +150,14 @@ public sealed class ShopSceneController : MonoBehaviour
     {
         if (shopManager == null || deckManager == null
             || currencyManager == null || playerInventory == null
+            || relicManager == null
             || !RunSaveSystem.TryLoad(out runData)
             || !deckManager.RestoreRunState(
                 runData.bullets,
                 shopManager.ResolveSavedBullet,
                 runData.paidBulletRemovalCount,
-                runData.nextCycleAcquisitionOrders))
+                runData.nextCycleAcquisitionOrders)
+            || !relicManager.RestoreRunState(runData.relics))
         {
             return false;
         }
@@ -154,6 +166,7 @@ public sealed class ShopSceneController : MonoBehaviour
         playerInventory.RestoreRunState(
             runData.inventoryItemAssetNames,
             shopManager.ResolveSavedItem);
+        playerInventory.ConfigureExternalHealing(TryHealRunHealth);
         RefreshHealthPresentation();
         stateManager?.ConfigureExternalSceneState(
             runData.stageIndex,
@@ -251,6 +264,42 @@ public sealed class ShopSceneController : MonoBehaviour
         }
     }
 
+    private void HandleInventoryItemUsed(int slotIndex, ItemData item)
+    {
+        if (!initialized)
+        {
+            return;
+        }
+
+        RefreshHealthPresentation();
+        SaveShopState();
+    }
+
+    private bool TryHealRunHealth(int amount)
+    {
+        if (runData == null || amount <= 0)
+        {
+            return false;
+        }
+
+        int maximumHealth = Mathf.Max(1, runData.maxHealth);
+        int previousHealth = Mathf.Clamp(
+            runData.currentHealth,
+            1,
+            maximumHealth);
+        if (previousHealth >= maximumHealth)
+        {
+            return false;
+        }
+
+        runData.maxHealth = maximumHealth;
+        runData.currentHealth = (int)System.Math.Min(
+            maximumHealth,
+            (long)previousHealth + amount);
+        RefreshHealthPresentation();
+        return runData.currentHealth > previousHealth;
+    }
+
     private bool SaveShopState()
     {
         if (!initialized || runData == null || deckManager == null
@@ -272,6 +321,7 @@ public sealed class ShopSceneController : MonoBehaviour
             runData.bullets,
             runData.nextCycleAcquisitionOrders);
         playerInventory.CaptureRunState(runData.inventoryItemAssetNames);
+        relicManager?.CaptureRunState(runData.relics);
         shopManager?.CaptureRunState(runData);
         return RunSaveSystem.Save(runData);
     }
@@ -286,6 +336,9 @@ public sealed class ShopSceneController : MonoBehaviour
             FindObjectsInactive.Include);
         playerInventory ??= FindFirstObjectByType<PlayerInventory>(
             FindObjectsInactive.Include);
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        relicManager ??= gameObject.AddComponent<RelicManager>();
         stateManager ??= FindFirstObjectByType<StateManager>(
             FindObjectsInactive.Include);
         playerHealthFillImage ??= FindSceneComponent<Image>(

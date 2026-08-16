@@ -25,6 +25,7 @@ public sealed class EventSceneController : MonoBehaviour
     [SerializeField] private DeckManager deckManager;
     [SerializeField] private CurrencyManager currencyManager;
     [SerializeField] private PlayerInventory playerInventory;
+    [SerializeField] private RelicManager relicManager;
     [SerializeField] private StateManager stateManager;
     [SerializeField] private BulletManagementUI bulletSelectionUI;
 
@@ -143,14 +144,16 @@ public sealed class EventSceneController : MonoBehaviour
     private bool TryInitialize()
     {
         if (dataResolver == null || deckManager == null
-            || currencyManager == null || playerInventory == null)
+            || currencyManager == null || playerInventory == null
+            || relicManager == null)
         {
             Debug.LogError(
                 "Event initialization is missing managers. "
                 + $"Resolver={dataResolver != null}, "
                 + $"Deck={deckManager != null}, "
                 + $"Currency={currencyManager != null}, "
-                + $"Inventory={playerInventory != null}.",
+                + $"Inventory={playerInventory != null}, "
+                + $"Relics={relicManager != null}.",
                 this);
             return false;
         }
@@ -186,6 +189,13 @@ public sealed class EventSceneController : MonoBehaviour
             Debug.LogError(
                 "Event initialization could not restore any saved bullets. "
                 + "Check the ShopManager bullet pool.",
+                this);
+            return false;
+        }
+        if (!relicManager.RestoreRunState(runData.relics))
+        {
+            Debug.LogError(
+                "Event initialization could not restore saved relics.",
                 this);
             return false;
         }
@@ -847,6 +857,7 @@ public sealed class EventSceneController : MonoBehaviour
             runData.bullets,
             runData.nextCycleAcquisitionOrders);
         playerInventory.CaptureRunState(runData.inventoryItemAssetNames);
+        relicManager?.CaptureRunState(runData.relics);
         return RunSaveSystem.Save(runData);
     }
 
@@ -885,6 +896,9 @@ public sealed class EventSceneController : MonoBehaviour
             FindObjectsInactive.Include);
         playerInventory ??= FindFirstObjectByType<PlayerInventory>(
             FindObjectsInactive.Include);
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        relicManager ??= gameObject.AddComponent<RelicManager>();
         stateManager ??= FindFirstObjectByType<StateManager>(
             FindObjectsInactive.Include);
         bulletSelectionUI ??= FindFirstObjectByType<BulletManagementUI>(

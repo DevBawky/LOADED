@@ -31,11 +31,11 @@ public enum NodeMapBattleProgressSection
 public sealed class NodeMapGenerationRule
 {
     public NodeMapNodeType nodeType = NodeMapNodeType.NormalBattle;
-    [Tooltip("최소 개수를 먼저 배치한 뒤 남은 슬롯을 선택할 상대 가중치입니다.")]
+    [Tooltip("Treasure: 33%/66% 구간에 두 번 등장할 확률(0~100). 그 외 타입: 일반 배치 상대 가중치.")]
     [Min(0)] public int weight = 1;
-    [Tooltip("가중치와 관계없이 우선 보장할 최소 개수입니다.")]
+    [Tooltip("일반 배치에서 보장할 최소 개수. Treasure 타입에서는 사용하지 않습니다.")]
     [Min(0)] public int minimumCount;
-    [Tooltip("-1이면 제한이 없습니다. 0 이상이면 Weight가 높아도 이 개수를 넘지 않습니다.")]
+    [Tooltip("일반 배치 최대 개수(-1은 무제한). Treasure 타입에서는 사용하지 않습니다.")]
     [Min(-1)] public int maximumCount = -1;
 }
 
@@ -92,7 +92,7 @@ public static class NodeMapGenerator
         {
             nodeType = NodeMapNodeType.Treasure,
             weight = 10,
-            maximumCount = 2
+            maximumCount = 0
         },
         new NodeMapGenerationRule
         {
@@ -207,13 +207,32 @@ public static class NodeMapGenerator
         int maximumColumn,
         System.Random random)
     {
-        List<NodeMapGenerationRule> rules = (configuredRules == null
-                || configuredRules.Count == 0
+        IReadOnlyList<NodeMapGenerationRule> sourceRules =
+            configuredRules == null || configuredRules.Count == 0
                 ? DefaultRules
-                : configuredRules)
+                : configuredRules;
+        NodeMapGenerationRule treasureRule = sourceRules.FirstOrDefault(
+            rule => rule != null
+                && rule.nodeType == NodeMapNodeType.Treasure);
+        int doubleTreasureChance = Mathf.Clamp(
+            treasureRule == null ? 0 : treasureRule.weight,
+            0,
+            100);
+        bool useDoubleTreasureColumns = doubleTreasureChance >= 100
+            || (doubleTreasureChance > 0
+                && random.Next(100) < doubleTreasureChance);
+        HashSet<int> forcedTreasureColumns = GetForcedTreasureColumns(
+            maximumColumn,
+            useDoubleTreasureColumns);
+
+        // Treasure is exclusively assigned by the fixed progress columns.
+        // Its Weight is the double-appearance percentage, and Min/Max do not
+        // participate in ordinary node allocation.
+        List<NodeMapGenerationRule> rules = sourceRules
             .Where(rule => rule != null
                 && rule.nodeType != NodeMapNodeType.Start
-                && rule.nodeType != NodeMapNodeType.Boss)
+                && rule.nodeType != NodeMapNodeType.Boss
+                && rule.nodeType != NodeMapNodeType.Treasure)
             .GroupBy(rule => rule.nodeType)
             .Select(group => group.First())
             .ToList();
@@ -225,14 +244,26 @@ public static class NodeMapGenerator
         Dictionary<NodeMapNodeType, int> counts = rules.ToDictionary(
             rule => rule.nodeType, _ => 0);
 
-        // Every branch immediately after Start must begin with a normal
-        // battle. These forced nodes take priority over configured weights.
+        // Fixed columns take priority over configured weights and limits.
+        // In very short maps, the first playable column remains a battle and
+        // the pre-boss Shop takes priority over a colliding Treasure column.
+        int preBossColumn = Mathf.Max(1, maximumColumn - 1);
         List<NodeMapNodeData> unassignedNodes = new List<NodeMapNodeData>();
         foreach (NodeMapNodeData node in nodes)
         {
             if (node.column == 1)
             {
                 node.type = NodeMapNodeType.NormalBattle;
+                IncrementCount(counts, node.type);
+            }
+            else if (node.column == preBossColumn)
+            {
+                node.type = NodeMapNodeType.Shop;
+                IncrementCount(counts, node.type);
+            }
+            else if (forcedTreasureColumns.Contains(node.column))
+            {
+                node.type = NodeMapNodeType.Treasure;
                 IncrementCount(counts, node.type);
             }
             else
@@ -356,10 +387,40 @@ public static class NodeMapGenerator
             return type == NodeMapNodeType.NormalBattle;
         }
 
-        return type != NodeMapNodeType.Treasure
-            || GetNormalBattleProgressSection(
-                node.column,
-                maximumColumn) != NodeMapBattleProgressSection.Early;
+        // Treasure is never part of the weighted/minimum allocation pass.
+        return type != NodeMapNodeType.Treasure;
+    }
+
+    private static HashSet<int> GetForcedTreasureColumns(
+        int maximumColumn,
+        bool useDoubleTreasureColumns)
+    {
+        HashSet<int> columns = new HashSet<int>();
+        if (useDoubleTreasureColumns)
+        {
+            columns.Add(GetColumnNearestProgress(maximumColumn, 1f / 3f));
+            columns.Add(GetColumnNearestProgress(maximumColumn, 2f / 3f));
+        }
+        else
+        {
+            columns.Add(GetColumnNearestProgress(maximumColumn, 0.5f));
+        }
+
+        return columns;
+    }
+
+    private static int GetColumnNearestProgress(
+        int maximumColumn,
+        float progress)
+    {
+        const int firstPlayableColumn = 1;
+        int lastPlayableColumn = Mathf.Max(
+            firstPlayableColumn,
+            maximumColumn - 1);
+        return Mathf.RoundToInt(Mathf.Lerp(
+            firstPlayableColumn,
+            lastPlayableColumn,
+            Mathf.Clamp01(progress)));
     }
 
     private static int GetCount(
@@ -687,8 +748,8 @@ public class NodeMapSettingsDefinition : ScriptableObject
         {
             nodeType = NodeMapNodeType.Treasure,
             weight = 10,
-            minimumCount = 1,
-            maximumCount = 2
+            minimumCount = 0,
+            maximumCount = 0
         },
         new NodeMapGenerationRule
         {
@@ -740,7 +801,7 @@ public class NodeMapSettingsDefinition : ScriptableObject
         {
             unchecked
             {
-                const int GenerationAlgorithmRevision = 2;
+                const int GenerationAlgorithmRevision = 3;
                 int hash = 17;
                 hash = hash * 31 + GenerationAlgorithmRevision;
                 hash = hash * 31 + Columns;

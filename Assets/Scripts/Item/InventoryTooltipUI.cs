@@ -27,6 +27,7 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private PlayerShoot playerShoot;
     [SerializeField] private StateManager stateManager;
+    [SerializeField] private RelicManager relicManager;
 
     [Header("Canvas")]
     [SerializeField] private RectTransform canvasRect;
@@ -677,8 +678,26 @@ public class InventoryTooltipUI : MonoBehaviour
         }
 
         cylinderBulletDescriptionText.richText = true;
-        cylinderBulletDescriptionText.text = bullet.GetDetailedDescription(
+        string description = bullet.GetDetailedDescription(
             CreateBulletTooltipContext());
+        int initialLoadedCount = playerShoot == null
+            ? deckManager == null ? 0 : deckManager.LoadedBullets.Count
+            : Mathf.Max(
+                deckManager == null ? 0 : deckManager.LoadedBullets.Count,
+                playerShoot.InitialLoadedBulletCount);
+        if (relicManager != null
+            && relicManager.IsLuckyChamberLoadedBullet(
+                loadedBulletIndex,
+                initialLoadedCount))
+        {
+            string luckyChamberText =
+                relicManager.GetLuckyChamberBulletTooltip();
+            if (!string.IsNullOrWhiteSpace(luckyChamberText))
+            {
+                description += "\n\n" + luckyChamberText;
+            }
+        }
+        cylinderBulletDescriptionText.text = description;
         cylinderBulletTooltip.gameObject.SetActive(true);
         PositionInsideScreen(
             cylinderBulletTooltip,
@@ -1390,6 +1409,7 @@ public class InventoryTooltipUI : MonoBehaviour
         playerHealth ??= FindSceneObject<PlayerHealth>();
         playerShoot ??= FindSceneObject<PlayerShoot>();
         stateManager ??= FindSceneObject<StateManager>();
+        relicManager ??= FindSceneObject<RelicManager>();
         cylinderUI ??= FindSceneObject<PlayerCylinderUI>();
         bulletManagementUI ??= FindSceneObject<BulletManagementUI>();
 

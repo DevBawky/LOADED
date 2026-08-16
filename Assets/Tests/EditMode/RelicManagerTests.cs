@@ -303,6 +303,36 @@ public sealed class RelicManagerTests
         Assert.That(ids, Does.Contain(availableB.Id));
     }
 
+    [Test]
+    public void LuckyChamber_ExposesSelectedCylinderIndexAndTooltip()
+    {
+        RelicData luckyChamber = CreateRelic(
+            "lucky-chamber",
+            effectType: RelicEffectType.LuckyChamber);
+        manager.TryAcquire(luckyChamber);
+        Random.State previousState = Random.state;
+
+        try
+        {
+            Random.InitState(20260816);
+            manager.NotifyCylinderStarted(6, null, 100, 100);
+
+            int selectedIndex = manager.LuckyChamberBulletIndex;
+            Assert.That(selectedIndex, Is.InRange(0, 5));
+            Assert.That(manager.IsLuckyChamberShot(selectedIndex), Is.True);
+            Assert.That(
+                manager.IsLuckyChamberLoadedBullet(5 - selectedIndex, 6),
+                Is.True);
+            Assert.That(
+                manager.GetLuckyChamberBulletTooltip(),
+                Does.Contain("행운의 약실"));
+        }
+        finally
+        {
+            Random.state = previousState;
+        }
+    }
+
     private RelicData CreateRelic(
         string id,
         RelicLifetimeType lifetime = RelicLifetimeType.RunPersistent,

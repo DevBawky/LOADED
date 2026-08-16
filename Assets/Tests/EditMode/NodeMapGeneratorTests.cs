@@ -75,16 +75,16 @@ public sealed class NodeMapGeneratorTests
     }
 
     [Test]
-    public void Generate_PlacesTreasureOnlyInMiddleOrLateColumns()
+    public void Generate_ForcesSingleTreasureColumnNearHalfProgress()
     {
         NodeMapGenerationRule[] rules =
         {
             new NodeMapGenerationRule
             {
                 nodeType = NodeMapNodeType.Treasure,
-                weight = 100,
-                minimumCount = 2,
-                maximumCount = -1
+                weight = 0,
+                minimumCount = 99,
+                maximumCount = 0
             },
             new NodeMapGenerationRule
             {
@@ -96,17 +96,68 @@ public sealed class NodeMapGeneratorTests
 
         NodeMapRunData map = NodeMapGenerator.Generate(
             20260814, 0, 12, 4, 3, rules);
-        int maximumColumn = map.nodes.Max(node => node.column);
         List<NodeMapNodeData> treasures = map.nodes
             .Where(node => node.type == NodeMapNodeType.Treasure)
             .ToList();
 
         Assert.That(treasures, Is.Not.Empty);
-        Assert.That(treasures.All(node =>
-            NodeMapGenerator.GetNormalBattleProgressSection(
-                node.column,
-                maximumColumn) != NodeMapBattleProgressSection.Early),
-            Is.True);
+        Assert.That(treasures.Select(node => node.column).Distinct(),
+            Is.EqualTo(new[] { 6 }));
+        Assert.That(map.nodes.Where(node => node.column == 6).All(node =>
+            node.type == NodeMapNodeType.Treasure), Is.True);
+    }
+
+    [Test]
+    public void Generate_ForcesDoubleTreasureColumnsAtThirdsAtFullChance()
+    {
+        NodeMapGenerationRule[] rules =
+        {
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.Treasure,
+                weight = 100,
+                minimumCount = 0,
+                maximumCount = 0
+            },
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.NormalBattle,
+                weight = 1,
+                maximumCount = -1
+            }
+        };
+
+        NodeMapRunData map = NodeMapGenerator.Generate(
+            20260815, 0, 12, 4, 3, rules);
+        List<int> treasureColumns = map.nodes
+            .Where(node => node.type == NodeMapNodeType.Treasure)
+            .Select(node => node.column)
+            .Distinct()
+            .OrderBy(column => column)
+            .ToList();
+
+        Assert.That(treasureColumns, Is.EqualTo(new[] { 4, 7 }));
+        Assert.That(treasureColumns.All(column => map.nodes
+            .Where(node => node.column == column)
+            .All(node => node.type == NodeMapNodeType.Treasure)), Is.True);
+    }
+
+    [Test]
+    public void Generate_MakesEveryPreBossNodeAShop()
+    {
+        for (int seed = 0; seed < 25; seed++)
+        {
+            NodeMapRunData map = NodeMapGenerator.Generate(
+                seed, 0, 12, 4, 3);
+            int bossColumn = map.nodes.Max(node => node.column);
+            List<NodeMapNodeData> preBossNodes = map.nodes
+                .Where(node => node.column == bossColumn - 1)
+                .ToList();
+
+            Assert.That(preBossNodes, Is.Not.Empty);
+            Assert.That(preBossNodes.All(node =>
+                node.type == NodeMapNodeType.Shop), Is.True);
+        }
     }
 
     [Test]
@@ -132,7 +183,9 @@ public sealed class NodeMapGeneratorTests
             50100, 0, 10, 4, 3, rules);
         List<NodeMapNodeData> weightedNodes = map.nodes
             .Where(node => node.column > 1
-                && node.type != NodeMapNodeType.Boss)
+                && node.type != NodeMapNodeType.Boss
+                && node.type != NodeMapNodeType.Shop
+                && node.type != NodeMapNodeType.Treasure)
             .ToList();
 
         Assert.That(weightedNodes, Is.Not.Empty);
