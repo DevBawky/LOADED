@@ -16,11 +16,29 @@ public sealed class RelicInventoryUI : MonoBehaviour
     [SerializeField] private GameObject relicPrefab;
     [SerializeField] private RelicManager relicManager;
 
+    [Header("Relic Activation Effect")]
+    [Min(0.1f)] [SerializeField] private float activationDuration = 0.48f;
+    [Min(1f)] [SerializeField] private float activationWaveScale = 1.65f;
+    [SerializeField] private Color attackActivationColor =
+        new Color(1f, 0.35f, 0.08f, 1f);
+    [SerializeField] private Color defenseActivationColor =
+        new Color(0.2f, 1f, 0.42f, 1f);
+    [SerializeField] private Color cylinderActivationColor =
+        new Color(0.1f, 0.9f, 1f, 1f);
+    [SerializeField] private Color rewardActivationColor =
+        new Color(1f, 0.78f, 0.08f, 1f);
+    [SerializeField] private Color specialActivationColor =
+        new Color(0.72f, 0.3f, 1f, 1f);
+
     private readonly List<GameObject> spawnedRelics = new List<GameObject>();
     private readonly Dictionary<RelicInstance, RectTransform> relicIcons =
         new Dictionary<RelicInstance, RectTransform>();
     private readonly Dictionary<RelicInstance, Coroutine> pulseAnimations =
         new Dictionary<RelicInstance, Coroutine>();
+    private readonly List<GameObject> activeActivationEffects =
+        new List<GameObject>();
+    private Texture2D activationRingTexture;
+    private Sprite activationRingSprite;
     private RelicTooltipUI tooltip;
     private RelicInstance hoveredRelic;
 
@@ -49,6 +67,15 @@ public sealed class RelicInventoryUI : MonoBehaviour
     private void OnDisable()
     {
         StopAllCoroutines();
+        pulseAnimations.Clear();
+        foreach (RectTransform icon in relicIcons.Values)
+        {
+            if (icon != null)
+            {
+                icon.localScale = Vector3.one;
+            }
+        }
+        ClearActivationEffects();
         if (relicManager != null)
         {
             relicManager.InventoryChanged -= Refresh;
@@ -56,6 +83,14 @@ public sealed class RelicInventoryUI : MonoBehaviour
         }
 
         HideTooltip();
+    }
+
+    private void OnDestroy()
+    {
+        DestroyRuntimeObject(activationRingSprite);
+        DestroyRuntimeObject(activationRingTexture);
+        activationRingSprite = null;
+        activationRingTexture = null;
     }
 
     private void ResolveRelicManager()
@@ -160,6 +195,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
         HideTooltip();
         StopAllCoroutines();
         pulseAnimations.Clear();
+        ClearActivationEffects();
         relicIcons.Clear();
 
         foreach (GameObject relicObject in spawnedRelics)
@@ -208,6 +244,234 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
         icon.localScale = Vector3.one;
         pulseAnimations[relic] = StartCoroutine(PulseRelic(relic, icon));
+        StartCoroutine(PlayActivationEffect(
+            icon,
+            GetActivationColor(effect)));
+    }
+
+    private IEnumerator PlayActivationEffect(RectTransform icon, Color color)
+    {
+        if (icon == null)
+        {
+            yield break;
+        }
+
+        Sprite ringSprite = GetActivationRingSprite();
+        GameObject effectRoot = new GameObject(
+            "Effect | Relic Activation",
+            typeof(RectTransform),
+            typeof(Canvas));
+        effectRoot.layer = icon.gameObject.layer;
+        RectTransform rootRect = effectRoot.GetComponent<RectTransform>();
+        rootRect.SetParent(icon, false);
+        rootRect.anchorMin = Vector2.zero;
+        rootRect.anchorMax = Vector2.one;
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+        rootRect.localScale = Vector3.one;
+        rootRect.SetAsLastSibling();
+
+        Canvas effectCanvas = effectRoot.GetComponent<Canvas>();
+        Canvas parentCanvas = icon.GetComponentInParent<Canvas>();
+        effectCanvas.overrideSorting = true;
+        effectCanvas.sortingLayerID = parentCanvas == null
+            ? 0
+            : parentCanvas.sortingLayerID;
+        effectCanvas.sortingOrder = (parentCanvas == null
+            ? 0
+            : parentCanvas.sortingOrder) + 20;
+
+        Image ring = CreateActivationImage(
+            effectRoot.transform,
+            "Image | Activation Ring",
+            ringSprite);
+        Image wave = CreateActivationImage(
+            effectRoot.transform,
+            "Image | Activation Wave",
+            ringSprite);
+        activeActivationEffects.Add(effectRoot);
+
+        float duration = Mathf.Max(0.1f, activationDuration);
+        float elapsed = 0f;
+        while (effectRoot != null && icon != null && elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float entrance = Mathf.Clamp01(progress / 0.16f);
+            float fade = 1f - Mathf.SmoothStep(0f, 1f, progress);
+
+            RectTransform ringRect = ring.rectTransform;
+            ringRect.localScale = Vector3.one * Mathf.Lerp(
+                0.78f,
+                1.18f,
+                EaseOutBack(progress));
+            ringRect.localEulerAngles = new Vector3(
+                0f,
+                0f,
+                Mathf.Lerp(-110f, 170f, progress));
+            ring.color = WithAlpha(color, entrance * fade);
+
+            float waveProgress = Mathf.SmoothStep(0f, 1f, progress);
+            wave.rectTransform.localScale = Vector3.one * Mathf.Lerp(
+                0.72f,
+                Mathf.Max(1f, activationWaveScale),
+                waveProgress);
+            wave.color = WithAlpha(color, fade * fade * 0.72f);
+            yield return null;
+        }
+
+        activeActivationEffects.Remove(effectRoot);
+        DestroyRelicObject(effectRoot);
+    }
+
+    private static Image CreateActivationImage(
+        Transform parent,
+        string objectName,
+        Sprite sprite)
+    {
+        GameObject imageObject = new GameObject(
+            objectName,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image));
+        imageObject.layer = parent.gameObject.layer;
+        RectTransform rect = imageObject.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = Vector2.one * 118f;
+
+        Image image = imageObject.GetComponent<Image>();
+        image.sprite = sprite;
+        image.preserveAspect = true;
+        image.raycastTarget = false;
+        return image;
+    }
+
+    private Sprite GetActivationRingSprite()
+    {
+        if (activationRingSprite != null)
+        {
+            return activationRingSprite;
+        }
+
+        const int size = 128;
+        activationRingTexture = new Texture2D(
+            size,
+            size,
+            TextureFormat.RGBA32,
+            false)
+        {
+            name = "Relic Activation Ring (Runtime)",
+            filterMode = FilterMode.Bilinear,
+            wrapMode = TextureWrapMode.Clamp
+        };
+        Color[] pixels = new Color[size * size];
+        Vector2 center = Vector2.one * ((size - 1) * 0.5f);
+        float outerRadius = size * 0.48f;
+        float innerRadius = size * 0.37f;
+        float antialias = 1.5f;
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                Vector2 offset = new Vector2(x, y) - center;
+                float radius = offset.magnitude;
+                float outerFade = 1f - Mathf.InverseLerp(
+                    outerRadius - antialias,
+                    outerRadius + antialias,
+                    radius);
+                float innerFade = Mathf.InverseLerp(
+                    innerRadius - antialias,
+                    innerRadius + antialias,
+                    radius);
+                float ringAlpha = Mathf.Clamp01(outerFade * innerFade);
+                float angle = Mathf.Atan2(offset.y, offset.x)
+                    / (Mathf.PI * 2f) + 0.5f;
+                float dash = Mathf.Repeat(angle * 8f, 1f) < 0.68f
+                    ? 1f
+                    : 0.12f;
+                float highlight = 0.55f + 0.45f * Mathf.Pow(
+                    Mathf.Max(0f, Mathf.Cos(angle * Mathf.PI * 2f)),
+                    8f);
+                pixels[y * size + x] = new Color(
+                    1f,
+                    1f,
+                    1f,
+                    ringAlpha * dash * highlight);
+            }
+        }
+
+        activationRingTexture.SetPixels(pixels);
+        activationRingTexture.Apply(false, true);
+        activationRingSprite = Sprite.Create(
+            activationRingTexture,
+            new Rect(0f, 0f, size, size),
+            new Vector2(0.5f, 0.5f),
+            size,
+            0,
+            SpriteMeshType.FullRect);
+        activationRingSprite.name = "Relic Activation Ring (Runtime)";
+        return activationRingSprite;
+    }
+
+    private Color GetActivationColor(RelicEffectData effect)
+    {
+        return effect?.EffectType switch
+        {
+            RelicEffectType.PreventLethalDamage
+                or RelicEffectType.BrinkTrigger => defenseActivationColor,
+            RelicEffectType.GoldPanner => rewardActivationColor,
+            RelicEffectType.Carriage
+                or RelicEffectType.ClosedCircuit
+                or RelicEffectType.EmptyBeat
+                or RelicEffectType.LuckyChamber => cylinderActivationColor,
+            RelicEffectType.InfectiousIncubator
+                or RelicEffectType.MutationCatalyst
+                or RelicEffectType.FamilyWill => specialActivationColor,
+            _ => attackActivationColor
+        };
+    }
+
+    private void ClearActivationEffects()
+    {
+        foreach (GameObject effect in activeActivationEffects)
+        {
+            DestroyRelicObject(effect);
+        }
+        activeActivationEffects.Clear();
+    }
+
+    private static Color WithAlpha(Color color, float alpha)
+    {
+        color.a *= Mathf.Clamp01(alpha);
+        return color;
+    }
+
+    private static float EaseOutBack(float value)
+    {
+        float shifted = Mathf.Clamp01(value) - 1f;
+        return 1f + shifted * shifted * (2.5f * shifted + 1.5f);
+    }
+
+    private static void DestroyRuntimeObject(Object value)
+    {
+        if (value == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            Destroy(value);
+        }
+        else
+        {
+            DestroyImmediate(value);
+        }
     }
 
     private IEnumerator PulseRelic(RelicInstance relic, RectTransform icon)
