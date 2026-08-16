@@ -100,6 +100,22 @@ public sealed class RunDroppedItemSaveData
 }
 
 [Serializable]
+public sealed class RunRelicSaveData
+{
+    public string relicId;
+    public int stackCount = 1;
+    public int remainingCharges;
+    public int movementStacks;
+    public long storedDamage;
+    public int primaryCounter;
+    public int secondaryCounter;
+    public double storedValue;
+    public bool runtimeFlag;
+    public List<int> trackedBulletAcquisitionOrders = new List<int>();
+    public int acquisitionOrder;
+}
+
+[Serializable]
 public sealed class RunCombatReportSaveData
 {
     public int cumulativeDamage;
@@ -133,6 +149,7 @@ public sealed class RunSaveData
     public int flowState = (int)GameFlowState.Battle;
     public int stageIndex;
     public int battleIndex;
+    public bool startSelectedBattleFresh;
     public int currentHealth;
     public int maxHealth;
     public int money;
@@ -141,9 +158,11 @@ public sealed class RunSaveData
     public List<RunBulletSaveData> bullets = new List<RunBulletSaveData>();
     public List<int> nextCycleAcquisitionOrders = new List<int>();
     public List<string> inventoryItemAssetNames = new List<string>();
+    public List<RunRelicSaveData> relics = new List<RunRelicSaveData>();
     public int playerTileIndex;
     public bool playerFacingRight;
     public int playerTurnCount;
+    public int cumulativeBattleTurnCount;
     public int nextPushAvailableTurn;
     public RunStatusEffectSaveData playerStatusEffects =
         new RunStatusEffectSaveData();
@@ -169,6 +188,17 @@ public sealed class RunSaveData
     public bool statisticsCylinderActive;
     public long statisticsCurrentCylinderDamage;
     public RunShopSaveData shop = new RunShopSaveData();
+    public bool shopVisitActive;
+    public string activeEventId;
+    public bool eventChoiceResolved;
+    public string eventOutcomeText;
+    public List<int> eventChoiceSelectionCounts = new List<int>();
+    public List<int> eventChoiceFailureCounts = new List<int>();
+    public List<string> completedEventIds = new List<string>();
+    public bool treasureVisitActive;
+    public bool treasureChestOpened;
+    public bool treasureChoiceResolved;
+    public List<string> treasureOfferRelicIds = new List<string>();
 }
 
 public enum RunStartMode
@@ -214,6 +244,34 @@ public static class RunSaveSystem
         requestedStartMode = mode;
     }
 
+    public static bool PrepareForSelectedBattle(int stageIndex, int battleIndex)
+    {
+        if (!TryLoad(out RunSaveData saveData))
+        {
+            return false;
+        }
+
+        saveData.stageIndex = Mathf.Max(0, stageIndex);
+        saveData.battleIndex = Mathf.Max(0, battleIndex);
+        saveData.flowState = (int)GameFlowState.Battle;
+        saveData.startSelectedBattleFresh = true;
+        saveData.cumulativeBattleTurnCount = Mathf.Max(
+            saveData.cumulativeBattleTurnCount,
+            saveData.playerTurnCount);
+        saveData.playerTurnCount = 0;
+        saveData.nextPushAvailableTurn = 0;
+        saveData.currentWaveIndex = 0;
+        saveData.remainingSpawnTurns = 0;
+        saveData.isWaitingForNextWave = false;
+        saveData.isBattleCompletionPending = false;
+        saveData.currentEnemyTurnCycle = 0;
+        saveData.reservedSpawnTileIndices.Clear();
+        saveData.enemies.Clear();
+        saveData.bombs.Clear();
+        saveData.droppedItems.Clear();
+        return Save(saveData);
+    }
+
     public static RunStartMode ConsumeRequestedStartMode()
     {
         RunStartMode mode = requestedStartMode;
@@ -246,6 +304,7 @@ public static class RunSaveSystem
 
             File.WriteAllText(SavePath, json);
 #endif
+            RunSession.Instance.SetSnapshot(saveData);
             return true;
         }
         catch (Exception exception)
@@ -262,6 +321,12 @@ public static class RunSaveSystem
 
         try
         {
+            if (RunSession.Instance.TryGetSnapshot(out saveData))
+            {
+                NormalizeSaveData(saveData);
+                return IsValidSaveData(saveData);
+            }
+
 #if UNITY_WEBGL && !UNITY_EDITOR
             string json = PlayerPrefs.GetString(WebSaveKey, string.Empty);
 
@@ -295,21 +360,16 @@ public static class RunSaveSystem
                 return false;
             }
 
-            saveData.bullets ??= new List<RunBulletSaveData>();
-            saveData.nextCycleAcquisitionOrders ??= new List<int>();
-            saveData.inventoryItemAssetNames ??= new List<string>();
-            saveData.playerStatusEffects ??= new RunStatusEffectSaveData();
-            saveData.reservedSpawnTileIndices ??= new List<int>();
-            saveData.enemies ??= new List<RunEnemySaveData>();
-            saveData.bombs ??= new List<RunBombSaveData>();
-            saveData.droppedItems ??= new List<RunDroppedItemSaveData>();
-            saveData.combatReport ??= new RunCombatReportSaveData();
-            saveData.shop ??= new RunShopSaveData();
-            saveData.shop.bulletOfferAssetNames ??= new List<string>();
-            saveData.shop.purchasedBulletOffers ??= new List<bool>();
-            saveData.shop.itemOfferAssetNames ??= new List<string>();
-            saveData.shop.purchasedItemOffers ??= new List<bool>();
-            return saveData.bullets.Count > 0;
+            NormalizeSaveData(saveData);
+
+            if (!IsValidSaveData(saveData))
+            {
+                saveData = null;
+                return false;
+            }
+
+            RunSession.Instance.SetSnapshot(saveData);
+            return true;
         }
         catch (Exception exception)
         {
@@ -322,6 +382,8 @@ public static class RunSaveSystem
 
     public static void DeleteSave()
     {
+        RunSession.Instance.Clear();
+
         try
         {
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -347,6 +409,66 @@ public static class RunSaveSystem
 #else
         return File.Exists(SavePath);
 #endif
+    }
+
+    private static bool IsValidSaveData(RunSaveData saveData)
+    {
+        return saveData != null
+            && saveData.version == CurrentVersion
+            && saveData.stageIndex >= 0
+            && saveData.battleIndex >= 0
+            && saveData.bullets != null
+            && saveData.bullets.Count > 0;
+    }
+
+    private static void NormalizeSaveData(RunSaveData saveData)
+    {
+        if (saveData == null)
+        {
+            return;
+        }
+
+        saveData.bullets ??= new List<RunBulletSaveData>();
+        saveData.nextCycleAcquisitionOrders ??= new List<int>();
+        saveData.inventoryItemAssetNames ??= new List<string>();
+        saveData.relics ??= new List<RunRelicSaveData>();
+        saveData.playerTurnCount = Mathf.Max(0, saveData.playerTurnCount);
+        saveData.cumulativeBattleTurnCount = Mathf.Max(
+            saveData.playerTurnCount,
+            saveData.cumulativeBattleTurnCount);
+        saveData.playerStatusEffects ??= new RunStatusEffectSaveData();
+        saveData.reservedSpawnTileIndices ??= new List<int>();
+        saveData.enemies ??= new List<RunEnemySaveData>();
+        saveData.bombs ??= new List<RunBombSaveData>();
+        saveData.droppedItems ??= new List<RunDroppedItemSaveData>();
+        saveData.combatReport ??= new RunCombatReportSaveData();
+        saveData.shop ??= new RunShopSaveData();
+        saveData.shop.bulletOfferAssetNames ??= new List<string>();
+        saveData.shop.purchasedBulletOffers ??= new List<bool>();
+        saveData.shop.itemOfferAssetNames ??= new List<string>();
+        saveData.shop.purchasedItemOffers ??= new List<bool>();
+        saveData.activeEventId ??= string.Empty;
+        saveData.eventOutcomeText ??= string.Empty;
+        saveData.eventChoiceSelectionCounts ??= new List<int>();
+        saveData.eventChoiceFailureCounts ??= new List<int>();
+        for (int index = 0;
+             index < saveData.eventChoiceSelectionCounts.Count;
+             index++)
+        {
+            saveData.eventChoiceSelectionCounts[index] = Mathf.Max(
+                0,
+                saveData.eventChoiceSelectionCounts[index]);
+        }
+        for (int index = 0;
+             index < saveData.eventChoiceFailureCounts.Count;
+             index++)
+        {
+            saveData.eventChoiceFailureCounts[index] = Mathf.Max(
+                0,
+                saveData.eventChoiceFailureCounts[index]);
+        }
+        saveData.completedEventIds ??= new List<string>();
+        saveData.treasureOfferRelicIds ??= new List<string>();
     }
 }
 

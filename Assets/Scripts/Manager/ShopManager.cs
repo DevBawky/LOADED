@@ -27,6 +27,17 @@ public class ShopBulletSlot
     public Button Button => button;
     public Image BulletIcon => bulletIcon;
     public TMP_Text CostText => costText;
+
+    public ShopBulletSlot()
+    {
+    }
+
+    public ShopBulletSlot(Button button, Image bulletIcon, TMP_Text costText)
+    {
+        this.button = button;
+        this.bulletIcon = bulletIcon;
+        this.costText = costText;
+    }
 }
 
 [Serializable]
@@ -123,6 +134,7 @@ public class ShopManager : MonoBehaviour
         new List<UnityAction>();
     private UnityAction refreshClickAction;
     private bool isRefreshing;
+    private bool standaloneShopMode;
 
     private sealed class OfferVisualState
     {
@@ -141,8 +153,14 @@ public class ShopManager : MonoBehaviour
     public IReadOnlyList<ItemData> CurrentItemOffers => currentItemOffers;
     public int CurrentRefreshCost => currentRefreshCost;
     public bool IsRefreshing => isRefreshing;
-    public bool CanSellInventoryItems => stateManager != null
+    public bool CanSellInventoryItems => standaloneShopMode
+        || stateManager != null
         && stateManager.CurrentState == GameFlowState.Shop;
+
+    public void ConfigureStandaloneShop(bool enabled = true)
+    {
+        standaloneShopMode = enabled;
+    }
 
     public BulletData ResolveSavedBullet(RunBulletSaveData savedBullet)
     {
@@ -383,6 +401,7 @@ public class ShopManager : MonoBehaviour
     public void OpenShop()
     {
         currencyManager?.FlushPendingMoney();
+        currentRefreshCost = Mathf.Max(0, initialRefreshCost);
         ResetOfferButtonsForNewVisit();
         GenerateOffers();
         GenerateItemOffers();
@@ -1195,6 +1214,7 @@ public class ShopManager : MonoBehaviour
 
         ResolveRefreshButton();
         ResolveBulletCountText();
+        ResolveBulletSlots();
 
         if (itemPool.Count == 0)
         {
@@ -1240,6 +1260,43 @@ public class ShopManager : MonoBehaviour
         }
     }
 
+    private void ResolveBulletSlots()
+    {
+        slots.RemoveAll(slot => slot == null || slot.Button == null);
+
+        if (slots.Count > 0)
+        {
+            return;
+        }
+
+        Button[] allButtons = FindObjectsByType<Button>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        List<Button> discoveredButtons = new List<Button>();
+
+        foreach (Button button in allButtons)
+        {
+            if (button != null && button.gameObject.scene.IsValid()
+                && button.name == "Button | Bullet Item"
+                && HasShopPanelAncestor(button.transform))
+            {
+                discoveredButtons.Add(button);
+            }
+        }
+
+        discoveredButtons.Sort((left, right) =>
+            left.transform.GetSiblingIndex().CompareTo(
+                right.transform.GetSiblingIndex()));
+
+        foreach (Button button in discoveredButtons)
+        {
+            slots.Add(new ShopBulletSlot(
+                button,
+                FindNamedChild<Image>(button.transform, "Image | Sprite"),
+                FindNamedChild<TMP_Text>(button.transform, "Text | Cost")));
+        }
+    }
+
     private void ResolveRefreshButton()
     {
         if (refreshButton == null)
@@ -1252,7 +1309,7 @@ public class ShopManager : MonoBehaviour
             {
                 if (button != null && button.gameObject.scene.IsValid()
                     && button.name == "Button | Refresh"
-                    && HasNamedAncestor(button.transform, "Panel | Shop"))
+                    && HasShopPanelAncestor(button.transform))
                 {
                     refreshButton = button;
                     break;
@@ -1269,7 +1326,7 @@ public class ShopManager : MonoBehaviour
                 if (text != null
                     && text.gameObject.scene.IsValid()
                     && text.name == "Text | Refresh Cost"
-                    && HasNamedAncestor(text.transform, "Panel | Shop"))
+                    && HasShopPanelAncestor(text.transform))
                 {
                     refreshCostText = text;
                     break;
@@ -1294,7 +1351,7 @@ public class ShopManager : MonoBehaviour
             if (textComponent != null
                 && textComponent.gameObject.scene.IsValid()
                 && textComponent.name == "Text | My Bullet Count"
-                && HasNamedAncestor(textComponent.transform, "Panel | Shop"))
+                && HasShopPanelAncestor(textComponent.transform))
             {
                 myBulletCountText = textComponent;
                 break;
@@ -1317,6 +1374,12 @@ public class ShopManager : MonoBehaviour
         }
 
         return false;
+    }
+
+    private static bool HasShopPanelAncestor(Transform transform)
+    {
+        return HasNamedAncestor(transform, "Panel | Shop")
+            || HasNamedAncestor(transform, "Panel_Shop");
     }
 
     private static T FindSceneObject<T>() where T : UnityEngine.Object

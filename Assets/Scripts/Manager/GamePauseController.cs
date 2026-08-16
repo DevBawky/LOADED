@@ -378,7 +378,8 @@ public class GamePauseController : MonoBehaviour
 
         return stateManager.CurrentState == GameFlowState.Battle
             || stateManager.CurrentState == GameFlowState.BattleClear
-            || stateManager.CurrentState == GameFlowState.Shop;
+            || stateManager.CurrentState == GameFlowState.Shop
+            || stateManager.CurrentState == GameFlowState.Event;
     }
 
     private void RefreshPauseAvailability()

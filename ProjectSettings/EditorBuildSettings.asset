@@ -9,8 +9,20 @@ EditorBuildSettings:
     path: Assets/Scenes/MainMenu.unity
     guid: a3a2bd4300b428b42ae1d2c842479c82
   - enabled: 1
-    path: Assets/Scenes/Stage 1.unity
+    path: Assets/Scenes/NodeMap.unity
+    guid: 526321236e92b594189a1643ad465a8c
+  - enabled: 1
+    path: Assets/Scenes/Battle.unity
     guid: 8c9cfa26abfee488c85f1582747f6a02
+  - enabled: 1
+    path: Assets/Scenes/Shop.unity
+    guid: 5e581b05813824b4ea88484ad56fd68c
+  - enabled: 1
+    path: Assets/Scenes/Treasure.unity
+    guid: 549bc72ab16142044bf7008d90850c1f
+  - enabled: 1
+    path: Assets/Scenes/Event.unity
+    guid: c9f327ed64394d84cbeb3701d107b2ae
   - enabled: 1
     path: Assets/Scenes/Ending.unity
     guid: 728b641cf89e2a84b8f7814bb05e091c

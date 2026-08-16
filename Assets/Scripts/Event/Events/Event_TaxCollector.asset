@@ -1,0 +1,66 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
+  m_Name: Event_TaxCollector
+  m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
+  eventId: tax-collector
+  displayName: "\uD669\uC57C\uC758 \uC9D5\uC218\uAD00"
+  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
+  dialogue: "\uAC80\uC740 \uBAA8\uC790\uB97C \uB20C\uB7EC\uC4F4 \uB0A8\uC790\uB4E4\uC774
+    \uAE38\uC744 \uB9C9\uB294\uB2E4. \uC120\uB450\uC758 \uB0A8\uC790\uAC00 \uC7A5\uBD80\uB97C
+    \uD3BC\uCE58\uBA70 \uD1B5\uD589\uC138\uB97C \uC694\uAD6C\uD55C\uB2E4."
+  choices:
+  - buttonText: "[\uD1B5\uD589\uC138\uB97C \uB0B8\uB2E4] 15 \uACE8\uB4DC\uB97C \uC783\uB294\uB2E4."
+    outcomeText: "\uC9D5\uC218\uAD00\uC740 \uB3D9\uC804\uC744 \uC138\uC5B4 \uBCF8
+      \uB4A4 \uB9C8\uC9C0\uBABB\uD574 \uAE38\uC744 \uBE44\uCF30\uB2E4."
+    requirements:
+    - type: 1
+      amount: 15
+      unavailableReason: "15 \uACE8\uB4DC\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+    effects:
+    - type: 1
+      amount: 15
+      bullet: {fileID: 0}
+  - buttonText: "[\uB3CC\uD30C\uD55C\uB2E4] \uCCB4\uB825\uC744 12 \uC783\uB294\uB2E4."
+    outcomeText: "\uAC70\uCE5C \uBAB8\uC2F8\uC6C0 \uB05D\uC5D0 \uAE38\uC744 \uB6AB\uC5C8\uC9C0\uB9CC
+      \uACF3\uACF3\uC5D0 \uC0C8 \uC0C1\uCC98\uAC00 \uB0A8\uC558\uB2E4."
+    requirements: []
+    effects:
+    - type: 3
+      amount: 12
+      bullet: {fileID: 0}
+  - buttonText: "[\uD0C4\uD658\uC744 \uAC74\uB128\uB2E4] \uD0C4\uD658 \uD558\uB098\uB97C
+      \uC81C\uAC70\uD55C\uB2E4."
+    outcomeText: "\uC9D5\uC218\uAD00\uC740 \uD0C4\uD658\uC744 \uBC1B\uC544 \uB4E4\uACE0
+      \uB9CC\uC871\uC2A4\uB7FD\uAC8C \uACE0\uAC1C\uB97C \uB044\uB355\uC600\uB2E4."
+    requirements:
+    - type: 2
+      amount: 0
+      unavailableReason: "\uC81C\uAC70\uD560 \uC218 \uC788\uB294 \uD0C4\uD658\uC774
+        \uC5C6\uC2B5\uB2C8\uB2E4."
+    effects:
+    - type: 5
+      amount: 0
+      bullet: {fileID: 0}
+  baseWeight: 7
+  oncePerRun: 1
+  weightRules:
+  - statistic: 3
+    comparison: 3
+    threshold: 50
+    operation: 0
+    value: 22
+  - statistic: 3
+    comparison: 0
+    threshold: 20
+    operation: 1
+    value: 0.2

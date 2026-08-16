@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Lucky Chamber
+  m_EditorClassIdentifier: 
+  relicId: lucky_chamber
+  displayName: "\uD589\uC6B4\uC758 \uC57D\uC2E4"
+  description: "\uC0AC\uACA9\uC744 \uC2DC\uC791\uD560 \uB54C \uC7A5\uC804\uB41C \uC57D\uC2E4
+    \uD558\uB098\uB97C \uBB34\uC791\uC704\uB85C \uACF5\uAC1C\uD569\uB2C8\uB2E4. \uD574\uB2F9
+    \uD0C4\uD658\uC758 \uCD5C\uC885 \uD53C\uD574\uAC00 3\uBC30\uAC00 \uB429\uB2C8\uB2E4."
+  icon: {fileID: -701460462383550924, guid: 69cf80b6d6d49b842bb24a2c760d9c96, type: 3}
+  lifetimeType: 0
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 20
+    finalDamageMultiplier: 3
+    movementDamageMultiplierPerStack: 1.1
+    survivingHealth: 1
+    movementSources: 3
+    movementStackReset: 0
+    circuitShotThreshold: 5
+    circuitMaxReloadsPerCylinder: 2
+    debuffTransferPercent: 50
+    stormDamagePercent: 40
+    movementTilesPerFreeReload: 5
+    freeReloadStorageLimit: 2
+    goldNuggetChance: 10
+    nuggetsRequired: 3
+    primerBaseChance: 5
+    primerFailureChanceBonus: 5
+    scaleMaximumDamagePercent: 100
+    memorialDamagePercentPerBullet: 20
+    memorialMaximumDamagePercent: 100
+    executionDamageMultipliers:
+    - 1.5
+    - 2
+    - 3
+    - 5
+    mutationChancePerDebuffType: 15
+    mutationMaximumChance: 60
+    brinkHealthThresholdPercent: 25
+    brinkBaseChance: 30
+    brinkFailureChanceBonus: 10

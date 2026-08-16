@@ -5,6 +5,13 @@ using UnityEngine.Events;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
+public enum EventBulletSelectionMode
+{
+    None,
+    Remove,
+    Upgrade
+}
+
 public class BulletManagementUI : MonoBehaviour
 {
     private const int BulletsPerRow = 5;
@@ -61,6 +68,9 @@ public class BulletManagementUI : MonoBehaviour
     private readonly Vector3[] tooltipWorldCorners = new Vector3[4];
     private BulletInstance selectedBullet;
     private bool wasShopActive;
+    private EventBulletSelectionMode eventSelectionMode;
+    private System.Action<BulletInstance> eventConfirmCallback;
+    private System.Action eventCancelCallback;
 
     public BulletInstance SelectedBullet => selectedBullet;
     public bool IsOpen => manageBulletsPanel != null
@@ -110,12 +120,132 @@ public class BulletManagementUI : MonoBehaviour
         RefreshOwnedBullets();
     }
 
+    public bool OpenEventSelection(
+        Transform runtimeRoot,
+        DeckManager runtimeDeckManager,
+        EventBulletSelectionMode mode,
+        System.Action<BulletInstance> onConfirm,
+        System.Action onCancel)
+    {
+        if (mode == EventBulletSelectionMode.None)
+        {
+            return false;
+        }
+
+        UnbindEvents();
+        deckManager = runtimeDeckManager;
+        currencyManager = null;
+        shopPanel = runtimeRoot == null ? null : runtimeRoot.gameObject;
+        wasShopActive = shopPanel != null && shopPanel.activeInHierarchy;
+        manageBulletsPanel = FindNamedGameObject(
+            runtimeRoot,
+            "Panel | Manage Bullets");
+        closeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null ? null : manageBulletsPanel.transform,
+            "Button | Close");
+        removeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null ? null : manageBulletsPanel.transform,
+            "Button | Remove");
+        upgradeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null ? null : manageBulletsPanel.transform,
+            "Button | Upgrade");
+        upgradeTooltip = FindNamedChild<RectTransform>(
+            manageBulletsPanel == null ? null : manageBulletsPanel.transform,
+            "Panel | Upgrade Tooltip");
+        upgradeTooltipDescriptionText = FindNamedChild<TextMeshProUGUI>(
+            upgradeTooltip,
+            "Text | Bullet Description");
+        ResolveReferences();
+        BindEvents();
+        DisableRaycasts(upgradeTooltip);
+        HideUpgradeTooltip();
+
+        eventSelectionMode = mode;
+        eventConfirmCallback = onConfirm;
+        eventCancelCallback = onCancel;
+        SetManagementView(true);
+        RefreshOwnedBullets();
+        return manageBulletsPanel != null;
+    }
+
+    public bool ConfigureDedicatedShop(
+        Transform runtimeShopRoot,
+        DeckManager runtimeDeckManager,
+        CurrencyManager runtimeCurrencyManager)
+    {
+        // The dedicated Shop canvas and its nested panel can deserialize in a
+        // different order from the legacy Battle canvas. Rebind both manager
+        // events and UI button events after every required object exists.
+        UnbindEvents();
+        deckManager = runtimeDeckManager;
+        currencyManager = runtimeCurrencyManager;
+        shopPanel = runtimeShopRoot == null
+            ? null
+            : runtimeShopRoot.gameObject;
+        shopItemsLayout = FindShopItemsLayout(runtimeShopRoot);
+        manageBulletsPanel = FindNamedGameObject(
+            runtimeShopRoot,
+            "Panel | Manage Bullets");
+        manageBulletsButton = FindNamedChild<Button>(
+            runtimeShopRoot,
+            "Button | Manage Bullet");
+        closeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null
+                ? null
+                : manageBulletsPanel.transform,
+            "Button | Close");
+        removeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null
+                ? null
+                : manageBulletsPanel.transform,
+            "Button | Remove");
+        upgradeButton = FindNamedChild<Button>(
+            manageBulletsPanel == null
+                ? null
+                : manageBulletsPanel.transform,
+            "Button | Upgrade");
+        upgradeTooltip = FindNamedChild<RectTransform>(
+            runtimeShopRoot,
+            "Panel | Upgrade Tooltip");
+        ResolveReferences();
+        BindEvents();
+        DisableRaycasts(upgradeTooltip);
+        HideUpgradeTooltip();
+
+        bool configured = manageBulletsButton != null
+            && closeButton != null
+            && manageBulletsPanel != null;
+
+        if (!configured)
+        {
+            Debug.LogError(
+                "Dedicated Shop bullet management UI is missing its open button, close button, or management panel.",
+                this);
+        }
+
+        if (IsOpen)
+        {
+            RefreshOwnedBullets();
+        }
+
+        return configured;
+    }
+
     public void Close()
     {
+        bool notifyEventCancel = eventSelectionMode
+            != EventBulletSelectionMode.None;
+        System.Action cancelCallback = eventCancelCallback;
+        ResetEventSelection();
         SetManagementView(false);
         HideUpgradeTooltip();
         ClearSpawnedButtons();
         ClearSelection();
+
+        if (notifyEventCancel)
+        {
+            cancelCallback?.Invoke();
+        }
     }
 
     public bool TryCloseFromEscape()
@@ -132,6 +262,12 @@ public class BulletManagementUI : MonoBehaviour
 
     public void RemoveSelectedBullet()
     {
+        if (eventSelectionMode == EventBulletSelectionMode.Remove)
+        {
+            ConfirmEventSelection();
+            return;
+        }
+
         if (selectedBullet == null || deckManager == null
             || currencyManager == null
             || !deckManager.CanRemoveBullet(selectedBullet))
@@ -163,6 +299,12 @@ public class BulletManagementUI : MonoBehaviour
 
     public void UpgradeSelectedBullet()
     {
+        if (eventSelectionMode == EventBulletSelectionMode.Upgrade)
+        {
+            ConfirmEventSelection();
+            return;
+        }
+
         if (selectedBullet == null || !selectedBullet.CanUpgrade
             || deckManager == null || currencyManager == null)
         {
@@ -321,6 +463,12 @@ public class BulletManagementUI : MonoBehaviour
         if (selectedBullet == null || selectedBullet.Data == null)
         {
             ClearSelection();
+            return;
+        }
+
+        if (eventSelectionMode != EventBulletSelectionMode.None)
+        {
+            RefreshEventSelection();
             return;
         }
 
@@ -490,6 +638,103 @@ public class BulletManagementUI : MonoBehaviour
         SetWarning(string.Empty);
     }
 
+    private void RefreshEventSelection()
+    {
+        ApplyIcon(bulletIcon, null);
+        ApplyIcon(cylinderIcon, selectedBullet.CylinderIcon);
+
+        if (bulletNameText != null)
+        {
+            bulletNameText.richText = true;
+            bulletNameText.color = selectedBullet.GradeNameColor;
+            bulletNameText.text = selectedBullet.RichDisplayName;
+        }
+
+        if (bulletGradeText != null)
+        {
+            bulletGradeText.text = selectedBullet.Grade.ToString();
+            bulletGradeText.color = selectedBullet.GradeNameColor;
+        }
+
+        if (bulletDescriptionText != null)
+        {
+            bulletDescriptionText.richText = true;
+            bulletDescriptionText.text = selectedBullet.GetDetailedDescription(
+                CreateBulletTooltipContext());
+        }
+
+        bool isRemove = eventSelectionMode == EventBulletSelectionMode.Remove;
+        bool valid = isRemove
+            ? deckManager != null && deckManager.CanRemoveBullet(selectedBullet)
+            : selectedBullet.CanUpgrade;
+
+        if (removeButton != null)
+        {
+            removeButton.gameObject.SetActive(isRemove);
+            removeButton.interactable = valid;
+        }
+
+        if (upgradeButton != null)
+        {
+            upgradeButton.gameObject.SetActive(!isRemove);
+            upgradeButton.interactable = valid;
+        }
+
+        if (removeButtonText != null)
+        {
+            removeButtonText.text = "무료 제거";
+        }
+
+        if (upgradeButtonText != null)
+        {
+            upgradeButtonText.text = "무료 강화";
+        }
+
+        SetWarning(valid ? string.Empty : isRemove
+            ? "최소 1개의 탄환은 보유해야 합니다."
+            : "이미 최대 강화 단계인 탄환입니다.");
+    }
+
+    private void ConfirmEventSelection()
+    {
+        bool valid = selectedBullet != null && deckManager != null
+            && (eventSelectionMode == EventBulletSelectionMode.Remove
+                ? deckManager.CanRemoveBullet(selectedBullet)
+                : eventSelectionMode == EventBulletSelectionMode.Upgrade
+                    && selectedBullet.CanUpgrade);
+        if (!valid)
+        {
+            RefreshSelection();
+            return;
+        }
+
+        BulletInstance confirmed = selectedBullet;
+        System.Action<BulletInstance> callback = eventConfirmCallback;
+        ResetEventSelection();
+        SetManagementView(false);
+        HideUpgradeTooltip();
+        ClearSpawnedButtons();
+        ClearSelection();
+        callback?.Invoke(confirmed);
+    }
+
+    private void ResetEventSelection()
+    {
+        eventSelectionMode = EventBulletSelectionMode.None;
+        eventConfirmCallback = null;
+        eventCancelCallback = null;
+
+        if (removeButton != null)
+        {
+            removeButton.gameObject.SetActive(true);
+        }
+
+        if (upgradeButton != null)
+        {
+            upgradeButton.gameObject.SetActive(true);
+        }
+    }
+
     private void BindEvents()
     {
         if (manageBulletsButton != null)
@@ -605,6 +850,7 @@ public class BulletManagementUI : MonoBehaviour
         playerHealth ??= FindSceneObject<PlayerHealth>();
         playerShoot ??= FindSceneObject<PlayerShoot>();
         shopPanel ??= FindGameObject("Panel | Shop");
+        shopPanel ??= FindGameObject("Panel_Shop");
         shopItemsLayout ??= FindGameObject("Layout | Shop Items");
         manageBulletsPanel ??= FindGameObject("Panel | Manage Bullets");
         manageBulletsButton ??= FindButton("Button | Manage Bullet");
@@ -988,6 +1234,61 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         return null;
+    }
+
+    private static GameObject FindNamedGameObject(
+        Transform root,
+        string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform candidate in
+                 root.GetComponentsInChildren<Transform>(true))
+        {
+            if (candidate != null && candidate.name == objectName)
+            {
+                return candidate.gameObject;
+            }
+        }
+
+        return null;
+    }
+
+    private static GameObject FindShopItemsLayout(Transform shopRoot)
+    {
+        if (shopRoot == null)
+        {
+            return null;
+        }
+
+        GameObject fallback = null;
+
+        foreach (Transform candidate in
+                 shopRoot.GetComponentsInChildren<Transform>(true))
+        {
+            if (candidate == null || candidate.name != "Layout | Shop Items")
+            {
+                continue;
+            }
+
+            fallback ??= candidate.gameObject;
+
+            foreach (Button button in
+                     candidate.GetComponentsInChildren<Button>(true))
+            {
+                if (button != null
+                    && (button.name == "Button | Bullet Item"
+                        || button.name == "Button | Shop Item"))
+                {
+                    return candidate.gameObject;
+                }
+            }
+        }
+
+        return fallback;
     }
 
     private static Sprite GetPreferredIcon(BulletInstance bullet)

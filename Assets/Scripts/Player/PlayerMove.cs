@@ -67,6 +67,7 @@ public class PlayerMove : MonoBehaviour
     public event Action TurnCompleted;
     public event Action<int> TurnCountChanged;
     public event Action PositionChanged;
+    public event Action<PlayerMovementContext> PlayerMoved;
     public event Action<int> PushCooldownChanged;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
     public event Action PushPerformed;
@@ -273,6 +274,13 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
+        if (!boardManager.TryGetTileIndex(
+                transform.position,
+                out int currentTileIndex))
+        {
+            return;
+        }
+
         if (waveManager.TryGetEnemyAtTile(
                 targetTileIndex,
                 out EnemyController adjacentEnemy))
@@ -297,7 +305,10 @@ public class PlayerMove : MonoBehaviour
         }
 
         NotifyMoveStarted(direction);
-        StartCoroutine(MoveRoutine(targetPosition));
+        StartCoroutine(MoveRoutine(
+            targetPosition,
+            currentTileIndex,
+            targetTileIndex));
     }
 
     private void NotifyMoveStarted(int direction)
@@ -390,6 +401,10 @@ public class PlayerMove : MonoBehaviour
             yield return enemySwapRoutine;
         }
 
+        NotifyPlayerMoved(
+            playerTileIndex,
+            enemyTileIndex,
+            PlayerMovementSource.BulletPositionSwap);
         PositionChanged?.Invoke();
         isActing = wasActing;
     }
@@ -746,14 +761,40 @@ public class PlayerMove : MonoBehaviour
         collidedEnemy.ApplyCollisionDamage(collidedEnemyDamage);
     }
 
-    private IEnumerator MoveRoutine(Vector3 targetPosition)
+    private IEnumerator MoveRoutine(
+        Vector3 targetPosition,
+        int startTileIndex,
+        int endTileIndex)
     {
         isActing = true;
         SoundManager.PlaySfx("SFX_Move");
         yield return actorMotion.MoveTo(targetPosition);
+        NotifyPlayerMoved(
+            startTileIndex,
+            endTileIndex,
+            PlayerMovementSource.NormalMove);
         PositionChanged?.Invoke();
         CompleteTurn();
         isActing = false;
+    }
+
+    private void NotifyPlayerMoved(
+        int startTileIndex,
+        int endTileIndex,
+        PlayerMovementSource source)
+    {
+        int distance = Math.Abs(endTileIndex - startTileIndex);
+
+        if (distance <= 0 || source == PlayerMovementSource.None)
+        {
+            return;
+        }
+
+        PlayerMoved?.Invoke(new PlayerMovementContext(
+            startTileIndex,
+            endTileIndex,
+            distance,
+            source));
     }
 
     private IEnumerator RotateRoutine(int targetDirection)

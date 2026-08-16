@@ -13,7 +13,9 @@ public enum GameFlowState
     BattleClear = 2,
     Shop = 3,
     RunComplete = 4,
-    RunFailed = 5
+    RunFailed = 5,
+    Event = 6,
+    Treasure = 7
 }
 
 [DefaultExecutionOrder(-100)]
@@ -37,6 +39,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private CombatFeedbackController combatFeedback;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private RelicManager relicManager;
     [SerializeField] private GameStartUI gameStartUI;
 
     [Header("Panels")]
@@ -62,6 +65,7 @@ public class StateManager : MonoBehaviour
     private RunSaveData pendingRestoredRun;
     private bool suppressExitSave;
     private RunStartMode currentRunStartMode = RunStartMode.None;
+    private int turnCountBeforeCurrentBattle;
 
     public event Action StateChanged;
 
@@ -95,6 +99,22 @@ public class StateManager : MonoBehaviour
         SetInputLocked(true);
     }
 
+    /// <summary>
+    /// Exposes read-only run progress to shared UI in a non-Battle scene.
+    /// The component itself may remain disabled so its Battle lifecycle does
+    /// not start in that scene.
+    /// </summary>
+    public void ConfigureExternalSceneState(
+        int stageIndex,
+        int battleIndex,
+        GameFlowState flowState)
+    {
+        currentStageIndex = stageIndex;
+        currentBattleIndex = battleIndex;
+        currentState = flowState;
+        StateChanged?.Invoke();
+    }
+
     private void Awake()
     {
         SetPanels(false, false, false);
@@ -107,6 +127,15 @@ public class StateManager : MonoBehaviour
             FindObjectsInactive.Include);
         combatFeedback ??= FindFirstObjectByType<CombatFeedbackController>(
             FindObjectsInactive.Include);
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
+        if (relicManager == null)
+        {
+            relicManager = gameObject.AddComponent<RelicManager>();
+        }
+
+        relicManager.BindPlayerMove(playerMove);
 
         gameStartUI ??= FindFirstObjectByType<GameStartUI>(
             FindObjectsInactive.Include);
@@ -173,13 +202,14 @@ public class StateManager : MonoBehaviour
             return;
         }
 
+        RunSaveData restoredSaveData = null;
         bool restored = startMode == RunStartMode.Continue
-            && RunSaveSystem.TryLoad(out RunSaveData saveData)
-            && TryRestoreRun(saveData);
+            && RunSaveSystem.TryLoad(out restoredSaveData)
+            && TryRestoreRun(restoredSaveData);
 
         if (restored)
         {
-            GameStatistics.ResumeRun(pendingRestoredRun);
+            GameStatistics.ResumeRun(restoredSaveData);
         }
         else
         {
@@ -197,7 +227,12 @@ public class StateManager : MonoBehaviour
                 return;
             }
 
-            currentBattleIndex = 0;
+            if (!NodeMapSaveSystem.TryGetSelectedBattle(
+                    out currentStageIndex,
+                    out currentBattleIndex))
+            {
+                currentBattleIndex = 0;
+            }
 
             if (startMode == RunStartMode.None)
             {
@@ -280,6 +315,8 @@ public class StateManager : MonoBehaviour
             playerTileIndex = playerTileIndex,
             playerFacingRight = playerMove.transform.localScale.x >= 0f,
             playerTurnCount = playerMove.TurnCount,
+            cumulativeBattleTurnCount = turnCountBeforeCurrentBattle
+                + playerMove.TurnCount,
             nextPushAvailableTurn = playerMove.NextPushAvailableTurn,
             playerStatusEffects = playerHealth.CaptureStatusRunState(),
             combatReport = gameStartUI == null
@@ -292,6 +329,7 @@ public class StateManager : MonoBehaviour
             saveData.nextCycleAcquisitionOrders);
         playerInventory.CaptureRunState(
             saveData.inventoryItemAssetNames);
+        relicManager?.CaptureRunState(saveData.relics);
         if (isBattle)
         {
             waveManager.CaptureRunState(saveData);
@@ -339,13 +377,21 @@ public class StateManager : MonoBehaviour
                 saveData.bullets,
                 shopManager.ResolveSavedBullet,
                 saveData.paidBulletRemovalCount,
-                saveData.nextCycleAcquisitionOrders))
+                saveData.nextCycleAcquisitionOrders)
+            || relicManager != null && !relicManager.RestoreRunState(
+                saveData.relics))
         {
             return false;
         }
 
         currentStageIndex = saveData.stageIndex;
         currentBattleIndex = saveData.battleIndex;
+        turnCountBeforeCurrentBattle = saveData.startSelectedBattleFresh
+            ? Mathf.Max(0, saveData.cumulativeBattleTurnCount)
+            : Mathf.Max(
+                0,
+                saveData.cumulativeBattleTurnCount
+                    - saveData.playerTurnCount);
         playerHealth.RestoreRunHealth(
             saveData.currentHealth,
             saveData.maxHealth);
@@ -367,7 +413,9 @@ public class StateManager : MonoBehaviour
             shopManager.RestoreRunState(saveData.shopRefreshCost);
         }
 
-        pendingRestoredRun = saveData;
+        pendingRestoredRun = saveData.startSelectedBattleFresh
+            ? null
+            : saveData;
         return true;
     }
 
@@ -452,7 +500,11 @@ public class StateManager : MonoBehaviour
             yield break;
         }
 
-        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
+        NodeMapSaveSystem.CompleteActiveNode();
+        if (!LoadingTransitionController.LoadScene("NodeMap"))
+        {
+            SceneManager.LoadScene("NodeMap");
+        }
     }
 
     private void StartRestoredShop()
@@ -770,6 +822,7 @@ public class StateManager : MonoBehaviour
         }
 
         bool beganBattle;
+        bool restoringBattle = pendingRestoredRun != null;
 
         if (pendingRestoredRun != null)
         {
@@ -789,6 +842,15 @@ public class StateManager : MonoBehaviour
             RunSaveSystem.DeleteSave();
             ShowRunComplete("CONFIGURATION ERROR");
             return;
+        }
+
+        if (!restoringBattle)
+        {
+            relicManager?.BeginBattle();
+        }
+        else
+        {
+            relicManager?.ResumeBattle();
         }
 
         SetInputLocked(false);
@@ -846,8 +908,8 @@ public class StateManager : MonoBehaviour
             return;
         }
 
-        RunSaveSystem.DeleteSave();
         StopBattleStartPresentation();
+        relicManager?.EndBattle();
         SetInputLocked(true);
         battleClearCoroutine = StartCoroutine(ShowBattleClearWhenSettled());
     }
@@ -899,7 +961,12 @@ public class StateManager : MonoBehaviour
             yield break;
         }
 
-        LoadingTransitionController.RunTransition(OpenShopAfterBattleClear);
+        SaveCurrentRun();
+        NodeMapSaveSystem.CompleteActiveNode();
+        if (!LoadingTransitionController.LoadScene("NodeMap"))
+        {
+            SceneManager.LoadScene("NodeMap");
+        }
     }
 
     private void CompleteRunAndLoadEnding()
@@ -911,6 +978,7 @@ public class StateManager : MonoBehaviour
 
         suppressExitSave = true;
         RunSaveSystem.DeleteSave();
+        NodeMapSaveSystem.DeleteSave();
         GameStatistics.EndRun(true);
         currentState = GameFlowState.RunComplete;
         SetPanels(false, false, false);
@@ -975,6 +1043,7 @@ public class StateManager : MonoBehaviour
         waveManager.StopBattle();
         suppressExitSave = true;
         RunSaveSystem.DeleteSave();
+        NodeMapSaveSystem.DeleteSave();
         GameStatistics.EndRun(false);
         currentState = GameFlowState.RunFailed;
         SetPanels(false, true, false);

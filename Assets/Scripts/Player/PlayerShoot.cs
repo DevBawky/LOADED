@@ -142,6 +142,7 @@ public class PlayerShoot : MonoBehaviour
     [SerializeField] private CurrencyManager currencyManager;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private RelicManager relicManager;
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private WaveManager waveManager;
     [SerializeField] private Transform firePoint;
@@ -198,6 +199,7 @@ public class PlayerShoot : MonoBehaviour
     private int initialLoadedBulletCount;
     private int bulletsFiredThisCylinder;
     private int criticalShotsThisCylinder;
+    private int activeShotIndex;
     private bool bulletDestroyedThisCylinder;
     private int pendingSaverGold;
     private LineRenderer rangePreviewLine;
@@ -222,6 +224,8 @@ public class PlayerShoot : MonoBehaviour
         currencyManager ??= FindFirstObjectByType<CurrencyManager>();
         combatPresentation ??= GetComponent<CombatPresentation>();
         combatFeedback ??= GetComponent<CombatFeedbackController>();
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
 
         if (combatPresentation == null)
         {
@@ -325,7 +329,20 @@ public class PlayerShoot : MonoBehaviour
         int damage,
         int healthBeforeDamage)
     {
-        if (!isFiring || enemy == null)
+        if (enemy == null)
+        {
+            return;
+        }
+
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        relicManager?.NotifyEnemyDefeated(
+            enemy,
+            isFiring ? currentConsumedBullet : null,
+            waveManager == null ? null : waveManager.ActiveEnemies,
+            boardManager);
+
+        if (!isFiring)
         {
             return;
         }
@@ -414,13 +431,23 @@ public class PlayerShoot : MonoBehaviour
             return;
         }
 
+        bool wasCylinderEmpty = deckManager.LoadedBullets.Count == 0;
+
         if (deckManager.TryReload(out BulletInstance loadedBullet))
         {
             BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Reload);
             SoundManager.PlaySfx("SFX_Player_Reload");
             combatPresentation?.PlayReload(loadedBullet, cylinderUI);
 
-            if (loadedBullet == null || !loadedBullet.DoesNotConsumeTurn)
+            relicManager ??= FindFirstObjectByType<RelicManager>(
+                FindObjectsInactive.Include);
+            bool consumesTurn = relicManager == null
+                ? loadedBullet == null || !loadedBullet.DoesNotConsumeTurn
+                : relicManager.ShouldReloadConsumeTurn(
+                    loadedBullet,
+                    wasCylinderEmpty);
+
+            if (consumesTurn)
             {
                 playerMove.CompleteTurn();
             }
@@ -992,6 +1019,12 @@ public class PlayerShoot : MonoBehaviour
         criticalShotsThisCylinder = 0;
         bulletDestroyedThisCylinder = false;
         pendingSaverGold = 0;
+        int physicalBulletIndex = 0;
+        relicManager?.NotifyCylinderStarted(
+            initialLoadedBulletCount,
+            waveManager == null ? null : waveManager.ActiveEnemies,
+            playerHealth.CurrentHealth,
+            playerHealth.MaxHealth);
         combatFeedback?.BeginFiringSequence();
         combatFeedback?.BeginCylinder();
         bool saverRefundsTurn = false;
@@ -1055,6 +1088,7 @@ public class PlayerShoot : MonoBehaviour
 
             firedAnyBullet = true;
             currentConsumedBullet = firedBullet;
+            int currentPhysicalBulletIndex = physicalBulletIndex++;
             consumesTurn |= !resolvedBullet.DoesNotConsumeTurn;
 
             bool clonedPreviousShot = resolvedBullet != firedBullet;
@@ -1138,6 +1172,9 @@ public class PlayerShoot : MonoBehaviour
                         criticalChanceBonus,
                         true,
                         fireIntoAir,
+                        additionalShotCount == 0,
+                        false,
+                        currentPhysicalBulletIndex,
                         completed => shotCompleted = completed);
 
                     if (!shotCompleted)
@@ -1172,6 +1209,9 @@ public class PlayerShoot : MonoBehaviour
                         criticalChanceBonus,
                         false,
                         fireIntoAir,
+                        false,
+                        false,
+                        currentPhysicalBulletIndex,
                         completed => shotCompleted = completed);
 
                     if (!shotCompleted)
@@ -1185,6 +1225,28 @@ public class PlayerShoot : MonoBehaviour
                     {
                         yield return WaitForShotInterval();
                     }
+                }
+
+                double memorialMultiplier = relicManager == null
+                    ? 0d
+                    : relicManager.GetMemorialExtraShotMultiplier();
+
+                if (memorialMultiplier > 0d)
+                {
+                    bool memorialCompleted = false;
+                    yield return FireSingleShot(
+                        resolvedBullet,
+                        horizontalDirection,
+                        (float)Math.Min(
+                            float.MaxValue,
+                            damageMultiplier * memorialMultiplier),
+                        criticalChanceBonus,
+                        false,
+                        fireIntoAir,
+                        false,
+                        true,
+                        currentPhysicalBulletIndex,
+                        completed => memorialCompleted = completed);
                 }
 
                 BulletEffectData stackEffect = FindSpecialEffect(
@@ -1254,6 +1316,7 @@ public class PlayerShoot : MonoBehaviour
         pendingEffectDefeats.Clear();
         waveManager?.NotifyFiringSequenceCompleted();
         deckManager.CompleteFiringSequence();
+        relicManager?.NotifyCylinderCompleted(deckManager);
 
         if (shouldCompleteTurn
             && deckManager.TotalBulletCount > 0
@@ -1270,6 +1333,9 @@ public class PlayerShoot : MonoBehaviour
         float criticalChanceBonus,
         bool generatesShells,
         bool allowEmptyShot,
+        bool isBaseBullet,
+        bool isRelicGenerated,
+        int physicalBulletIndex,
         Action<bool> onCompleted)
     {
         if (bulletData == null)
@@ -1277,6 +1343,8 @@ public class PlayerShoot : MonoBehaviour
             onCompleted?.Invoke(false);
             yield break;
         }
+
+        activeShotIndex = bulletsFiredThisCylinder;
 
         bool hasEnemyTarget = RefreshViableTargets(
             bulletData,
@@ -1303,6 +1371,13 @@ public class PlayerShoot : MonoBehaviour
             onCompleted?.Invoke(false);
             yield break;
         }
+
+        relicManager?.NotifyShotStarted(
+            isBaseBullet,
+            isRelicGenerated,
+            physicalBulletIndex,
+            playerHealth.CurrentHealth,
+            playerHealth.MaxHealth);
 
         Vector3 endPoint;
 
@@ -1333,9 +1408,11 @@ public class PlayerShoot : MonoBehaviour
                 bulletData.MaxRange);
         }
 
-        bool isCritical = bulletData.CanTriggerCritical(
-            UnityEngine.Random.Range(0f, 100f),
-            criticalChanceBonus);
+        bool isCritical = relicManager != null
+            && relicManager.CurrentShotForcesCritical
+            || bulletData.CanTriggerCritical(
+                UnityEngine.Random.Range(0f, 100f),
+                criticalChanceBonus);
         List<DamageReservation> shotReservations = hasViableTarget
             ? ReserveProjectedHitDamage(
                 bulletData,
@@ -1358,6 +1435,7 @@ public class PlayerShoot : MonoBehaviour
         {
             ReleaseProjectedDamage(shotReservations);
             Destroy(bulletLine.gameObject);
+            relicManager?.NotifyShotCancelled();
             onCompleted?.Invoke(false);
             yield break;
         }
@@ -1371,7 +1449,7 @@ public class PlayerShoot : MonoBehaviour
             ? "SFX_Player_Critical_Shoot"
             : "SFX_Player_Shoot");
         combatFeedback?.RecordShotCameraShake();
-        RecordSuccessfulShot();
+        RecordSuccessfulShot(bulletData, isRelicGenerated);
         BulletFired?.Invoke(bulletData);
         GameStatistics.RecordBulletFired(bulletData);
         combatPresentation?.PlayShot(
@@ -1385,6 +1463,9 @@ public class PlayerShoot : MonoBehaviour
             horizontalDirection,
             isCritical,
             damageMultiplier);
+        yield return ApplyEyeOfTheStormDamage(
+            bulletData,
+            horizontalDirection);
 
         if (reachesBulletBlocker && bulletBlocker != null
             && bulletBlocker.IsBulletBlocking)
@@ -1396,14 +1477,16 @@ public class PlayerShoot : MonoBehaviour
         onCompleted?.Invoke(true);
     }
 
-    private void RecordSuccessfulShot()
+    private void RecordSuccessfulShot(
+        BulletInstance firedBullet,
+        bool isRelicGenerated)
     {
-        if (bulletsFiredThisCylinder < int.MaxValue)
+        if (!isRelicGenerated && bulletsFiredThisCylinder < int.MaxValue)
         {
             bulletsFiredThisCylinder++;
         }
 
-        if (deckManager == null)
+        if (deckManager == null || isRelicGenerated)
         {
             return;
         }
@@ -1412,6 +1495,8 @@ public class PlayerShoot : MonoBehaviour
         {
             loadedBullet?.RecordShotWhileLoaded();
         }
+
+        relicManager?.TryTriggerClosedCircuit(deckManager, firedBullet);
     }
 
     private float GetCurrentCylinderBuild()
@@ -1590,10 +1675,18 @@ public class PlayerShoot : MonoBehaviour
                 bullet,
                 enemy,
                 horizontalDirection);
+            targetDamageMultiplier *= (float)(relicManager == null
+                ? 1d
+                : relicManager.GetTargetConditionalDamageMultiplier(
+                    enemy.GetInstanceID(),
+                    enemy.ActiveStatusTypeCount));
             int attackDamage = CalculateAttackDamage(
                 bullet,
                 isCritical,
-                damageMultiplier * targetDamageMultiplier);
+                damageMultiplier * targetDamageMultiplier,
+                activeShotIndex,
+                deckManager != null
+                    && deckManager.LoadedBullets.Count == 0);
             int predictedDamage = enemy.PredictAttackDamage(attackDamage);
 
             if (predictedDamage <= 0)
@@ -2054,6 +2147,8 @@ public class PlayerShoot : MonoBehaviour
                 1,
                 stateOwner);
         }
+
+        relicManager?.NotifyShotCompleted();
     }
 
     private void GrantFocusStacksToRemainingLoadedBullets()
@@ -2228,10 +2323,18 @@ public class PlayerShoot : MonoBehaviour
                 bulletData,
                 enemy,
                 horizontalDirection);
+            targetDamageMultiplier *= (float)(relicManager == null
+                ? 1d
+                : relicManager.GetTargetConditionalDamageMultiplier(
+                    enemy.GetInstanceID(),
+                    enemy.ActiveStatusTypeCount));
             int attackDamage = CalculateAttackDamage(
                 bulletData,
                 isCritical,
-                damageMultiplier * targetDamageMultiplier);
+                damageMultiplier * targetDamageMultiplier,
+                activeShotIndex,
+                deckManager != null
+                    && deckManager.LoadedBullets.Count == 0);
 
             if (hitIndex > 0 && !IsBoardWideShot(bulletData))
             {
@@ -2294,6 +2397,7 @@ public class PlayerShoot : MonoBehaviour
             if (appliedDamage > 0)
             {
                 DamageDealt?.Invoke(reportedDamage);
+                relicManager?.NotifyEnemyDamaged(enemy, reportedDamage);
             }
             bool defeatedByAttack = healthBeforeHit > 0
                 && enemy.CurrentHealth <= 0;
@@ -2480,6 +2584,93 @@ public class PlayerShoot : MonoBehaviour
         return multiplier;
     }
 
+    private IEnumerator ApplyEyeOfTheStormDamage(
+        BulletInstance sourceBullet,
+        int horizontalDirection)
+    {
+        if (relicManager == null
+            || !relicManager.TryConsumeEyeOfTheStormDamage(
+                out int stormDamage)
+            || stormDamage <= 0 || waveManager == null)
+        {
+            yield break;
+        }
+
+        List<EnemyController> targets =
+            new List<EnemyController>(waveManager.ActiveEnemies);
+
+        foreach (EnemyController enemy in targets)
+        {
+            if (enemy == null || enemy.CurrentHealth <= 0)
+            {
+                continue;
+            }
+
+            CombatPresentation.EnemySnapshot snapshot =
+                combatPresentation == null
+                    ? default
+                    : combatPresentation.CaptureEnemy(enemy);
+            int healthBeforeDamage = enemy.CurrentHealth;
+            int targetMaxHealth = enemy.MaxHealth;
+            int reportedDamage = enemy.PredictAttackDamage(stormDamage);
+            int appliedDamage = enemy.ApplyAttackDamage(stormDamage, false);
+
+            if (appliedDamage > 0)
+            {
+                DamageDealt?.Invoke(reportedDamage);
+                combatFeedback?.RecordDamage(
+                    reportedDamage,
+                    reportedDamage > appliedDamage);
+            }
+
+            bool defeated = healthBeforeDamage > 0
+                && enemy.CurrentHealth <= 0;
+            combatPresentation?.PlayImpact(
+                snapshot,
+                horizontalDirection,
+                sourceBullet,
+                CombatImpactTierUtility.Resolve(
+                    false,
+                    reportedDamage,
+                    targetMaxHealth,
+                    defeated),
+                defeated
+                    ? combatFeedback
+                        ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f
+                    : 1f);
+
+            if (defeated)
+            {
+                combatFeedback?.RecordDefeat(
+                    snapshot.Position,
+                    horizontalDirection,
+                    reportedDamage,
+                    targetMaxHealth,
+                    false,
+                    waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild(),
+                    healthBeforeDamage);
+                relicManager.NotifyEnemyDefeated(
+                    enemy,
+                    null,
+                    waveManager.ActiveEnemies,
+                    boardManager);
+            }
+            else if (appliedDamage > 0)
+            {
+                combatFeedback?.RecordHit(
+                    snapshot.Position,
+                    horizontalDirection,
+                    reportedDamage,
+                    targetMaxHealth,
+                    false,
+                    GetCurrentCylinderBuild());
+            }
+
+            yield return null;
+        }
+    }
+
     private IEnumerator ApplyWallImpactDamageTransfer(
         BulletInstance bullet,
         int sourceTileIndex,
@@ -2550,6 +2741,9 @@ public class PlayerShoot : MonoBehaviour
             if (appliedDamage > 0)
             {
                 DamageDealt?.Invoke(reportedDamage);
+                relicManager?.NotifyEnemyDamaged(
+                    targetEnemy,
+                    reportedDamage);
             }
 
             bool defeated = healthBeforeTransfer > 0
@@ -2618,6 +2812,12 @@ public class PlayerShoot : MonoBehaviour
         {
             yield break;
         }
+
+        relicManager?.NotifyEnemyDefeated(
+            enemy,
+            currentConsumedBullet ?? bullet,
+            waveManager == null ? null : waveManager.ActiveEnemies,
+            boardManager);
 
         yield return ApplyConditionalEvents(
             bullet,
@@ -3058,6 +3258,7 @@ public class PlayerShoot : MonoBehaviour
         bulletDestroyedThisCylinder = true;
         SoundManager.PlaySfx("SFX_Bullet_Destroy");
         combatFeedback?.RecordBulletDestroyed(transform.position);
+        relicManager?.NotifyBulletDestroyed(destroyedBullet);
 
         if (deckManager == null)
         {
@@ -3416,7 +3617,9 @@ public class PlayerShoot : MonoBehaviour
             int attackDamage = CalculateAttackDamage(
                 resolvedBullet,
                 guaranteedCritical,
-                damageMultiplier * targetMultiplier);
+                damageMultiplier * targetMultiplier,
+                previewBulletsFired,
+                firedBulletIndex <= 0);
             int transferBaseDamage = attackDamage;
 
             if (hitIndex > 0 && !IsBoardWideShot(resolvedBullet))
@@ -4618,7 +4821,9 @@ public class PlayerShoot : MonoBehaviour
     private int CalculateAttackDamage(
         BulletInstance bulletData,
         bool isCritical,
-        float damageMultiplier)
+        float damageMultiplier,
+        int shotIndex,
+        bool isLastLoadedShot)
     {
         if (bulletData == null || bulletData.Damage <= 0)
         {
@@ -4627,15 +4832,43 @@ public class PlayerShoot : MonoBehaviour
 
         int damage = GetEffectiveBaseDamage(bulletData);
 
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
         if (isCritical)
         {
-            damage = Mathf.CeilToInt(
-                damage * bulletData.CriticalDamageMultiplier);
+            damage = MultiplyDamageCeiling(
+                damage,
+                bulletData.CriticalDamageMultiplier);
         }
 
         int modifiedDamage = playerHealth.ModifyOutgoingAttackDamage(damage);
-        return Mathf.CeilToInt(
-            modifiedDamage * Mathf.Max(0f, damageMultiplier));
+        double combinedMultiplier = Math.Max(
+            0d,
+            (double)damageMultiplier);
+
+        if (relicManager != null)
+        {
+            combinedMultiplier *=
+                relicManager.GetConditionalFinalDamageMultiplier(
+                    shotIndex == 0,
+                    isLastLoadedShot);
+        }
+
+        return MultiplyDamageCeiling(modifiedDamage, combinedMultiplier);
+    }
+
+    private static int MultiplyDamageCeiling(int damage, double multiplier)
+    {
+        if (damage <= 0 || multiplier <= 0d || double.IsNaN(multiplier))
+        {
+            return 0;
+        }
+
+        double result = Math.Ceiling(damage * multiplier);
+        return double.IsInfinity(result) || result >= int.MaxValue
+            ? int.MaxValue
+            : (int)Math.Max(0d, result);
     }
 
     private int GetEffectiveBaseDamage(BulletInstance bullet)

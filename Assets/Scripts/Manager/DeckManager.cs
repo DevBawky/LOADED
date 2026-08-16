@@ -84,6 +84,75 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public bool TryReloadOldestUsed(out BulletInstance loadedBullet)
+    {
+        loadedBullet = null;
+
+        if (loadedBullets.Count >= Mathf.Max(1, maxReloadAmount)
+            || graveyard.Count == 0)
+        {
+            return false;
+        }
+
+        loadedBullet = graveyard[0];
+        graveyard.RemoveAt(0);
+        loadedBullet?.BeginCylinderShotTracking();
+        loadedBullets.Add(loadedBullet);
+        nextCycleOrder.Remove(loadedBullet);
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    public bool QueueBulletForNextReload(int acquisitionOrder)
+    {
+        BulletInstance bullet = FindByAcquisitionOrder(acquisitionOrder);
+
+        if (bullet == null)
+        {
+            return false;
+        }
+
+        deck.Remove(bullet);
+        loadedBullets.Remove(bullet);
+        graveyard.Remove(bullet);
+        nextCycleOrder.Remove(bullet);
+        deck.Add(bullet);
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    public BulletInstance FindByAcquisitionOrder(int acquisitionOrder)
+    {
+        foreach (BulletInstance bullet in deck)
+        {
+            if (bullet != null
+                && bullet.AcquisitionOrder == acquisitionOrder)
+            {
+                return bullet;
+            }
+        }
+
+        foreach (BulletInstance bullet in loadedBullets)
+        {
+            if (bullet != null
+                && bullet.AcquisitionOrder == acquisitionOrder)
+            {
+                return bullet;
+            }
+        }
+
+        foreach (BulletInstance bullet in graveyard)
+        {
+            if (bullet != null
+                && bullet.AcquisitionOrder == acquisitionOrder)
+            {
+                return bullet;
+            }
+        }
+
+        return null;
+    }
+
     public bool TryFireLoadedBullet(out BulletInstance bullet)
     {
         if (loadedBullets.Count == 0)

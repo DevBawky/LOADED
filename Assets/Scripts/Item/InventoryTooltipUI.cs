@@ -27,6 +27,7 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private PlayerShoot playerShoot;
     [SerializeField] private StateManager stateManager;
+    [SerializeField] private RelicManager relicManager;
 
     [Header("Canvas")]
     [SerializeField] private RectTransform canvasRect;
@@ -104,6 +105,185 @@ public class InventoryTooltipUI : MonoBehaviour
     private int previewedCylinderBulletIndex = -1;
     private Vector2 debuffDescriptionInitialPosition;
     private bool hasDebuffDescriptionInitialPosition;
+    private bool externalEventPreviewActive;
+
+    public void ConfigureDedicatedShop(
+        Transform runtimeCanvasRoot,
+        PlayerInventory runtimeInventory,
+        ShopManager runtimeShopManager,
+        DeckManager runtimeDeckManager,
+        CurrencyManager runtimeCurrencyManager,
+        StateManager runtimeStateManager)
+    {
+        if (deckManager != null)
+        {
+            deckManager.StateChanged -= RefreshNextChip;
+        }
+
+        if (stateManager != null)
+        {
+            stateManager.StateChanged -= HandleFlowStateChanged;
+        }
+
+        playerInventory = runtimeInventory;
+        shopManager = runtimeShopManager;
+        deckManager = runtimeDeckManager;
+        currencyManager = runtimeCurrencyManager;
+        stateManager = runtimeStateManager;
+        canvasRect = runtimeCanvasRoot as RectTransform;
+        inventoryPanel = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Inventory");
+        itemSlots = FindScopedRectTransforms(
+            runtimeCanvasRoot,
+            "Image | ItemSlot",
+            "Layout | Inventory");
+        shopItemSlots = FindScopedRectTransforms(
+            runtimeCanvasRoot,
+            "Button | Shop Item",
+            "Layout | Shop Items");
+        shopBulletSlots = FindScopedRectTransforms(
+            runtimeCanvasRoot,
+            "Button | Bullet Item",
+            "Layout | Shop Items");
+        tooltip = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Item Tooltip");
+        bulletTooltip = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Bullet Tooltip");
+        cylinderBulletTooltip = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Cylinder Bullet Tooltip");
+        debuffDescriptionPanel = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Debuff Desciption");
+        bulletManagementUI = runtimeCanvasRoot == null
+            ? null
+            : runtimeCanvasRoot.GetComponentInChildren<BulletManagementUI>(
+                true);
+
+        itemIcon = FindNamedChild<Image>(tooltip, "Image | Item Sprite");
+        itemNameText = FindNamedChild<TextMeshProUGUI>(
+            tooltip,
+            "Text | Item Name");
+        itemDescriptionText = FindNamedChild<TextMeshProUGUI>(
+            tooltip,
+            "Text | Item Description");
+        bulletIcon = FindNamedChild<Image>(
+            bulletTooltip,
+            "Image | Bullet Sprite");
+        bulletCylinderIcon = FindNamedChild<Image>(
+            bulletTooltip,
+            "Image | Bullet Cylinder Sprite");
+        bulletNameText = FindNamedChild<TextMeshProUGUI>(
+            bulletTooltip,
+            "Text | Bullet Name");
+        bulletGradeText = FindNamedChild<TextMeshProUGUI>(
+            bulletTooltip,
+            "Text | Bullet Grade");
+        bulletDescriptionText = FindNamedChild<TextMeshProUGUI>(
+            bulletTooltip,
+            "Text | Bullet Description");
+
+        rootCanvas = canvasRect == null
+            ? null
+            : canvasRect.GetComponentInParent<Canvas>();
+        if (rootCanvas != null)
+        {
+            rootCanvas = rootCanvas.rootCanvas;
+        }
+
+        DisableRaycasts(tooltip);
+        DisableRaycasts(bulletTooltip);
+        DisableRaycasts(cylinderBulletTooltip);
+        DisableRaycasts(debuffDescriptionPanel);
+
+        if (isActiveAndEnabled)
+        {
+            if (deckManager != null)
+            {
+                deckManager.StateChanged += RefreshNextChip;
+            }
+
+            if (stateManager != null)
+            {
+                stateManager.StateChanged += HandleFlowStateChanged;
+            }
+        }
+
+        RefreshNextChip();
+        RefreshBulletStatusVisibility();
+        HideAll();
+
+        if (tooltip == null || bulletTooltip == null
+            || runtimeShopManager != null
+            && (shopItemSlots.Length == 0 || shopBulletSlots.Length == 0))
+        {
+            Debug.LogError(
+                "Dedicated Shop tooltip UI is missing tooltip panels or hover targets.",
+                this);
+        }
+    }
+
+    public void ConfigureEventScene(
+        Transform runtimeCanvasRoot,
+        PlayerInventory runtimeInventory,
+        DeckManager runtimeDeckManager,
+        CurrencyManager runtimeCurrencyManager,
+        StateManager runtimeStateManager)
+    {
+        ConfigureDedicatedShop(
+            runtimeCanvasRoot,
+            runtimeInventory,
+            null,
+            runtimeDeckManager,
+            runtimeCurrencyManager,
+            runtimeStateManager);
+    }
+
+    public void ShowEventRewardPreview(
+        BulletData bullet,
+        ItemData item,
+        RectTransform hoverTarget)
+    {
+        if (hoverTarget == null || bullet == null && item == null)
+        {
+            HideEventRewardPreview();
+            return;
+        }
+
+        externalEventPreviewActive = true;
+        hoverTarget.GetWorldCorners(tooltipCorners);
+        Vector2 topLeft = RectTransformUtility.WorldToScreenPoint(
+            GetCanvasCamera(),
+            tooltipCorners[1]);
+
+        if (bullet != null)
+        {
+            ShowBullet(
+                bullet,
+                topLeft,
+                TooltipPointerAnchor.BottomRight);
+        }
+        else
+        {
+            ShowItem(
+                item,
+                topLeft,
+                TooltipPointerAnchor.BottomRight,
+                false);
+        }
+    }
+
+    public void HideEventRewardPreview()
+    {
+        externalEventPreviewActive = false;
+        HideItemTooltip();
+        HideBulletTooltip();
+        HideCylinderBulletTooltip();
+        HideDebuffDescription();
+    }
 
     private void OnEnable()
     {
@@ -147,6 +327,8 @@ public class InventoryTooltipUI : MonoBehaviour
 
     private void OnDisable()
     {
+        externalEventPreviewActive = false;
+
         if (deckManager != null)
         {
             deckManager.StateChanged -= RefreshNextChip;
@@ -167,6 +349,11 @@ public class InventoryTooltipUI : MonoBehaviour
             || cylinderUI != null && cylinderUI.IsDragging)
         {
             HideAll();
+            return;
+        }
+
+        if (externalEventPreviewActive)
+        {
             return;
         }
 
@@ -491,8 +678,26 @@ public class InventoryTooltipUI : MonoBehaviour
         }
 
         cylinderBulletDescriptionText.richText = true;
-        cylinderBulletDescriptionText.text = bullet.GetDetailedDescription(
+        string description = bullet.GetDetailedDescription(
             CreateBulletTooltipContext());
+        int initialLoadedCount = playerShoot == null
+            ? deckManager == null ? 0 : deckManager.LoadedBullets.Count
+            : Mathf.Max(
+                deckManager == null ? 0 : deckManager.LoadedBullets.Count,
+                playerShoot.InitialLoadedBulletCount);
+        if (relicManager != null
+            && relicManager.IsLuckyChamberLoadedBullet(
+                loadedBulletIndex,
+                initialLoadedCount))
+        {
+            string luckyChamberText =
+                relicManager.GetLuckyChamberBulletTooltip();
+            if (!string.IsNullOrWhiteSpace(luckyChamberText))
+            {
+                description += "\n\n" + luckyChamberText;
+            }
+        }
+        cylinderBulletDescriptionText.text = description;
         cylinderBulletTooltip.gameObject.SetActive(true);
         PositionInsideScreen(
             cylinderBulletTooltip,
@@ -1204,6 +1409,7 @@ public class InventoryTooltipUI : MonoBehaviour
         playerHealth ??= FindSceneObject<PlayerHealth>();
         playerShoot ??= FindSceneObject<PlayerShoot>();
         stateManager ??= FindSceneObject<StateManager>();
+        relicManager ??= FindSceneObject<RelicManager>();
         cylinderUI ??= FindSceneObject<PlayerCylinderUI>();
         bulletManagementUI ??= FindSceneObject<BulletManagementUI>();
 
@@ -1350,6 +1556,56 @@ public class InventoryTooltipUI : MonoBehaviour
                 && rectTransform.parent.name == parentName)
             {
                 matches.Add(rectTransform);
+            }
+        }
+
+        matches.Sort((left, right) =>
+            left.GetSiblingIndex().CompareTo(right.GetSiblingIndex()));
+        return matches.ToArray();
+    }
+
+    private static RectTransform FindScopedRectTransform(
+        Transform root,
+        string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (RectTransform candidate in
+                 root.GetComponentsInChildren<RectTransform>(true))
+        {
+            if (candidate != null && candidate.name == objectName)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static RectTransform[] FindScopedRectTransforms(
+        Transform root,
+        string namePrefix,
+        string parentName)
+    {
+        List<RectTransform> matches = new List<RectTransform>();
+
+        if (root == null)
+        {
+            return matches.ToArray();
+        }
+
+        foreach (RectTransform candidate in
+                 root.GetComponentsInChildren<RectTransform>(true))
+        {
+            if (candidate != null
+                && candidate.name.StartsWith(namePrefix)
+                && candidate.parent != null
+                && candidate.parent.name == parentName)
+            {
+                matches.Add(candidate);
             }
         }
 
