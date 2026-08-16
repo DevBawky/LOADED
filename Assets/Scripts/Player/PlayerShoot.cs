@@ -1233,6 +1233,7 @@ public class PlayerShoot : MonoBehaviour
 
                 if (memorialMultiplier > 0d)
                 {
+                    relicManager?.NotifyMemorialShotTriggered();
                     bool memorialCompleted = false;
                     yield return FireSingleShot(
                         resolvedBullet,
@@ -1377,7 +1378,10 @@ public class PlayerShoot : MonoBehaviour
             isRelicGenerated,
             physicalBulletIndex,
             playerHealth.CurrentHealth,
-            playerHealth.MaxHealth);
+            playerHealth.MaxHealth,
+            isBaseBullet && activeShotIndex == 0,
+            isBaseBullet && deckManager != null
+                && deckManager.LoadedBullets.Count == 0);
 
         Vector3 endPoint;
 
@@ -3434,6 +3438,23 @@ public class PlayerShoot : MonoBehaviour
                 bulletIndex,
                 initialLoadedCount,
                 previewBulletsFired);
+            relicManager ??= FindFirstObjectByType<RelicManager>(
+                FindObjectsInactive.Include);
+            bool relicForcesCritical = false;
+
+            if (relicManager != null
+                && relicManager.TryGetLoadedBulletRelicModifiers(
+                    bulletIndex,
+                    loadedBullets.Count,
+                    initialLoadedCount,
+                    out double relicDamageMultiplier,
+                    out relicForcesCritical))
+            {
+                damageMultiplier = (float)Math.Min(
+                    float.MaxValue,
+                    Math.Max(0d, damageMultiplier)
+                        * Math.Max(0d, relicDamageMultiplier));
+            }
             bool isStackingShot = FindSpecialEffect(
                 resolvedBullet,
                 BulletEffectType.StackNextShot) != null;
@@ -3478,7 +3499,8 @@ public class PlayerShoot : MonoBehaviour
                     firedBullet,
                     resolvedBullet);
             previewCriticalBonuses[firedBullet] = 0f;
-            bool guaranteedCritical = criticalChance >= 100f;
+            bool guaranteedCritical = relicForcesCritical
+                || criticalChance >= 100f;
             BulletEffectData shellEffect = FindSpecialEffect(
                 resolvedBullet,
                 BulletEffectType.ShellCollector);
@@ -3619,7 +3641,8 @@ public class PlayerShoot : MonoBehaviour
                 guaranteedCritical,
                 damageMultiplier * targetMultiplier,
                 previewBulletsFired,
-                firedBulletIndex <= 0);
+                firedBulletIndex <= 0,
+                false);
             int transferBaseDamage = attackDamage;
 
             if (hitIndex > 0 && !IsBoardWideShot(resolvedBullet))
@@ -4823,7 +4846,8 @@ public class PlayerShoot : MonoBehaviour
         bool isCritical,
         float damageMultiplier,
         int shotIndex,
-        bool isLastLoadedShot)
+        bool isLastLoadedShot,
+        bool applyRuntimeRelicModifiers = true)
     {
         if (bulletData == null || bulletData.Damage <= 0)
         {
@@ -4847,7 +4871,7 @@ public class PlayerShoot : MonoBehaviour
             0d,
             (double)damageMultiplier);
 
-        if (relicManager != null)
+        if (applyRuntimeRelicModifiers && relicManager != null)
         {
             combinedMultiplier *=
                 relicManager.GetConditionalFinalDamageMultiplier(

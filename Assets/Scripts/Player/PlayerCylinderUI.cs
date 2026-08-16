@@ -64,6 +64,7 @@ public class PlayerCylinderUI : MonoBehaviour
     private int displayedBulletCount;
     private bool isInitialized;
     private bool isSubscribed;
+    private RelicManager subscribedRelicManager;
     private bool isDraggingBullet;
     private Image draggedBulletImage;
     private int draggedBulletIndex = -1;
@@ -107,6 +108,7 @@ public class PlayerCylinderUI : MonoBehaviour
     private void OnEnable()
     {
         SubscribeToDeck();
+        SubscribeToRelicManager();
 
         if (deckManager != null)
         {
@@ -142,6 +144,7 @@ public class PlayerCylinderUI : MonoBehaviour
     {
         CancelBulletDragImmediately();
         UnsubscribeFromDeck();
+        UnsubscribeFromRelicManager();
 
         if (rotationCoroutine != null)
         {
@@ -165,6 +168,7 @@ public class PlayerCylinderUI : MonoBehaviour
         UnsubscribeFromDeck();
         deckManager = assignedDeckManager;
         SubscribeToDeck();
+        SubscribeToRelicManager();
         isInitialized = false;
         RefreshDisplay(false);
     }
@@ -298,7 +302,8 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void PrepareBulletEffect(Image bulletImage)
     {
-        Transform effectTransform = bulletImage.transform.Find(
+        Transform effectTransform = FindDescendantByName(
+            bulletImage.transform,
             BulletEffectObjectName);
 
         if (effectTransform == null)
@@ -885,8 +890,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void RefreshBulletEffects()
     {
-        relicManager ??= FindFirstObjectByType<RelicManager>(
-            FindObjectsInactive.Include);
+        SubscribeToRelicManager();
 
         if (deckManager == null)
         {
@@ -905,6 +909,13 @@ public class PlayerCylinderUI : MonoBehaviour
             ? loadedCount
             : Mathf.Max(loadedCount, playerShoot.InitialLoadedBulletCount);
 
+        if (relicManager != null
+            && (playerShoot == null || !playerShoot.IsFiring))
+        {
+            relicManager.EnsureLuckyChamberSelection(loadedCount);
+            initialLoadedCount = loadedCount;
+        }
+
         for (int index = 0; index < bulletImages.Count; index++)
         {
             bool luckyChamber = index < loadedCount
@@ -912,7 +923,15 @@ public class PlayerCylinderUI : MonoBehaviour
                 && relicManager.IsLuckyChamberLoadedBullet(
                     index,
                     initialLoadedCount);
-            bool active = luckyChamber
+            bool relicEnhanced = index < loadedCount
+                && relicManager != null
+                && relicManager.TryGetLoadedBulletRelicModifiers(
+                    index,
+                    loadedCount,
+                    initialLoadedCount,
+                    out _,
+                    out _);
+            bool active = relicEnhanced
                 || index < loadedCount
                 && ShouldShowBulletEffect(loadedBullets, index);
             SetBulletEffectActive(
@@ -1535,6 +1554,63 @@ public class PlayerCylinderUI : MonoBehaviour
         }
 
         isSubscribed = false;
+    }
+
+    private void SubscribeToRelicManager()
+    {
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
+        if (subscribedRelicManager == relicManager)
+        {
+            return;
+        }
+
+        UnsubscribeFromRelicManager();
+        subscribedRelicManager = relicManager;
+
+        if (subscribedRelicManager != null)
+        {
+            subscribedRelicManager.LuckyChamberSelectionChanged +=
+                HandleLuckyChamberSelectionChanged;
+        }
+    }
+
+    private void UnsubscribeFromRelicManager()
+    {
+        if (subscribedRelicManager != null)
+        {
+            subscribedRelicManager.LuckyChamberSelectionChanged -=
+                HandleLuckyChamberSelectionChanged;
+        }
+
+        subscribedRelicManager = null;
+    }
+
+    private void HandleLuckyChamberSelectionChanged()
+    {
+        RefreshBulletEffects();
+    }
+
+    private static Transform FindDescendantByName(
+        Transform root,
+        string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform descendant in root.GetComponentsInChildren<Transform>(
+                     true))
+        {
+            if (descendant != root && descendant.name == objectName)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 }
 

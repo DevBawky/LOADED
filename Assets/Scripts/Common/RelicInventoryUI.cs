@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -35,6 +36,11 @@ public sealed class RelicInventoryUI : MonoBehaviour
         new Dictionary<RelicInstance, RectTransform>();
     private readonly Dictionary<RelicInstance, Coroutine> pulseAnimations =
         new Dictionary<RelicInstance, Coroutine>();
+    private readonly Dictionary<RelicInstance, Coroutine>
+        probabilityTextAnimations =
+            new Dictionary<RelicInstance, Coroutine>();
+    private readonly Dictionary<RelicInstance, string> probabilityTextOverrides =
+        new Dictionary<RelicInstance, string>();
     private readonly List<GameObject> activeActivationEffects =
         new List<GameObject>();
     private Texture2D activationRingTexture;
@@ -58,6 +64,10 @@ public sealed class RelicInventoryUI : MonoBehaviour
             relicManager.InventoryChanged += Refresh;
             relicManager.RelicTriggered -= HandleRelicTriggered;
             relicManager.RelicTriggered += HandleRelicTriggered;
+            relicManager.RelicProbabilityEvaluated -=
+                HandleRelicProbabilityEvaluated;
+            relicManager.RelicProbabilityEvaluated +=
+                HandleRelicProbabilityEvaluated;
         }
 
         Refresh();
@@ -68,6 +78,8 @@ public sealed class RelicInventoryUI : MonoBehaviour
     {
         StopAllCoroutines();
         pulseAnimations.Clear();
+        probabilityTextAnimations.Clear();
+        probabilityTextOverrides.Clear();
         foreach (RectTransform icon in relicIcons.Values)
         {
             if (icon != null)
@@ -80,6 +92,8 @@ public sealed class RelicInventoryUI : MonoBehaviour
         {
             relicManager.InventoryChanged -= Refresh;
             relicManager.RelicTriggered -= HandleRelicTriggered;
+            relicManager.RelicProbabilityEvaluated -=
+                HandleRelicProbabilityEvaluated;
         }
 
         HideTooltip();
@@ -181,6 +195,8 @@ public sealed class RelicInventoryUI : MonoBehaviour
                 StopCoroutine(pulse);
             }
             pulseAnimations.Remove(removedRelic);
+            probabilityTextAnimations.Remove(removedRelic);
+            probabilityTextOverrides.Remove(removedRelic);
             relicIcons.Remove(removedRelic);
             GameObject removedObject = removedIcon == null
                 ? null
@@ -195,6 +211,8 @@ public sealed class RelicInventoryUI : MonoBehaviour
         HideTooltip();
         StopAllCoroutines();
         pulseAnimations.Clear();
+        probabilityTextAnimations.Clear();
+        probabilityTextOverrides.Clear();
         ClearActivationEffects();
         relicIcons.Clear();
 
@@ -247,6 +265,57 @@ public sealed class RelicInventoryUI : MonoBehaviour
         StartCoroutine(PlayActivationEffect(
             icon,
             GetActivationColor(effect)));
+    }
+
+    private void HandleRelicProbabilityEvaluated(
+        RelicInstance relic,
+        double chance)
+    {
+        if (relic?.Data == null
+            || relic.Data.HasEffect(RelicEffectType.GoldPanner)
+            || !relicIcons.TryGetValue(
+                relic,
+                out RectTransform icon)
+            || icon == null)
+        {
+            return;
+        }
+
+        if (probabilityTextAnimations.TryGetValue(
+                relic,
+                out Coroutine running)
+            && running != null)
+        {
+            StopCoroutine(running);
+        }
+
+        probabilityTextOverrides[relic] = chance.ToString(
+            "0.#'%'",
+            CultureInfo.InvariantCulture);
+        ConfigureRelic(icon.gameObject, relic);
+        probabilityTextAnimations[relic] = StartCoroutine(
+            ClearProbabilityTextAfterDelay(relic, icon));
+    }
+
+    private IEnumerator ClearProbabilityTextAfterDelay(
+        RelicInstance relic,
+        RectTransform icon)
+    {
+        float elapsed = 0f;
+        float duration = Mathf.Max(0.1f, activationDuration);
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        probabilityTextAnimations.Remove(relic);
+        probabilityTextOverrides.Remove(relic);
+        if (icon != null)
+        {
+            ConfigureRelic(icon.gameObject, relic);
+        }
     }
 
     private IEnumerator PlayActivationEffect(RectTransform icon, Color color)
@@ -566,7 +635,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
         tooltip = RelicTooltipUI.GetOrCreate(this, fontSource);
     }
 
-    private static void ConfigureRelic(
+    private void ConfigureRelic(
         GameObject relicObject,
         RelicInstance relic)
     {
@@ -581,15 +650,30 @@ public sealed class RelicInventoryUI : MonoBehaviour
         TMP_Text stackText = FindStackText(relicObject.transform);
         if (stackText != null)
         {
-            int stackCount = relic.Data.CanStack
-                ? relic.StackCount
-                : 0;
-            bool showStack = stackCount > 0;
-            stackText.text = showStack
-                ? stackCount.ToString()
-                : string.Empty;
+            string displayText = GetStackDisplayText(relic);
+            bool showStack = !string.IsNullOrEmpty(displayText);
+            stackText.text = displayText;
             stackText.gameObject.SetActive(showStack);
         }
+    }
+
+    private string GetStackDisplayText(RelicInstance relic)
+    {
+        if (probabilityTextOverrides.TryGetValue(
+                relic,
+                out string probabilityText))
+        {
+            return probabilityText;
+        }
+
+        if (relicManager != null)
+        {
+            return relicManager.GetRelicStatusText(relic);
+        }
+
+        return relic.Data.CanStack && relic.StackCount > 0
+            ? relic.StackCount.ToString(CultureInfo.InvariantCulture)
+            : string.Empty;
     }
 
     private static TMP_Text FindStackText(Transform root)
