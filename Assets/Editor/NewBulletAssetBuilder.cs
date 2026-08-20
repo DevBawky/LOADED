@@ -109,7 +109,10 @@ public static class NewBulletAssetBuilder
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("Balanced the 13 new bullet assets and upgrade levels.");
+        BulletPoolSyncBuilder.SyncAllBulletPools();
+        Debug.Log(
+            "Balanced the 13 new bullet assets and synchronized every shop "
+            + "and dictionary catalog.");
     }
 
     private static IEnumerable<BulletSpec> GetSpecs()

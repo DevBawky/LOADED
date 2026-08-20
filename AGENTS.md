@@ -266,6 +266,30 @@ compatibility does not require nesting.
 Treat `.unity`, `.prefab`, `.asset`, `.inputactions`, project settings, and
 `.meta` files as reference-bearing serialized data.
 
+- Before any Unity batch-mode run, package import, builder execution, or other
+  operation that can import or rewrite `Assets/`, inventory the locally managed
+  ignored/untracked asset roots (`Assets/DamageNumbersPro/`, `Assets/OldMovie/`,
+  `Assets/Package/`, custom fonts, and TMP essentials). Record their existence,
+  file counts, and representative GUID-bearing `.meta` files. Do the same check
+  immediately afterward.
+- Never assume `git restore`, checkout, or a fresh clone can recover ignored or
+  untracked Unity assets. Preserve those assets and their original `.meta` files
+  in a verified backup before an operation with project-wide import or rewrite
+  risk. Restoring an asset without its original `.meta` does not restore its
+  serialized references.
+- Never replace, clear, reconstruct, or bulk-restore the entire `Assets/`
+  directory as a normal implementation step. Limit Editor builders and package
+  recovery to explicit, verified target paths.
+- If `Assets/` becomes empty, loses a locally managed root, or changes outside
+  the expected diff, stop Unity and all further builders immediately. Do not
+  continue with a tracked-only Git recovery. First locate a complete local
+  backup/package cache, restore ignored assets with their `.meta` files, and
+  verify serialized GUID resolution before reopening Unity.
+- After restoring fonts, audio, packages, or other reference-bearing local
+  assets, enumerate the GUIDs referenced by affected scenes/prefabs and confirm
+  that every GUID resolves to exactly one `.meta` file. Unity compilation or
+  EditMode tests alone are not proof that those references exist.
+
 - Do not hand-edit scene or prefab YAML for ordinary hierarchy work.
 - Do not invent, replace, or duplicate GUIDs.
 - Never delete or regenerate `.meta` files casually.

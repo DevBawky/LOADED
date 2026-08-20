@@ -17871,6 +17871,19 @@ MonoBehaviour:
   - {fileID: 11400000, guid: c2010000000000000000000000000013, type: 2}
   - {fileID: 11400000, guid: 44adbf2ba18471449a0f594c01212641, type: 2}
   - {fileID: 11400000, guid: 20f290547665bec4ab40bbc252f252e1, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500c, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500e, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500a, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345008, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345005, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500b, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345004, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500d, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345006, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345003, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345009, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345002, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345001, type: 2}
   content: {fileID: 341642505}
   bulletLayoutPrefab: {fileID: 3727325486795848461, guid: 58e3f88cc9ea5134db1026db5b40f702, type: 3}
   bulletButtonPrefab: {fileID: 5713783274229849583, guid: 756c5bbecfce4db42a55a5c28fccc531, type: 3}

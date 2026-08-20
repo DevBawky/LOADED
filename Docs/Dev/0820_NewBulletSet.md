@@ -60,3 +60,41 @@
 - 지진계, 리버스탄, 확산탄, 암살, 하이롤러, 통달, 육참골단, 도돌이표는 고강화에서 관통을 얻어 단일 대상 역할을 다중 대상까지 확장한다.
 
 `Tools > LOADED > Balance New Bullet Set` 메뉴는 현재 채택된 13개 신규 탄환의 가격과 +1~+3 데이터를 생성하거나 갱신한다. 기존 아이콘, 라인 색상과 머티리얼은 유지한다. 생성된 탄환은 기존 상점/보상 풀에 자동으로 추가되지 않으며, 해당 풀에 채택할 탄환만 별도로 연결해야 한다.
+
+## 2026-08-20 전체 탄환 풀 동기화
+
+### 변경 내역
+
+- `Assets/Scripts/Bullet/SO` 아래 작성된 `BulletData` 57종을 상점과 도감의 기준 목록으로 사용한다.
+- Battle의 `ShopManager`, Shop/Event/Treasure 관리자 프리팹의 `ShopManager`, MainMenu의 `BulletDictionaryController`를 포함해 프로젝트 내 모든 동일 타입 소유자를 검사한다.
+- 기존 풀 순서와 항목은 유지하고 누락된 탄환만 에셋 경로 오름차순으로 뒤에 추가한다. 이미 등록된 항목은 중복 추가하지 않는다.
+- `Tools > LOADED > Sync All Bullet Pools` 메뉴가 현재 작성된 모든 탄환을 자동 검색하므로, 이후 신규 탄환을 만들 때 동기화 도구의 하드코딩 목록을 수정할 필요가 없다.
+- `BulletPoolIntegrityTests`는 모든 상점/도감 소유자에 57종이 빠짐없이 한 번씩 등록되어 있고 null 항목이 없는지 검증한다.
+- 테스트 실패 메시지는 Unity의 C# 9 컴파일러와 호환되도록 누락 탄환 이름 목록을 보간 문자열 밖에서 먼저 생성한다. 보간식 내부에 여러 줄 LINQ 식을 넣지 않는다.
+
+### 적용 방법
+
+1. Unity Play Mode를 종료한다.
+2. `Tools > LOADED > Sync All Bullet Pools`를 실행한다.
+3. Console에서 작성 탄환 수, 변경된 씬/프리팹 수, 변경 항목 수를 확인한다.
+4. 도구를 다시 실행했을 때 `changed assets: 0`, `changed entries: 0`인지 확인한다.
+5. MainMenu 도감에서 전체 탄환을 확인하고 Shop 새로고침에서 각 등급 탄환이 기존 가중치에 따라 등장하는지 확인한다.
+
+`DeckManager.startingBullets`는 상점/도감 후보 풀이 아니라 새 게임의 실제 시작 덱이므로 전체 탄환 동기화 대상에 포함하지 않는다.
+
+## 2026-08-20 도감 자동 동기화
+
+- 새 `BulletData`가 `Assets/Scripts/Bullet/SO` 아래에 생성되거나 이동되면
+  Editor import 단계에서 모든 `ShopManager.bulletPool`과 MainMenu의
+  `BulletDictionaryController.bullets`를 함께 동기화한다.
+- 스크립트 리로드 후 Editor 세션 최초 1회에도 동기화를 검사하므로, 기존에
+  누락된 신규 탄환도 도감과 상점 풀에 추가된다.
+- 열린 씬에 저장되지 않은 변경이 있으면 데이터 손실을 막기 위해 자동
+  동기화를 건너뛴다. 씬을 저장한 뒤
+  `Tools > LOADED > Sync All Bullet Pools`를 직접 실행한다.
+- `Tools > LOADED > Balance New Bullet Set`도 신규 탄환 데이터 갱신 직후
+  동일한 풀 동기화를 실행한다.
+- `BulletPoolIntegrityTests`는 모든 상점 및 도감 소유자에 전체 탄환이 한 번씩
+  등록되어 있고 null 또는 중복 항목이 없는지 검증한다.
+- 동기화는 기존 순서를 유지하면서 null과 중복 참조를 제거한 뒤 누락 탄환을
+  결정적인 순서로 추가한다. 반복 실행 시 직렬화 변경이 발생하지 않는다.
