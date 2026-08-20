@@ -1,4 +1,3 @@
-#if UNITY_INCLUDE_TESTS
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEditor;
@@ -642,6 +641,22 @@ public sealed class RelicManagerTests
                     | PlayerMovementSource.BulletPositionSwap);
             effect.FindPropertyRelative("movementStackReset").enumValueIndex =
                 (int)reset;
+
+            if (effectType == RelicEffectType.ExecutionersOath)
+            {
+                SerializedProperty multipliers = effect.FindPropertyRelative(
+                    "executionDamageMultipliers");
+                double[] defaultMultipliers = { 1.5d, 2d, 3d, 5d };
+                multipliers.arraySize = defaultMultipliers.Length;
+
+                for (int index = 0;
+                     index < defaultMultipliers.Length;
+                     index++)
+                {
+                    multipliers.GetArrayElementAtIndex(index).doubleValue =
+                        defaultMultipliers[index];
+                }
+            }
         }
 
         serialized.ApplyModifiedPropertiesWithoutUndo();
@@ -674,4 +689,3 @@ public sealed class RelicManagerTests
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
 }
-#endif
