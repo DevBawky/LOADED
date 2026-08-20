@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
@@ -9,45 +8,12 @@ public sealed class SoundManager : MonoBehaviour
 {
     private const string DefaultLibraryPath = "Sound/SoundClipLibrary";
     private const float ComboPitchStep = 0.2f;
-    private const float UiClickPitchMultiplier = 0.9f;
-    private const float UiButtonRescanInterval = 0.5f;
     private const float BgmCompletionToleranceSeconds = 0.25f;
     private const float BgmFadeOutDuration = 0.45f;
     private const float BgmFadeInDuration = 0.65f;
-    private const string UiButtonSfxId = "UI_Button_Hover_Click";
     private const string BgmVolumePreferenceKey = "Audio.BGM.Volume";
     private const string SfxVolumePreferenceKey = "Audio.SFX.Volume";
     private static SoundManager instance;
-
-    private static readonly string[] SpecialButtonNames =
-    {
-        "Button | Refresh",
-        "Button | Remove",
-        "Button | Upgrade",
-        "Button | Move",
-        "Button | Move (1)",
-        "Button | Move L",
-        "Button | Move R",
-        "Button | Rotate",
-        "Button | Wait",
-        "Button | Reload",
-        "Button | Shoot"
-    };
-
-    private static readonly string[] HoverScaleSpriteNames =
-    {
-        "Button_Delete",
-        "Button_Management",
-        "Button_Refresh",
-        "Button_Settings",
-        "Button_Upgrade"
-    };
-
-    private static readonly string[] HoverScaleButtonNames =
-    {
-        "Button | Go To Battle",
-        "Button | Pause"
-    };
 
     [SerializeField] private SoundClipLibrary clipLibrary;
     [Header("Audio Sources")]
@@ -59,7 +25,6 @@ public sealed class SoundManager : MonoBehaviour
     private readonly List<AudioSource> sfxSources = new List<AudioSource>();
     private readonly Dictionary<string, float> nonOverlappingSfxEndTimes =
         new Dictionary<string, float>();
-    private readonly HashSet<Button> boundUiButtons = new HashSet<Button>();
     private IReadOnlyList<AudioClip> currentPlaylist;
     private IReadOnlyList<AudioClip> pendingPlaylist;
     private Coroutine bgmTransitionCoroutine;
@@ -68,8 +33,8 @@ public sealed class SoundManager : MonoBehaviour
     private int lastBgmIndex = -1;
     private AudioClip lastKnownBgmClip;
     private int lastKnownBgmTimeSamples;
-    private StateManager observedStateManager;
-    private float nextUiButtonScanTime;
+    private SoundtrackDirector soundtrackDirector;
+    private UiButtonFeedbackInstaller uiButtonFeedbackInstaller;
 
     public static SoundManager Instance { get { EnsureInstance(); return instance; } }
     public static float BgmVolume => Instance.bgmVolume;
@@ -90,13 +55,19 @@ public sealed class SoundManager : MonoBehaviour
         EnsureClipLibrary();
         LoadVolumePreferences();
         EnsureAudioSources();
+        soundtrackDirector = new SoundtrackDirector(this);
+        uiButtonFeedbackInstaller = new UiButtonFeedbackInstaller();
     }
 
-    private void OnEnable() => SceneManager.sceneLoaded += HandleSceneLoaded;
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += HandleSceneLoaded;
+        soundtrackDirector?.RefreshForScene(SceneManager.GetActiveScene());
+    }
     private void Start()
     {
-        RefreshForScene(SceneManager.GetActiveScene());
-        BindSceneUiButtons();
+        soundtrackDirector.RefreshForScene(SceneManager.GetActiveScene());
+        uiButtonFeedbackInstaller.ScanNow();
     }
 
     private void Update()
@@ -119,16 +90,13 @@ public sealed class SoundManager : MonoBehaviour
             if (!TryResumeInterruptedBgm()) PlayNextBgm();
         }
 
-        if (Time.unscaledTime >= nextUiButtonScanTime)
-        {
-            BindSceneUiButtons();
-        }
+        uiButtonFeedbackInstaller.Tick();
     }
 
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= HandleSceneLoaded;
-        ObserveStateManager(null);
+        soundtrackDirector?.Dispose();
     }
 
     private void OnApplicationFocus(bool hasFocus)
@@ -214,7 +182,7 @@ public sealed class SoundManager : MonoBehaviour
 
     public static void BindUiButtonSfx(Button button)
     {
-        Instance.TryBindUiButton(button);
+        Instance.uiButtonFeedbackInstaller.BindAudio(button);
     }
 
     public static void PlayComboDie(int comboKillCount)
@@ -286,60 +254,8 @@ public sealed class SoundManager : MonoBehaviour
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        RefreshForScene(scene);
-        BindSceneUiButtons();
-    }
-
-    private void RefreshForScene(Scene scene)
-    {
-        EnsureClipLibrary();
-        gameOverBgmLocked = false;
-        StateManager stateManager = FindFirstObjectByType<StateManager>(FindObjectsInactive.Include);
-        ObserveStateManager(stateManager);
-        if (stateManager != null) { RefreshForGameState(); return; }
-
-        SetPlaylist(scene.name.IndexOf("MainMenu", System.StringComparison.OrdinalIgnoreCase) >= 0
-            ? clipLibrary?.MainMenuBgm : null);
-    }
-
-    private void ObserveStateManager(StateManager stateManager)
-    {
-        if (observedStateManager == stateManager) return;
-        if (observedStateManager != null) observedStateManager.StateChanged -= RefreshForGameState;
-        observedStateManager = stateManager;
-        if (observedStateManager != null) observedStateManager.StateChanged += RefreshForGameState;
-    }
-
-    private void RefreshForGameState()
-    {
-        if (gameOverBgmLocked) return;
-        if (observedStateManager == null || clipLibrary == null) { SetPlaylist(null); return; }
-        if (observedStateManager.CurrentState == GameFlowState.Shop)
-        {
-            SetPlaylist(clipLibrary.ShopBgm);
-            return;
-        }
-
-        if (observedStateManager.CurrentState == GameFlowState.BattleClear)
-        {
-            // Keep the battle playlist running through the clear presentation.
-            // The shop state will replace it with the shop playlist.
-            return;
-        }
-
-        if (observedStateManager.CurrentState != GameFlowState.Battle)
-        {
-            SetPlaylist(null);
-            return;
-        }
-
-        BattleData battle = observedStateManager.CurrentBattle;
-        SetPlaylist(battle != null && battle.IsBoss
-            ? clipLibrary.BossBgm
-            : clipLibrary.GetBattleBgm(
-                observedStateManager.CurrentStage?.StageId,
-                observedStateManager.CurrentBattleIndex,
-                battle?.BattleId));
+        soundtrackDirector.RefreshForScene(scene);
+        uiButtonFeedbackInstaller.ScanNow();
     }
 
     private void SetPlaylist(IReadOnlyList<AudioClip> playlist)
@@ -647,179 +563,24 @@ public sealed class SoundManager : MonoBehaviour
         if (clipLibrary == null) clipLibrary = Resources.Load<SoundClipLibrary>(DefaultLibraryPath);
     }
 
-    private void BindSceneUiButtons()
+    internal SoundClipLibrary ClipLibrary
     {
-        nextUiButtonScanTime = Time.unscaledTime + UiButtonRescanInterval;
-        boundUiButtons.RemoveWhere(button => button == null);
-
-        foreach (Button candidate in FindObjectsByType<Button>(
-                     FindObjectsInactive.Include,
-                     FindObjectsSortMode.None))
+        get
         {
-            TryBindSpriteHoverScale(candidate);
-            TryBindUiButton(candidate);
+            EnsureClipLibrary();
+            return clipLibrary;
         }
     }
 
-    private static void TryBindSpriteHoverScale(Button button)
+    internal bool IsGameOverBgmLocked => gameOverBgmLocked;
+
+    internal void UnlockGameOverBgm()
     {
-        if (button == null || !ShouldUseHoverScale(button)) return;
-
-        UiButtonSpriteHoverScale hoverScale =
-            button.GetComponent<UiButtonSpriteHoverScale>();
-        if (hoverScale == null)
-        {
-            hoverScale = button.gameObject.AddComponent<UiButtonSpriteHoverScale>();
-        }
-
-        hoverScale.Initialize(button);
+        gameOverBgmLocked = false;
     }
 
-    private static bool ShouldUseHoverScale(Button button)
+    internal void PlayPlaylist(IReadOnlyList<AudioClip> playlist)
     {
-        foreach (string buttonName in HoverScaleButtonNames)
-        {
-            if (button.name == buttonName)
-            {
-                return true;
-            }
-        }
-
-        Image image = button.targetGraphic as Image;
-        if (image == null)
-        {
-            image = button.GetComponent<Image>();
-        }
-
-        Sprite sprite = image == null ? null : image.sprite;
-        if (sprite == null) return false;
-
-        foreach (string spriteName in HoverScaleSpriteNames)
-        {
-            if (sprite.name == spriteName
-                || sprite.name.StartsWith(spriteName + "_",
-                    System.StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private void TryBindUiButton(Button button)
-    {
-        if (button == null || IsSpecialButton(button)
-            || !boundUiButtons.Add(button))
-        {
-            return;
-        }
-
-        button.onClick.AddListener(() =>
-        {
-            PlaySfxPitched(UiButtonSfxId, UiClickPitchMultiplier);
-        });
-
-        UiButtonHoverSfx hoverSfx = button.GetComponent<UiButtonHoverSfx>();
-        if (hoverSfx == null)
-        {
-            hoverSfx = button.gameObject.AddComponent<UiButtonHoverSfx>();
-        }
-
-        hoverSfx.Initialize(button);
-    }
-
-    private static bool IsSpecialButton(Button button)
-    {
-        foreach (string specialName in SpecialButtonNames)
-        {
-            if (button.name == specialName) return true;
-        }
-
-        return false;
-    }
-}
-
-[DisallowMultipleComponent]
-internal sealed class UiButtonHoverSfx : MonoBehaviour, IPointerEnterHandler
-{
-    private Button button;
-
-    public void Initialize(Button targetButton)
-    {
-        button = targetButton;
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        if (button != null && button.IsActive() && button.IsInteractable())
-        {
-            SoundManager.PlaySfx("UI_Button_Hover_Click");
-        }
-    }
-}
-
-[DisallowMultipleComponent]
-internal sealed class UiButtonSpriteHoverScale : MonoBehaviour,
-    IPointerEnterHandler,
-    IPointerExitHandler
-{
-    private const float HoverScale = 1.1f;
-    private const float ScaleSpeed = 18f;
-
-    private Button button;
-    private Vector3 baseScale;
-    private bool initialized;
-    private bool pointerInside;
-
-    public void Initialize(Button targetButton)
-    {
-        if (initialized && button == targetButton) return;
-
-        button = targetButton;
-        baseScale = transform.localScale;
-        initialized = true;
-    }
-
-    private void Update()
-    {
-        if (!initialized) return;
-
-        bool canEnlarge = pointerInside
-            && button != null
-            && button.IsActive()
-            && button.IsInteractable();
-        Vector3 targetScale = canEnlarge
-            ? baseScale * HoverScale
-            : baseScale;
-        float blend = 1f - Mathf.Exp(-ScaleSpeed * Time.unscaledDeltaTime);
-        transform.localScale = Vector3.Lerp(
-            transform.localScale,
-            targetScale,
-            blend);
-
-        if ((transform.localScale - targetScale).sqrMagnitude < 0.000001f)
-        {
-            transform.localScale = targetScale;
-        }
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        pointerInside = true;
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        pointerInside = false;
-    }
-
-    private void OnDisable()
-    {
-        pointerInside = false;
-        if (initialized)
-        {
-            transform.localScale = baseScale;
-        }
+        SetPlaylist(playlist);
     }
 }

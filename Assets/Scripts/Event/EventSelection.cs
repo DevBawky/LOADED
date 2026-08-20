@@ -1,0 +1,102 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using UnityEngine;
+
+public readonly struct EventRunContext
+{
+    public EventRunContext(
+        int eliteClears,
+        int shopVisits,
+        int eventClears,
+        int money,
+        int ownedBullets,
+        float currentHealthPercent,
+        int cumulativeBattleTurns)
+    {
+        EliteClears = Mathf.Max(0, eliteClears);
+        ShopVisits = Mathf.Max(0, shopVisits);
+        EventClears = Mathf.Max(0, eventClears);
+        Money = Mathf.Max(0, money);
+        OwnedBullets = Mathf.Max(0, ownedBullets);
+        CurrentHealthPercent = Mathf.Clamp(currentHealthPercent, 0f, 100f);
+        CumulativeBattleTurns = Mathf.Max(0, cumulativeBattleTurns);
+    }
+
+    public int EliteClears { get; }
+    public int ShopVisits { get; }
+    public int EventClears { get; }
+    public int Money { get; }
+    public int OwnedBullets { get; }
+    public float CurrentHealthPercent { get; }
+    public int CumulativeBattleTurns { get; }
+
+    public float GetValue(EventRunStatistic statistic)
+    {
+        return statistic switch
+        {
+            EventRunStatistic.EliteClears => EliteClears,
+            EventRunStatistic.ShopVisits => ShopVisits,
+            EventRunStatistic.EventClears => EventClears,
+            EventRunStatistic.Money => Money,
+            EventRunStatistic.OwnedBullets => OwnedBullets,
+            EventRunStatistic.CurrentHealthPercent => CurrentHealthPercent,
+            EventRunStatistic.CumulativeBattleTurns => CumulativeBattleTurns,
+            _ => 0f
+        };
+    }
+}
+
+public static class EventSelector
+{
+    public static EventDefinition Select(
+        IReadOnlyList<EventDefinition> events,
+        EventRunContext context,
+        IReadOnlyCollection<string> completedEventIds)
+    {
+        if (events == null || events.Count == 0)
+        {
+            return null;
+        }
+
+        List<(EventDefinition Event, float Weight)> candidates =
+            new List<(EventDefinition, float)>();
+        float totalWeight = 0f;
+
+        foreach (EventDefinition definition in events)
+        {
+            if (definition == null
+                || completedEventIds != null
+                && completedEventIds.Contains(definition.StableId))
+            {
+                continue;
+            }
+
+            float weight = definition.EvaluateWeight(context);
+            if (weight <= 0f)
+            {
+                continue;
+            }
+
+            candidates.Add((definition, weight));
+            totalWeight += weight;
+        }
+
+        if (candidates.Count == 0 || totalWeight <= 0f)
+        {
+            return null;
+        }
+
+        float roll = UnityEngine.Random.value * totalWeight;
+        foreach ((EventDefinition definition, float weight) in candidates)
+        {
+            roll -= weight;
+            if (roll <= 0f)
+            {
+                return definition;
+            }
+        }
+
+        return candidates[candidates.Count - 1].Event;
+    }
+}
