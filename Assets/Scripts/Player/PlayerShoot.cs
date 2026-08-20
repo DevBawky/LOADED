@@ -87,6 +87,7 @@ public partial class PlayerShoot : MonoBehaviour
         public int RemainingHealth { get; set; }
         public int TileIndex { get; set; } = -1;
         public int[] StatusStacks { get; }
+        public bool WasHitThisTurn { get; set; }
         public List<EnemyHealthBarFeedback.DamagePreviewSegment> Segments
         {
             get;
@@ -243,6 +244,12 @@ public partial class PlayerShoot : MonoBehaviour
         {
             waveManager.BattleCompleted += HandleBattleCompleted;
         }
+
+        if (playerMove != null)
+        {
+            playerMove.PlayerMoved += HandlePlayerMoved;
+            playerMove.TurnCompleted += HandleTurnCompleted;
+        }
     }
 
     private void Start()
@@ -263,6 +270,12 @@ public partial class PlayerShoot : MonoBehaviour
         if (waveManager != null)
         {
             waveManager.BattleCompleted -= HandleBattleCompleted;
+        }
+
+        if (playerMove != null)
+        {
+            playerMove.PlayerMoved -= HandlePlayerMoved;
+            playerMove.TurnCompleted -= HandleTurnCompleted;
         }
         ClearLoadedBulletDamagePreview();
         isFiring = false;
@@ -342,6 +355,17 @@ public partial class PlayerShoot : MonoBehaviour
     private void HandleBattleCompleted()
     {
         combatFeedback?.ResetCombo();
+        firingSequence?.ResetTurnTargetHistory();
+    }
+
+    private void HandleTurnCompleted()
+    {
+        firingSequence?.ResetTurnTargetHistory();
+    }
+
+    private void HandlePlayerMoved(PlayerMovementContext context)
+    {
+        firingSequence?.RecordPlayerMovement(context);
     }
 
     private void Update()
@@ -545,7 +569,8 @@ public partial class PlayerShoot : MonoBehaviour
         float damageMultiplier,
         int shotIndex,
         bool isLastLoadedShot,
-        bool applyRuntimeRelicModifiers = true)
+        bool applyRuntimeRelicModifiers = true,
+        float criticalDamageMultiplierBonus = 0f)
     {
         relicManager ??= FindFirstObjectByType<RelicManager>(
             FindObjectsInactive.Include);
@@ -559,7 +584,8 @@ public partial class PlayerShoot : MonoBehaviour
             playerHealth,
             relicManager,
             deckManager,
-            applyRuntimeRelicModifiers);
+            applyRuntimeRelicModifiers,
+            criticalDamageMultiplierBonus);
     }
 
     private static bool IsBoardWideShot(BulletInstance bullet)

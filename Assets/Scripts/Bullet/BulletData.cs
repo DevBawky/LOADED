@@ -46,7 +46,20 @@ public enum BulletEffectType
     MixedGrade = 37,
     Masterpiece = 38,
     MassProduced = 39,
-    Monopoly = 40
+    Monopoly = 40,
+    Seismometer = 41,
+    ReverseShot = 42,
+    RecoilShot = 43,
+    Finale = 44,
+    Spread = 45,
+    Alzheimer = 46,
+    Concentration = 47,
+    Ritual = 48,
+    Immersion = 49,
+    Tracking = 50,
+    Assassination = 51,
+    FleshForBone = 52,
+    HighRoller = 53
 }
 
 public enum BulletEffectTarget

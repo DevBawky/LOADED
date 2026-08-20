@@ -409,6 +409,56 @@ public class PlayerMove : MonoBehaviour
         isActing = wasActing;
     }
 
+    public IEnumerator PushPlayerFromBullet(int direction, int distance)
+    {
+        if (direction == 0 || distance <= 0 || boardManager == null
+            || actorMotion == null || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int startTileIndex))
+        {
+            yield break;
+        }
+
+        int moveDirection = direction > 0 ? 1 : -1;
+        int endTileIndex = startTileIndex;
+
+        for (int step = 0; step < distance; step++)
+        {
+            int candidateIndex = endTileIndex + moveDirection;
+
+            if (candidateIndex < 0 || candidateIndex >= boardManager.BoardCount
+                || waveManager != null
+                && (waveManager.IsTileOccupied(candidateIndex)
+                    || waveManager.IsTileReservedForSpawn(candidateIndex)))
+            {
+                break;
+            }
+
+            endTileIndex = candidateIndex;
+        }
+
+        if (endTileIndex == startTileIndex || !boardManager.TryGetTilePosition(
+                endTileIndex,
+                out Vector3 targetPosition))
+        {
+            yield break;
+        }
+
+        bool wasActing = isActing;
+        isActing = true;
+        targetPosition.y = transform.position.y;
+        targetPosition.z = transform.position.z;
+        yield return actorMotion.FlyTo(
+            targetPosition,
+            Mathf.Max(0f, pushFlightDuration));
+        NotifyPlayerMoved(
+            startTileIndex,
+            endTileIndex,
+            PlayerMovementSource.ForcedMove);
+        PositionChanged?.Invoke();
+        isActing = wasActing;
+    }
+
     private IEnumerator ExecuteEnemyPush(
         EnemyPushPlan pushPlan,
         bool playPlayerImpact)

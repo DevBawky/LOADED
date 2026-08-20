@@ -14,42 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: running_spur
   displayName: "\uC9C8\uC8FC\uC758 \uBC15\uCC28"
-  description: "\uC774\uB3D9\uD55C \uD0C0\uC77C\uB9C8\uB2E4 \uC774\uB3D9 \uC2A4\uD0DD\uC744
-    \uC5BB\uC2B5\uB2C8\uB2E4. \uB2E4\uC74C \uC0AC\uACA9\uC758 \uCD5C\uC885 \uD53C\uD574\uAC00
-    \uC2A4\uD0DD\uB9C8\uB2E4 1.1\uBC30\uAC00 \uB418\uBA70 \uC0AC\uC6A9\uD55C \uC2A4\uD0DD\uC740
-    \uC0AC\uACA9 \uD6C4 \uC0AC\uB77C\uC9D1\uB2C8\uB2E4."
+  description: "\uD6A8\uACFC \uC5C6\uC74C."
   icon: {fileID: 3032890415557049533, guid: 5137ef53bcdfa014ab13013fb2771ba6, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
   maxStack: 1
-  effects:
-  - effectType: 2
-    finalDamageMultiplier: 2
-    movementDamageMultiplierPerStack: 1.1
-    survivingHealth: 1
-    movementSources: 3
-    movementStackReset: 0
-    circuitShotThreshold: 5
-    circuitMaxReloadsPerCylinder: 2
-    debuffTransferPercent: 50
-    stormDamagePercent: 40
-    movementTilesPerFreeReload: 5
-    freeReloadStorageLimit: 2
-    goldNuggetChance: 10
-    nuggetsRequired: 3
-    primerBaseChance: 5
-    primerFailureChanceBonus: 5
-    scaleMaximumDamagePercent: 100
-    memorialDamagePercentPerBullet: 20
-    memorialMaximumDamagePercent: 100
-    executionDamageMultipliers:
-    - 1.5
-    - 2
-    - 3
-    - 5
-    mutationChancePerDebuffType: 15
-    mutationMaximumChance: 60
-    brinkHealthThresholdPercent: 25
-    brinkBaseChance: 30
-    brinkFailureChanceBonus: 10
+  effects: []

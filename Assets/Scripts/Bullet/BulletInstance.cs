@@ -499,6 +499,36 @@ public sealed class BulletInstance
                         + $"(대미지 +{bonus * 100f:0.##}%)");
                     break;
                 }
+                case BulletEffectType.Seismometer:
+                {
+                    float bonus = AbilityStacks * effect.Amount / 100f;
+                    damageMultiplier *= 1f + bonus;
+                    stateLines.Add(
+                        $"이동 스택: {AbilityStacks} "
+                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                    break;
+                }
+                case BulletEffectType.Ritual:
+                    stateLines.Add(
+                        $"집중 스택: {AbilityStacks} "
+                        + $"(치명타 배율 +{AbilityStacks * effect.Amount:0.##})");
+                    break;
+                case BulletEffectType.Tracking:
+                    stateLines.Add($"추적 횟수: {AbilityStacks}");
+                    break;
+                case BulletEffectType.HighRoller:
+                {
+                    float multiplier =
+                        BulletEffectUtility.GetMissingHealthDamageMultiplier(
+                            context.CurrentHealth,
+                            context.MaxHealth,
+                            effect.Amount);
+                    damageMultiplier *= multiplier;
+                    stateLines.Add(
+                        $"잔여 체력: {context.CurrentHealth}/{context.MaxHealth} "
+                        + $"(대미지 +{(multiplier - 1f) * 100f:0.##}%)");
+                    break;
+                }
             }
         }
 
@@ -614,6 +644,9 @@ public sealed class BulletInstance
                     return true;
                 case BulletEffectType.Focus:
                 case BulletEffectType.Accumulator:
+                case BulletEffectType.Seismometer:
+                case BulletEffectType.Ritual:
+                case BulletEffectType.Tracking:
                     unitCount = AbilityStacks;
                     return true;
                 case BulletEffectType.Charge:

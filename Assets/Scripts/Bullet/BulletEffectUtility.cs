@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 internal static class BulletEffectUtility
@@ -96,6 +97,59 @@ internal static class BulletEffectUtility
             || effectType == BulletEffectType.MixedGrade
             || effectType == BulletEffectType.Masterpiece
             || effectType == BulletEffectType.MassProduced
-            || effectType == BulletEffectType.Monopoly;
+            || effectType == BulletEffectType.Monopoly
+            || effectType == BulletEffectType.Seismometer
+            || effectType == BulletEffectType.ReverseShot
+            || effectType == BulletEffectType.RecoilShot
+            || effectType == BulletEffectType.Finale
+            || effectType == BulletEffectType.Spread
+            || effectType == BulletEffectType.Alzheimer
+            || effectType == BulletEffectType.Concentration
+            || effectType == BulletEffectType.Ritual
+            || effectType == BulletEffectType.Immersion
+            || effectType == BulletEffectType.Tracking
+            || effectType == BulletEffectType.Assassination
+            || effectType == BulletEffectType.FleshForBone
+            || effectType == BulletEffectType.HighRoller;
+    }
+
+    public static int ResolveShotDirection(
+        BulletInstance bullet,
+        int facingDirection)
+    {
+        int direction = facingDirection >= 0 ? 1 : -1;
+        return Find(bullet, BulletEffectType.ReverseShot) == null
+            ? direction
+            : -direction;
+    }
+
+    public static float GetMissingHealthDamageMultiplier(
+        int currentHealth,
+        int maxHealth,
+        float maximumBonusPercent)
+    {
+        if (maxHealth <= 0 || maximumBonusPercent <= 0f)
+        {
+            return 1f;
+        }
+
+        float missingHealthRatio = Mathf.Clamp01(
+            (float)(maxHealth - Mathf.Max(0, currentHealth)) / maxHealth);
+        return 1f + missingHealthRatio * maximumBonusPercent / 100f;
+    }
+
+    public static int GetFleshForBoneBonusDamage(float healthCost)
+    {
+        int normalizedCost = Mathf.Max(0, Mathf.RoundToInt(healthCost));
+        long bonusDamage = (long)normalizedCost * 3L;
+        return bonusDamage >= int.MaxValue
+            ? int.MaxValue
+            : (int)bonusDamage;
+    }
+
+    public static int SaturatingAdd(int left, int right)
+    {
+        long result = (long)Mathf.Max(0, left) + Mathf.Max(0, right);
+        return result >= int.MaxValue ? int.MaxValue : (int)result;
     }
 }

@@ -47,6 +47,32 @@ public sealed class RelicManagerTests
     }
 
     [Test]
+    public void RetiredRelics_HaveNoAbilities()
+    {
+        string[] retiredRelicIds =
+        {
+            "predator_holster",
+            "closed_circuit",
+            "infectious_incubator",
+            "running_spur",
+            "carriage",
+            "gold_panner",
+            "cracked_primer",
+            "scale",
+            "family_will"
+        };
+
+        foreach (string relicId in retiredRelicIds)
+        {
+            RelicData relic = manager.ResolveRelicData(relicId);
+
+            Assert.That(relic, Is.Not.Null, relicId);
+            Assert.That(relic.Effects, Is.Empty, relicId);
+            Assert.That(relic.Description, Is.EqualTo("효과 없음."), relicId);
+        }
+    }
+
+    [Test]
     public void ConsumableLethalGuard_PreventsOneDeathThenIsDestroyed()
     {
         RelicData guard = CreateRelic(
