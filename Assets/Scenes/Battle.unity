@@ -1555,6 +1555,7 @@ GameObject:
   - component: {fileID: 2400001005}
   - component: {fileID: 2400001006}
   - component: {fileID: 2400001007}
+  - component: {fileID: 2400001008}
   m_Layer: 0
   m_Name: '@_StateManager'
   m_TagString: Untagged
@@ -1790,6 +1791,32 @@ MonoBehaviour:
   connectorDotSize: 6
   connectorDotCount: 5
   connectorDotColor: {r: 0.7, g: 0.7, b: 0.7, a: 1}
+--- !u!114 &2400001008
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2400001001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c3f6b51064d84e81b6d807ca13e49523, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RelicManager
+  relicCatalog: []
+  playerMove: {fileID: 0}
+  ownedRelics:
+  - data: {fileID: 11400000, guid: 10000000000000000000000000000010, type: 2}
+    stackCount: 0
+    remainingCharges: 0
+    movementStacks: 0
+    storedDamage: 0
+    primaryCounter: 0
+    secondaryCounter: 0
+    storedValue: 0
+    runtimeFlag: 0
+    trackedBulletAcquisitionOrders: 
+    acquisitionOrder: 0
 --- !u!1001 &350554640947637847
 PrefabInstance:
   m_ObjectHideFlags: 0

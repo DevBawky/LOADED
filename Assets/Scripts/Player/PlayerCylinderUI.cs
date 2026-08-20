@@ -64,6 +64,7 @@ public class PlayerCylinderUI : MonoBehaviour
     private int displayedBulletCount;
     private bool isInitialized;
     private bool isSubscribed;
+    private RelicManager subscribedRelicManager;
     private bool isDraggingBullet;
     private Image draggedBulletImage;
     private int draggedBulletIndex = -1;
@@ -107,6 +108,7 @@ public class PlayerCylinderUI : MonoBehaviour
     private void OnEnable()
     {
         SubscribeToDeck();
+        SubscribeToRelicManager();
 
         if (deckManager != null)
         {
@@ -142,6 +144,7 @@ public class PlayerCylinderUI : MonoBehaviour
     {
         CancelBulletDragImmediately();
         UnsubscribeFromDeck();
+        UnsubscribeFromRelicManager();
 
         if (rotationCoroutine != null)
         {
@@ -165,6 +168,7 @@ public class PlayerCylinderUI : MonoBehaviour
         UnsubscribeFromDeck();
         deckManager = assignedDeckManager;
         SubscribeToDeck();
+        SubscribeToRelicManager();
         isInitialized = false;
         RefreshDisplay(false);
     }
@@ -298,7 +302,8 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void PrepareBulletEffect(Image bulletImage)
     {
-        Transform effectTransform = bulletImage.transform.Find(
+        Transform effectTransform = FindDescendantByName(
+            bulletImage.transform,
             BulletEffectObjectName);
 
         if (effectTransform == null)
@@ -885,8 +890,7 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void RefreshBulletEffects()
     {
-        relicManager ??= FindFirstObjectByType<RelicManager>(
-            FindObjectsInactive.Include);
+        SubscribeToRelicManager();
 
         if (deckManager == null)
         {
@@ -905,6 +909,13 @@ public class PlayerCylinderUI : MonoBehaviour
             ? loadedCount
             : Mathf.Max(loadedCount, playerShoot.InitialLoadedBulletCount);
 
+        if (relicManager != null
+            && (playerShoot == null || !playerShoot.IsFiring))
+        {
+            relicManager.EnsureLuckyChamberSelection(loadedCount);
+            initialLoadedCount = loadedCount;
+        }
+
         for (int index = 0; index < bulletImages.Count; index++)
         {
             bool luckyChamber = index < loadedCount
@@ -912,7 +923,15 @@ public class PlayerCylinderUI : MonoBehaviour
                 && relicManager.IsLuckyChamberLoadedBullet(
                     index,
                     initialLoadedCount);
-            bool active = luckyChamber
+            bool relicEnhanced = index < loadedCount
+                && relicManager != null
+                && relicManager.TryGetLoadedBulletRelicModifiers(
+                    index,
+                    loadedCount,
+                    initialLoadedCount,
+                    out _,
+                    out _);
+            bool active = relicEnhanced
                 || index < loadedCount
                 && ShouldShowBulletEffect(loadedBullets, index);
             SetBulletEffectActive(
@@ -955,366 +974,14 @@ public class PlayerCylinderUI : MonoBehaviour
         IReadOnlyList<BulletInstance> loadedBullets,
         int bulletIndex)
     {
-        BulletInstance bullet = loadedBullets[bulletIndex];
-
-        if (bullet == null)
-        {
-            return false;
-        }
-
-        // Direct temporary modifiers are always meaningful. Stored damage is
-        // deliberately excluded here: it belongs to a distributor and only
-        // lights the bullets that distributor will actually enhance.
-        if (bullet.TemporaryDamageBonus > 0f
-            || bullet.TemporaryCriticalChanceBonus > 0f)
-        {
-            return true;
-        }
-
-        if (HasActiveStackStatBonus(bullet)
-            || HasActiveConditionalStatBonus(
-                bullet,
-                loadedBullets,
-                bulletIndex))
-        {
-            return true;
-        }
-
-        return WillReceiveEarlierBulletBuff(loadedBullets, bulletIndex);
+        return CylinderBulletEffectPolicy.ShouldShow(
+            loadedBullets,
+            bulletIndex,
+            deckManager,
+            playerShoot,
+            currencyManager,
+            playerHealth);
     }
-
-    private static bool WillReceiveEarlierBulletBuff(
-        IReadOnlyList<BulletInstance> loadedBullets,
-        int targetIndex)
-    {
-        float pendingStackBonus = 0f;
-
-        // The cylinder fires from the highest index down. Simulate only the
-        // ordering effects that can enhance a later bullet before it fires.
-        for (int sourceIndex = loadedBullets.Count - 1;
-             sourceIndex > targetIndex;
-             sourceIndex--)
-        {
-            BulletInstance source = loadedBullets[sourceIndex];
-
-            if (source == null)
-            {
-                continue;
-            }
-
-            BulletEffectData powderEffect = GetEffect(
-                source,
-                BulletEffectType.PowderPouch);
-
-            if (powderEffect != null && powderEffect.Amount > 0f)
-            {
-                return true;
-            }
-
-            BulletEffectData stackEffect = GetEffect(
-                source,
-                BulletEffectType.StackNextShot);
-
-            if (stackEffect != null)
-            {
-                pendingStackBonus += Mathf.Max(0f, stackEffect.Amount);
-                continue;
-            }
-
-            BulletEffectData distributorEffect = GetEffect(
-                source,
-                BulletEffectType.Distributor);
-
-            if (distributorEffect != null)
-            {
-                if (distributorEffect.Amount > 0f
-                    && (pendingStackBonus > 0f
-                        || source.StoredDamageBonus > 0f))
-                {
-                    return true;
-                }
-
-                pendingStackBonus = 0f;
-                continue;
-            }
-
-            pendingStackBonus = 0f;
-        }
-
-        BulletInstance target = loadedBullets[targetIndex];
-        return pendingStackBonus > 0f
-            && !HasEffect(target, BulletEffectType.PowderPouch)
-            && !HasEffect(target, BulletEffectType.StackNextShot)
-            && !HasEffect(target, BulletEffectType.Distributor);
-    }
-
-    private static bool HasActiveStackStatBonus(BulletInstance bullet)
-    {
-        if (bullet.AbilityStacks > 0
-            && (HasPositiveEffect(bullet, BulletEffectType.Focus)
-                || HasPositiveEffect(
-                    bullet,
-                    BulletEffectType.Accumulator)))
-        {
-            return true;
-        }
-
-        if (bullet.PermanentStacks > 0
-            && (HasPositiveEffect(bullet, BulletEffectType.Devourer)
-                || HasPositiveEffect(bullet, BulletEffectType.Legacy)))
-        {
-            return true;
-        }
-
-        // ShotsObservedWhileLoaded increases on every remaining bullet after
-        // a shot. It is a stat stack only for the Charge ability.
-        return bullet.ShotsObservedWhileLoaded > 0
-            && HasPositiveEffect(bullet, BulletEffectType.Charge);
-    }
-
-    private bool HasActiveConditionalStatBonus(
-        BulletInstance bullet,
-        IReadOnlyList<BulletInstance> loadedBullets,
-        int bulletIndex)
-    {
-        // LoadedBullets[0] is the final chamber fired by DeckManager.
-        BulletEffectData effect = GetEffect(
-            bullet,
-            BulletEffectType.Jackpot);
-
-        if (effect != null && effect.Amount > 100f && bulletIndex == 0)
-        {
-            return true;
-        }
-
-        effect = GetEffect(bullet, BulletEffectType.Resonance);
-
-        if (effect != null && effect.Amount > 0f
-            && CountOtherLoadedEffects(
-                loadedBullets,
-                bulletIndex,
-                BulletEffectType.Resonance) > 0)
-        {
-            return true;
-        }
-
-        effect = GetEffect(bullet, BulletEffectType.Loader);
-
-        if (effect != null && effect.Amount > 0f
-            && deckManager.MaxReloadAmount
-                > (playerShoot == null
-                    ? loadedBullets.Count
-                    : playerShoot.InitialLoadedBulletCount))
-        {
-            return true;
-        }
-
-        effect = GetEffect(bullet, BulletEffectType.Crescendo);
-
-        if (effect != null && effect.Amount > 0f
-            && deckManager.TotalBulletCount
-                < DeckManager.MaximumOwnedBulletCount)
-        {
-            return true;
-        }
-
-        effect = GetEffect(bullet, BulletEffectType.MixedGrade);
-
-        if (effect != null && effect.Amount > 0f
-            && HasOtherLoadedGrade(
-                loadedBullets,
-                bullet,
-                bulletIndex))
-        {
-            return true;
-        }
-
-        effect = GetEffect(bullet, BulletEffectType.Gilded);
-
-        if (effect != null && effect.Amount > 0f
-            && currencyManager != null
-            && currencyManager.CurrentMoney
-                >= Mathf.Max(1, effect.StackCount))
-        {
-            return true;
-        }
-
-        effect = GetEffect(bullet, BulletEffectType.Coagulation);
-
-        if (effect != null && effect.Amount > 0f
-            && playerHealth != null
-            && playerHealth.MaxHealth > 0
-            && 100f * (playerHealth.MaxHealth - playerHealth.CurrentHealth)
-                / playerHealth.MaxHealth
-                >= Mathf.Max(1, effect.StackCount))
-        {
-            return true;
-        }
-
-        effect = GetEffect(bullet, BulletEffectType.Heart);
-
-        if (effect != null && effect.Amount > 0f
-            && playerHealth != null
-            && playerHealth.MaxHealth >= Mathf.Max(1, effect.StackCount))
-        {
-            return true;
-        }
-
-        return HasActiveOwnedCollectionBonus(bullet);
-    }
-
-    private bool HasActiveOwnedCollectionBonus(BulletInstance bullet)
-    {
-        foreach (BulletEffectData effect in bullet.Effects)
-        {
-            if (effect == null || effect.Amount <= 0f)
-            {
-                continue;
-            }
-
-            switch (effect.EffectType)
-            {
-                case BulletEffectType.Collection:
-                    return CountDistinctOwnedBulletTypes() > 0;
-                case BulletEffectType.Masterpiece:
-                    return CountOwnedGrades(
-                        BulletGrade.Ace,
-                        BulletGrade.Legendary) > 0;
-                case BulletEffectType.MassProduced:
-                    return CountOwnedGrades(
-                        BulletGrade.Normal,
-                        BulletGrade.Rare) > 0;
-                case BulletEffectType.Monopoly:
-                    return deckManager.Deck.Count
-                        + deckManager.LoadedBullets.Count
-                        + deckManager.Graveyard.Count > 0;
-            }
-        }
-
-        return false;
-    }
-
-    private int CountDistinctOwnedBulletTypes()
-    {
-        HashSet<BulletData> types = new HashSet<BulletData>();
-        AddOwnedBulletTypes(types, deckManager.Deck);
-        AddOwnedBulletTypes(types, deckManager.LoadedBullets);
-        AddOwnedBulletTypes(types, deckManager.Graveyard);
-        return types.Count;
-    }
-
-    private static void AddOwnedBulletTypes(
-        HashSet<BulletData> types,
-        IReadOnlyList<BulletInstance> bullets)
-    {
-        foreach (BulletInstance bullet in bullets)
-        {
-            if (bullet?.Data != null)
-            {
-                types.Add(bullet.Data);
-            }
-        }
-    }
-
-    private int CountOwnedGrades(BulletGrade first, BulletGrade second)
-    {
-        return CountGrades(deckManager.Deck, first, second)
-            + CountGrades(deckManager.LoadedBullets, first, second)
-            + CountGrades(deckManager.Graveyard, first, second);
-    }
-
-    private static int CountGrades(
-        IReadOnlyList<BulletInstance> bullets,
-        BulletGrade first,
-        BulletGrade second)
-    {
-        int count = 0;
-
-        foreach (BulletInstance bullet in bullets)
-        {
-            if (bullet != null
-                && (bullet.Grade == first || bullet.Grade == second))
-            {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    private static int CountOtherLoadedEffects(
-        IReadOnlyList<BulletInstance> bullets,
-        int targetIndex,
-        BulletEffectType effectType)
-    {
-        int count = 0;
-
-        // When targetIndex fires it has already been removed, so only lower
-        // indices are still in DeckManager.LoadedBullets.
-        for (int index = 0; index < targetIndex; index++)
-        {
-            if (HasEffect(bullets[index], effectType))
-            {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    private static bool HasOtherLoadedGrade(
-        IReadOnlyList<BulletInstance> bullets,
-        BulletInstance target,
-        int targetIndex)
-    {
-        for (int index = 0; index < targetIndex; index++)
-        {
-            BulletInstance bullet = bullets[index];
-
-            if (bullet != null && bullet.Grade != target.Grade)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static bool HasPositiveEffect(
-        BulletInstance bullet,
-        BulletEffectType effectType)
-    {
-        BulletEffectData effect = GetEffect(bullet, effectType);
-        return effect != null && effect.Amount > 0f;
-    }
-
-    private static bool HasEffect(
-        BulletInstance bullet,
-        BulletEffectType effectType)
-    {
-        return GetEffect(bullet, effectType) != null;
-    }
-
-    private static BulletEffectData GetEffect(
-        BulletInstance bullet,
-        BulletEffectType effectType)
-    {
-        if (bullet == null)
-        {
-            return null;
-        }
-
-        foreach (BulletEffectData effect in bullet.Effects)
-        {
-            if (effect != null && effect.EffectType == effectType)
-            {
-                return effect;
-            }
-        }
-
-        return null;
-    }
-
     private void StartCylinderRotation(
         float targetAngle,
         bool animateRotation,
@@ -1535,6 +1202,63 @@ public class PlayerCylinderUI : MonoBehaviour
         }
 
         isSubscribed = false;
+    }
+
+    private void SubscribeToRelicManager()
+    {
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
+        if (subscribedRelicManager == relicManager)
+        {
+            return;
+        }
+
+        UnsubscribeFromRelicManager();
+        subscribedRelicManager = relicManager;
+
+        if (subscribedRelicManager != null)
+        {
+            subscribedRelicManager.LuckyChamberSelectionChanged +=
+                HandleLuckyChamberSelectionChanged;
+        }
+    }
+
+    private void UnsubscribeFromRelicManager()
+    {
+        if (subscribedRelicManager != null)
+        {
+            subscribedRelicManager.LuckyChamberSelectionChanged -=
+                HandleLuckyChamberSelectionChanged;
+        }
+
+        subscribedRelicManager = null;
+    }
+
+    private void HandleLuckyChamberSelectionChanged()
+    {
+        RefreshBulletEffects();
+    }
+
+    private static Transform FindDescendantByName(
+        Transform root,
+        string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (Transform descendant in root.GetComponentsInChildren<Transform>(
+                     true))
+        {
+            if (descendant != root && descendant.name == objectName)
+            {
+                return descendant;
+            }
+        }
+
+        return null;
     }
 }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 
 [DefaultExecutionOrder(-90)]
@@ -28,6 +29,7 @@ public sealed class RelicManager : MonoBehaviour
     private bool activeShotForcesCritical;
     private int activePhysicalBulletIndex = -1;
     private int luckyChamberBulletIndex = -1;
+    private int luckyChamberSelectionLoadedCount;
     private int circuitShotCount;
     private int circuitReloadCount;
     private int brinkFailureCount;
@@ -55,6 +57,8 @@ public sealed class RelicManager : MonoBehaviour
     public event Action<RelicInstance, RelicEffectData> RelicTriggered;
     public event Action<RelicInstance, RelicRemovalReason> RelicRemoved;
     public event Action<RelicCombatEventContext> CombatEventRaised;
+    public event Action LuckyChamberSelectionChanged;
+    public event Action<RelicInstance, double> RelicProbabilityEvaluated;
 
     public IReadOnlyList<RelicInstance> OwnedRelics => ownedRelics;
     public int Count => ownedRelics.Count;
@@ -86,6 +90,41 @@ public sealed class RelicManager : MonoBehaviour
         return loadedBulletIndex == selectedLoadedIndex;
     }
 
+    public void EnsureLuckyChamberSelection(int loadedBulletCount)
+    {
+        int validLoadedCount = Mathf.Max(0, loadedBulletCount);
+        bool hasLuckyChamber = validLoadedCount > 0
+            && FindFirstEffect(RelicEffectType.LuckyChamber, out _, out _);
+
+        if (!hasLuckyChamber)
+        {
+            bool changed = luckyChamberBulletIndex >= 0
+                || luckyChamberSelectionLoadedCount != 0;
+            luckyChamberBulletIndex = -1;
+            luckyChamberSelectionLoadedCount = 0;
+            if (changed)
+            {
+                LuckyChamberSelectionChanged?.Invoke();
+                InventoryChanged?.Invoke();
+            }
+            return;
+        }
+
+        if (luckyChamberSelectionLoadedCount == validLoadedCount
+            && luckyChamberBulletIndex >= 0
+            && luckyChamberBulletIndex < validLoadedCount)
+        {
+            return;
+        }
+
+        luckyChamberSelectionLoadedCount = validLoadedCount;
+        luckyChamberBulletIndex = UnityEngine.Random.Range(
+            0,
+            validLoadedCount);
+        LuckyChamberSelectionChanged?.Invoke();
+        InventoryChanged?.Invoke();
+    }
+
     public string GetLuckyChamberBulletTooltip()
     {
         if (!FindFirstEffect(
@@ -101,6 +140,189 @@ public sealed class RelicManager : MonoBehaviour
             (effect.FinalDamageMultiplier - 1d) * 100d);
         return "<color=#58E879><b>행운의 약실 적용</b></color>\n"
             + $"<color=#A8F5B8>최종 피해 +{bonusPercent:0.#}%</color>";
+    }
+
+    public string GetRelicStatusText(RelicInstance relic)
+    {
+        if (relic?.Data == null)
+        {
+            return string.Empty;
+        }
+
+        foreach (RelicEffectData effect in relic.Data.Effects)
+        {
+            if (effect == null)
+            {
+                continue;
+            }
+
+            switch (effect.EffectType)
+            {
+                case RelicEffectType.CrackedPrimer:
+                    return FormatStatusNumber(Math.Min(
+                        100d,
+                        effect.PrimerBaseChance
+                            + relic.PrimaryCounter
+                            * effect.PrimerFailureChanceBonus)) + "%";
+                case RelicEffectType.MovementDamageMultiplier:
+                    return relic.MovementStacks > 0
+                        ? relic.MovementStacks.ToString(
+                            CultureInfo.InvariantCulture)
+                        : string.Empty;
+                case RelicEffectType.LuckyChamber:
+                    return string.Empty;
+                case RelicEffectType.ClosedCircuit:
+                    int remainingShots = circuitReloadCount
+                            >= effect.CircuitMaxReloadsPerCylinder
+                        ? 0
+                        : Math.Max(
+                            0,
+                            effect.CircuitShotThreshold - circuitShotCount);
+                    return remainingShots.ToString(CultureInfo.InvariantCulture);
+                case RelicEffectType.ExecutionersOath:
+                    int maximumStage = effect.ExecutionDamageMultipliers.Count;
+                    int stage = Mathf.Min(relic.PrimaryCounter, maximumStage);
+                    return stage.ToString(CultureInfo.InvariantCulture);
+                case RelicEffectType.Carriage:
+                    return relic.SecondaryCounter > 0
+                        ? relic.SecondaryCounter.ToString(
+                            CultureInfo.InvariantCulture)
+                        : string.Empty;
+                case RelicEffectType.GoldPanner:
+                    return relic.PrimaryCounter.ToString(
+                        CultureInfo.InvariantCulture);
+            }
+        }
+
+        return relic.Data.CanStack && relic.StackCount > 0
+            ? relic.StackCount.ToString(CultureInfo.InvariantCulture)
+            : string.Empty;
+    }
+
+    public bool TryGetLoadedBulletRelicModifiers(
+        int loadedBulletIndex,
+        int currentLoadedCount,
+        int initialLoadedCount,
+        out double damageMultiplier,
+        out bool forcesCritical,
+        List<string> stateLines = null)
+    {
+        damageMultiplier = 1d;
+        forcesCritical = false;
+
+        if (loadedBulletIndex < 0
+            || loadedBulletIndex >= currentLoadedCount
+            || initialLoadedCount <= 0)
+        {
+            return false;
+        }
+
+        bool enhanced = false;
+        bool isNextShot = loadedBulletIndex == currentLoadedCount - 1;
+        bool isFirstShot = loadedBulletIndex == initialLoadedCount - 1;
+        bool isLastShot = loadedBulletIndex == 0;
+
+        foreach (RelicInstance relic in ownedRelics)
+        {
+            if (relic?.Data == null || relic.IsSpent)
+            {
+                continue;
+            }
+
+            foreach (RelicEffectData effect in relic.Data.Effects)
+            {
+                if (effect == null)
+                {
+                    continue;
+                }
+
+                double effectMultiplier = 1d;
+                bool applies = false;
+                bool guaranteesCritical = false;
+
+                switch (effect.EffectType)
+                {
+                    case RelicEffectType.MovementDamageMultiplier:
+                        applies = relic.MovementStacks > 0
+                            && (effect.MovementStackReset
+                                    != RelicMovementStackReset.AfterShot
+                                || isNextShot);
+                        if (applies)
+                        {
+                            int exponent = SaturatingMultiply(
+                                relic.MovementStacks,
+                                relic.StackCount);
+                            effectMultiplier = Math.Pow(
+                                effect.MovementDamageMultiplierPerStack,
+                                exponent);
+                        }
+                        break;
+                    case RelicEffectType.FirstShotFinalMultiplier:
+                        applies = isFirstShot;
+                        effectMultiplier = Math.Pow(
+                            effect.FinalDamageMultiplier,
+                            relic.StackCount);
+                        break;
+                    case RelicEffectType.LastShotFinalMultiplier:
+                        applies = isLastShot;
+                        effectMultiplier = Math.Pow(
+                            effect.FinalDamageMultiplier,
+                            relic.StackCount);
+                        break;
+                    case RelicEffectType.Scale:
+                        double scaleDamagePercent = activeCylinderScaleDamagePercent
+                            > 0d
+                                ? activeCylinderScaleDamagePercent
+                                : relic.StoredValue;
+                        applies = scaleDamagePercent > 0d;
+                        effectMultiplier = 1d
+                            + scaleDamagePercent / 100d;
+                        break;
+                    case RelicEffectType.LuckyChamber:
+                        applies = IsLuckyChamberLoadedBullet(
+                            loadedBulletIndex,
+                            initialLoadedCount);
+                        effectMultiplier = effect.FinalDamageMultiplier;
+                        break;
+                    case RelicEffectType.ExecutionersOath:
+                        applies = isNextShot && relic.PrimaryCounter > 0;
+                        effectMultiplier = effect.GetExecutionMultiplier(
+                            relic.PrimaryCounter);
+                        break;
+                    case RelicEffectType.GoldPanner:
+                        applies = isNextShot
+                            && relic.PrimaryCounter >= effect.NuggetsRequired;
+                        effectMultiplier = effect.FinalDamageMultiplier;
+                        guaranteesCritical = applies;
+                        break;
+                }
+
+                if (!applies
+                    || effectMultiplier <= 1d && !guaranteesCritical)
+                {
+                    continue;
+                }
+
+                enhanced = true;
+                damageMultiplier = MultiplyMultiplier(
+                    damageMultiplier,
+                    effectMultiplier);
+                forcesCritical |= guaranteesCritical;
+
+                if (stateLines != null)
+                {
+                    string detail = guaranteesCritical
+                        ? effectMultiplier > 1d
+                            ? "치명타 확정, 최종 피해 x"
+                                + FormatStatusNumber(effectMultiplier)
+                            : "치명타 확정"
+                        : $"최종 피해 x{FormatStatusNumber(effectMultiplier)}";
+                    stateLines.Add($"{relic.Data.DisplayName}: {detail}");
+                }
+            }
+        }
+
+        return enhanced;
     }
 
     private void Awake()
@@ -260,7 +482,6 @@ public sealed class RelicManager : MonoBehaviour
         ResetCylinderRuntime();
         processedEnemyDefeatIds.Clear();
         movementStacksConsumedByCylinder.Clear();
-        ResetMovementStacks(RelicMovementStackReset.BattleStart);
 
         foreach (RelicInstance relic in ownedRelics)
         {
@@ -278,11 +499,6 @@ public sealed class RelicManager : MonoBehaviour
 
                 switch (effect.EffectType)
                 {
-                    case RelicEffectType.ExecutionersOath:
-                    case RelicEffectType.Scale:
-                        relic.SetPrimaryCounter(0);
-                        relic.SetStoredValue(0d);
-                        break;
                     case RelicEffectType.FamilyWill:
                         relic.SetRuntimeFlag(true);
                         break;
@@ -304,7 +520,13 @@ public sealed class RelicManager : MonoBehaviour
 
     public void EndBattle()
     {
-        ClearShotSnapshot();
+        // The final enemy can complete the battle before PlayerShoot finishes
+        // the current shot. Preserve that shot's defeat result until
+        // NotifyShotCompleted updates effects such as Executioner's Oath.
+        if (!isShotActive)
+        {
+            ClearShotSnapshot();
+        }
         ResetCylinderRuntime();
         movementStacksConsumedByCylinder.Clear();
         RaiseCombatEvent(new RelicCombatEventContext(
@@ -329,17 +551,9 @@ public sealed class RelicManager : MonoBehaviour
         stormDamagedEnemyIds.Clear();
         stormStrongestSingleDamage = 0L;
         stormTriggeredThisCylinder = false;
-        luckyChamberBulletIndex = -1;
         activeCylinderScaleDamagePercent = 0d;
         activeMemorialShotMultiplier = 0d;
-
-        if (loadedBulletCount > 0
-            && FindFirstEffect(RelicEffectType.LuckyChamber, out _, out _))
-        {
-            luckyChamberBulletIndex = UnityEngine.Random.Range(
-                0,
-                loadedBulletCount);
-        }
+        EnsureLuckyChamberSelection(loadedBulletCount);
 
         if (enemies != null)
         {
@@ -387,7 +601,9 @@ public sealed class RelicManager : MonoBehaviour
         bool isRelicGenerated = false,
         int physicalBulletIndex = -1,
         int currentHealth = 0,
-        int maxHealth = 1)
+        int maxHealth = 1,
+        bool isFirstLoadedShot = false,
+        bool isLastLoadedShot = false)
     {
         movementStacksConsumedByShot.Clear();
         activeTargetDamageMultipliers.Clear();
@@ -446,6 +662,10 @@ public sealed class RelicManager : MonoBehaviour
                 physicalBulletIndex,
                 currentHealth,
                 maxHealth);
+            NotifyShotStartActivations(
+                isBaseBullet,
+                isFirstLoadedShot,
+                isLastLoadedShot);
         }
 
         isShotActive = true;
@@ -456,6 +676,7 @@ public sealed class RelicManager : MonoBehaviour
     public void NotifyShotCompleted()
     {
         bool consumedMovement = movementStacksConsumedByShot.Count > 0;
+        bool oathStageChanged = false;
 
         foreach (KeyValuePair<RelicInstance, int> entry
                  in movementStacksConsumedByShot)
@@ -469,16 +690,18 @@ public sealed class RelicManager : MonoBehaviour
                 out RelicInstance oathRelic,
                 out _))
         {
+            int previousStage = oathRelic.PrimaryCounter;
             oathRelic.SetPrimaryCounter(activeShotDefeatedEnemy
                 ? oathRelic.PrimaryCounter == int.MaxValue
                     ? int.MaxValue
                     : oathRelic.PrimaryCounter + 1
                 : 0);
+            oathStageChanged = oathRelic.PrimaryCounter != previousStage;
         }
 
         ClearShotSnapshot();
 
-        if (consumedMovement)
+        if (consumedMovement || oathStageChanged)
         {
             InventoryChanged?.Invoke();
         }
@@ -538,10 +761,7 @@ public sealed class RelicManager : MonoBehaviour
         pendingHolsterBulletOrders.Clear();
         ResetCylinderRuntime();
 
-        if (consumedMovement)
-        {
-            InventoryChanged?.Invoke();
-        }
+        InventoryChanged?.Invoke();
 
         RaiseCombatEvent(new RelicCombatEventContext(
             RelicCombatEventType.CylinderCompleted));
@@ -629,6 +849,7 @@ public sealed class RelicManager : MonoBehaviour
                 effect.MutationMaximumChance,
                 activeDebuffTypeCount
                     * effect.MutationChancePerDebuffType);
+            NotifyProbabilityEvaluated(relic, chance);
 
             if (RollPercent(chance))
             {
@@ -644,6 +865,18 @@ public sealed class RelicManager : MonoBehaviour
     public double GetMemorialExtraShotMultiplier()
     {
         return cylinderActive ? activeMemorialShotMultiplier : 0d;
+    }
+
+    public void NotifyMemorialShotTriggered()
+    {
+        if (cylinderActive && activeMemorialShotMultiplier > 0d
+            && FindFirstEffect(
+                RelicEffectType.FamilyWill,
+                out RelicInstance relic,
+                out RelicEffectData effect))
+        {
+            Trigger(relic, effect);
+        }
     }
 
     public bool ShouldReloadConsumeTurn(
@@ -686,10 +919,9 @@ public sealed class RelicManager : MonoBehaviour
         if (FindFirstEffect(
                 RelicEffectType.Carriage,
                 out RelicInstance carriageRelic,
-                out RelicEffectData carriageEffect)
+                out _)
             && carriageRelic.TryConsumeSecondaryCounter())
         {
-            Trigger(carriageRelic, carriageEffect);
             InventoryChanged?.Invoke();
             return false;
         }
@@ -722,6 +954,7 @@ public sealed class RelicManager : MonoBehaviour
             || !deckManager.TryReloadOldestUsed(
                 out BulletInstance reloadedBullet))
         {
+            InventoryChanged?.Invoke();
             return false;
         }
 
@@ -781,11 +1014,15 @@ public sealed class RelicManager : MonoBehaviour
         EnemyController defeatedEnemy,
         BulletInstance killingBullet,
         IReadOnlyList<EnemyController> activeEnemies,
-        BoardManager boardManager)
+        BoardManager boardManager,
+        DeckManager deckManager = null,
+        int defeatedEnemyInstanceId = 0)
     {
-        if (defeatedEnemy == null
-            || !processedEnemyDefeatIds.Add(
-                defeatedEnemy.GetInstanceID()))
+        int enemyInstanceId = defeatedEnemy != null
+            ? defeatedEnemy.GetInstanceID()
+            : defeatedEnemyInstanceId;
+
+        if (enemyInstanceId == 0)
         {
             return;
         }
@@ -795,19 +1032,31 @@ public sealed class RelicManager : MonoBehaviour
             activeShotDefeatedEnemy = true;
         }
 
+        if (!processedEnemyDefeatIds.Add(enemyInstanceId))
+        {
+            return;
+        }
+
         if (killingBullet != null
             && FindFirstEffect(
                 RelicEffectType.PredatorHolster,
                 out RelicInstance holsterRelic,
                 out RelicEffectData holsterEffect))
         {
-            holsterRelic.AddTrackedBullet(killingBullet.AcquisitionOrder);
-            if (!pendingHolsterBulletOrders.Contains(
-                    killingBullet.AcquisitionOrder))
+            int acquisitionOrder = killingBullet.AcquisitionOrder;
+            holsterRelic.AddTrackedBullet(acquisitionOrder);
+            bool queuedImmediately = deckManager != null
+                && deckManager.QueueBulletForNextReload(acquisitionOrder);
+
+            if (queuedImmediately)
             {
-                pendingHolsterBulletOrders.Add(
-                    killingBullet.AcquisitionOrder);
+                pendingHolsterBulletOrders.Remove(acquisitionOrder);
             }
+            else if (!pendingHolsterBulletOrders.Contains(acquisitionOrder))
+            {
+                pendingHolsterBulletOrders.Add(acquisitionOrder);
+            }
+
             Trigger(holsterRelic, holsterEffect);
         }
 
@@ -876,6 +1125,7 @@ public sealed class RelicManager : MonoBehaviour
         }
 
         int nuggetsFound = 0;
+        NotifyProbabilityEvaluated(relic, effect.GoldNuggetChance);
 
         for (int index = 0; index < amount; index++)
         {
@@ -986,6 +1236,7 @@ public sealed class RelicManager : MonoBehaviour
                 primerEffect.PrimerBaseChance
                     + primerRelic.PrimaryCounter
                     * primerEffect.PrimerFailureChanceBonus);
+            NotifyProbabilityEvaluated(primerRelic, chance);
 
             if (RollPercent(chance))
             {
@@ -1030,6 +1281,7 @@ public sealed class RelicManager : MonoBehaviour
                 brinkEffect.BrinkBaseChance
                     + brinkFailureCount
                     * brinkEffect.BrinkFailureChanceBonus);
+            NotifyProbabilityEvaluated(brinkRelic, chance);
 
             if (RollPercent(chance))
             {
@@ -1043,6 +1295,51 @@ public sealed class RelicManager : MonoBehaviour
             {
                 brinkFailureCount++;
             }
+        }
+    }
+
+    private void NotifyShotStartActivations(
+        bool isBaseBullet,
+        bool isFirstLoadedShot,
+        bool isLastLoadedShot)
+    {
+        // Extra/chain shots share the same damage snapshot. Presentation is
+        // emitted only for the consumed chamber bullet so one effect cannot
+        // spam the relic UI several times during a single physical shot.
+        if (!isBaseBullet)
+        {
+            return;
+        }
+
+        TriggerIfOwned(
+            RelicEffectType.FirstShotFinalMultiplier,
+            isFirstLoadedShot);
+        TriggerIfOwned(
+            RelicEffectType.LastShotFinalMultiplier,
+            isLastLoadedShot);
+        TriggerIfOwned(
+            RelicEffectType.Scale,
+            activeCylinderScaleDamagePercent > 0d);
+
+        if (FindFirstEffect(
+                RelicEffectType.ExecutionersOath,
+                out RelicInstance oathRelic,
+                out RelicEffectData oathEffect)
+            && oathEffect.GetExecutionMultiplier(oathRelic.PrimaryCounter) > 1d)
+        {
+            Trigger(oathRelic, oathEffect);
+        }
+    }
+
+    private void TriggerIfOwned(RelicEffectType type, bool condition)
+    {
+        if (condition
+            && FindFirstEffect(
+                type,
+                out RelicInstance relic,
+                out RelicEffectData effect))
+        {
+            Trigger(relic, effect);
         }
     }
 
@@ -1304,6 +1601,7 @@ public sealed class RelicManager : MonoBehaviour
                 }
                 else if (effect.EffectType == RelicEffectType.Carriage)
                 {
+                    int previousStoredReloads = relic.SecondaryCounter;
                     int totalDistance = SaturatingAddInt(
                         relic.PrimaryCounter,
                         context.Distance);
@@ -1317,7 +1615,10 @@ public sealed class RelicManager : MonoBehaviour
                     relic.SetPrimaryCounter(totalDistance
                         % effect.MovementTilesPerFreeReload);
                     relic.SetSecondaryCounter(storedReloads);
-                    Trigger(relic, effect);
+                    if (storedReloads > previousStoredReloads)
+                    {
+                        Trigger(relic, effect);
+                    }
                     changed = true;
                 }
             }
@@ -1469,6 +1770,7 @@ public sealed class RelicManager : MonoBehaviour
     {
         cylinderActive = false;
         luckyChamberBulletIndex = -1;
+        luckyChamberSelectionLoadedCount = 0;
         circuitShotCount = 0;
         circuitReloadCount = 0;
         brinkFailureCount = 0;
@@ -1519,6 +1821,20 @@ public sealed class RelicManager : MonoBehaviour
             RelicCombatEventType.RelicTriggered));
     }
 
+    private void NotifyProbabilityEvaluated(
+        RelicInstance relic,
+        double chance)
+    {
+        if (relic == null || double.IsNaN(chance))
+        {
+            return;
+        }
+
+        RelicProbabilityEvaluated?.Invoke(
+            relic,
+            Math.Clamp(chance, 0d, 100d));
+    }
+
     private static bool RollPercent(double chance)
     {
         return chance >= 100d || chance > 0d
@@ -1535,6 +1851,11 @@ public sealed class RelicManager : MonoBehaviour
 
         double result = left * right;
         return double.IsInfinity(result) ? double.MaxValue : result;
+    }
+
+    private static string FormatStatusNumber(double value)
+    {
+        return value.ToString("0.##", CultureInfo.InvariantCulture);
     }
 
     private static int SaturatingAddInt(int left, int right)

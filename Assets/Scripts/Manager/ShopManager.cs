@@ -781,24 +781,16 @@ public class ShopManager : MonoBehaviour
 
     private void GenerateOffers()
     {
-        List<BulletData> candidates = BuildCandidateList();
-        currentOffers.Clear();
+        ShopOfferGenerator.GenerateBullets(
+            bulletPool,
+            gradeWeights,
+            slots.Count,
+            currentOffers);
         purchasedBulletOffers.Clear();
 
-        int offerCount = Mathf.Min(slots.Count, candidates.Count);
-
-        for (int slotIndex = 0; slotIndex < offerCount; slotIndex++)
+        for (int index = 0; index < currentOffers.Count; index++)
         {
-            int candidateIndex = SelectWeightedCandidateIndex(candidates);
-
-            if (candidateIndex < 0)
-            {
-                break;
-            }
-
-            currentOffers.Add(candidates[candidateIndex]);
             purchasedBulletOffers.Add(false);
-            candidates.RemoveAt(candidateIndex);
         }
 
         RefreshSlots();
@@ -807,124 +799,19 @@ public class ShopManager : MonoBehaviour
 
     private void GenerateItemOffers()
     {
-        List<ItemData> candidates = new List<ItemData>();
-
-        foreach (ItemData itemData in itemPool)
-        {
-            if (itemData != null && !candidates.Contains(itemData))
-            {
-                candidates.Add(itemData);
-            }
-        }
-
-        currentItemOffers.Clear();
+        ShopOfferGenerator.GenerateItems(
+            itemPool,
+            itemSlots.Count,
+            currentItemOffers);
         purchasedItemOffers.Clear();
-        int offerCount = Mathf.Min(itemSlots.Count, candidates.Count);
 
-        for (int slotIndex = 0; slotIndex < offerCount; slotIndex++)
+        for (int index = 0; index < currentItemOffers.Count; index++)
         {
-            int candidateIndex = UnityEngine.Random.Range(0, candidates.Count);
-            currentItemOffers.Add(candidates[candidateIndex]);
             purchasedItemOffers.Add(false);
-            candidates.RemoveAt(candidateIndex);
         }
 
         RefreshItemSlots();
         OffersChanged?.Invoke();
-    }
-
-    private List<BulletData> BuildCandidateList()
-    {
-        List<BulletData> candidates = new List<BulletData>();
-
-        foreach (BulletData bulletData in bulletPool)
-        {
-            if (bulletData != null && !candidates.Contains(bulletData)
-                && GetGradeWeight(bulletData.Grade) > 0f)
-            {
-                candidates.Add(bulletData);
-            }
-        }
-
-        return candidates;
-    }
-
-    private int SelectWeightedCandidateIndex(List<BulletData> candidates)
-    {
-        List<BulletGrade> availableGrades = new List<BulletGrade>();
-
-        foreach (BulletData candidate in candidates)
-        {
-            if (!availableGrades.Contains(candidate.Grade)
-                && GetGradeWeight(candidate.Grade) > 0f)
-            {
-                availableGrades.Add(candidate.Grade);
-            }
-        }
-
-        float totalWeight = 0f;
-
-        foreach (BulletGrade grade in availableGrades)
-        {
-            totalWeight += GetGradeWeight(grade);
-        }
-
-        if (totalWeight <= 0f)
-        {
-            return -1;
-        }
-
-        float roll = UnityEngine.Random.Range(0f, totalWeight);
-        BulletGrade selectedGrade = availableGrades[availableGrades.Count - 1];
-
-        foreach (BulletGrade grade in availableGrades)
-        {
-            roll -= GetGradeWeight(grade);
-
-            if (roll <= 0f)
-            {
-                selectedGrade = grade;
-                break;
-            }
-        }
-
-        List<int> gradeCandidateIndices = new List<int>();
-
-        for (int candidateIndex = 0;
-             candidateIndex < candidates.Count;
-             candidateIndex++)
-        {
-            if (candidates[candidateIndex].Grade == selectedGrade)
-            {
-                gradeCandidateIndices.Add(candidateIndex);
-            }
-        }
-
-        return gradeCandidateIndices.Count == 0
-            ? -1
-            : gradeCandidateIndices[UnityEngine.Random.Range(
-                0,
-                gradeCandidateIndices.Count)];
-    }
-
-    private float GetGradeWeight(BulletGrade grade)
-    {
-        foreach (BulletGradeWeightData gradeWeight in gradeWeights)
-        {
-            if (gradeWeight != null && gradeWeight.Grade == grade)
-            {
-                return gradeWeight.AppearanceWeight;
-            }
-        }
-
-        return grade switch
-        {
-            BulletGrade.Normal => 100f,
-            BulletGrade.Rare => 85f,
-            BulletGrade.Ace => 10f,
-            BulletGrade.Legendary => 3f,
-            _ => 0f
-        };
     }
 
     private void RefreshSlots()

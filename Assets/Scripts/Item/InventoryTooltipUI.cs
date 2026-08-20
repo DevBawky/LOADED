@@ -678,25 +678,17 @@ public class InventoryTooltipUI : MonoBehaviour
         }
 
         cylinderBulletDescriptionText.richText = true;
-        string description = bullet.GetDetailedDescription(
-            CreateBulletTooltipContext());
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
         int initialLoadedCount = playerShoot == null
             ? deckManager == null ? 0 : deckManager.LoadedBullets.Count
             : Mathf.Max(
                 deckManager == null ? 0 : deckManager.LoadedBullets.Count,
                 playerShoot.InitialLoadedBulletCount);
-        if (relicManager != null
-            && relicManager.IsLuckyChamberLoadedBullet(
-                loadedBulletIndex,
-                initialLoadedCount))
-        {
-            string luckyChamberText =
-                relicManager.GetLuckyChamberBulletTooltip();
-            if (!string.IsNullOrWhiteSpace(luckyChamberText))
-            {
-                description += "\n\n" + luckyChamberText;
-            }
-        }
+        string description = GetCylinderBulletDescription(
+            bullet,
+            loadedBulletIndex,
+            initialLoadedCount);
         cylinderBulletDescriptionText.text = description;
         cylinderBulletTooltip.gameObject.SetActive(true);
         PositionInsideScreen(
@@ -730,6 +722,46 @@ public class InventoryTooltipUI : MonoBehaviour
                 previewedCylinderBulletIndex = loadedBulletIndex;
             }
         }
+    }
+
+    private string GetCylinderBulletDescription(
+        BulletInstance bullet,
+        int loadedBulletIndex,
+        int initialLoadedCount)
+    {
+        BulletTooltipContext context = CreateBulletTooltipContext();
+        BulletRuntimeTooltipStats runtimeStats =
+            bullet.GetRuntimeTooltipStats(context);
+        List<string> stateLines = new List<string>(runtimeStats.StateLines);
+        double relicMultiplier = 1d;
+        bool forcesCritical = false;
+        int loadedCount = deckManager == null
+            ? 0
+            : deckManager.LoadedBullets.Count;
+
+        relicManager?.TryGetLoadedBulletRelicModifiers(
+            loadedBulletIndex,
+            loadedCount,
+            initialLoadedCount,
+            out relicMultiplier,
+            out forcesCritical,
+            stateLines);
+
+        float safeRelicMultiplier = relicMultiplier >= float.MaxValue
+            ? float.MaxValue
+            : Mathf.Max(0f, (float)relicMultiplier);
+        float combinedDamageMultiplier = Mathf.Min(
+            float.MaxValue,
+            runtimeStats.DamageMultiplier * safeRelicMultiplier);
+        float criticalChanceBonus = runtimeStats.CriticalChanceBonus
+            + (forcesCritical ? 100f : 0f);
+
+        return bullet.Data.GetDetailedDescription(
+            bullet.Level,
+            new BulletRuntimeTooltipStats(
+                combinedDamageMultiplier,
+                criticalChanceBonus,
+                stateLines));
     }
 
     private void RefreshNextChip()

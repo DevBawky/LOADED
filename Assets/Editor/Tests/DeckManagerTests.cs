@@ -1,4 +1,3 @@
-#if UNITY_INCLUDE_TESTS
 using NUnit.Framework;
 using UnityEngine;
 
@@ -88,4 +87,3 @@ public class DeckManagerTests
         Assert.That(deckManager.PeekNextBullet(), Is.Null);
     }
 }
-#endif
