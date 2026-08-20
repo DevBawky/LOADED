@@ -1,0 +1,108 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Mass Produced
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_mass_produced
+  displayName: "\uC591\uC0B0\uD0C4"
+  description: "보유한 일반·레어 탄환 하나당 최종대미지 +13%"
+  cylinderIcon: {fileID: 717467629373744656, guid: bc354602cb3f4404ab5aa5b6c9e503db, type: 3}
+  price: 6
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 15
+  maxRange: 4
+  criticalChance: 15
+  criticalDamageMultiplier: 1.6
+  effects:
+  - effectType: 39
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 13
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+  secondaryLineColor: {r: 0.65, g: 0.37, b: 0.16, a: 1}
+  lineWidthMultiplier: 0.7
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +15%"
+    damage: 18
+    maxRange: 4
+    criticalChance: 18
+    criticalDamageMultiplier: 1.7
+    effects:
+    - effectType: 39
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 15
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.65, g: 0.37, b: 0.16, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 20
+  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +18%\n관통 1회 (30%)"
+    damage: 22
+    maxRange: 5
+    criticalChance: 22
+    criticalDamageMultiplier: 1.9
+    effects:
+    - effectType: 39
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 18
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 30
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.65, g: 0.37, b: 0.16, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 40
+  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +23%\n관통 1회 (50%)\n재장전 시 턴을 소모하지 않습니다."
+    damage: 28
+    maxRange: 5
+    criticalChance: 28
+    criticalDamageMultiplier: 2.1
+    effects:
+    - effectType: 39
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 23
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 50
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.65, g: 0.37, b: 0.16, a: 1}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.12
+    upgradeCost: 0

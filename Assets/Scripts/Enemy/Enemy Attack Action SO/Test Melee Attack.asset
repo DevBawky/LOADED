@@ -13,13 +13,13 @@ MonoBehaviour:
   m_Name: Test Melee Attack
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   skillId: 0
-  displayName: Test Attack
-  description: 
+  displayName: "\uADFC\uC811 \uACF5\uACA9"
+  description: "\uADFC\uC811 \uACF5\uACA9\uC744 \uAC00\uD569\uB2C8\uB2E4."
   damage: 10
   range: 1
   knockbackDistance: 0
   stunDurationTurns: 0
   markDurationTurns: 0
-  poisonDurationTurns: 0
-  markDamageMultiplier: 1
+  poisonStackCount: 0
+  weaknessDurationTurns: 0
   attackEffectPrefab: {fileID: 0}

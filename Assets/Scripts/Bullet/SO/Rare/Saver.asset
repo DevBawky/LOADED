@@ -1,0 +1,106 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Saver
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_saver
+  displayName: "\uC808\uC57D\uD0C4"
+  description: "이번 사격에서 파괴된 탄환이 없으면 발사 종료 후 골드 +2"
+  cylinderIcon: {fileID: -555243900412843026, guid: 365ff2b15b89144438f146a633e5fc4f, type: 3}
+  price: 6
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 10
+  maxRange: 4
+  criticalChance: 15
+  criticalDamageMultiplier: 1.5
+  effects:
+  - effectType: 19
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 2
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+  secondaryLineColor: {r: 0.68, g: 1, b: 0.52, a: 1}
+  lineWidthMultiplier: 0.7
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "이번 사격에서 파괴된 탄환이 없으면 발사 종료 후 골드 +4"
+    damage: 13
+    maxRange: 4
+    criticalChance: 18
+    criticalDamageMultiplier: 1.6
+    effects:
+    - effectType: 19
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 4
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.68, g: 1, b: 0.52, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 20
+  - description: "이번 사격에서 파괴된 탄환이 없으면 발사 종료 후 골드 +5"
+    damage: 16
+    maxRange: 5
+    criticalChance: 21
+    criticalDamageMultiplier: 1.8
+    effects:
+    - effectType: 19
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 5
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.68, g: 1, b: 0.52, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 40
+  - description: "이번 사격에서 파괴된 탄환이 없으면 발사 종료 후 골드 +2\n이번 발사가 턴을 소모하지 않습니다"
+    damage: 20
+    maxRange: 5
+    criticalChance: 25
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 19
+      target: 1
+      activationChance: 100
+      stackCount: 2
+      knockbackDistance: 1
+      amount: 6
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.68, g: 1, b: 0.52, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 0

@@ -1,0 +1,152 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Heart
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_heart
+  displayName: "\uC2EC\uC7A5\uD0C4"
+  description: "\uCD5C\uB300 \uCCB4\uB825 5\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+    +2%\n\uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +1"
+  cylinderIcon: {fileID: -8130070020365117114, guid: 9f99d323b5d7c00489dfeae35a3dc549, type: 3}
+  price: 20
+  grade: 3
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 18
+  maxRange: 4
+  criticalChance: 20
+  criticalDamageMultiplier: 1.8
+  effects:
+  - effectType: 18
+    target: 1
+    activationChance: 100
+    stackCount: 5
+    knockbackDistance: 1
+    amount: 2
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
+  conditionalEvents:
+  - trigger: 0
+    events:
+    - effectType: 7
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
+  secondaryLineColor: {r: 0.62, g: 0.02, b: 0.32, a: 1}
+  lineWidthMultiplier: 0.8
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  upgradeCost: 50
+  upgradeLevels:
+  - description: "\uCD5C\uB300 \uCCB4\uB825 5\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+      +3%\n\uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +1"
+    damage: 22
+    maxRange: 4
+    criticalChance: 23
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 18
+      target: 1
+      activationChance: 100
+      stackCount: 5
+      knockbackDistance: 1
+      amount: 3
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents:
+    - trigger: 0
+      events:
+      - effectType: 7
+        target: 1
+        activationChance: 100
+        stackCount: 1
+        knockbackDistance: 1
+        amount: 1
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 100
+  - description: "\uCD5C\uB300 \uCCB4\uB825 5\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+      +4%\n\uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +2"
+    damage: 28
+    maxRange: 5
+    criticalChance: 27
+    criticalDamageMultiplier: 2.2
+    effects:
+    - effectType: 18
+      target: 1
+      activationChance: 100
+      stackCount: 5
+      knockbackDistance: 1
+      amount: 4
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents:
+    - trigger: 0
+      events:
+      - effectType: 7
+        target: 1
+        activationChance: 100
+        stackCount: 2
+        knockbackDistance: 2
+        amount: 2
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 200
+  - description: "\uCD5C\uB300 \uCCB4\uB825 1\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
+      +1%\n\uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +3"
+    damage: 36
+    maxRange: 5
+    criticalChance: 34
+    criticalDamageMultiplier: 2.5
+    effects:
+    - effectType: 18
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents:
+    - trigger: 0
+      events:
+      - effectType: 7
+        target: 1
+        activationChance: 100
+        stackCount: 3
+        knockbackDistance: 1
+        amount: 3
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 0

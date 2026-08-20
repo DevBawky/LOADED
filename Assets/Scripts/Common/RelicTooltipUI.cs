@@ -1,0 +1,312 @@
+using System;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+[DisallowMultipleComponent]
+public sealed class RelicTooltipUI : MonoBehaviour
+{
+    private static readonly string[] NameTextHints =
+    {
+        "Text | Relic Name",
+        "Text | Bullet Name",
+        "Text | Name"
+    };
+
+    private static readonly string[] DescriptionTextHints =
+    {
+        "Text | Relic Description",
+        "Text | Bullet Description",
+        "Text | Description"
+    };
+
+    [SerializeField] private RectTransform panel;
+    [SerializeField] private TMP_Text nameText;
+    [SerializeField] private TMP_Text descriptionText;
+    [SerializeField] private Vector2 pointerOffset = new Vector2(18f, -18f);
+    [SerializeField] private float screenPadding = 10f;
+
+    private RelicData displayedRelic;
+    private Canvas positioningCanvas;
+
+    public static RelicTooltipUI GetOrCreate(
+        Component context,
+        TMP_Text fontSource = null)
+    {
+        if (context == null)
+        {
+            return null;
+        }
+
+        Canvas canvas = context.GetComponentInParent<Canvas>();
+        if (canvas == null)
+        {
+            return null;
+        }
+
+        Canvas rootCanvas = canvas.rootCanvas;
+        RelicTooltipUI presenter = rootCanvas.GetComponentInChildren<
+            RelicTooltipUI>(true);
+        if (presenter != null)
+        {
+            presenter.positioningCanvas = rootCanvas;
+            presenter.Initialize(fontSource);
+            return presenter;
+        }
+
+        RectTransform tooltipPanel = null;
+        foreach (RectTransform candidate in rootCanvas.GetComponentsInChildren<
+                     RectTransform>(true))
+        {
+            if (candidate.name == "Panel | Relic Tooltip")
+            {
+                tooltipPanel = candidate;
+                break;
+            }
+        }
+
+        if (tooltipPanel == null)
+        {
+            tooltipPanel = CreatePanel(rootCanvas.transform);
+        }
+
+        presenter = tooltipPanel.GetComponent<RelicTooltipUI>();
+        presenter ??= tooltipPanel.gameObject.AddComponent<RelicTooltipUI>();
+        presenter.panel = tooltipPanel;
+        presenter.positioningCanvas = rootCanvas;
+        presenter.Initialize(fontSource);
+        presenter.Hide();
+        return presenter;
+    }
+
+    public void Show(RelicData relic, Vector2 pointerScreenPosition)
+    {
+        if (relic == null)
+        {
+            Hide();
+            return;
+        }
+
+        Initialize(null);
+        if (panel == null || nameText == null || descriptionText == null)
+        {
+            return;
+        }
+
+        displayedRelic = relic;
+        nameText.text = relic.DisplayName;
+        string effect = relic.BuildEffectSummary();
+        descriptionText.text = TooltipTextFormatter.Format(
+            string.IsNullOrWhiteSpace(effect) ? relic.Description : effect);
+        panel.gameObject.SetActive(true);
+        panel.SetAsLastSibling();
+        Position(pointerScreenPosition);
+    }
+
+    public void Move(RelicData relic, Vector2 pointerScreenPosition)
+    {
+        if (ReferenceEquals(displayedRelic, relic)
+            && panel != null && panel.gameObject.activeSelf)
+        {
+            Position(pointerScreenPosition);
+        }
+    }
+
+    public void Hide(RelicData relic = null)
+    {
+        if (relic != null && !ReferenceEquals(displayedRelic, relic))
+        {
+            return;
+        }
+
+        displayedRelic = null;
+        if (panel != null)
+        {
+            panel.gameObject.SetActive(false);
+        }
+    }
+
+    private void Initialize(TMP_Text fontSource)
+    {
+        panel ??= transform as RectTransform;
+        if (panel == null)
+        {
+            return;
+        }
+
+        nameText ??= FindText(panel, NameTextHints, "Name");
+        descriptionText ??= FindText(
+            panel,
+            DescriptionTextHints,
+            "Description");
+
+        if (nameText == null)
+        {
+            nameText = CreateText(
+                "Text | Relic Name",
+                panel,
+                fontSource,
+                new Vector2(0.06f, 0.68f),
+                new Vector2(0.94f, 0.94f),
+                22f,
+                FontStyles.Bold);
+        }
+        if (descriptionText == null)
+        {
+            descriptionText = CreateText(
+                "Text | Relic Description",
+                panel,
+                fontSource,
+                new Vector2(0.06f, 0.08f),
+                new Vector2(0.94f, 0.64f),
+                16f,
+                FontStyles.Normal);
+        }
+
+        Image image = panel.GetComponent<Image>();
+        if (image == null)
+        {
+            image = panel.gameObject.AddComponent<Image>();
+            image.color = new Color(0.055f, 0.045f, 0.035f, 0.96f);
+        }
+        foreach (Graphic graphic in panel.GetComponentsInChildren<Graphic>(true))
+        {
+            graphic.raycastTarget = false;
+        }
+    }
+
+    private void Position(Vector2 pointerScreenPosition)
+    {
+        if (panel == null)
+        {
+            return;
+        }
+
+        Canvas canvas = positioningCanvas != null
+            ? positioningCanvas
+            : panel.GetComponentInParent<Canvas>()?.rootCanvas;
+        RectTransform containerRect = panel.parent as RectTransform;
+        containerRect ??= canvas == null
+            ? null
+            : canvas.transform as RectTransform;
+        if (canvas == null || containerRect == null)
+        {
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+        Camera camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay
+            ? null
+            : canvas.worldCamera;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            containerRect,
+            pointerScreenPosition,
+            camera,
+            out Vector2 pointerLocalPosition);
+
+        Rect bounds = containerRect.rect;
+        float width = Mathf.Max(panel.rect.width, 320f);
+        float height = Mathf.Max(panel.rect.height, 140f);
+        bool placeLeft = pointerLocalPosition.x + pointerOffset.x + width
+            > bounds.xMax - screenPadding;
+        bool placeAbove = pointerLocalPosition.y + pointerOffset.y - height
+            < bounds.yMin + screenPadding;
+
+        // ScreenPointToLocalPointInRectangle returns coordinates relative to
+        // the parent's pivot. Match the tooltip anchors to that same origin
+        // so anchoredPosition stays immediately beside the cursor.
+        panel.anchorMin = containerRect.pivot;
+        panel.anchorMax = containerRect.pivot;
+        panel.pivot = new Vector2(placeLeft ? 1f : 0f, placeAbove ? 0f : 1f);
+        panel.sizeDelta = new Vector2(width, height);
+
+        float x = pointerLocalPosition.x
+            + (placeLeft ? -pointerOffset.x : pointerOffset.x);
+        float y = pointerLocalPosition.y
+            + (placeAbove ? -pointerOffset.y : pointerOffset.y);
+        x = Mathf.Clamp(x, bounds.xMin + screenPadding, bounds.xMax - screenPadding);
+        y = Mathf.Clamp(y, bounds.yMin + screenPadding, bounds.yMax - screenPadding);
+        panel.anchoredPosition = new Vector2(x, y);
+    }
+
+    private static TMP_Text FindText(
+        Transform root,
+        string[] exactNames,
+        string fallbackNamePart)
+    {
+        TMP_Text fallback = null;
+        foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
+        {
+            foreach (string exactName in exactNames)
+            {
+                if (text.name == exactName)
+                {
+                    return text;
+                }
+            }
+
+            if (fallback == null && text.name.IndexOf(
+                    fallbackNamePart,
+                    StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                fallback = text;
+            }
+        }
+        return fallback;
+    }
+
+    private static RectTransform CreatePanel(Transform parent)
+    {
+        GameObject tooltipObject = new GameObject(
+            "Panel | Relic Tooltip",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image));
+        tooltipObject.layer = parent.gameObject.layer;
+        RectTransform rect = tooltipObject.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.sizeDelta = new Vector2(360f, 180f);
+        Image image = tooltipObject.GetComponent<Image>();
+        image.color = new Color(0.055f, 0.045f, 0.035f, 0.96f);
+        image.raycastTarget = false;
+        return rect;
+    }
+
+    private static TMP_Text CreateText(
+        string objectName,
+        Transform parent,
+        TMP_Text fontSource,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        float fontSize,
+        FontStyles style)
+    {
+        GameObject textObject = new GameObject(
+            objectName,
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+        textObject.layer = parent.gameObject.layer;
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = anchorMin;
+        rect.anchorMax = anchorMax;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI text = textObject.GetComponent<TextMeshProUGUI>();
+        if (fontSource != null)
+        {
+            text.font = fontSource.font;
+            text.fontSharedMaterial = fontSource.fontSharedMaterial;
+        }
+        text.fontSize = fontSize;
+        text.fontStyle = style;
+        text.color = Color.white;
+        text.richText = true;
+        text.textWrappingMode = TextWrappingModes.Normal;
+        text.alignment = TextAlignmentOptions.TopLeft;
+        text.raycastTarget = false;
+        return text;
+    }
+}

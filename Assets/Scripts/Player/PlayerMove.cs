@@ -1,13 +1,56 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Serialization;
 
 public class PlayerMove : MonoBehaviour
 {
+    private const string KickAnimationStateName = "Kick";
+    private static readonly int KickAnimationStateHash =
+        Animator.StringToHash(KickAnimationStateName);
+
     [Header("References")]
     [SerializeField] private BoardManager boardManager;
     [SerializeField] private ActorMotion actorMotion;
+    [SerializeField] private Animator playerAnimator;
+    [SerializeField] private Transform pushVisualTransform;
+    [SerializeField] private CombatFeedbackController combatFeedback;
+
+    [Header("Push")]
+    [Range(0f, 1f)]
+    [SerializeField] private float pushCollisionDamageRatio = 0.1f;
+    [Min(0f)]
+    [FormerlySerializedAs("pushTileDuration")]
+    [Tooltip("Time for the enemy to complete the entire push, regardless of distance.")]
+    [SerializeField] private float pushFlightDuration = 0.1f;
+    [Range(0f, 1f)]
+    [SerializeField] private float pushCollisionImpactRatio = 0.5f;
+    [Min(0f)]
+    [SerializeField] private float pushCollisionImpactHeight = 0.2f;
+    [Min(0f)]
+    [SerializeField] private float pushCollisionSettleDuration = 0.12f;
+    [Header("Push Player Motion")]
+    [Range(0f, 1f)]
+    [SerializeField] private float playerPushImpactRatio = 0.65f;
+    [Min(0f)]
+    [SerializeField] private float playerPushImpactDuration = 0.08f;
+    [Min(0f)]
+    [SerializeField] private float playerPushReturnDuration = 0.12f;
+    [Min(0f)]
+    [SerializeField] private float playerPushImpactHeight = 0.08f;
+    [Header("Kick Timing")]
+    [Range(0f, 1f)]
+    [SerializeField] private float kickImpactNormalizedTime = 0.5f;
+    [Min(0f)]
+    [SerializeField] private float kickFallbackDuration = 0.33333334f;
+    [Min(0)]
+    [SerializeField] private int pushCooldownTurns = 3;
+
+    [Header("Push Runtime State")]
+    [Min(0)]
+    [SerializeField] private int nextPushAvailableTurn;
 
     private StatusEffectController statusEffects;
 
@@ -15,23 +58,77 @@ public class PlayerMove : MonoBehaviour
     private bool isShooting;
     private bool isActing;
     private bool isEnemyTurnResolving;
+    private bool isInputLocked;
+    private bool isPushVisualDisplaced;
+    private Vector3 pushVisualRestLocalPosition;
+    private Vector3 pushVisualRestWorldPosition;
+    private readonly List<Vector3> pushPathBuffer = new List<Vector3>();
 
     public event Action TurnCompleted;
+    public event Action<int> TurnCountChanged;
+    public event Action PositionChanged;
+    public event Action<PlayerMovementContext> PlayerMoved;
+    public event Action<int> PushCooldownChanged;
+    public event Action<PlayerBehaviourAction> BehaviourActionStarted;
+    public event Action PushPerformed;
 
     public int TurnCount { get; private set; }
     public bool IsShooting => isShooting;
     public bool IsActing => isActing;
     public bool IsEnemyTurnResolving => isEnemyTurnResolving;
+    public bool IsInputLocked => isInputLocked;
     public bool CanStartAction => CanPerformAction();
+    public int RemainingPushCooldownTurns => Mathf.Max(
+        0,
+        nextPushAvailableTurn - TurnCount);
+    public int NextPushAvailableTurn => Mathf.Max(
+        0,
+        nextPushAvailableTurn);
+    public bool CanPush => RemainingPushCooldownTurns == 0;
+    public float PushCollisionDamageRatio =>
+        Mathf.Clamp01(pushCollisionDamageRatio);
 
     private void Awake()
     {
         statusEffects = GetComponent<StatusEffectController>();
+        playerAnimator ??= GetComponent<Animator>();
+        combatFeedback ??= GetComponent<CombatFeedbackController>();
     }
 
     public void SetWaveManager(WaveManager assignedWaveManager)
     {
         waveManager = assignedWaveManager;
+    }
+
+    public void ResetKickCooldownForBattle()
+    {
+        nextPushAvailableTurn = TurnCount;
+        PushCooldownChanged?.Invoke(0);
+    }
+
+    public void RestoreRunState(
+        Vector3 worldPosition,
+        bool facingRight,
+        int savedTurnCount,
+        int savedNextPushAvailableTurn)
+    {
+        transform.position = worldPosition;
+        Vector3 localScale = transform.localScale;
+        float scaleMagnitude = Mathf.Abs(localScale.x);
+        localScale.x = Mathf.Max(0.0001f, scaleMagnitude)
+            * (facingRight ? 1f : -1f);
+        transform.localScale = localScale;
+        TurnCount = Mathf.Max(0, savedTurnCount);
+        nextPushAvailableTurn = Mathf.Max(
+            TurnCount,
+            savedNextPushAvailableTurn);
+        isShooting = false;
+        isActing = false;
+        isEnemyTurnResolving = false;
+        RestorePushVisualPosition();
+        TurnCountChanged?.Invoke(TurnCount);
+        PositionChanged?.Invoke();
+        PushCooldownChanged?.Invoke(RemainingPushCooldownTurns);
     }
 
     public void SetShooting(bool shooting)
@@ -44,8 +141,14 @@ public class PlayerMove : MonoBehaviour
         isEnemyTurnResolving = resolving;
     }
 
+    public void SetInputLocked(bool inputLocked)
+    {
+        isInputLocked = inputLocked;
+    }
+
     private void OnDisable()
     {
+        RestorePushVisualPosition();
         isActing = false;
         isEnemyTurnResolving = false;
     }
@@ -70,6 +173,12 @@ public class PlayerMove : MonoBehaviour
             if (keyboard.dKey.wasPressedThisFrame)
             {
                 MoveRight();
+                return;
+            }
+
+            if (keyboard.wKey.wasPressedThisFrame)
+            {
+                Rotate();
                 return;
             }
 
@@ -127,6 +236,7 @@ public class PlayerMove : MonoBehaviour
         }
 
         int targetDirection = transform.localScale.x >= 0f ? -1 : 1;
+        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Rotate);
         StartCoroutine(RotateRoutine(targetDirection));
     }
 
@@ -137,6 +247,7 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
+        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Wait);
         CompleteTurn();
     }
 
@@ -158,22 +269,532 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        if (!boardManager.TryGetTileIndex(targetPosition, out int targetTileIndex)
-            || waveManager.IsTileOccupied(targetTileIndex)
-            || waveManager.IsTileReservedForSpawn(targetTileIndex))
+        if (!boardManager.TryGetTileIndex(targetPosition, out int targetTileIndex))
         {
             return;
         }
 
-        StartCoroutine(MoveRoutine(targetPosition));
+        if (!boardManager.TryGetTileIndex(
+                transform.position,
+                out int currentTileIndex))
+        {
+            return;
+        }
+
+        if (waveManager.TryGetEnemyAtTile(
+                targetTileIndex,
+                out EnemyController adjacentEnemy))
+        {
+            int facingDirection = transform.localScale.x >= 0f ? 1 : -1;
+            int moveDirection = direction > 0 ? 1 : -1;
+
+            if (moveDirection == facingDirection && CanPush)
+            {
+                NotifyMoveStarted(direction);
+                StartCoroutine(PushRoutine(
+                    adjacentEnemy,
+                    direction));
+            }
+
+            return;
+        }
+
+        if (waveManager.IsTileReservedForSpawn(targetTileIndex))
+        {
+            return;
+        }
+
+        NotifyMoveStarted(direction);
+        StartCoroutine(MoveRoutine(
+            targetPosition,
+            currentTileIndex,
+            targetTileIndex));
     }
 
-    private IEnumerator MoveRoutine(Vector3 targetPosition)
+    private void NotifyMoveStarted(int direction)
+    {
+        BehaviourActionStarted?.Invoke(direction < 0
+            ? PlayerBehaviourAction.MoveLeft
+            : PlayerBehaviourAction.MoveRight);
+    }
+
+    private IEnumerator PushRoutine(
+        EnemyController pushedEnemy,
+        int direction)
     {
         isActing = true;
+
+        if (!TryCreateEnemyPushPlan(
+                pushedEnemy,
+                direction,
+                int.MaxValue,
+                out EnemyPushPlan pushPlan))
+        {
+            isActing = false;
+            yield break;
+        }
+
+        yield return ExecuteEnemyPush(pushPlan, true);
+
+        nextPushAvailableTurn = TurnCount
+            + Mathf.Max(0, pushCooldownTurns)
+            + 1;
+        PushPerformed?.Invoke();
+        isActing = false;
+        CompleteTurn();
+    }
+
+    public IEnumerator PushEnemyFromBullet(
+        EnemyController pushedEnemy,
+        int direction,
+        int knockbackDistance)
+    {
+        if (knockbackDistance <= 0
+            || !TryCreateEnemyPushPlan(
+                pushedEnemy,
+                direction,
+                knockbackDistance,
+                out EnemyPushPlan pushPlan))
+        {
+            yield break;
+        }
+
+        yield return ExecuteEnemyPush(pushPlan, false);
+    }
+
+    public IEnumerator SwapPositionWithEnemy(EnemyController enemy)
+    {
+        if (enemy == null || enemy.CurrentHealth <= 0
+            || boardManager == null || actorMotion == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int playerTileIndex)
+            || !boardManager.TryGetTileIndex(
+                enemy.transform.position,
+                out int enemyTileIndex)
+            || playerTileIndex == enemyTileIndex
+            || !boardManager.TryGetTilePosition(
+                playerTileIndex,
+                out Vector3 playerTilePosition)
+            || !boardManager.TryGetTilePosition(
+                enemyTileIndex,
+                out Vector3 enemyTilePosition))
+        {
+            yield break;
+        }
+
+        bool wasActing = isActing;
+        isActing = true;
+
+        Vector3 playerPositionOffset = transform.position - playerTilePosition;
+        Vector3 enemyPositionOffset = enemy.transform.position - enemyTilePosition;
+        Vector3 playerTargetPosition = enemyTilePosition + playerPositionOffset;
+        Vector3 enemyTargetPosition = playerTilePosition + enemyPositionOffset;
+        float swapDuration = Mathf.Max(0f, actorMotion.MoveDuration);
+
+        Coroutine enemySwapRoutine = StartCoroutine(
+            enemy.FlyTo(enemyTargetPosition, swapDuration));
+        yield return actorMotion.FlyTo(playerTargetPosition, swapDuration);
+
+        if (enemySwapRoutine != null)
+        {
+            yield return enemySwapRoutine;
+        }
+
+        NotifyPlayerMoved(
+            playerTileIndex,
+            enemyTileIndex,
+            PlayerMovementSource.BulletPositionSwap);
+        PositionChanged?.Invoke();
+        isActing = wasActing;
+    }
+
+    private IEnumerator ExecuteEnemyPush(
+        EnemyPushPlan pushPlan,
+        bool playPlayerImpact)
+    {
+        if (pushPlan == null || pushPlan.PushedEnemy == null)
+        {
+            yield break;
+        }
+
+        Coroutine playerReturnRoutine = null;
+
+        if (playPlayerImpact)
+        {
+            PlayKickAnimation();
+            Coroutine playerImpactRoutine = StartCoroutine(
+                PlayPlayerPushImpact(
+                    pushPlan.PushedEnemy.transform.position));
+
+            yield return WaitForKickImpact();
+
+            SoundManager.PlaySfx("SFX_Kick");
+
+            combatFeedback?.RecordKickImpact(
+                pushPlan.PushedEnemy.transform.position,
+                pushPlan.Direction,
+                pushPlan.CollidedEnemy != null ? 1f : 0.88f);
+
+            if (playerImpactRoutine != null)
+            {
+                StopCoroutine(playerImpactRoutine);
+            }
+
+            playerReturnRoutine = isPushVisualDisplaced
+                ? StartCoroutine(ReturnPlayerPushVisual())
+                : null;
+        }
+
+        if (pushPlan.CollidedEnemy != null)
+        {
+            Vector3 impactPosition = Vector3.Lerp(
+                pushPlan.RestingPosition,
+                pushPlan.CollidedEnemy.transform.position,
+                Mathf.Clamp01(pushCollisionImpactRatio));
+            impactPosition.y = pushPlan.RestingPosition.y
+                + Mathf.Max(0f, pushCollisionImpactHeight);
+            impactPosition.z = pushPlan.RestingPosition.z;
+
+            yield return pushPlan.PushedEnemy.FlyIntoCollision(
+                impactPosition,
+                pushPlan.RestingPosition,
+                pushPlan.FlightDuration,
+                pushCollisionSettleDuration,
+                () => SoundManager.PlaySfx("SFX_Kick_Impact"));
+        }
+        else if (pushPlan.VacatesStartingTile)
+        {
+            yield return pushPlan.PushedEnemy.FlyTo(
+                pushPlan.RestingPosition,
+                pushPlan.FlightDuration);
+        }
+
+        if (playerReturnRoutine != null)
+        {
+            yield return playerReturnRoutine;
+        }
+
+        if (pushPlan.CollidedEnemy != null
+            && pushPlan.PushedEnemy != null)
+        {
+            ApplyPushCollisionDamage(
+                pushPlan.PushedEnemy,
+                pushPlan.CollidedEnemy);
+        }
+    }
+
+    private void PlayKickAnimation()
+    {
+        if (playerAnimator == null || !playerAnimator.isActiveAndEnabled
+            || playerAnimator.runtimeAnimatorController == null)
+        {
+            return;
+        }
+
+        playerAnimator.Play(KickAnimationStateName, 0, 0f);
+        playerAnimator.Update(0f);
+    }
+
+    private IEnumerator WaitForKickImpact()
+    {
+        float targetNormalizedTime = Mathf.Clamp01(
+            kickImpactNormalizedTime);
+        float fallbackWait = Mathf.Max(0f, kickFallbackDuration)
+            * targetNormalizedTime;
+
+        if (playerAnimator == null || !playerAnimator.isActiveAndEnabled
+            || playerAnimator.runtimeAnimatorController == null)
+        {
+            yield return WaitForPushTiming(fallbackWait);
+            yield break;
+        }
+
+        AnimatorStateInfo kickState =
+            playerAnimator.GetCurrentAnimatorStateInfo(0);
+        float stateSpeed = Mathf.Abs(
+            playerAnimator.speed
+            * kickState.speed
+            * kickState.speedMultiplier);
+
+        if (kickState.shortNameHash == KickAnimationStateHash
+            && kickState.length > 0f && stateSpeed > 0.001f)
+        {
+            fallbackWait = kickState.length
+                * targetNormalizedTime / stateSpeed;
+        }
+
+        float elapsedTime = 0f;
+
+        while (elapsedTime < fallbackWait)
+        {
+            kickState = playerAnimator.GetCurrentAnimatorStateInfo(0);
+
+            if (!GamePauseController.IsPaused
+                && kickState.shortNameHash == KickAnimationStateHash
+                && kickState.normalizedTime >= targetNormalizedTime)
+            {
+                yield break;
+            }
+
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+            }
+        }
+    }
+
+    private IEnumerator WaitForPushTiming(float duration)
+    {
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+            }
+        }
+    }
+
+    private bool TryCreateEnemyPushPlan(
+        EnemyController pushedEnemy,
+        int direction,
+        int maxTravelDistance,
+        out EnemyPushPlan pushPlan)
+    {
+        pushPlan = null;
+
+        if (pushedEnemy == null || maxTravelDistance <= 0
+            || !TryBuildPushPath(
+                pushedEnemy,
+                direction,
+                maxTravelDistance,
+                out EnemyController collidedEnemy))
+        {
+            return false;
+        }
+
+        bool vacatesStartingTile = pushPathBuffer.Count > 0;
+        Vector3 restingPosition = vacatesStartingTile
+            ? pushPathBuffer[pushPathBuffer.Count - 1]
+            : pushedEnemy.transform.position;
+        float flightDuration = Mathf.Max(0f, pushFlightDuration);
+
+        pushPlan = new EnemyPushPlan(
+            pushedEnemy,
+            collidedEnemy,
+            restingPosition,
+            vacatesStartingTile,
+            direction,
+            flightDuration);
+        return true;
+    }
+
+    private IEnumerator PlayPlayerPushImpact(Vector3 enemyPosition)
+    {
+        if (pushVisualTransform == null)
+        {
+            yield break;
+        }
+
+        pushVisualRestLocalPosition = pushVisualTransform.localPosition;
+        pushVisualRestWorldPosition = pushVisualTransform.position;
+        isPushVisualDisplaced = true;
+
+        Vector3 impactPosition = Vector3.Lerp(
+            pushVisualRestWorldPosition,
+            enemyPosition,
+            Mathf.Clamp01(playerPushImpactRatio));
+        impactPosition.y = pushVisualRestWorldPosition.y;
+        impactPosition.z = pushVisualRestWorldPosition.z;
+
+        yield return MovePushVisual(
+            pushVisualRestWorldPosition,
+            impactPosition,
+            playerPushImpactDuration,
+            playerPushImpactHeight);
+    }
+
+    private IEnumerator ReturnPlayerPushVisual()
+    {
+        yield return MovePushVisual(
+            pushVisualTransform.position,
+            pushVisualRestWorldPosition,
+            playerPushReturnDuration,
+            0f);
+
+        RestorePushVisualPosition();
+    }
+
+    private IEnumerator MovePushVisual(
+        Vector3 startPosition,
+        Vector3 targetPosition,
+        float duration,
+        float arcHeight)
+    {
+        duration = Mathf.Max(0f, duration);
+        arcHeight = Mathf.Max(0f, arcHeight);
+
+        if (duration <= 0f)
+        {
+            pushVisualTransform.position = targetPosition;
+            yield break;
+        }
+
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / duration);
+            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
+            Vector3 position = Vector3.Lerp(
+                startPosition,
+                targetPosition,
+                smoothProgress);
+            position += Vector3.up
+                * (Mathf.Sin(progress * Mathf.PI) * arcHeight);
+            pushVisualTransform.position = position;
+        }
+
+        pushVisualTransform.position = targetPosition;
+    }
+
+    private void RestorePushVisualPosition()
+    {
+        if (!isPushVisualDisplaced || pushVisualTransform == null)
+        {
+            return;
+        }
+
+        pushVisualTransform.localPosition = pushVisualRestLocalPosition;
+        isPushVisualDisplaced = false;
+    }
+
+    private bool TryBuildPushPath(
+        EnemyController pushedEnemy,
+        int direction,
+        int maxTravelDistance,
+        out EnemyController collidedEnemy)
+    {
+        collidedEnemy = null;
+        pushPathBuffer.Clear();
+
+        if (pushedEnemy == null || direction == 0
+            || !boardManager.TryGetTileIndex(
+                pushedEnemy.transform.position,
+                out int pushedEnemyIndex))
+        {
+            return false;
+        }
+
+        int moveDirection = direction > 0 ? 1 : -1;
+
+        int inspectedTileCount = 0;
+
+        for (int tileIndex = pushedEnemyIndex + moveDirection;
+             tileIndex >= 0 && tileIndex < boardManager.BoardCount
+             && inspectedTileCount < maxTravelDistance;
+             tileIndex += moveDirection)
+        {
+            inspectedTileCount++;
+
+            if (waveManager.TryGetEnemyAtTile(
+                    tileIndex,
+                    out collidedEnemy,
+                    pushedEnemy))
+            {
+                break;
+            }
+
+            if (waveManager.IsTileOccupied(tileIndex, pushedEnemy))
+            {
+                break;
+            }
+
+            if (!boardManager.TryGetTilePosition(
+                    tileIndex,
+                    out Vector3 tilePosition))
+            {
+                return false;
+            }
+
+            tilePosition.y = pushedEnemy.transform.position.y;
+            tilePosition.z = pushedEnemy.transform.position.z;
+            pushPathBuffer.Add(tilePosition);
+        }
+
+        return true;
+    }
+
+    private void ApplyPushCollisionDamage(
+        EnemyController pushedEnemy,
+        EnemyController collidedEnemy)
+    {
+        float damageRatio = Mathf.Clamp01(pushCollisionDamageRatio);
+
+        if (damageRatio <= 0f)
+        {
+            return;
+        }
+
+        int pushedEnemyDamage = Mathf.Max(
+            1,
+            Mathf.CeilToInt(pushedEnemy.MaxHealth * damageRatio));
+        int collidedEnemyDamage = Mathf.Max(
+            1,
+            Mathf.CeilToInt(collidedEnemy.MaxHealth * damageRatio));
+
+        pushedEnemy.ApplyCollisionDamage(pushedEnemyDamage);
+        collidedEnemy.ApplyCollisionDamage(collidedEnemyDamage);
+    }
+
+    private IEnumerator MoveRoutine(
+        Vector3 targetPosition,
+        int startTileIndex,
+        int endTileIndex)
+    {
+        isActing = true;
+        SoundManager.PlaySfx("SFX_Move");
         yield return actorMotion.MoveTo(targetPosition);
+        NotifyPlayerMoved(
+            startTileIndex,
+            endTileIndex,
+            PlayerMovementSource.NormalMove);
+        PositionChanged?.Invoke();
         CompleteTurn();
         isActing = false;
+    }
+
+    private void NotifyPlayerMoved(
+        int startTileIndex,
+        int endTileIndex,
+        PlayerMovementSource source)
+    {
+        int distance = Math.Abs(endTileIndex - startTileIndex);
+
+        if (distance <= 0 || source == PlayerMovementSource.None)
+        {
+            return;
+        }
+
+        PlayerMoved?.Invoke(new PlayerMovementContext(
+            startTileIndex,
+            endTileIndex,
+            distance,
+            source));
     }
 
     private IEnumerator RotateRoutine(int targetDirection)
@@ -186,18 +807,31 @@ public class PlayerMove : MonoBehaviour
 
     public void CompleteTurn()
     {
+        int previousPushCooldown = RemainingPushCooldownTurns;
+
         if (statusEffects != null)
         {
             statusEffects.ProcessTurnEnd();
         }
 
         TurnCount++;
+        TurnCountChanged?.Invoke(TurnCount);
+        int remainingPushCooldown = RemainingPushCooldownTurns;
+        PushCooldownChanged?.Invoke(remainingPushCooldown);
+
+        if (previousPushCooldown > 0 && remainingPushCooldown == 0)
+        {
+            combatFeedback ??= GetComponent<CombatFeedbackController>();
+            combatFeedback?.RecordKickReady(transform.position);
+        }
+
         TurnCompleted?.Invoke();
     }
 
     public bool TrySkipStunnedTurn()
     {
-        if (GamePauseController.IsPaused || isShooting || isActing
+        if (GamePauseController.IsPaused || isInputLocked
+            || isShooting || isActing
             || isEnemyTurnResolving || statusEffects == null
             || !statusEffects.ConsumeStunTurn())
         {
@@ -211,8 +845,36 @@ public class PlayerMove : MonoBehaviour
     private bool CanPerformAction()
     {
         return !GamePauseController.IsPaused
+            && !LoadingTransitionController.IsTransitioning
+            && !isInputLocked
             && !isShooting
             && !isActing
             && !isEnemyTurnResolving;
+    }
+
+    private sealed class EnemyPushPlan
+    {
+        public EnemyPushPlan(
+            EnemyController pushedEnemy,
+            EnemyController collidedEnemy,
+            Vector3 restingPosition,
+            bool vacatesStartingTile,
+            int direction,
+            float flightDuration)
+        {
+            PushedEnemy = pushedEnemy;
+            CollidedEnemy = collidedEnemy;
+            RestingPosition = restingPosition;
+            VacatesStartingTile = vacatesStartingTile;
+            Direction = direction;
+            FlightDuration = flightDuration;
+        }
+
+        public EnemyController PushedEnemy { get; }
+        public EnemyController CollidedEnemy { get; }
+        public Vector3 RestingPosition { get; }
+        public bool VacatesStartingTile { get; }
+        public int Direction { get; }
+        public float FlightDuration { get; }
     }
 }

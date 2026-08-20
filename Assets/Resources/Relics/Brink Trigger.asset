@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Brink Trigger
+  m_EditorClassIdentifier: 
+  relicId: brink_trigger
+  displayName: "\uBCBC\uB791 \uB05D\uC758 \uBC29\uC544\uC1E0"
+  description: "\uCCB4\uB825\uC774 25% \uC774\uD558\uC77C \uB54C \uC2E4\uB9B0\uB354\uB2F9
+    \uD55C \uBC88, \uD0C4\uD658\uB9C8\uB2E4 30% \uD655\uB960\uB85C \uCD5C\uC885 \uD53C\uD574\uAC00
+    4\uBC30\uAC00 \uB429\uB2C8\uB2E4. \uC2E4\uD328\uD560 \uB54C\uB9C8\uB2E4 \uD655\uB960\uC774
+    10%p \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  icon: {fileID: 8472149491139562297, guid: dc3d0e43f8bb780499843fe20f5165c3, type: 3}
+  lifetimeType: 0
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 23
+    finalDamageMultiplier: 4
+    movementDamageMultiplierPerStack: 1.1
+    survivingHealth: 1
+    movementSources: 3
+    movementStackReset: 0
+    circuitShotThreshold: 5
+    circuitMaxReloadsPerCylinder: 2
+    debuffTransferPercent: 50
+    stormDamagePercent: 40
+    movementTilesPerFreeReload: 5
+    freeReloadStorageLimit: 2
+    goldNuggetChance: 10
+    nuggetsRequired: 3
+    primerBaseChance: 5
+    primerFailureChanceBonus: 5
+    scaleMaximumDamagePercent: 100
+    memorialDamagePercentPerBullet: 20
+    memorialMaximumDamagePercent: 100
+    executionDamageMultipliers:
+    - 1.5
+    - 2
+    - 3
+    - 5
+    mutationChancePerDebuffType: 15
+    mutationMaximumChance: 60
+    brinkHealthThresholdPercent: 25
+    brinkBaseChance: 30
+    brinkFailureChanceBonus: 10

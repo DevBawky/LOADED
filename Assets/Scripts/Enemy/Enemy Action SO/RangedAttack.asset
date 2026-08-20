@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57ee2ab9487741fa84ee7612fa65163e, type: 3}
   m_Name: RangedAttack
   m_EditorClassIdentifier: Assembly-CSharp::EnemyActionData
+  displayName: 
   actionType: 4
   movementDistance: 0
-  attackData: {fileID: 0}
-  icon: {fileID: 0}
-  description: 
+  attackData: {fileID: 11400000, guid: b04cb7eaffca66342a036dc5f2707d57, type: 2}
+  icon: {fileID: -3820126930878895879, guid: 0d13e4e91cfbe47428ceae931233d953, type: 3}
+  description: "\uC6D0\uAC70\uB9AC \uACF5\uACA9\uC785\uB2C8\uB2E4."

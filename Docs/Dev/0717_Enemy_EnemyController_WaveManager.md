@@ -1,5 +1,9 @@
 ## AI-006: EnemyController & WaveManager
 
+> 260802 후속 변경: `BattleData.Waves`는 적 프리팹 대신 `EnemyData`를 참조하고, `WaveManager`는 공용 `Enemy.prefab` 하나를 생성한 뒤 데이터를 주입한다. 최신 구조는 [`0802_EnemyData_Template_and_ActionPresentation.md`](0802_EnemyData_Template_and_ActionPresentation.md)를 기준으로 한다.
+
+> 260718 후속 변경: `WaveManager`는 현재 전투의 웨이브 실행만 담당한다. 전투 하나는 독립 `BattleData`, `StageData`는 BattleData 참조 배열이며 MainGame·Stage Clear·Shop 전환은 `StateManager`가 담당한다. 최신 적용 구조는 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.
+
 ### Basic Information
 
 * Date: 260717
@@ -86,6 +90,13 @@
 * `Spawn Term`이 끝나 예약 타일에 적이 생성되면 Warning을 비활성화합니다.
 * 첫 웨이브는 기존 요구대로 게임 시작 시 즉시 생성하므로 Warning 예고는 두 번째 웨이브부터 적용합니다.
 
+후속 요청으로 Warning 때문에 플레이어가 양옆 이동을 즉시 제한받는 상황을 줄이도록 스폰 타일 우선순위를 변경합니다.
+
+* 플레이어와 2칸 이상 떨어진 빈 타일을 우선 스폰 후보로 사용합니다.
+* 플레이어의 바로 왼쪽과 오른쪽 타일은 후순위 후보로 분리합니다.
+* 우선 후보만으로 웨이브 전체를 배치할 수 없을 때만 필요한 수만큼 인접 타일을 사용합니다.
+* 이 규칙은 첫 웨이브의 즉시 스폰과 다음 웨이브의 Warning 예약에 동일하게 적용합니다.
+
 작업 후 실제 Inspector 필드명에 맞춘 적용 방법과 Play Mode 테스트 순서를 Markdown 기록에 작성해주세요. 후속 웨이브 변경은 관련 문서가 이미 있으므로 이 문서를 업데이트합니다.
 
 ### Output Summary
@@ -114,7 +125,7 @@ Enemy 루트의 X Scale이 반전될 때 `ActorMotion > Orientation Locked Trans
 
 `Assets/Scripts/Manager/BoardTile.cs`를 추가하고 Tile 프리팹 루트에 연결했다. `Warning Object`에는 기존 자식 `Warning`을 직접 지정하며 `Awake`에서 항상 비활성화한다. `BoardManager`는 생성한 `BoardTile`을 타일 인덱스 순서대로 보관하고 `SetTileWarningActive`로 특정 타일의 경고 상태를 변경한다.
 
-`WaveManager`는 현재 웨이브 전멸 시 다음 웨이브 수량만큼 서로 다른 빈 타일을 무작위로 예약하고 Warning을 활성화한다. 이후에는 다시 위치를 추첨하지 않고 예약된 타일 좌표에 적을 생성하며, 생성이 완료되면 모든 Warning과 예약 목록을 해제한다. 플레이어와 적의 이동 검사에도 예약 타일을 포함해 경고 위치가 점유되는 상황을 막았다. `Spawn Term = 0`이면 예약과 생성이 같은 프레임에 일어나 경고를 시각적으로 확인하기 어려우므로 예고가 필요하면 1 이상을 사용해야 한다.
+`WaveManager`는 현재 웨이브 전멸 시 다음 웨이브 수량만큼 서로 다른 빈 타일을 예약하고 Warning을 활성화한다. 후보는 현재 플레이어 위치를 기준으로 2칸 이상 떨어진 우선 후보와 바로 양옆의 후순위 후보로 나눈다. 우선 후보를 무작위로 먼저 선택하고 수량이 부족할 때만 후순위 후보를 필요한 만큼 무작위로 보충하므로, 보드 공간이 허용하는 한 플레이어 양옆에는 Warning과 적 스폰이 발생하지 않는다. 첫 웨이브도 같은 우선순위로 즉시 스폰한다. 예약 후에는 다시 위치를 추첨하지 않고 예약된 타일 좌표에 적을 생성하며, 생성이 완료되면 모든 Warning과 예약 목록을 해제한다. 플레이어와 적의 이동 검사에도 예약 타일을 포함해 경고 위치가 점유되는 상황을 막았다. `Spawn Term = 0`이면 예약과 생성이 같은 프레임에 일어나 경고를 시각적으로 확인하기 어려우므로 예고가 필요하면 1 이상을 사용해야 한다.
 
 스폰 위치에는 `Spawn Position Offset`을 월드 좌표로 더한다. `Stage 1` 설정값은 `(0, 0.7, 0)`이며 플레이어와 적 Sprite의 세로 기준을 맞춘다. 플레이어 타일과 기존 적 타일은 스폰 후보에서 제외하며 적 이동도 플레이어 및 다른 적의 타일을 침범하지 않는다.
 
@@ -122,7 +133,9 @@ Enemy 루트의 X Scale이 반전될 때 `ActorMotion > Orientation Locked Trans
 
 `Assets/Scripts/Player/PlayerHealth.cs`를 생성해 `Max Health`, `Starting Health`, 현재 체력을 관리한다. 피해와 회복 시 `Canvas > Panel | MainGame > Player HP > Image | Fill Amount`의 `Image.fillAmount`와 `Text | Player HP`의 `현재/최대` 텍스트를 함께 갱신한다. 체력이 0이 되면 `Defeated` 이벤트를 제공한다.
 
-`EnemyController`는 `EnemyData.MaxHealth`로 현재 체력을 초기화하고 피해를 받을 때 프리팹의 `HP_Value.fillAmount`를 갱신한다. 체력이 0이 되면 WaveManager 활성 목록에서 제거된 뒤 GameObject를 제거한다. 적 공격 발사 시 연결된 `PlayerHealth.ApplyDamage`에 `EnemyAttackData.Damage`를 전달한다.
+`EnemyController`는 `EnemyData.MaxHealth`로 현재 체력을 초기화하고 피해를 받을 때 프리팹의 `HP_Value.fillAmount`를 갱신한다. 체력이 0이 되면 WaveManager 활성 목록에서 제거된 뒤 GameObject를 제거한다. 일반 공격 피해 API는 표식까지 적용한 실제 체력 감소량을 반환하므로 PlayerShoot의 흡혈이 처치 및 초과 피해에서도 정확한 값을 사용한다.
+
+적 공격 발사 시 자신의 약화 스택이 남아 있으면 `EnemyAttackData.Damage`를 70%로 내림 처리하되 최소 1을 보장한 뒤 `PlayerHealth.ApplyDamage`에 전달한다. 플레이어의 표식은 그 다음 피격 계산에서 적용된다. `EnemyAttackData.Weakness Duration Turns`가 1 이상이면 적중한 플레이어에게 약화를 부여할 수 있으며, 약화는 적과 플레이어 모두 턴 종료마다 1스택 감소한다. 독과 밀치기 충돌 피해는 약화의 영향을 받지 않는다.
 
 `Assets/Scripts/Enemy/EnemyActionQueueUI.cs`를 추가했다. `Queue Image`, `Icon Parent`, `Attack Icon Prefab`을 Inspector에서 직접 연결하고 `Normal Queue Color`, `Prepared Queue Color`, `Missing Icon Color`를 제공한다. 공격 아이콘은 프리팹 인스턴스로만 생성해 원본 프리팹이나 행동 ScriptableObject를 변경하지 않는다. `Test Enemy.prefab`에는 기존 `Image | Queue`와 `Image _ Queue AttackIcon.prefab` 참조가 연결되어 있으며 Queue는 초기 비활성 상태다.
 
@@ -164,6 +177,8 @@ Enemy 루트의 X Scale이 반전될 때 `ActorMotion > Orientation Locked Trans
   * 플레이어 및 활성 적 타일의 스폰 제외 조건 확인
   * Player 이동 목표와 Enemy 이동 목표의 점유 타일 거부 조건 확인
   * PlayerHealth의 Fill Amount 및 HP 텍스트 계산 확인
+  * 플레이어와 적의 약화 상태에서 직접 공격만 30% 감소하고 최소 피해 1을 유지하는지 확인
+  * 일반 공격 API가 표식과 남은 체력을 반영한 실제 피해량을 반환하는지 확인
   * Enemy 프리팹의 `EnemyController`, `Enemy Data`, `Sprite Renderer`, `Health Fill Image` 직렬화 참조 확인
   * 탄환 대상의 방향, 사거리, 거리 정렬, 관통 순서와 LineRenderer의 X 거리 및 랜덤 각도 확인
   * `Find`, `FindObjectOfType`, `FindAnyObjectByType`, `Resources.Load`, `GetComponent` 미사용 확인
@@ -200,7 +215,7 @@ Enemy 루트의 X Scale이 반전될 때 `ActorMotion > Orientation Locked Trans
 
 * 발견한 문제:
 
-  * 플레이어와 적의 기본 Damage 및 체력 감소는 연결했지만 Knockback, Stun, Mark 상태 효과 실행 로직은 아직 없다.
+  * 후속 작업에서 플레이어 탄환의 독, 기절, 표식, 밀치기, 위치 교환, 흡혈, 약화를 확률형 `Effects` 배열과 실제 적중 처리에 연결하고 탄환 단위 크리티컬 계산을 추가했다.
   * 플레이어 체력이 0이 되면 `Defeated` 이벤트가 발생하지만 Game Over UI, 입력 차단, Scene 전환은 이번 요청에 정의되지 않아 추가하지 않았다.
   * 탄환 발사는 즉시 판정되는 한 줄 전투를 기준으로 하며, 빗나간 탄환도 발사·소비된다. 보드 끝에서 바깥을 바라봐 유효한 전방 타일이 없을 때는 Fire Point 기준 사거리 거리의 전방 위치를 시각적 끝점으로 사용한다.
   * Spawn Position Offset은 실제 Transform 위치에 더해지므로 X 오프셋은 `Board Distance / 2`보다 작게 유지해야 같은 논리 타일로 판정된다. 일반적으로 세로 보정용 Y 값만 설정한다.
@@ -339,6 +354,8 @@ Player의 `PlayerShoot > Wave Manager`에도 Scene의 `@_WaveManager`를 연결�
 28. 한 웨이브의 수량을 빈 보드 타일보다 크게 설정했을 때 일부 적만 생성되지 않고 Console에 설정 오류가 출력되는지 확인한다.
 29. 첫 웨이브를 전멸시키면 다음 웨이브 적 수와 같은 수의 Tile `Warning`이 활성화되는지 확인한다.
 30. Warning 타일로 플레이어가 이동할 수 없고, `Spawn Term`이 끝나면 표시된 위치마다 적이 생성된 뒤 Warning이 모두 비활성화되는지 확인한다.
+31. 플레이어 양옆을 제외한 빈 타일 수가 웨이브 적 수 이상이면 양옆 타일에 Warning이나 첫 웨이브 적이 생성되지 않는지 확인한다.
+32. 안전한 빈 타일 수보다 웨이브 적 수가 많으면 안전 타일을 모두 우선 사용하고 부족한 수만 플레이어 양옆에 배치되는지 확인한다.
 
 C# 컴파일은 경고와 오류 없이 완료됐다. Unity Play Mode를 통한 실제 스폰, 상태 진행, 이펙트 출력 검증은 수행하지 않았다.
 

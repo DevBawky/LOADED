@@ -4,28 +4,27 @@ using UnityEngine;
 
 public enum StatusEffectType
 {
-    Mark,
-    Poison,
-    Stun
+    Mark = 0,
+    Poison = 1,
+    Stun = 2,
+    Weakness = 3
 }
 
 public interface IStatusEffectTarget
 {
     int CurrentHealth { get; }
-    bool ApplyStatusDamage(int damage);
+    bool ApplyStatusDamage(int damage, bool creditedToPlayer);
 }
 
 public class StatusEffectController : MonoBehaviour
 {
-    public const float MarkDamageMultiplier = 1.5f;
-    public const float PoisonHealthRatio = 0.05f;
-
     [Header("UI")]
     [SerializeField] private Transform statusIconParent;
     [SerializeField] private GameObject debuffIconPrefab;
     [SerializeField] private Sprite markSprite;
     [SerializeField] private Sprite poisonSprite;
     [SerializeField] private Sprite stunSprite;
+    [SerializeField] private Sprite weaknessSprite;
 
     [Header("Runtime State")]
     [Min(0)]
@@ -34,6 +33,10 @@ public class StatusEffectController : MonoBehaviour
     [SerializeField] private int poisonStacks;
     [Min(0)]
     [SerializeField] private int stunStacks;
+    [Min(0)]
+    [SerializeField] private int weaknessStacks;
+
+    private bool poisonCreditedToPlayer;
 
     private IStatusEffectTarget target;
     private readonly Dictionary<StatusEffectType, DebuffIconUI> icons =
@@ -44,12 +47,98 @@ public class StatusEffectController : MonoBehaviour
     public int MarkStacks => markStacks;
     public int PoisonStacks => poisonStacks;
     public int StunStacks => stunStacks;
+    public int WeaknessStacks => weaknessStacks;
+    public int TotalStatusStackCount
+    {
+        get
+        {
+            long total = (long)markStacks
+                + poisonStacks
+                + stunStacks
+                + weaknessStacks;
+            return total >= int.MaxValue ? int.MaxValue : (int)total;
+        }
+    }
     public bool IsMarked => markStacks > 0;
     public bool IsStunned => stunStacks > 0;
+    public bool IsWeakened => weaknessStacks > 0;
+
+    public RunStatusEffectSaveData CaptureRunState()
+    {
+        return new RunStatusEffectSaveData
+        {
+            markStacks = markStacks,
+            poisonStacks = poisonStacks,
+            stunStacks = stunStacks,
+            weaknessStacks = weaknessStacks,
+            poisonCreditedToPlayer = poisonCreditedToPlayer
+        };
+    }
+
+    public void RestoreRunState(RunStatusEffectSaveData state)
+    {
+        state ??= new RunStatusEffectSaveData();
+        markStacks = Mathf.Max(0, state.markStacks);
+        poisonStacks = Mathf.Max(0, state.poisonStacks);
+        stunStacks = Mathf.Max(0, state.stunStacks);
+        weaknessStacks = Mathf.Max(0, state.weaknessStacks);
+        poisonCreditedToPlayer = poisonStacks > 0
+            && state.poisonCreditedToPlayer;
+        RefreshAllIcons();
+
+        foreach (StatusEffectType type in Enum.GetValues(
+                     typeof(StatusEffectType)))
+        {
+            StacksChanged?.Invoke(type, GetStacks(type));
+        }
+    }
 
     private void Awake()
     {
         target = GetComponent<IStatusEffectTarget>();
+        ResolveStatusIconParent();
+        RefreshAllIcons();
+    }
+
+    private void ResolveStatusIconParent()
+    {
+        if (statusIconParent != null)
+        {
+            return;
+        }
+
+        Transform[] children = GetComponentsInChildren<Transform>(true);
+
+        foreach (Transform child in children)
+        {
+            if (child != transform && child.name == "Image | Status")
+            {
+                statusIconParent = child;
+                return;
+            }
+        }
+
+        statusIconParent = null;
+        Debug.LogError(
+            $"{nameof(StatusEffectController)} requires a child named 'Image | Status'.",
+            this);
+    }
+
+    public void ConfigureIconUI(
+        Transform assignedParent,
+        GameObject assignedPrefab)
+    {
+        foreach (DebuffIconUI icon in icons.Values)
+        {
+            if (icon != null)
+            {
+                Destroy(icon.gameObject);
+            }
+        }
+
+        icons.Clear();
+        statusIconParent = assignedParent;
+        debuffIconPrefab = assignedPrefab;
         RefreshAllIcons();
     }
 
@@ -63,12 +152,70 @@ public class StatusEffectController : MonoBehaviour
                 return poisonStacks;
             case StatusEffectType.Stun:
                 return stunStacks;
+            case StatusEffectType.Weakness:
+                return weaknessStacks;
             default:
                 return 0;
         }
     }
 
-    public bool Add(StatusEffectType type, int stacks)
+    public int ActiveStatusTypeCount
+    {
+        get
+        {
+            int count = 0;
+
+            foreach (StatusEffectType type in Enum.GetValues(
+                         typeof(StatusEffectType)))
+            {
+                if (GetStacks(type) > 0)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+    }
+
+    public int Consume(StatusEffectType type)
+    {
+        int stacks = GetStacks(type);
+        SetStacks(type, 0);
+        return stacks;
+    }
+
+    public bool MultiplyActiveStacks(int multiplier)
+    {
+        if (multiplier <= 1)
+        {
+            return false;
+        }
+
+        bool changed = false;
+
+        foreach (StatusEffectType type in Enum.GetValues(
+                     typeof(StatusEffectType)))
+        {
+            int stacks = GetStacks(type);
+
+            if (stacks <= 0)
+            {
+                continue;
+            }
+
+            long multiplied = (long)stacks * multiplier;
+            SetStacks(type, (int)Math.Min(int.MaxValue, multiplied));
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    public bool Add(
+        StatusEffectType type,
+        int stacks,
+        bool creditedToPlayer = false)
     {
         if (stacks <= 0)
         {
@@ -77,6 +224,13 @@ public class StatusEffectController : MonoBehaviour
 
         long combinedStacks = (long)GetStacks(type) + stacks;
         SetStacks(type, (int)Math.Min(int.MaxValue, combinedStacks));
+        PlayAppliedSfx(type);
+
+        if (type == StatusEffectType.Poison && creditedToPlayer)
+        {
+            poisonCreditedToPlayer = true;
+        }
+
         return true;
     }
 
@@ -87,7 +241,17 @@ public class StatusEffectController : MonoBehaviour
             return damage;
         }
 
-        return Mathf.CeilToInt(damage * MarkDamageMultiplier);
+        return Mathf.CeilToInt(damage * 1.5f);
+    }
+
+    public int ModifyOutgoingAttackDamage(int damage)
+    {
+        if (damage <= 0 || !IsWeakened)
+        {
+            return damage;
+        }
+
+        return Mathf.Max(1, Mathf.FloorToInt(damage * 0.7f));
     }
 
     public bool ConsumeStunTurn()
@@ -113,6 +277,11 @@ public class StatusEffectController : MonoBehaviour
         {
             SetStacks(StatusEffectType.Mark, markStacks - 1);
         }
+
+        if (weaknessStacks > 0)
+        {
+            SetStacks(StatusEffectType.Weakness, weaknessStacks - 1);
+        }
     }
 
     public void Clear()
@@ -120,19 +289,39 @@ public class StatusEffectController : MonoBehaviour
         SetStacks(StatusEffectType.Mark, 0);
         SetStacks(StatusEffectType.Poison, 0);
         SetStacks(StatusEffectType.Stun, 0);
+        SetStacks(StatusEffectType.Weakness, 0);
     }
 
     private void ApplyPoisonDamage()
     {
-        if (target == null || target.CurrentHealth <= 0)
+        if (target == null || target.CurrentHealth <= 0 || poisonStacks <= 0)
         {
             return;
         }
 
-        int damage = Mathf.Max(
-            1,
-            Mathf.CeilToInt(target.CurrentHealth * PoisonHealthRatio));
-        target.ApplyStatusDamage(damage);
+        if (target.ApplyStatusDamage(poisonStacks, poisonCreditedToPlayer))
+        {
+            SoundManager.PlaySfx("SFX_Poison");
+        }
+    }
+
+    private static void PlayAppliedSfx(StatusEffectType type)
+    {
+        switch (type)
+        {
+            case StatusEffectType.Mark:
+                SoundManager.PlaySfx("SFX_Mark");
+                break;
+            case StatusEffectType.Poison:
+                SoundManager.PlaySfx("SFX_Poison");
+                break;
+            case StatusEffectType.Stun:
+                SoundManager.PlaySfx("SFX_Stun");
+                break;
+            case StatusEffectType.Weakness:
+                SoundManager.PlaySfx("SFX_Weakness");
+                break;
+        }
     }
 
     private void SetStacks(StatusEffectType type, int stacks)
@@ -146,9 +335,18 @@ public class StatusEffectController : MonoBehaviour
                 break;
             case StatusEffectType.Poison:
                 poisonStacks = clampedStacks;
+
+                if (poisonStacks == 0)
+                {
+                    poisonCreditedToPlayer = false;
+                }
+
                 break;
             case StatusEffectType.Stun:
                 stunStacks = clampedStacks;
+                break;
+            case StatusEffectType.Weakness:
+                weaknessStacks = clampedStacks;
                 break;
         }
 
@@ -161,6 +359,7 @@ public class StatusEffectController : MonoBehaviour
         RefreshIcon(StatusEffectType.Mark, markStacks);
         RefreshIcon(StatusEffectType.Poison, poisonStacks);
         RefreshIcon(StatusEffectType.Stun, stunStacks);
+        RefreshIcon(StatusEffectType.Weakness, weaknessStacks);
     }
 
     private void RefreshIcon(StatusEffectType type, int stacks)
@@ -221,11 +420,15 @@ public class StatusEffectController : MonoBehaviour
             return null;
         }
 
-        icon.Initialize(GetSprite(type), GetStacks(type));
+        icon.Initialize(
+            GetStatusIconSprite(type),
+            GetStacks(type),
+            type,
+            GetComponent<EnemyController>());
         return icon;
     }
 
-    private Sprite GetSprite(StatusEffectType type)
+    public Sprite GetStatusIconSprite(StatusEffectType type)
     {
         switch (type)
         {
@@ -235,6 +438,8 @@ public class StatusEffectController : MonoBehaviour
                 return poisonSprite;
             case StatusEffectType.Stun:
                 return stunSprite;
+            case StatusEffectType.Weakness:
+                return weaknessSprite;
             default:
                 return null;
         }

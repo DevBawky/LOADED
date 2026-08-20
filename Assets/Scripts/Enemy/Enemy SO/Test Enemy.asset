@@ -15,13 +15,68 @@ MonoBehaviour:
   enemyId: 0
   displayName: Test Enemy
   description: 
-  sprite: {fileID: 7482667652216324306, guid: 48e93eef0688c4a259cb0eddcd8661f7, type: 3}
-  prefab: {fileID: 8378092708147667353, guid: a03b33a6d165c504a81b8351520dc4e8, type: 3}
-  maxHealth: 100
-  defeatReward: 0
+  avatar: {fileID: 1233976601806711513, guid: 681bb752688943b41b903f4b80db2c5b, type: 3}
+  maxHealth: 70
+  minimumGoldDrop: 2
+  maximumGoldDrop: 5
+  dropChance: 10
+  dropItems:
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 9d333057caa04b4488526d9103463201, type: 2}
+    bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
+    bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 1c726a25a24e426a8b770796f000af19, type: 2}
+    bulletData: {fileID: 0}
   behaviorType: 0
   preferredDistance: 2
+  maxQueuedAttacks: 2
+  queuedActionInterval: 0.2
+  queueElementRevealDuration: 0.25
+  meleeAdditionalAttackChance: 0.5
+  firingRange: 5
+  recoveryTurns: 1
+  maxSupportCharges: 2
+  supportHealAmount: 10
+  supportShieldAmount: 10
+  supportHealThreshold: 0.5
+  thrownProjectileSprite: {fileID: 0}
+  thrownProjectileColor: {r: 1, g: 1, b: 1, a: 1}
+  thrownProjectileSize: 0.35
+  thrownProjectileDuration: 0.5
+  thrownProjectileArcHeight: 2
+  explosionVfxPrefab: {fileID: 0}
+  explosionVfxScale: 1
+  gunnerTelegraphMaterial: {fileID: 0}
+  throwerTelegraphMaterial: {fileID: 0}
+  supportTelegraphMaterial: {fileID: 0}
+  supportHealColor: {r: 0.25, g: 1, b: 0.35, a: 1}
+  supportShieldColor: {r: 0.2, g: 0.8, b: 1, a: 1}
+  telegraphLineWidth: 0.08
+  telegraphVerticalOffset: 0.15
+  throwerTelegraphSegments: 20
+  telegraphSortingOrder: 20
   actions:
   - {fileID: 11400000, guid: 7e1cbe3d707bdae4dbd479728766a343, type: 2}
   - {fileID: 11400000, guid: e86794259aec7ab48aa8a538ccb82888, type: 2}
   randomizeStartingActionIndex: 0
+  bigBarrel:
+    phaseTwoHealthRatio: 0.5
+    bombDamage: 20
+    bossSelfExplosionDamage: 10
+    bombExplosionRadius: 1
+    bombFuseTurns: 3
+    phaseTwoBombFuseTurns: 2
+    shotgunDamage: 15
+    bossBombPrefab: {fileID: 0}
+    bombArcHeight: 2
+    bombTelegraphMaterial: {fileID: 0}
+    shotgunTelegraphMaterial: {fileID: 0}

@@ -1,0 +1,112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Mixed Grade
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_mixed_grade
+  displayName: "\uD63C\uD569\uD0C4"
+  description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
+    \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +30%"
+  cylinderIcon: {fileID: 4923265321069294368, guid: e5e105338554a3344b4991ef6218a494, type: 3}
+  price: 6
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 20
+  maxRange: 4
+  criticalChance: 15
+  criticalDamageMultiplier: 1.7
+  effects:
+  - effectType: 37
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 30
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+  secondaryLineColor: {r: 1, g: 0.35, b: 0.72, a: 1}
+  lineWidthMultiplier: 0.7
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +50%"
+    damage: 16
+    maxRange: 4
+    criticalChance: 18
+    criticalDamageMultiplier: 1.8
+    effects:
+    - effectType: 37
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 50
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 20
+  - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +75%"
+    damage: 21
+    maxRange: 5
+    criticalChance: 23
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 37
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 75
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 40
+  - description: "\uC2E4\uB9B0\uB354 \uC18D \uB808\uC5B4 \uC774\uC678\uC758 \uB4F1\uAE09
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0 +100%"
+    damage: 27
+    maxRange: 5
+    criticalChance: 30
+    criticalDamageMultiplier: 2.2
+    effects:
+    - effectType: 37
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 100
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 0

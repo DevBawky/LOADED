@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1d4f39e42b64c6f94b6e5a8f1c27301, type: 3}
+  m_Name: Last Chance
+  m_EditorClassIdentifier: 
+  relicId: last_chance
+  displayName: "\uB9C8\uC9C0\uB9C9 \uAE30\uD68C"
+  description: "\uC8FD\uC74C\uC5D0 \uC774\uB974\uB294 \uD53C\uD574\uB97C 1\uD68C
+    \uB9C9\uACE0 \uCCB4\uB825\uC744 1 \uB0A8\uAE34 \uB4A4 \uD30C\uAD34\uB429\uB2C8\uB2E4."
+  icon: {fileID: -2621938786737262761, guid: c8c8ade7fe759fb4dbb81a730f7c5dc8, type: 3}
+  lifetimeType: 1
+  initialCharges: 1
+  canStack: 0
+  maxStack: 1
+  effects:
+  - effectType: 1
+    finalDamageMultiplier: 2
+    movementDamageMultiplierPerStack: 1.1
+    survivingHealth: 1
+    movementSources: 0
+    movementStackReset: 0
+    circuitShotThreshold: 5
+    circuitMaxReloadsPerCylinder: 2
+    debuffTransferPercent: 50
+    stormDamagePercent: 40
+    movementTilesPerFreeReload: 5
+    freeReloadStorageLimit: 2
+    goldNuggetChance: 10
+    nuggetsRequired: 3
+    primerBaseChance: 5
+    primerFailureChanceBonus: 5
+    scaleMaximumDamagePercent: 100
+    memorialDamagePercentPerBullet: 20
+    memorialMaximumDamagePercent: 100
+    executionDamageMultipliers:
+    - 1.5
+    - 2
+    - 3
+    - 5
+    mutationChancePerDebuffType: 15
+    mutationMaximumChance: 60
+    brinkHealthThresholdPercent: 25
+    brinkBaseChance: 30
+    brinkFailureChanceBonus: 10

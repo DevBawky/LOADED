@@ -5,7 +5,7 @@ using UnityEngine.Serialization;
 public class BoardManager : MonoBehaviour
 {
     [Header("Board Settings")]
-    [SerializeField, Min(0)] private int boardCount;
+    [SerializeField, Min(1)] private int boardCount = 1;
     [SerializeField, Min(0.01f)] private float boardDistance = 1f;
 
     [Header("References")]
@@ -18,6 +18,22 @@ public class BoardManager : MonoBehaviour
 
     public int BoardCount => boardCount;
     public float BoardDistance => boardDistance;
+
+    public bool ConfigureBoard(int configuredBoardCount, BoardTile configuredTilePrefab)
+    {
+        if (configuredBoardCount <= 0 || configuredTilePrefab == null)
+        {
+            Debug.LogError(
+                "Board Count must be greater than zero and Tile Prefab must be assigned.",
+                this);
+            return false;
+        }
+
+        boardCount = configuredBoardCount;
+        tilePrefab = configuredTilePrefab;
+        RegenerateBoard();
+        return isGenerated;
+    }
 
     public bool SetTileWarningActive(int tileIndex, bool isActive)
     {
@@ -167,7 +183,7 @@ public class BoardManager : MonoBehaviour
             return;
         }
 
-        if (boardCount < 0)
+        if (boardCount <= 0)
         {
             Debug.LogError("Board Count는 0 이상이어야 합니다.", this);
             return;
@@ -176,6 +192,12 @@ public class BoardManager : MonoBehaviour
         if (boardDistance <= 0f)
         {
             Debug.LogError("Board Distance는 0보다 커야 합니다.", this);
+            return;
+        }
+
+        if (tilePrefab == null || tileParent == null)
+        {
+            Debug.LogError("Tile Prefab and Tile Parent must be assigned.", this);
             return;
         }
 
@@ -193,6 +215,24 @@ public class BoardManager : MonoBehaviour
                 Quaternion.identity);
             spawnedTiles.Add(tile);
         }
+    }
+
+    private void RegenerateBoard()
+    {
+        foreach (BoardTile tile in spawnedTiles)
+        {
+            if (tile == null)
+            {
+                continue;
+            }
+
+            tile.gameObject.SetActive(false);
+            Destroy(tile.gameObject);
+        }
+
+        spawnedTiles.Clear();
+        isGenerated = false;
+        GenerateBoard();
     }
 
     private float GetStartOffset()

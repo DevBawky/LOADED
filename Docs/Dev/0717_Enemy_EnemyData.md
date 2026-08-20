@@ -1,5 +1,9 @@
 ## AI-005: EnemyData
 
+> 260802 후속 변경: `EnemyData`의 프리팹 참조는 제거되었으며 새 적은 SO만 추가한다. 최신 단일 템플릿 구조와 행동 연출 설정은 [`0802_EnemyData_Template_and_ActionPresentation.md`](0802_EnemyData_Template_and_ActionPresentation.md)를 기준으로 한다.
+
+> 260718 후속 변경: 기존 `Defeat Reward`는 공용 `Drop Chance`와 가중치형 `Drop Items` 표로 교체되었다. 골드/아이템/탄환 보상 설정은 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.
+
 ### Basic Information
 
 * Date: 260717
@@ -89,7 +93,7 @@
 
 ### Final Result
 
-Unity Project 창에서 `Assets > Create > Loaded > Enemy > Attack`을 선택해 `EnemyAttackData` 에셋을 만든다. `Skill Id`, `Display Name`, `Description`, `Damage`, `Range`, `Knockback Distance`, `Stun Duration Turns`, `Mark Duration Turns`, `Mark Damage Multiplier`, `Attack Effect Prefab`을 설정한다.
+Unity Project 창에서 `Assets > Create > Loaded > Enemy > Attack`을 선택해 `EnemyAttackData` 에셋을 만든다. `Skill Id`, `Display Name`, `Description`, `Damage`, `Range`, `Knockback Distance`, `Stun Duration Turns`, `Mark Duration Turns`, `Poison Stack Count`, `Weakness Duration Turns`, `Attack Effect Prefab`을 설정한다. 표식 피해 증가는 상태 시스템의 고정 50% 규칙을 사용하므로 공격별 배율 필드는 없다. `Poison Stack Count`는 적중 시 플레이어에게 부여할 독 스택이며, 현재 스택만큼 턴 종료 피해를 준 뒤 1씩 감소한다. `Weakness Duration Turns`가 1 이상이면 적중한 플레이어의 직접 공격 피해가 남은 스택 동안 30% 감소한다.
 
 다음으로 `Assets > Create > Loaded > Enemy > Action`을 선택해 `EnemyActionData` 에셋을 만든다. `Action Type`, `Movement Distance`, `Attack Data`, `Icon`, `Description`을 설정한다. `MeleeAttack` 또는 `RangedAttack` 행동이라면 앞에서 만든 공격 에셋을 `Attack Data`에 드래그한다. `Approach`, `Retreat`, `Rotate`, `Wait`처럼 공격을 사용하지 않는 행동은 `Attack Data`를 비워둘 수 있다.
 
@@ -97,7 +101,7 @@ Unity Project 창에서 `Assets > Create > Loaded > Enemy > Attack`을 선택해
 
 테스트용 근접 적은 다음과 같이 구성할 수 있다.
 
-* 공격 에셋 `Bandit Slash`: `Skill Id`는 `enemy_bandit_slash`, `Damage`는 3, `Range`는 1, `Knockback Distance`는 1, 나머지 상태 효과는 0, `Mark Damage Multiplier`는 1로 설정한다.
+* 공격 에셋 `Bandit Slash`: `Skill Id`는 `enemy_bandit_slash`, `Damage`는 3, `Range`는 1, `Knockback Distance`는 1, 나머지 상태 효과는 0으로 설정한다.
 * 행동 에셋 `Bandit Approach`: `Action Type`은 `Approach`, `Movement Distance`는 1, `Attack Data`는 비워둔다.
 * 행동 에셋 `Bandit Melee`: `Action Type`은 `MeleeAttack`, `Movement Distance`는 0, `Attack Data`에는 `Bandit Slash`를 연결한다.
 * 적 에셋 `Bandit`: `Enemy Id`는 `enemy_bandit`, `Max Health`는 10, `Defeat Reward`는 5, `Behavior Type`은 `Aggressive`, `Preferred Distance`는 1로 설정하고 `Actions`에 `Bandit Approach`, `Bandit Melee`를 순서대로 등록한다. 고정된 첫 행동부터 시작하려면 `Randomize Starting Action Index`를 끈다.

@@ -1,0 +1,127 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Chain Fire
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_chain_fire
+  displayName: "\uC5F0\uC1C4\uD0C4"
+  description: "\uBC1C\uC0AC \uD6C4 100%, 80%, 60%, 40%, 20% \uD655\uB960\uB85C \uC5F0\uC18D
+    \uC0AC\uACA9\uD569\uB2C8\uB2E4.\n\uD0C4\uD658\uC740 \uCD94\uAC00\uB85C \uC18C\uBAA8\uD558\uC9C0
+    \uC54A\uC2B5\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 9112154179431215879, guid: 910ba590abb509945b70ef8e23821d91, type: 3}
+  price: 10
+  grade: 2
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 10
+  maxRange: 3
+  criticalChance: 15
+  criticalDamageMultiplier: 1.5
+  effects:
+  - effectType: 14
+    target: 1
+    activationChance: 100
+    stackCount: 5
+    knockbackDistance: 1
+    amount: 20
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
+  secondaryLineColor: {r: 0.82, g: 0.85, b: 0.88, a: 1}
+  lineWidthMultiplier: 0.8
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.08
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 85%, 70%, 55%, 40%, 25% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4.\n\uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    damage: 12
+    maxRange: 3
+    criticalChance: 20
+    criticalDamageMultiplier: 1.7
+    effects:
+    - effectType: 14
+      target: 1
+      activationChance: 100
+      stackCount: 6
+      knockbackDistance: 1
+      amount: 15
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.08
+    upgradeCost: 50
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 90%, 80%, 70%, 60%, 50% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4.\n\uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+    damage: 15
+    maxRange: 4
+    criticalChance: 28
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 14
+      target: 1
+      activationChance: 100
+      stackCount: 6
+      knockbackDistance: 1
+      amount: 10
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 100
+  - description: "\uBC1C\uC0AC \uD6C4 100%, 95%, 90%, 85%, 80%, 75%, 70% \uD655\uB960\uB85C
+      \uC5F0\uC18D \uC0AC\uACA9\uD569\uB2C8\uB2E4.\n\uD0C4\uD658\uC740 \uCD94\uAC00\uB85C
+      \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.\n\uCE58\uBA85\uD0C0 \uC2DC
+      \uACE8\uB4DC +1"
+    damage: 20
+    maxRange: 5
+    criticalChance: 38
+    criticalDamageMultiplier: 2.3
+    effects:
+    - effectType: 14
+      target: 1
+      activationChance: 100
+      stackCount: 7
+      knockbackDistance: 1
+      amount: 5
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents:
+    - trigger: 1
+      events:
+      - effectType: 9
+        target: 1
+        activationChance: 100
+        stackCount: 0
+        knockbackDistance: 0
+        amount: 1
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 0

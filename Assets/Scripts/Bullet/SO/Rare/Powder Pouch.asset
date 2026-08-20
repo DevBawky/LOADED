@@ -1,0 +1,110 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Powder Pouch
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_powder_pouch
+  displayName: "\uD654\uC57D \uC8FC\uBA38\uB2C8"
+  description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
+    \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +30%p"
+  cylinderIcon: {fileID: -7456226695306883464, guid: e4a881bd99bdb5a41a4d95fd6e40581c, type: 3}
+  price: 3
+  grade: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 0
+  maxRange: 3
+  criticalChance: 0
+  criticalDamageMultiplier: 1.5
+  effects:
+  - effectType: 11
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 30
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+  secondaryLineColor: {r: 0.42, g: 0.44, b: 0.46, a: 1}
+  lineWidthMultiplier: 0.7
+  doesNotConsumeTurn: 0
+  recoilStrength: 0
+  upgradeCost: 3
+  upgradeLevels:
+  - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
+      \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +40%p"
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 40
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.42, g: 0.44, b: 0.46, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    upgradeCost: 3
+  - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
+      \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +50%p"
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 50
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.42, g: 0.44, b: 0.46, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    upgradeCost: 3
+  - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
+      \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +100%p"
+    damage: 0
+    maxRange: 3
+    criticalChance: 0
+    criticalDamageMultiplier: 1.5
+    effects:
+    - effectType: 11
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 100
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+    secondaryLineColor: {r: 0.42, g: 0.44, b: 0.46, a: 1}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0
+    upgradeCost: 0

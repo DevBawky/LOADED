@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57ee2ab9487741fa84ee7612fa65163e, type: 3}
+  m_Name: Support
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyActionData
+  actionType: 6
+  movementDistance: 0
+  attackData: {fileID: 0}
+  icon: {fileID: -7185434700578658702, guid: f2f34068e9bbe2248a5746f96fcaff0a, type: 3}
+  description: "부상당한 아군을 회복하거나 최전선 아군에게 보호막을 부여합니다."

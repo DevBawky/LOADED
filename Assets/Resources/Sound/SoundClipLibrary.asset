@@ -1,0 +1,296 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e2d8fd6cbd974d2d9d70b48ae8e8582c, type: 3}
+  m_Name: SoundClipLibrary
+  m_EditorClassIdentifier: 
+  bgmMixerGroup: {fileID: -148456420722746303, guid: 0eda697c166e70e448ff8e9d4a322fb6, type: 2}
+  sfxMixerGroup: {fileID: 1127167866469853640, guid: 0eda697c166e70e448ff8e9d4a322fb6, type: 2}
+  weaponMixerGroup: {fileID: 300000000000000001, guid: 0eda697c166e70e448ff8e9d4a322fb6, type: 2}
+  impactMixerGroup: {fileID: 300000000000000002, guid: 0eda697c166e70e448ff8e9d4a322fb6, type: 2}
+  enemyMixerGroup: {fileID: 300000000000000003, guid: 0eda697c166e70e448ff8e9d4a322fb6, type: 2}
+  statusMixerGroup: {fileID: 300000000000000004, guid: 0eda697c166e70e448ff8e9d4a322fb6, type: 2}
+  bgmVolume: 0.8
+  mainMenuBgm:
+  - {fileID: 8300000, guid: 7ffc2268029963e4b9ad7251e98ae581, type: 3}
+  - {fileID: 8300000, guid: a055a8da2b1a5db46bfd70868bac2464, type: 3}
+  shopBgm:
+  - {fileID: 8300000, guid: 9eed58b59abcdd14a9f3b208a4c9445b, type: 3}
+  - {fileID: 8300000, guid: 2e26ab9176844994aa648313ef23a61c, type: 3}
+  bossBgm:
+  - {fileID: 8300000, guid: b9cd7576958f444469c4ea4fe08bd8c8, type: 3}
+  - {fileID: 8300000, guid: 1fa8511452e414f49884ff881c5d7b79, type: 3}
+  gameOverBgm:
+  - {fileID: 8300000, guid: 43df88b5634da27408a2d1be0fe1f986, type: 3}
+  battleBgm:
+  - stageId: stage_1
+    battleIndex: 0
+    battleId: stage_1_battle_01
+    clips:
+    - {fileID: 8300000, guid: 12bfe66bebee7db408bda4eb9a49baae, type: 3}
+    - {fileID: 8300000, guid: b476d2f1b07b4b64ca66857c3687235f, type: 3}
+  - stageId: stage_1
+    battleIndex: 1
+    battleId: stage_1_battle_02
+    clips:
+    - {fileID: 8300000, guid: 538af94ddc3b60f4c8b308b34baf082f, type: 3}
+    - {fileID: 8300000, guid: 71231d2f604457545ab08caded11fd29, type: 3}
+  - stageId: stage_1
+    battleIndex: 2
+    battleId: stage_1_battle_03
+    clips:
+    - {fileID: 8300000, guid: b6caecf366838574881e1a248a00dff0, type: 3}
+    - {fileID: 8300000, guid: 4150eeab689926b4187eaef6fcd1b88e, type: 3}
+  - stageId: stage_1
+    battleIndex: 3
+    battleId: stage_1_battle_04
+    clips:
+    - {fileID: 8300000, guid: 825c7d96644187a4eb3cf6cd5d360079, type: 3}
+    - {fileID: 8300000, guid: c96475fe9df1eb4469138567daa6b1fd, type: 3}
+  - stageId: stage_1
+    battleIndex: 4
+    battleId: stage_1_battle_05
+    clips:
+    - {fileID: 8300000, guid: 55b3c2a7b98da314d823bb88cae96396, type: 3}
+    - {fileID: 8300000, guid: 333a3d08a5c70ac4cb1314e6a088e6f4, type: 3}
+  sfx:
+  - id: SFX_Player_Reload
+    category: 1
+    clip: {fileID: 0}
+    variants:
+    - {fileID: 8300000, guid: fd96fdb3487538f4990284c7a1aeab3f, type: 3}
+    - {fileID: 8300000, guid: e60b6e06a6a757847a0dfab6a9f69caa, type: 3}
+    - {fileID: 8300000, guid: f64978a14c2e66141a614cfcbaf0e576, type: 3}
+    - {fileID: 8300000, guid: a6e4ed656776f31499ee72057eb08834, type: 3}
+    - {fileID: 8300000, guid: bceead53a64924a4b99552dd21d32f2a, type: 3}
+    - {fileID: 8300000, guid: b7330751d5ed1214093a2fdb68f38790, type: 3}
+    - {fileID: 8300000, guid: f1802ad68aed758418e5a44c4ff5d3a8, type: 3}
+    volume: 0.5
+    minPitch: 1.5
+    maxPitch: 3
+  - id: SFX_Player_Shoot
+    category: 1
+    clip: {fileID: 0}
+    variants:
+    - {fileID: 8300000, guid: 40f57dc878925584d8ce7c956635ad89, type: 3}
+    - {fileID: 8300000, guid: fcc11fcc64d373845be6d7ce4425780d, type: 3}
+    - {fileID: 8300000, guid: bef3ccb1362a5a3458444fec84834645, type: 3}
+    - {fileID: 8300000, guid: e8f854a9e369b884eb956f6e83173315, type: 3}
+    - {fileID: 8300000, guid: 1587b9e45a27b9f4dbc088210c682380, type: 3}
+    - {fileID: 8300000, guid: b078ff5e8addae04889dcd242ab0f8d6, type: 3}
+    - {fileID: 8300000, guid: 49a39abfcbf65ef41bad5d4a945bc133, type: 3}
+    - {fileID: 8300000, guid: 25ff7ffb9bd8fcd49b289fd763db9e31, type: 3}
+    - {fileID: 8300000, guid: 04b8835898a21024c8b8f9af345403fb, type: 3}
+    - {fileID: 8300000, guid: dbedb61043f11014fb740014ba315c06, type: 3}
+    - {fileID: 8300000, guid: 3ca4a84376db246488b6eae04a1291cc, type: 3}
+    - {fileID: 8300000, guid: 86dc8b50cb6b0cc42b795c3bdd959522, type: 3}
+    volume: 1
+    minPitch: 0.95
+    maxPitch: 1.05
+  - id: SFX_Player_Critical_Shoot
+    category: 1
+    clip: {fileID: 0}
+    variants:
+    - {fileID: 8300000, guid: 7fb3a43f1aa6ff04683db117cc7cf348, type: 3}
+    - {fileID: 8300000, guid: ef43509994db7bc48bce02df322ba7b3, type: 3}
+    - {fileID: 8300000, guid: aa09e3c3e0edc214194d37b198ed17ad, type: 3}
+    - {fileID: 8300000, guid: b51c0ecbcf928b344b381b22a6387b32, type: 3}
+    - {fileID: 8300000, guid: 0bfeb8cf52d338943a8a0001fd21f051, type: 3}
+    - {fileID: 8300000, guid: 396b85781813e4a47bee7cbbf748914b, type: 3}
+    - {fileID: 8300000, guid: 764fb342d2633f44c8b59f1644ae5baa, type: 3}
+    - {fileID: 8300000, guid: afcdb7952078aab47b656386d9563bce, type: 3}
+    - {fileID: 8300000, guid: 343806798b5f9694bb8436090b0b5702, type: 3}
+    - {fileID: 8300000, guid: 2f0d1429692c35340af2c7465b83ca07, type: 3}
+    volume: 0.7
+    minPitch: 0.9
+    maxPitch: 1.1
+  - id: SFX_Enemy_Hit
+    category: 2
+    clip: {fileID: 0}
+    variants:
+    - {fileID: 8300000, guid: 0147661c12ea814488259f82d4a4aed8, type: 3}
+    - {fileID: 8300000, guid: e989cc91820b3eb429576404f338d14b, type: 3}
+    - {fileID: 8300000, guid: a91b6eb6aee93de4fa0b41a96fd36c96, type: 3}
+    volume: 0.7
+    minPitch: 1
+    maxPitch: 1.05
+  - id: SFX_Enemy_Critical_Hit
+    category: 2
+    clip: {fileID: 0}
+    variants:
+    - {fileID: 8300000, guid: 5174415e9879415498f7b0dd794d19c5, type: 3}
+    - {fileID: 8300000, guid: 0e5edb6bccf05984dad128fb1a9fc914, type: 3}
+    volume: 0.7
+    minPitch: 1.1
+    maxPitch: 1.5
+  - id: SFX_Enemy_Die
+    category: 2
+    clip: {fileID: 0}
+    variants:
+    - {fileID: 8300000, guid: 05d0536a3eefc80438f95f9662331f52, type: 3}
+    - {fileID: 8300000, guid: 3516c279da18eaa40b97de96d4d0356d, type: 3}
+    volume: 1.5
+    minPitch: 1
+    maxPitch: 1.05
+  - id: SFX_Attack_Thief
+    category: 3
+    clip: {fileID: 8300000, guid: 174ed32535941a24a9b227cd42bc70e8, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_BigBarrel_Bomb
+    category: 2
+    clip: {fileID: 8300000, guid: 30629e52593515e44b1ffb4ee89dd023, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_BigBarrel_Throw
+    category: 3
+    clip: {fileID: 8300000, guid: 2e8edfcd8cf3d7242ae3b15022b69478, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_BigBarrel_ShotGun
+    category: 1
+    clip: {fileID: 8300000, guid: 49b26a8dcb2200a4b84bf3c722b3186a, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Bullet_Destroy
+    category: 2
+    clip: {fileID: 8300000, guid: f3208183eb3f20f41bf020cfd1dbad66, type: 3}
+    variants: []
+    volume: 2
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Combo_Die
+    category: 2
+    clip: {fileID: 8300000, guid: 4cd09583b8a6b84458802477b5f63502, type: 3}
+    variants: []
+    volume: 2
+    minPitch: 1.2
+    maxPitch: 2
+  - id: SFX_Critical
+    category: 2
+    clip: {fileID: 8300000, guid: 30f24674f0fd6d34f95e12339b945cd5, type: 3}
+    variants: []
+    volume: 1.5
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_EnemyReady
+    category: 3
+    clip: {fileID: 8300000, guid: cc3ef79cf983691408f695279b5c6b21, type: 3}
+    variants: []
+    volume: 2
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Enemy_Shoot
+    category: 3
+    clip: {fileID: 8300000, guid: 931362721d0ddcc4da5048835af2a407, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_GainGold
+    category: 0
+    clip: {fileID: 8300000, guid: 80e82ebeab50dac4cbbc50d04c3c6bb0, type: 3}
+    variants: []
+    volume: 1.3
+    minPitch: 1
+    maxPitch: 1
+  - id: UI_Button_Hover_Click
+    category: 0
+    clip: {fileID: 8300000, guid: 14213cd704b01d44e87dc88bd1f5c8d4, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: UI_Upgrade
+    category: 0
+    clip: {fileID: 8300000, guid: f2301411221b8834eab0f87917d5a472, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1.3
+    maxPitch: 1.3
+  - id: SFX_Kick
+    category: 2
+    clip: {fileID: 8300000, guid: ee7efaf4540bf3149b5a089d758b6fab, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Kick_Impact
+    category: 2
+    clip: {fileID: 8300000, guid: dd22c915c6ea69c48ae4542b6cabfa93, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Mark
+    category: 4
+    clip: {fileID: 8300000, guid: 351a9dd088eb65b42af502e06d384339, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Move
+    category: 0
+    clip: {fileID: 8300000, guid: ca68b98753b7e064cbbc2e37d209ac6d, type: 3}
+    variants: []
+    volume: 0.7
+    minPitch: 0.9
+    maxPitch: 1.1
+  - id: SFX_Poison
+    category: 4
+    clip: {fileID: 8300000, guid: edcf78db77d67f343a947342c06411e9, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Player_Hit
+    category: 2
+    clip: {fileID: 8300000, guid: e4b229d1cd4c5954c982c44b6f42eb27, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Stun
+    category: 4
+    clip: {fileID: 8300000, guid: a4e1728aca61ce340b2577a074fbbc6f, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Thower_Throw
+    category: 3
+    clip: {fileID: 8300000, guid: 02c589aa7a11008449eb390887ae96c3, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Thrower_Bomb
+    category: 2
+    clip: {fileID: 8300000, guid: 9ce18953a29b9824d954953744d9cd06, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
+  - id: SFX_Weakness
+    category: 4
+    clip: {fileID: 8300000, guid: dbc197bb8f25d5441a94394ededca929, type: 3}
+    variants: []
+    volume: 1
+    minPitch: 1
+    maxPitch: 1
