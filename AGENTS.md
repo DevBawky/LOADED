@@ -53,6 +53,30 @@ Do not assume a common Unity pattern is appropriate until the current data and
 execution flow has been traced. Do not begin a feature by adding a new global
 manager, singleton, service locator, or speculative abstraction.
 
+## Project-local skills
+
+Project-specific Codex skills live under `.agents/skills/<skill-name>/SKILL.md`.
+The filename is singular by convention. Use the smallest matching set; combine
+skills when a change crosses authoritative state boundaries.
+
+- `loaded-refactor-systems`: SOLID review and responsibility extraction.
+- `loaded-edit-audio`: playback, soundtrack, volume, and sound-ID wiring.
+- `loaded-edit-bullet-deck`: bullet data/instances, deck lifecycle, and cylinder.
+- `loaded-edit-player-combat`: movement, health, firing, targeting, and previews.
+- `loaded-edit-enemies`: enemy data/AI, telegraphs, waves, bosses, and hazards.
+- `loaded-edit-relics`: relic data/runtime state, triggers, inventory, and restore.
+- `loaded-edit-shop-inventory`: offers, purchases, currency, items, and rewards.
+- `loaded-edit-run-save`: run/session/node-map persistence and restore.
+- `loaded-edit-statistics`: statistic production, aggregation, persistence, and UI.
+- `loaded-edit-settings`: pause, accessibility, graphics, audio controls, and video.
+- `loaded-edit-world-flow`: state, scenes, node map, stages, events, and ending.
+- `loaded-edit-ui-guides`: tutorials, tooltips, HUD, and visual feedback.
+
+Examples of intentional combinations: a saved bullet effect uses bullet/deck,
+player combat, and run-save; a relic granted by a treasure scene uses relics,
+shop/inventory, and world-flow; a structural rewrite also uses the refactoring
+skill. Domain skills supplement rather than replace this repository-wide file.
+
 ## Repository map and ownership
 
 - `Assets/Scripts/Bullet/`
