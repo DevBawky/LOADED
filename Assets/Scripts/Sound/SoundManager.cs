@@ -7,7 +7,8 @@ using UnityEngine.UI;
 public sealed class SoundManager : MonoBehaviour
 {
     private const string DefaultLibraryPath = "Sound/SoundClipLibrary";
-    private const float ComboPitchStep = 0.2f;
+    private const float ComboPitchGrowthRate = 0.22f;
+    private const float ComboPitchRange = 1.5f;
     private const float BgmCompletionToleranceSeconds = 0.25f;
     private const float BgmFadeOutDuration = 0.45f;
     private const float BgmFadeInDuration = 0.65f;
@@ -188,7 +189,7 @@ public sealed class SoundManager : MonoBehaviour
     public static void PlayComboDie(int comboKillCount)
     {
         SoundManager manager = Instance;
-        float pitch = 1f + (Mathf.Max(1, comboKillCount) - 1) * ComboPitchStep;
+        float pitch = CalculateComboPitch(comboKillCount);
         if (manager.clipLibrary != null
             && manager.clipLibrary.TryGetSfx(
                 "SFX_Combo_Die",
@@ -199,6 +200,13 @@ public sealed class SoundManager : MonoBehaviour
         {
             manager.PlayOneShot(clip, pitch, volume, mixerGroup);
         }
+    }
+
+    internal static float CalculateComboPitch(int comboKillCount)
+    {
+        int additionalKills = Mathf.Max(0, comboKillCount - 1);
+        return 1f + ComboPitchRange
+            * (1f - Mathf.Exp(-additionalKills * ComboPitchGrowthRate));
     }
 
     public static void ResetComboPitch() { }

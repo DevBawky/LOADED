@@ -93,8 +93,8 @@ MonoBehaviour:
     - {fileID: 8300000, guid: 3ca4a84376db246488b6eae04a1291cc, type: 3}
     - {fileID: 8300000, guid: 86dc8b50cb6b0cc42b795c3bdd959522, type: 3}
     volume: 1
-    minPitch: 0.95
-    maxPitch: 1.05
+    minPitch: 0.9
+    maxPitch: 1.1
   - id: SFX_Player_Critical_Shoot
     category: 1
     clip: {fileID: 0}

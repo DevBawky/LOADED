@@ -20,7 +20,7 @@
 
 1. 이동 1회
 2. 회전 1회
-3. 대기 1회
+3. 약실 교환 1회
 4. 적 행동 아이콘 확인
 5. 장전 3회
 6. 탄환 정보 창에서 피해, 사거리, 치명타, 특수 효과 확인
@@ -34,7 +34,6 @@
 
 - `Movement.mp4`
 - `Rotate.mp4`
-- `Wait.mp4`
 - `Reload.mp4`
 - `Switch_Bullet_Queue.mp4`
 - `Show_Expectation.mp4`

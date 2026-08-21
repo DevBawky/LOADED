@@ -262,6 +262,7 @@
 - 모든 결과 연출이 끝난 뒤 `Button | Gain Gold`를 활성화한다.
 - 버튼 자식 `Text | Amount`에는 최종 정산 금액을 표시한다.
 - 메달 스프라이트는 `bronzeMedalSprite`, `silverMedalSprite`, `goldMedalSprite` 직렬화 필드에 연결한다.
+- 정산 버튼의 클릭 리스너는 버튼을 표시하고 팝업 애니메이션을 시작하기 전에 등록해, 표시 직후의 첫 클릭도 정산으로 처리한다.
 
 주요 코드:
 

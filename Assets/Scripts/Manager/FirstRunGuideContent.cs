@@ -4,7 +4,7 @@ internal static class FirstRunGuideContent
     {
         Move,
         Rotate,
-        Wait,
+        EjectNextBullet,
         InspectEnemyAction,
         ReloadThree,
         InspectBulletInfo,
@@ -96,8 +96,8 @@ internal static class FirstRunGuideContent
     {
         new GuidePage(
             "턴의 기본",
-            "<color=#FFD05A><b>행동 1회마다 1턴</b></color>이 흐릅니다.\n이동, 회전, 대기, 장전, 발사를 하면 <color=#FFD05A><b>적도 바로 행동</b></color>합니다.\n행동 전에 <color=#FFD05A><b>적 아래의 행동 아이콘</b></color>을 확인하세요.",
-            "Videos/Wait.mp4",
+            "<color=#FFD05A><b>행동 1회마다 1턴</b></color>이 흐릅니다.\n이동, 회전, 약실 교환, 장전, 발사를 하면 <color=#FFD05A><b>적도 바로 행동</b></color>합니다.\n행동 전에 <color=#FFD05A><b>적 아래의 행동 아이콘</b></color>을 확인하세요.",
+            null,
             "Panel | Behaviour Tile"),
         new GuidePage(
             "적의 공격 예고",
@@ -142,11 +142,11 @@ internal static class FirstRunGuideContent
             "Videos/Rotate.mp4",
             "Button | Rotate"),
         new GuideStepDefinition(
-            CombatStep.Wait,
-            "대기",
-            "<color=#FF5757><b>S 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 제자리에서 한 턴을 보냅니다.\n<color=#FFD05A><b>적의 거리와 공격 시점</b></color>을 조절할 때 사용하세요.",
-            "한 번 대기",
-            "Videos/Wait.mp4",
+            CombatStep.EjectNextBullet,
+            "약실 교환",
+            "<color=#FF5757><b>S 키</b></color> 또는 <color=#FF5757><b>약실 교환 버튼 클릭</b></color>으로 다음에 발사할 탄환 한 발을 실린더에서 뺍니다.\n뺀 탄환은 파괴되지 않고 <color=#FFD05A><b>사용한 탄환 순환</b></color>으로 이동하며, 성공하면 한 턴을 사용합니다.",
+            "약실 교환 한 번",
+            null,
             "Button | Wait"),
         new GuideStepDefinition(
             CombatStep.InspectEnemyAction,

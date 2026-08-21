@@ -182,11 +182,6 @@ public class PlayerMove : MonoBehaviour
                 return;
             }
 
-            if (keyboard.sKey.wasPressedThisFrame)
-            {
-                Wait();
-                return;
-            }
         }
 
         Mouse mouse = Mouse.current;
@@ -238,17 +233,6 @@ public class PlayerMove : MonoBehaviour
         int targetDirection = transform.localScale.x >= 0f ? -1 : 1;
         BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Rotate);
         StartCoroutine(RotateRoutine(targetDirection));
-    }
-
-    public void Wait()
-    {
-        if (!CanPerformAction())
-        {
-            return;
-        }
-
-        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Wait);
-        CompleteTurn();
     }
 
     private void Move(int direction)

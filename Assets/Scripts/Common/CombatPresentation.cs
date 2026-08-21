@@ -306,7 +306,8 @@ public sealed class CombatPresentation : MonoBehaviour
             PlayScreenFlash(
                 Color.Lerp(Color.white, accent, 0.5f),
                 defeatScreenFlashAlpha * ScaledIntensity * impactMultiplier,
-                defeatAfterimageDuration * 0.55f);
+                defeatAfterimageDuration * 0.55f
+                    * Mathf.Sqrt(Mathf.Max(1f, impactMultiplier)));
         }
         else if (impactTier == CombatImpactTier.Devastating)
         {
@@ -680,7 +681,9 @@ public sealed class CombatPresentation : MonoBehaviour
         Color accent,
         float feedbackMultiplier)
     {
-        const int echoCount = 3;
+        int echoCount = Mathf.Max(
+            3,
+            Mathf.RoundToInt(3f * Mathf.Max(1f, feedbackMultiplier)));
 
         for (int echoIndex = 0; echoIndex < echoCount; echoIndex++)
         {
@@ -720,7 +723,8 @@ public sealed class CombatPresentation : MonoBehaviour
         int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
         int scaledCount = Mathf.Max(1, Mathf.RoundToInt(
             count * ScaledIntensity
-            * CombatAccessibilitySettings.ParticleDensityMultiplier));
+            * CombatAccessibilitySettings.ParticleDensityMultiplier
+            * effectMultiplier));
 
         for (int sparkIndex = 0; sparkIndex < scaledCount; sparkIndex++)
         {
@@ -777,12 +781,13 @@ public sealed class CombatPresentation : MonoBehaviour
         float feedbackMultiplier = 1f)
     {
         int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
-        int scaledCount = Mathf.Max(1, Mathf.RoundToInt(
-            count * CombatAccessibilitySettings.ParticleDensityMultiplier));
         float tierScale = 1f + (int)impactTier * 0.22f;
         float effectMultiplier = impactTier == CombatImpactTier.Defeat
             ? Mathf.Max(0f, feedbackMultiplier)
             : 1f;
+        int scaledCount = Mathf.Max(1, Mathf.RoundToInt(
+            count * CombatAccessibilitySettings.ParticleDensityMultiplier
+            * effectMultiplier));
 
         for (int streakIndex = 0; streakIndex < scaledCount; streakIndex++)
         {

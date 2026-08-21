@@ -385,6 +385,9 @@ public partial class PlayerShoot : MonoBehaviour
             case PlayerShootInputAction.Shoot:
                 Shoot();
                 break;
+            case PlayerShootInputAction.EjectNextBullet:
+                EjectNextLoadedBullet();
+                break;
         }
     }
 
@@ -476,6 +479,43 @@ public partial class PlayerShoot : MonoBehaviour
         ClearLoadedBulletDamagePreview();
         BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Shoot);
         StartCoroutine(firingSequence.Execute(horizontalDirection));
+    }
+
+    public void EjectNextLoadedBullet()
+    {
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning
+            || isFiring
+            || cylinderUI != null && cylinderUI.IsDragging
+            || !TryBeginAction())
+        {
+            return;
+        }
+
+        if (deckManager == null || playerMove == null)
+        {
+            Debug.LogError(
+                "Deck Manager and Player Move must be assigned in the Inspector.",
+                this);
+            return;
+        }
+
+        if (!playerMove.CanStartAction
+            || deckManager.LoadedBullets.Count == 0)
+        {
+            return;
+        }
+
+        ClearLoadedBulletDamagePreview();
+
+        if (!deckManager.TryEjectNextLoadedBullet(out _))
+        {
+            return;
+        }
+
+        BehaviourActionStarted?.Invoke(
+            PlayerBehaviourAction.EjectNextBullet);
+        playerMove.CompleteTurn();
     }
 
     public bool ShowLoadedBulletDamagePreview(int loadedBulletIndex)

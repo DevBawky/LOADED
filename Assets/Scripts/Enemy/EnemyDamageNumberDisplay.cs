@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using DamageNumbersPro;
 using UnityEngine;
 
@@ -37,6 +38,10 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         new Vector3(0f, 1f, -1f);
     [SerializeField] private bool followTarget;
 
+    [Header("Overlap Avoidance")]
+    [Tooltip("같은 적에게 표시 중인 숫자 사이에 확보할 최소 월드 간격입니다. 0이면 강제 간격을 사용하지 않습니다.")]
+    [SerializeField, Min(0f)] private float minimumSpawnSeparation = 0.2f;
+
     [Header("Impact Tier Styling")]
     [SerializeField] private Color criticalDamageColor =
         new Color(1f, 0.86f, 0.28f, 1f);
@@ -46,7 +51,14 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         new Color(1f, 0.92f, 0.78f, 1f);
     [SerializeField] private float criticalDamageScale = 1.18f;
     [SerializeField] private float devastatingDamageScale = 1.42f;
-    [SerializeField] private float defeatDamageScale = 1.58f;
+
+    private readonly DamageNumberSpawnLayout spawnLayout =
+        new DamageNumberSpawnLayout();
+
+    private void OnDisable()
+    {
+        spawnLayout.Clear();
+    }
 
     public void ShowAttackDamage(
         int damage,
@@ -133,11 +145,82 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
-        Vector3 position = transform.position + damageOffset;
-        DamageNumber number = followTarget
-            ? prefab.Spawn(position, damage, transform)
-            : prefab.Spawn(position, damage);
+        Vector3 localOffset = spawnLayout.FindAvailableOffset(
+            damageOffset,
+            minimumSpawnSeparation);
+        Vector3 position = transform.position + localOffset;
+        DamageNumber number = SpawnWithoutSpamMovement(
+            prefab,
+            position,
+            damage);
+        ConfigureSpawnedNumber(number, localOffset);
         ApplyTierStyle(number, impactTier);
+    }
+
+    private void ConfigureSpawnedNumber(
+        DamageNumber number,
+        Vector3 localOffset)
+    {
+        if (number == null)
+        {
+            return;
+        }
+
+        // The project layout owns separation. Keeping Damage Numbers Pro's
+        // Collision and Push active here would apply a second, much larger
+        // offset on top of minimumSpawnSeparation.
+        number.SetSpamGroup(string.Empty);
+
+        if (followTarget)
+        {
+            number.SetFollowedTarget(transform, false);
+        }
+
+        spawnLayout.Track(localOffset, number);
+    }
+
+    private static DamageNumber SpawnWithoutSpamMovement(
+        DamageNumber prefab,
+        Vector3 position,
+        float damage)
+    {
+        bool collisionEnabled = prefab.enableCollision;
+        bool pushEnabled = prefab.enablePush;
+
+        try
+        {
+            // Spawn initializes spam control immediately. Suppress only that
+            // synchronous initialization, then restore the prefab settings.
+            prefab.enableCollision = false;
+            prefab.enablePush = false;
+            return prefab.Spawn(position, damage);
+        }
+        finally
+        {
+            prefab.enableCollision = collisionEnabled;
+            prefab.enablePush = pushEnabled;
+        }
+    }
+
+    private static DamageNumber SpawnWithoutSpamMovement(
+        DamageNumber prefab,
+        Vector3 position,
+        string statusText)
+    {
+        bool collisionEnabled = prefab.enableCollision;
+        bool pushEnabled = prefab.enablePush;
+
+        try
+        {
+            prefab.enableCollision = false;
+            prefab.enablePush = false;
+            return prefab.Spawn(position, statusText);
+        }
+        finally
+        {
+            prefab.enableCollision = collisionEnabled;
+            prefab.enablePush = pushEnabled;
+        }
     }
 
     private void ApplyTierStyle(
@@ -161,7 +244,6 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
                 break;
             case CombatImpactTier.Defeat:
                 number.SetColor(defeatDamageColor);
-                number.SetScale(defeatDamageScale);
                 break;
         }
     }
@@ -173,13 +255,126 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
-        Vector3 position = transform.position + statusOffset;
-        if (followTarget)
+        Vector3 localOffset = spawnLayout.FindAvailableOffset(
+            statusOffset,
+            minimumSpawnSeparation);
+        Vector3 position = transform.position + localOffset;
+        DamageNumber number = SpawnWithoutSpamMovement(
+            prefab,
+            position,
+            statusText);
+        ConfigureSpawnedNumber(number, localOffset);
+    }
+}
+
+internal sealed class DamageNumberSpawnLayout
+{
+    private readonly List<Reservation> reservations =
+        new List<Reservation>();
+
+    public Vector3 FindAvailableOffset(
+        Vector3 requestedOffset,
+        float minimumSeparation)
+    {
+        RemoveInactiveReservations();
+
+        float separation = Mathf.Max(0f, minimumSeparation);
+
+        if (separation <= 0f)
         {
-            prefab.Spawn(position, statusText, transform);
-            return;
+            return requestedOffset;
         }
 
-        prefab.Spawn(position, statusText);
+        int candidateCount = reservations.Count * 3 + 16;
+
+        for (int index = 0; index < candidateCount; index++)
+        {
+            Vector3 candidate = requestedOffset
+                + CalculateCandidateOffset(index, separation);
+
+            if (!OverlapsReservation(candidate, separation))
+            {
+                return candidate;
+            }
+        }
+
+        return requestedOffset
+            + Vector3.up * separation * (reservations.Count + 1);
+    }
+
+    public void Track(Vector3 localOffset, DamageNumber number)
+    {
+        if (number != null)
+        {
+            reservations.Add(new Reservation(localOffset, number));
+        }
+    }
+
+    public void Clear()
+    {
+        reservations.Clear();
+    }
+
+    private void RemoveInactiveReservations()
+    {
+        for (int index = reservations.Count - 1; index >= 0; index--)
+        {
+            DamageNumber number = reservations[index].Number;
+
+            if (number == null || !number.isActiveAndEnabled)
+            {
+                reservations.RemoveAt(index);
+            }
+        }
+    }
+
+    private bool OverlapsReservation(
+        Vector3 candidate,
+        float minimumSeparation)
+    {
+        Vector2 candidatePosition = candidate;
+
+        foreach (Reservation reservation in reservations)
+        {
+            Vector2 reservedPosition = reservation.LocalOffset;
+
+            if (Vector2.Distance(candidatePosition, reservedPosition)
+                < minimumSeparation)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Vector3 CalculateCandidateOffset(
+        int index,
+        float separation)
+    {
+        if (index <= 0)
+        {
+            return Vector3.zero;
+        }
+
+        int gridIndex = index - 1;
+        int row = gridIndex / 3 + 1;
+        int column = gridIndex % 3 - 1;
+        return new Vector3(
+            column * separation,
+            row * separation,
+            0f);
+    }
+
+    private readonly struct Reservation
+    {
+        public Reservation(Vector3 localOffset, DamageNumber number)
+        {
+            LocalOffset = localOffset;
+            Number = number;
+        }
+
+        public Vector3 LocalOffset { get; }
+        public DamageNumber Number { get; }
     }
 }

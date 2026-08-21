@@ -51,7 +51,7 @@
 * `shotInterval`을 추가하고 기본값을 0.2초로 설정합니다.
 * Shoot 한 번에 장전된 탄환을 `shotInterval` 간격으로 전부 순차 발사합니다.
 * 각 탄환 발사 시 `Panel | Floating > Bullet FeedBack Image`를 해당 탄환의 Primary Line Color와 알파 0.2로 활성화하고 `shotInterval` 동안 알파를 0까지 감소시킵니다.
-* 연속 발사 중 장전, 추가 발사, 이동, 회전, 대기를 포함한 모든 플레이어 행동을 실행하지 않습니다.
+* 연속 발사 중 장전, 추가 발사, 이동, 회전, 약실 교환을 포함한 모든 플레이어 행동을 실행하지 않습니다.
 * 탄환 LineRenderer는 설정한 시간 동안 알파가 서서히 0으로 감소한 뒤 제거됩니다.
 * 발사된 탄환 중 `doesNotConsumeTurn`이 false인 탄환이 하나라도 있으면 전체 발사 완료 후 턴을 한 번 소비합니다.
 * 이동하는 Projectile 대신 LineRenderer를 즉시 표시합니다.
@@ -186,7 +186,7 @@
 
 현재 셔플 순서인 `deck`, 장전 순서인 `loadedBullets`, 발사 완료 순서인 `graveyard`는 `Runtime State` 아래의 직렬화 필드로 선언해 Play Mode Inspector에서 확인할 수 있다. 외부 UI에는 `Deck`, `LoadedBullets`, `Graveyard`, `MaxReloadAmount` 읽기 전용 프로퍼티와 `StateChanged` 이벤트를 제공한다. 리스트의 끝을 장전 큐의 위로 사용하며 `TryFireLoadedBullet`은 마지막에 장전한 탄환부터 제거해 무덤 끝에 추가한다.
 
-`PlayerShoot`은 R, Space, 마우스 왼쪽 버튼을 새 Input System으로 처리하고 공개 `Reload`, `Shoot` 메소드를 제공한다. `shotInterval`은 기본 0.2초이며, `Shoot`은 Coroutine을 시작해 장전 목록의 마지막 탄환부터 LIFO 순서로 전부 발사한다. 연속 발사 중에는 `isFiring`으로 R, Space, 마우스 발사와 UI의 Reload 및 Shoot 재호출을 막는다. 동시에 `PlayerMove.SetShooting(true)`를 전달해 키보드·마우스 및 UI에서 호출되는 이동, 회전, 대기도 모두 차단한다. 발사 묶음의 턴 완료 처리까지 끝난 뒤 잠금을 해제하며 PlayerShoot이 비활성화될 때도 잠금 상태를 복구한다. `Time.frameCount`를 이용한 같은 프레임 중복 방어도 유지했다. UI 위의 마우스 클릭은 Inspector에서 연결한 `EventSystem`으로 판별해 월드 발사 입력에서 제외한다.
+`PlayerShoot`은 R, S, Space, 마우스 왼쪽 버튼을 새 Input System으로 처리하고 공개 `Reload`, `EjectNextLoadedBullet`, `Shoot` 메소드를 제공한다. `shotInterval`은 기본 0.2초이며, `Shoot`은 Coroutine을 시작해 장전 목록의 마지막 탄환부터 LIFO 순서로 전부 발사한다. S 키 또는 약실 교환 버튼은 다음 발사 예정 탄환 한 발을 사용한 탄환 순환으로 옮긴다. 연속 발사 중에는 `isFiring`으로 R, S, Space, 마우스 발사와 UI의 Reload, 약실 교환 및 Shoot 재호출을 막는다. 동시에 `PlayerMove.SetShooting(true)`를 전달해 키보드·마우스 및 UI에서 호출되는 이동과 회전도 차단한다. 발사 묶음의 턴 완료 처리까지 끝난 뒤 잠금을 해제하며 PlayerShoot이 비활성화될 때도 잠금 상태를 복구한다. `Time.frameCount`를 이용한 같은 프레임 중복 방어도 유지했다. UI 위의 마우스 클릭은 Inspector에서 연결한 `EventSystem`으로 판별해 월드 발사 입력에서 제외한다.
 
 `Stage 1`의 `Panel | Floating > Bullet FeedBack Image`를 `PlayerShoot > Bullet Feedback Image`에 직접 연결했다. 탄환이 실제로 장전 목록에서 제거된 직후 해당 탄환의 `Primary Line Color` RGB와 고정 알파 0.2를 적용해 활성화하며, 현재 `Shot Interval` 동안 알파만 선형으로 0까지 감소시킨 뒤 비활성화한다. 다음 탄환이 먼저 발사되면 기존 페이드를 중단하고 새 탄환 색상으로 처음부터 다시 시작한다. 일시정지 중에는 페이드 시간이 진행되지 않으며, 전체 화면 Image가 UI 입력을 가로채지 않도록 Raycast Target을 런타임에 해제한다.
 
@@ -289,7 +289,7 @@ Gain과 Camera 위치 보간에는 기존 `Mathf.SmoothStep`보다 시작과 끝
   * 기본 설정에서는 장전된 여러 탄환이 0.2초 간격으로 전부 발사된다.
   * 각 탄환 발사 직후 Bullet Feedback Image가 해당 Primary Line Color로 교체되고 0.2에서 0까지 감소한 뒤 비활성화된다.
   * 성공한 장전은 한 발마다 턴을 소비하며, 연속 발사 묶음은 턴 소비 탄환이 하나라도 있을 때 완료 후 턴을 한 번 소비한다.
-  * 발사 코루틴 시작부터 턴 완료 처리까지 PlayerMove의 이동, 회전, 대기가 잠기고 코루틴 종료 또는 PlayerShoot 비활성화 시 잠금이 해제된다.
+  * 발사 코루틴 시작부터 턴 완료 처리까지 PlayerMove의 이동과 회전, PlayerShoot의 약실 교환이 잠기고 코루틴 종료 또는 PlayerShoot 비활성화 시 잠금이 해제된다.
   * BulletLine은 Fade Duration 동안 알파가 0까지 감소하며 일시정지 중에는 페이드가 멈춘다.
   * 발사된 모든 탄환의 `DoesNotConsumeTurn`이 true이면 정상 발사와 무덤 이동 후에도 턴을 소비하지 않는다.
   * `RecoilStrength` 또는 `CameraRecoilScale`이 0이면 Perlin Gain을 변경하지 않는다.
@@ -327,7 +327,7 @@ Player 프리팹과 Scene에는 프로젝트별 BulletData 목록과 카메라 �
 
 보유 탄환은 게임 시작 시 복사·셔플된 덱, 최대 수량까지 누적되는 장전 탄환 목록, 발사된 탄환이 쌓이는 무덤으로 관리된다. 덱이 소진되면 다음 장전 시 무덤 전체가 다시 덱으로 순환한다. 세 목록은 Play Mode의 DeckManager Inspector에서 현재 순서대로 확인할 수 있다.
 
-R 키와 공개 `Reload` 메소드는 최대 장전 수량까지 한 발씩 추가 장전한다. Space 키·마우스 왼쪽 버튼·공개 `Shoot` 메소드는 마지막에 장전한 탄환부터 LIFO 순서로, 설정된 시간 간격을 두고 플레이어가 바라보는 X축에 발사한다. 기본값은 최대 6발과 발사 간격 0.2초다. 발사 중에는 이동, 회전, 대기를 포함한 모든 플레이어 행동이 잠긴다. 성공 여부와 발사 묶음의 탄환 설정에 따라 기존 `PlayerMove`의 턴 카운트와 이벤트가 갱신된다.
+R 키와 공개 `Reload` 메소드는 최대 장전 수량까지 한 발씩 추가 장전한다. S 키와 공개 `EjectNextLoadedBullet` 메소드는 다음 발사 예정 탄환 한 발을 실린더에서 사용한 탄환 순환으로 옮기며, 빈 실린더에서는 턴을 소비하지 않는다. Space 키·마우스 왼쪽 버튼·공개 `Shoot` 메소드는 마지막에 장전한 탄환부터 LIFO 순서로, 설정된 시간 간격을 두고 플레이어가 바라보는 X축에 발사한다. 기본값은 최대 6발과 발사 간격 0.2초다. 발사 중에는 이동, 회전, 약실 교환을 포함한 모든 플레이어 행동이 잠긴다. 성공 여부와 발사 묶음의 탄환 설정에 따라 기존 `PlayerMove`의 턴 카운트와 이벤트가 갱신된다.
 
 Player 프리팹의 `PlayerCylinderUI`는 `Cylinder Transform`, 위쪽부터 순서대로 등록된 `Bullet Images`, `Rotation Step = 60`, `Rotation Duration = 0.15`를 사용한다. 첫 장전 시 `Image | Cylinder`가 켜지고 추가 장전은 `-60`도, 발사 제거는 `+60`도로 부드럽게 회전한다. 현재 장전 수가 0이면 Cylinder가 꺼지며 마지막 발사 후에도 제거 회전이 끝난 즉시 비활성화된다. `PlayerShoot > Cylinder UI`에는 같은 루트의 PlayerCylinderUI가 연결되어 있다.
 

@@ -103,7 +103,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
     private bool moved;
     private bool rotated;
-    private bool waited;
+    private bool bulletEjected;
     private bool enemyActionInspected;
     private int reloadCount;
     private bool bulletInfoInspected;
@@ -323,7 +323,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         combatGuideStarted = true;
         moved = false;
         rotated = false;
-        waited = false;
+        bulletEjected = false;
         enemyActionInspected = false;
         reloadCount = 0;
         bulletInfoInspected = false;
@@ -880,7 +880,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         {
             CombatStep.Move => moved,
             CombatStep.Rotate => rotated,
-            CombatStep.Wait => waited,
+            CombatStep.EjectNextBullet => bulletEjected,
             CombatStep.InspectEnemyAction => enemyActionInspected,
             CombatStep.ReloadThree => reloadCount >= 3,
             CombatStep.InspectBulletInfo => bulletInfoInspected,
@@ -911,7 +911,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         int loadedBulletCount = deckManager?.LoadedBullets.Count ?? 0;
 
         // Avoiding guaranteed incoming damage always outranks instructional
-        // setup such as facing an enemy, entering range, waiting, or reloading.
+        // setup such as facing an enemy, entering range, ejecting, or reloading.
         if (IsPlayerInPreparedAttackDanger())
         {
             priority = new PriorityMission(
@@ -926,12 +926,23 @@ public sealed class FirstRunGuideController : MonoBehaviour
             case CombatStep.Move:
                 return TryGetMovePriority(out priority);
 
+            case CombatStep.EjectNextBullet:
+                if (loadedBulletCount <= 0)
+                {
+                    priority = new PriorityMission(
+                        "배출할 탄환 한 발 장전",
+                        "Button | Reload");
+                    return true;
+                }
+
+                break;
+
             case CombatStep.InspectEnemyAction:
                 if (!HasInspectableEnemyAction())
                 {
                     priority = new PriorityMission(
-                        "적 행동 아이콘이 나타날 때까지 한 턴 진행",
-                        "Button | Wait");
+                        "적 행동 아이콘이 나타날 때까지 회전하며 한 턴 진행",
+                        "Button | Rotate");
                     return true;
                 }
 
@@ -1066,8 +1077,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         else
         {
             priority = new PriorityMission(
-                "이동 경로가 열릴 때까지 한 턴 대기",
-                "Button | Wait");
+                "이동 경로가 열릴 때까지 회전하며 한 턴 진행",
+                "Button | Rotate");
         }
 
         return true;
@@ -1124,8 +1135,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         else
         {
             priority = new PriorityMission(
-                "적이 등장할 때까지 한 턴 진행",
-                "Button | Wait");
+                "적이 등장할 때까지 회전하며 한 턴 진행",
+                "Button | Rotate");
         }
 
         return true;
@@ -1137,8 +1148,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (!TryGetNearestEnemy(out int direction, out int distance))
         {
             priority = new PriorityMission(
-                "적이 등장할 때까지 한 턴 진행",
-                "Button | Wait");
+                "적이 등장할 때까지 회전하며 한 턴 진행",
+                "Button | Rotate");
             return true;
         }
 
@@ -1162,8 +1173,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (playerMove != null && !playerMove.CanPush)
         {
             priority = new PriorityMission(
-                $"발차기 재사용까지 대기 ({playerMove.RemainingPushCooldownTurns}턴)",
-                "Button | Wait");
+                $"발차기 재사용까지 회전 ({playerMove.RemainingPushCooldownTurns}턴)",
+                "Button | Rotate");
             return true;
         }
 
@@ -1429,8 +1440,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
             case PlayerBehaviourAction.Rotate:
                 rotated = true;
                 break;
-            case PlayerBehaviourAction.Wait:
-                waited = true;
+            case PlayerBehaviourAction.EjectNextBullet:
+                bulletEjected = true;
                 break;
             case PlayerBehaviourAction.Reload:
                 reloadCount++;

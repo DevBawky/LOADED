@@ -194,6 +194,23 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public bool TryEjectNextLoadedBullet(out BulletInstance bullet)
+    {
+        if (loadedBullets.Count == 0)
+        {
+            bullet = null;
+            return false;
+        }
+
+        int nextShotIndex = loadedBullets.Count - 1;
+        bullet = loadedBullets[nextShotIndex];
+        loadedBullets.RemoveAt(nextShotIndex);
+        graveyard.Add(bullet);
+        FinalizeNextCycle();
+        StateChanged?.Invoke();
+        return true;
+    }
+
     public bool TrySwapLoadedBullets(int firstIndex, int secondIndex)
     {
         if (firstIndex < 0 || firstIndex >= loadedBullets.Count

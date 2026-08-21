@@ -66,7 +66,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         new Color(1f, 0.18f, 0.08f, 1f);
     [Min(0f)]
     [FormerlySerializedAs("comboFeedbackStrengthPerAdditionalKill")]
-    [SerializeField] private float firingSequenceFeedbackStrengthPerKill = 0.2f;
+    [FormerlySerializedAs("firingSequenceFeedbackStrengthPerKill")]
+    [SerializeField] private float comboFeedbackStrengthPerKill = 0.2f;
 
     [Header("Kill Combo Bonus")]
     [SerializeField] private TextMeshPro killComboTextPrefab;
@@ -143,10 +144,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float explosionShakeMultiplier = 1.5f;
     [Min(0f)]
     [SerializeField] private float killShakeMultiplier = 1f;
-    [Min(0f)]
-    [SerializeField] private float secondComboKillShakeMultiplier = 1.3f;
-    [Min(0f)]
-    [SerializeField] private float laterComboKillShakeMultiplier = 1.5f;
 
     [Header("Volume Pulse")]
     [Min(0.01f)]
@@ -200,12 +197,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private int comboCount;
     private int comboTurnsRemaining;
     private int firingSequenceDefeatCount;
-    private float firingSequenceFeedbackMultiplier = 1f;
     private float firingSequenceBaseIntensity;
     private int cylinderDamage;
     private float displayedCylinderDamage;
     private float damageHoldRemaining;
     private float comboPunchRemaining;
+    private float comboPunchStrengthMultiplier = 1f;
     private float damagePunchRemaining;
     private float overkillFlashRemaining;
     private bool cylinderActive;
@@ -257,10 +254,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     public int ComboCount => comboCount;
     public float NextFiringSequenceDefeatFeedbackMultiplier =>
-        GetFiringSequenceFeedbackMultiplier(
-            firingSequenceDefeatCount >= int.MaxValue
+        GetComboFeedbackMultiplier(
+            comboCount >= int.MaxValue
                 ? int.MaxValue
-                : firingSequenceDefeatCount + 1);
+                : comboCount + 1);
     public int CylinderDamage => cylinderDamage;
 
     public void CaptureRunState(RunSaveData saveData)
@@ -300,6 +297,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         cylinderActive = saveData.cylinderActive;
         damageHoldRemaining = cylinderDamage > 0 ? 1.35f : 0f;
         comboPunchRemaining = 0f;
+        comboPunchStrengthMultiplier = 1f;
         damagePunchRemaining = 0f;
         overkillFlashRemaining = 0f;
         BindUi();
@@ -433,6 +431,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         displayedCylinderDamage = 0f;
         damageHoldRemaining = 0f;
         comboPunchRemaining = 0f;
+        comboPunchStrengthMultiplier = 1f;
         damagePunchRemaining = 0f;
         overkillFlashRemaining = 0f;
         cylinderActive = false;
@@ -596,7 +595,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
         comboCount = comboCount >= int.MaxValue
             ? int.MaxValue
             : comboCount + 1;
-        SoundManager.PlayComboDie(comboCount);
         GameStatistics.RecordComboKills(comboCount);
         if (countsForFiringSequence)
         {
@@ -604,14 +602,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 firingSequenceDefeatCount >= int.MaxValue
                     ? int.MaxValue
                     : firingSequenceDefeatCount + 1;
-            firingSequenceFeedbackMultiplier =
-                GetFiringSequenceFeedbackMultiplier(
-                    firingSequenceDefeatCount);
         }
 
-        float defeatFeedbackMultiplier = countsForFiringSequence
-            ? firingSequenceFeedbackMultiplier
-            : 1f;
+        float defeatFeedbackMultiplier =
+            GetComboFeedbackMultiplier(comboCount);
+        SoundManager.PlayComboDie(comboCount);
         float overkillPercent = targetMaxHealth <= 0
             ? 0f
             : Mathf.Max(0f, appliedDamage - targetMaxHealth)
@@ -625,15 +620,18 @@ public sealed class CombatFeedbackController : MonoBehaviour
         StopTurnDrainAnimation();
         RefreshComboTurnValues();
         comboPunchRemaining = 0.3f;
+        comboPunchStrengthMultiplier = defeatFeedbackMultiplier;
         UpdateComboText();
 
         if (countsForFiringSequence)
         {
-            SpawnKillComboText(worldPosition);
+            SpawnKillComboText(
+                worldPosition,
+                defeatFeedbackMultiplier);
         }
 
         CombatCameraShake.Play(
-            cameraShakeStrength * GetKillShakeMultiplier(comboCount),
+            cameraShakeStrength * killShakeMultiplier,
             cameraShakeDuration);
 
         if (comboCount > 1 && comboGoldPerKill > 0)
@@ -728,19 +726,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
             false);
     }
 
-    private float GetKillShakeMultiplier(int currentComboCount)
-    {
-        if (currentComboCount <= 1)
-        {
-            return killShakeMultiplier;
-        }
-
-        return currentComboCount == 2
-            ? secondComboKillShakeMultiplier
-            : laterComboKillShakeMultiplier;
-    }
-
-    private void SpawnKillComboText(Vector3 worldPosition)
+    private void SpawnKillComboText(
+        Vector3 worldPosition,
+        float feedbackMultiplier)
     {
         int cylinderKillCount = Mathf.Max(1, firingSequenceDefeatCount);
         string message = cylinderKillCount <= 1
@@ -752,13 +740,21 @@ public sealed class CombatFeedbackController : MonoBehaviour
             2 => secondKillTextColor,
             _ => highComboTextColor
         };
-        float comboGrowth = 1f + Mathf.Min(
+        float sequenceGrowth = 1f + Mathf.Min(
             maximumComboTextScaleBonus,
             Mathf.Max(0, cylinderKillCount - 1) * 0.025f);
+        float comboGrowth = sequenceGrowth * Mathf.Lerp(
+            1f,
+            Mathf.Max(1f, feedbackMultiplier),
+            0.5f);
         float duration = killComboTextDuration + Mathf.Min(
             maximumKillComboTextDurationBonus,
             Mathf.Max(0, cylinderKillCount - 1)
                 * killComboTextDurationPerAdditionalKill);
+        duration *= Mathf.Lerp(
+            1f,
+            Mathf.Max(1f, feedbackMultiplier),
+            0.2f);
 
         SpawnAnimatedCombatText(
             "Text | Kill Combo",
@@ -1026,6 +1022,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         displayedCylinderDamage = 0f;
         damageHoldRemaining = 0f;
         comboPunchRemaining = 0.22f;
+        comboPunchStrengthMultiplier = 1f;
         UpdateComboText();
         UpdateDamageText(false);
         RefreshComboTurnValues();
@@ -1091,7 +1088,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             comboBaseRotation,
             comboPunchRemaining,
             0.3f,
-            0.34f,
+            0.34f * comboPunchStrengthMultiplier,
             3.5f);
         ApplyPunch(
             damageRect,
@@ -1184,16 +1181,24 @@ public sealed class CombatFeedbackController : MonoBehaviour
         return comboLowColor;
     }
 
-    private float GetFiringSequenceFeedbackMultiplier(int killCount)
+    internal float GetComboFeedbackMultiplier(int killCount)
+    {
+        return CalculateComboFeedbackMultiplier(
+            killCount,
+            comboFeedbackStrengthPerKill);
+    }
+
+    internal static float CalculateComboFeedbackMultiplier(
+        int killCount,
+        float strengthPerKill)
     {
         return 1f + Mathf.Max(0, killCount - 1)
-            * Mathf.Max(0f, firingSequenceFeedbackStrengthPerKill);
+            * Mathf.Max(0f, strengthPerKill);
     }
 
     private void ResetFiringSequenceFeedback()
     {
         firingSequenceDefeatCount = 0;
-        firingSequenceFeedbackMultiplier = 1f;
         firingSequenceBaseIntensity = 0f;
     }
 
