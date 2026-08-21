@@ -31,7 +31,7 @@ MonoBehaviour:
   effects: []
   conditionalEvents: []
   penetrationChances: []
-  shotgunShotCount: 5
+  shotgunShotCount: 3
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.5, g: 0, b: 0, a: 1}
   secondaryLineColor: {r: 0.3679245, g: 0, b: 0.3570665, a: 1}
@@ -55,7 +55,7 @@ MonoBehaviour:
     upgradeCost: 10
   - description: "\uAE30\uBCF8\uC801\uC778 \uC0B0\uD0C4 \uD0C4\uD658\uC785\uB2C8\uB2E4."
     damage: 8
-    maxRange: 3
+    maxRange: 1
     criticalChance: 27
     criticalDamageMultiplier: 1.8
     effects: []
@@ -68,7 +68,7 @@ MonoBehaviour:
     upgradeCost: 15
   - description: "\uAE30\uBCF8\uC801\uC778 \uC0B0\uD0C4 \uD0C4\uD658\uC785\uB2C8\uB2E4."
     damage: 10
-    maxRange: 4
+    maxRange: 1
     criticalChance: 35
     criticalDamageMultiplier: 2
     effects: []

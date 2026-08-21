@@ -474,7 +474,9 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
         }
 
         Image result = damagePreviewImages[index];
-        result.transform.SetAsLastSibling();
+        // HP_Value also contains the numeric health text. Keep the preview at
+        // the bottom of that child stack so the number always renders above it.
+        result.transform.SetAsFirstSibling();
         result.gameObject.SetActive(true);
         return result;
     }
