@@ -132,6 +132,8 @@
 
 발사음은 `FireSingleShot`이 유효한 BulletLine을 만든 직후 한 번 재생한다. 같은 발사에서 이미 확정한 `isCritical` 값이 true면 `Critical Shot Sfx`, false면 `Normal Shot Sfx`를 사용하므로 소리와 실제 피해 판정이 어긋나지 않는다. 전탄 발사의 각 탄환, 허공 전탄 발사, `ChainFire`와 `ShellCollector` 추가 사격에도 개별적으로 적용된다. `PowderPouch`는 총구에서 발사되는 탄환이 아니므로 발사음을 재생하지 않는다. 과잉 사격 방지로 취소된 발사도 소리가 나지 않는다.
 
+유효한 BulletLine 생성 뒤 호출되는 `CombatPresentation.PlayShot`은 기존 절차형 총구 섬광과 잔불에 더해 `CombatFeedbackController.PlayShotOpticalKick`을 실행한다. 이 펄스는 총구의 화면 위치와 사격 방향, 탄환 Primary Color, 이미 확정된 크리티컬 여부를 사용해 약 `0.06~0.08`초 동안 완화된 중심 당김과 방향성 렌즈 이동, 약한 색 분리, Primary Color의 희미한 전면 섬광을 적용한다. 피해 판정과 발사 완료는 이 선택적 연출의 완료를 기다리지 않는다.
+
 기존 `Shot Sfx` 직렬화 필드는 `FormerlySerializedAs`를 통해 `Critical Shot Sfx`로 마이그레이션했다. Player 프리팹에 이미 등록되어 있던 10개 사격 클립과 볼륨 1, 피치 0.9~1.1 설정은 모두 크리티컬 목록에 유지되며, 새 `Normal Shot Sfx`는 빈 목록과 볼륨 1, 피치 0.95~1.05 기본값으로 추가했다.
 
 목록의 null 항목은 자동으로 제외하며 유효한 클립 중 하나를 동일 확률로 선택한다. 최소 피치가 최대 피치보다 크게 입력되어도 런타임에서 작은 값을 최소, 큰 값을 최대로 정규화한다. 두 값이 같으면 고정 피치로 재생한다.
@@ -194,7 +196,7 @@
 
 성공한 한 발 장전은 `PlayerMove.CompleteTurn`을 호출한다. 연속 발사에서는 실제 발사된 탄환 중 `DoesNotConsumeTurn`이 false인 탄환이 하나라도 있을 때 모든 발사가 끝난 뒤 `CompleteTurn`을 한 번만 호출한다. 모든 탄환이 턴 비소비 탄환이면 턴을 소비하지 않는다. 실패한 장전과 한 발도 발사하지 못한 Shoot에서는 호출하지 않는다. 기존 `TurnCount`와 `TurnCompleted` 이벤트를 그대로 사용하기 위해 `CompleteTurn`의 접근 범위만 public으로 변경했다.
 
-`BulletLine`은 전달된 `BulletData`를 `Data`에 보관한다. 후속 Enemy 시스템 연결에서 `PlayerShoot`이 정면 사거리 안의 적을 가까운 순서로 찾고 공격력과 관통 확률을 적용하도록 확장했다. 260718 후속 작업에서 독, 기절, 표식, 밀치기, 위치 교환, 흡혈, 약화를 확률형 `Effects` 배열로 실행한다. 이동하는 Projectile은 제거했으며 발사선은 `Fade Duration` 동안 시작 색상과 끝 색상의 알파를 SmoothStep으로 0까지 보간한 뒤 자동 제거된다. 일시정지 중에는 페이드 시간이 진행되지 않는다.
+`BulletLine`은 전달된 `BulletData`를 `Data`에 보관한다. 후속 Enemy 시스템 연결에서 `PlayerShoot`이 정면 사거리 안의 적을 가까운 순서로 찾고 공격력과 관통 확률을 적용하도록 확장했다. 260718 후속 작업에서 독, 기절, 표식, 밀치기, 위치 교환, 흡혈, 약화를 확률형 `Effects` 배열로 실행한다. 이동하는 Projectile은 제거했으며 발사선은 `Fade Duration` 동안 시작 색상과 끝 색상의 알파를 SmoothStep으로 0까지 보간한 뒤 자동 제거된다. 일시정지 중에는 페이드 시간이 진행되지 않는다. 화면을 덮던 흰색 코어는 제거하고 탄환의 주·보조 색상으로 구성한 얇은 코어와 글로우를 사용한다. 프리팹의 오래된 폭·지속 시간 Override가 남아 있어도 런타임에서 폭 `0.16`, 표시 시간 `0.18`초를 넘지 않도록 제한해 슬로 모션 중에도 궤적이 화면에 길게 남지 않는다.
 
 `PlayerShoot`은 발사한 `BulletInstance`의 현재 레벨에서 `Critical Chance`와 `Critical Damage Multiplier`를 함께 조회한다. 실제 발사에 성공한 탄환마다 한 번 판정하고 관통 대상 전체가 그 결과를 공유한다. Player 프리팹에는 같은 루트의 `PlayerHealth`를 직접 연결했으며, 골드 이벤트는 `CurrencyManager` 직렬화 참조 또는 런타임 씬 참조를 사용한다. 상세 계산 및 조건부 이벤트 순서는 `0718_Combat_BulletEffects.md`를 따른다.
 
@@ -210,7 +212,7 @@
 
 후속 발사 연출 변경으로 적 또는 타일의 Y를 발사선 끝점에 직접 사용하지 않고, 먼저 끝점 Y와 Z를 Fire Point의 값으로 맞춰 수평 기준 벡터를 만든다. 각 탄환을 발사할 때마다 이 벡터를 Z축 기준 `-Max Random Shot Angle`부터 `+Max Random Shot Angle` 사이에서 무작위로 회전한다. 기본값은 5도다. 명중 대상, 관통, 피해 판정은 기존 타일 기반 결과를 그대로 사용하므로 랜덤 각도는 LineRenderer 연출에만 영향을 주며 명중률을 변경하지 않는다.
 
-Inspector에서 `DeckManager > Deck Settings > Max Reload Amount`로 최대 장전 수량을 조절하고, `PlayerShoot > Shot Interval`로 각 발사 사이의 시간과 Bullet Feedback 페이드 시간을 함께 조절한다. `PlayerShoot > Bullet Feedback Image`에는 `Panel | Floating > Bullet FeedBack Image`의 Image 컴포넌트를 연결한다. `PlayerShoot > Shot Presentation > Max Random Shot Angle`은 발사선의 최대 각도 편차 N을 도 단위로 설정하며 0이면 Fire Point Y의 완전한 수평선이 된다. Bullet 프리팹의 `BulletLine > Fade Duration`으로 각 발사선이 완전히 투명해질 때까지의 시간을 조절한다. 연속 발사 도중 일시정지하면 발사 대기 시간, Bullet Feedback과 LineRenderer 페이드 시간이 모두 진행하지 않으며 재개 후 계속된다.
+Inspector에서 `DeckManager > Deck Settings > Max Reload Amount`로 최대 장전 수량을 조절하고, `PlayerShoot > Shot Interval`로 각 발사 사이의 시간과 Bullet Feedback 페이드 시간을 함께 조절한다. `PlayerShoot > Bullet Feedback Image`에는 `Panel | Floating > Bullet FeedBack Image`의 Image 컴포넌트를 연결한다. `PlayerShoot > Shot Presentation > Max Random Shot Angle`은 발사선의 최대 각도 편차 N을 도 단위로 설정하며 0이면 Fire Point Y의 완전한 수평선이 된다. Bullet 프리팹의 `BulletLine > Fade Duration`으로 각 발사선이 완전히 투명해질 때까지의 시간을 조절하되 `Maximum Visible Duration`을 넘지 않는다. `Maximum Trail Width`는 오래된 프리팹 폭 Override와 탄환별 배율을 적용한 뒤의 최종 폭 상한이다. 연속 발사 도중 일시정지하면 발사 대기 시간, Bullet Feedback과 LineRenderer 페이드 시간이 모두 진행하지 않으며 재개 후 계속된다.
 
 프로젝트에 설치된 Cinemachine 3.1.7의 `CinemachineBasicMultiChannelPerlin`을 사용한다. `PlayerShoot`은 Inspector에서 `recoilNoise`와 `recoilCameraTransform`을 직접 참조하고 런타임 자동 탐색을 사용하지 않는다. Scene의 Main Camera에 연결된 Noise Profile을 유지하면서 `AmplitudeGain`과 `FrequencyGain`만 런타임에 조절한다.
 
@@ -331,7 +333,7 @@ R 키와 공개 `Reload` 메소드는 최대 장전 수량까지 한 발씩 추�
 
 Player 프리팹의 `PlayerCylinderUI`는 `Cylinder Transform`, 위쪽부터 순서대로 등록된 `Bullet Images`, `Rotation Step = 60`, `Rotation Duration = 0.15`를 사용한다. 첫 장전 시 `Image | Cylinder`가 켜지고 추가 장전은 `-60`도, 발사 제거는 `+60`도로 부드럽게 회전한다. 현재 장전 수가 0이면 Cylinder가 꺼지며 마지막 발사 후에도 제거 회전이 끝난 즉시 비활성화된다. `PlayerShoot > Cylinder UI`에는 같은 루트의 PlayerCylinderUI가 연결되어 있다.
 
-각 BulletLine은 프리팹의 `Fade Duration` 동안 RGB를 유지한 채 알파만 부드럽게 0으로 줄어든 뒤 제거된다. SampleScene에서 사용하는 Bullet 프리팹의 기본 Fade Duration은 0.2초다.
+각 BulletLine은 설정된 `Fade Duration`과 `Maximum Visible Duration` 중 짧은 시간 동안 RGB를 유지한 채 알파만 부드럽게 0으로 줄어든 뒤 제거된다. 페이드는 비스케일 시간을 사용하므로 히트스톱·슬로 모션의 강도와 무관하게 같은 실제 시간으로 보인다.
 
 발사 시 Fire Point에서 관통 판정을 통과한 마지막 적의 X 거리까지 LineRenderer가 즉시 표시된다. 발사선은 Fire Point Y를 수평 기준으로 삼고 탄환마다 `Max Random Shot Angle` 범위의 시각적 각도 편차를 적용한다. 적중한 적은 각도 연출과 관계없이 `BulletData.Damage`만큼 체력이 감소한다. 적을 대상으로 시작하면 매 발 직전에 유효 표적을 다시 선택하고, 예상 피해상 이미 처치될 적에게 다음 탄환을 중복 배정하지 않는다. 반면 발사 시작 시 표적이 없으면 허공 전탄 발사로 판정해 모든 장전 탄환을 최대 사거리 방향으로 발사한다.
 

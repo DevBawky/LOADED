@@ -22,6 +22,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         Shader.PropertyToID("_KillImpactDirections");
     private static readonly int FullscreenParamsId =
         Shader.PropertyToID("_KillImpactParams");
+    private static readonly int FullscreenColorsId =
+        Shader.PropertyToID("_KillImpactColors");
     private static readonly int FullscreenColorId =
         Shader.PropertyToID("_KillImpactColor");
     private static readonly int FullscreenIntensityId =
@@ -48,8 +50,56 @@ public sealed class CombatFeedbackController : MonoBehaviour
         public float FeedbackMultiplier;
         public float StartStrength;
         public bool Restartable;
-        public bool Critical;
+        public CombatImpactTier Tier;
+        public Color Color;
         public bool FinalKill;
+        public bool ShotPulse;
+    }
+
+    public readonly struct DefeatPresentationCue
+    {
+        public DefeatPresentationCue(
+            float feedbackMultiplier,
+            float presentationTime,
+            bool wasFinalEnemy)
+        {
+            FeedbackMultiplier = Mathf.Max(0f, feedbackMultiplier);
+            PresentationTime = Mathf.Max(0f, presentationTime);
+            WasFinalEnemy = wasFinalEnemy;
+        }
+
+        public float FeedbackMultiplier { get; }
+        public float PresentationTime { get; }
+        public bool WasFinalEnemy { get; }
+    }
+
+    private readonly struct DefeatFeedbackRequest
+    {
+        public DefeatFeedbackRequest(
+            Vector3 worldPosition,
+            int horizontalDirection,
+            int firingSequenceDefeatCount,
+            float feedbackMultiplier,
+            float baseIntensity,
+            float amplifiedIntensity,
+            bool showComboText)
+        {
+            WorldPosition = worldPosition;
+            HorizontalDirection = horizontalDirection;
+            FiringSequenceDefeatCount = firingSequenceDefeatCount;
+            FeedbackMultiplier = feedbackMultiplier;
+            BaseIntensity = baseIntensity;
+            AmplifiedIntensity = amplifiedIntensity;
+            ShowComboText = showComboText;
+        }
+
+        public Vector3 WorldPosition { get; }
+        public int HorizontalDirection { get; }
+        public int FiringSequenceDefeatCount { get; }
+        public float FeedbackMultiplier { get; }
+        public float BaseIntensity { get; }
+        public float AmplifiedIntensity { get; }
+        public bool ShowComboText { get; }
     }
 
     [Header("Combo")]
@@ -65,9 +115,13 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private Color comboCriticalColor =
         new Color(1f, 0.18f, 0.08f, 1f);
     [Min(0f)]
+    [FormerlySerializedAs("comboFeedbackStrengthPerKill")]
     [FormerlySerializedAs("comboFeedbackStrengthPerAdditionalKill")]
     [FormerlySerializedAs("firingSequenceFeedbackStrengthPerKill")]
-    [SerializeField] private float comboFeedbackStrengthPerKill = 0.2f;
+    [SerializeField] private float firingSequenceFeedbackStrengthPerKill =
+        0.2f;
+    [Min(0.05f)]
+    [SerializeField] private float defeatPresentationInterval = 0.18f;
 
     [Header("Kill Combo Bonus")]
     [SerializeField] private TextMeshPro killComboTextPrefab;
@@ -109,7 +163,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [Range(0f, 1f)]
     [SerializeField] private float criticalVolumeStrength = 0.48f;
 
-    [Header("Devastating Hit (60% Max Health)")]
+    [Header("Devastating Hit (75% Max Health)")]
     [Range(0.05f, 1f)]
     [SerializeField] private float devastatingSlowMotionScale = 0.5f;
     [Min(0f)]
@@ -234,7 +288,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private bool contrastBaseOverride;
     private Coroutine volumePulseCoroutine;
     private float currentVolumePulseStrength;
-    private Coroutine slowMotionCoroutine;
+    private Coroutine timeEffectCoroutine;
     private readonly FullscreenImpactState[] fullscreenImpacts =
         new FullscreenImpactState[MaxFullscreenImpacts];
     private readonly Vector4[] fullscreenCenters =
@@ -243,9 +297,23 @@ public sealed class CombatFeedbackController : MonoBehaviour
         new Vector4[MaxFullscreenImpacts];
     private readonly Vector4[] fullscreenParams =
         new Vector4[MaxFullscreenImpacts];
+    private readonly Vector4[] fullscreenColors =
+        new Vector4[MaxFullscreenImpacts];
 
     private float slowMotionBaseScale = 1f;
     private bool ownsTimeScale;
+    private float hitStopRemaining;
+    private bool slowMotionActive;
+    private float slowMotionStartScale = 1f;
+    private float slowMotionCurrentScale = 1f;
+    private float slowMotionTargetScale = 1f;
+    private float slowMotionAttackDuration;
+    private float slowMotionHoldDuration;
+    private float slowMotionRecoveryDuration;
+    private float slowMotionElapsed;
+    private float defeatPresentationClock;
+    private float nextDefeatPresentationTime;
+    private int defeatPresentationGeneration;
     private CurrencyManager currencyManager;
     private readonly List<GameObject> spawnedComboTexts =
         new List<GameObject>();
@@ -254,10 +322,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     public int ComboCount => comboCount;
     public float NextFiringSequenceDefeatFeedbackMultiplier =>
-        GetComboFeedbackMultiplier(
-            comboCount >= int.MaxValue
+        GetFiringSequenceFeedbackMultiplier(
+            firingSequenceDefeatCount >= int.MaxValue
                 ? int.MaxValue
-                : comboCount + 1);
+                : firingSequenceDefeatCount + 1);
     public int CylinderDamage => cylinderDamage;
 
     public void CaptureRunState(RunSaveData saveData)
@@ -359,6 +427,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
         }
 
         float deltaTime = Time.unscaledDeltaTime;
+
+        if (!GamePauseController.IsPaused)
+        {
+            defeatPresentationClock += deltaTime;
+        }
+
         UpdateDamage(deltaTime);
         UpdateFullscreenImpacts(deltaTime);
         AnimateUi(deltaTime);
@@ -380,6 +454,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         ResetFullscreenImpact();
         ResetUiTransforms();
         ClearComboKillTexts();
+        defeatPresentationGeneration++;
+        nextDefeatPresentationTime = defeatPresentationClock;
     }
 
     private void OnDestroy() => CancelSlowMotionAndRestore();
@@ -419,9 +495,13 @@ public sealed class CombatFeedbackController : MonoBehaviour
         ResetFiringSequenceFeedback();
     }
 
-    public void ResetCombo()
+    public void ResetCombo(bool preserveActivePresentation = false)
     {
-        RestoreActiveKillFeedback();
+        if (!preserveActivePresentation)
+        {
+            RestoreActiveKillFeedback();
+        }
+
         comboCount = 0;
         ResetFiringSequenceFeedback();
         comboTurnsRemaining = 0;
@@ -525,18 +605,64 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 criticalSlowMotionRecovery);
         }
 
+    }
+
+    public void PlayOpticalImpact(
+        Vector3 worldPosition,
+        int horizontalDirection,
+        CombatImpactTier impactTier,
+        Color impactColor,
+        float feedbackMultiplier = 1f,
+        bool wasFinalEnemy = false)
+    {
+        float intensity = impactTier switch
+        {
+            CombatImpactTier.Defeat => 0.8f,
+            CombatImpactTier.Devastating => 0.72f,
+            CombatImpactTier.Critical => 0.6f,
+            _ => 0.48f
+        };
+        float duration = impactTier switch
+        {
+            CombatImpactTier.Defeat => fullscreenImpactDuration
+                * (wasFinalEnemy ? 1.08f : 0.88f),
+            CombatImpactTier.Devastating => hitFullscreenDuration * 1.7f,
+            CombatImpactTier.Critical => hitFullscreenDuration * 1.25f,
+            _ => hitFullscreenDuration * 0.9f
+        };
         QueueFullscreenImpact(
             worldPosition,
             horizontalDirection,
             intensity,
-            hitFullscreenDuration * (impactTier switch
-            {
-                CombatImpactTier.Devastating => 1.65f,
-                CombatImpactTier.Critical => 1.25f,
-                _ => 1f
-            }),
-            impactTier >= CombatImpactTier.Critical,
-            false);
+            duration,
+            impactTier,
+            impactColor,
+            wasFinalEnemy,
+            feedbackMultiplier,
+            impactTier == CombatImpactTier.Defeat);
+    }
+
+    public void PlayShotOpticalKick(
+        Vector3 worldPosition,
+        int horizontalDirection,
+        Color shotColor,
+        bool isCritical)
+    {
+        float intensity = isCritical ? 0.5f : 0.38f;
+        float duration = hitFullscreenDuration * (isCritical ? 0.58f : 0.46f);
+        QueueFullscreenImpact(
+            worldPosition,
+            horizontalDirection,
+            intensity,
+            duration,
+            isCritical
+                ? CombatImpactTier.Critical
+                : CombatImpactTier.Normal,
+            shotColor,
+            false,
+            1f,
+            false,
+            true);
     }
 
     public void RecordKickImpact(
@@ -556,7 +682,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
             horizontalDirection,
             intensity,
             kickFullscreenDuration,
-            true,
+            CombatImpactTier.Critical,
+            fullscreenImpactColor,
             false);
     }
 
@@ -581,7 +708,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             cameraShakeDuration);
     }
 
-    public void RecordDefeat(
+    public DefeatPresentationCue RecordDefeat(
         Vector3 worldPosition,
         int horizontalDirection,
         int appliedDamage,
@@ -604,9 +731,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
                     : firingSequenceDefeatCount + 1;
         }
 
+        int presentationKillCount = countsForFiringSequence
+            ? Mathf.Max(1, firingSequenceDefeatCount)
+            : 1;
         float defeatFeedbackMultiplier =
-            GetComboFeedbackMultiplier(comboCount);
-        SoundManager.PlayComboDie(comboCount);
+            GetFiringSequenceFeedbackMultiplier(presentationKillCount);
         float overkillPercent = targetMaxHealth <= 0
             ? 0f
             : Mathf.Max(0f, appliedDamage - targetMaxHealth)
@@ -619,20 +748,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         comboResetSinceLastTurn = true;
         StopTurnDrainAnimation();
         RefreshComboTurnValues();
-        comboPunchRemaining = 0.3f;
-        comboPunchStrengthMultiplier = defeatFeedbackMultiplier;
         UpdateComboText();
-
-        if (countsForFiringSequence)
-        {
-            SpawnKillComboText(
-                worldPosition,
-                defeatFeedbackMultiplier);
-        }
-
-        CombatCameraShake.Play(
-            cameraShakeStrength * killShakeMultiplier,
-            cameraShakeDuration);
 
         if (comboCount > 1 && comboGoldPerKill > 0)
         {
@@ -659,7 +775,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
             0.95f,
             1.15f,
             Mathf.Clamp01(cylinderBuild));
-        if (countsForFiringSequence && firingSequenceDefeatCount == 1)
+        if (countsForFiringSequence
+            && (firingSequenceDefeatCount == 1
+                || firingSequenceBaseIntensity <= 0f))
         {
             firingSequenceBaseIntensity = calculatedBaseIntensity;
         }
@@ -670,22 +788,116 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float amplifiedIntensity = baseIntensity
             * defeatFeedbackMultiplier;
 
-        StartVolumePulse(amplifiedIntensity);
-        StartSlowMotion(
+        float presentationDelay = ReserveDefeatPresentationDelay(
+            defeatPresentationClock,
+            defeatPresentationInterval);
+        DefeatFeedbackRequest request = new DefeatFeedbackRequest(
+            worldPosition,
+            horizontalDirection,
+            firingSequenceDefeatCount,
+            defeatFeedbackMultiplier,
             baseIntensity,
+            amplifiedIntensity,
+            countsForFiringSequence);
+
+        if (presentationDelay <= 0f)
+        {
+            PlayDefeatFeedback(request);
+        }
+        else
+        {
+            StartCoroutine(PlayDefeatFeedbackAfterDelay(
+                request,
+                presentationDelay,
+                defeatPresentationGeneration));
+        }
+
+        return new DefeatPresentationCue(
+            defeatFeedbackMultiplier,
+            defeatPresentationClock + presentationDelay,
+            wasFinalEnemy);
+    }
+
+    public float GetRemainingDefeatPresentationDelay(
+        DefeatPresentationCue cue)
+    {
+        return Mathf.Max(
+            0f,
+            cue.PresentationTime - defeatPresentationClock);
+    }
+
+    private float ReserveDefeatPresentationDelay(
+        float currentTime,
+        float interval)
+    {
+        float presentationTime = CalculateDefeatPresentationTime(
+            currentTime,
+            nextDefeatPresentationTime);
+        nextDefeatPresentationTime = presentationTime
+            + Mathf.Max(0f, interval);
+        return Mathf.Max(0f, presentationTime - currentTime);
+    }
+
+    internal static float CalculateDefeatPresentationTime(
+        float currentTime,
+        float nextPresentationTime)
+    {
+        return Mathf.Max(currentTime, nextPresentationTime);
+    }
+
+    private IEnumerator PlayDefeatFeedbackAfterDelay(
+        DefeatFeedbackRequest request,
+        float delay,
+        int generation)
+    {
+        float remaining = Mathf.Max(0f, delay);
+
+        while (remaining > 0f)
+        {
+            yield return null;
+
+            if (generation != defeatPresentationGeneration)
+            {
+                yield break;
+            }
+
+            if (!GamePauseController.IsPaused)
+            {
+                remaining -= Time.unscaledDeltaTime;
+            }
+        }
+
+        if (generation == defeatPresentationGeneration)
+        {
+            PlayDefeatFeedback(request);
+        }
+    }
+
+    private void PlayDefeatFeedback(DefeatFeedbackRequest request)
+    {
+        SoundManager.PlayComboDie(
+            Mathf.Max(1, request.FiringSequenceDefeatCount));
+        comboPunchRemaining = 0.3f;
+        comboPunchStrengthMultiplier = request.FeedbackMultiplier;
+
+        if (request.ShowComboText)
+        {
+            SpawnKillComboText(
+                request.WorldPosition,
+                request.FiringSequenceDefeatCount,
+                request.FeedbackMultiplier);
+        }
+
+        CombatCameraShake.Play(
+            cameraShakeStrength * killShakeMultiplier,
+            cameraShakeDuration);
+        StartVolumePulse(request.AmplifiedIntensity);
+        StartSlowMotion(
+            request.BaseIntensity,
             killSlowMotionScale,
             killSlowMotionHold,
             killSlowMotionRecovery,
-            defeatFeedbackMultiplier);
-        QueueFullscreenImpact(
-            worldPosition,
-            horizontalDirection,
-            baseIntensity,
-            fullscreenImpactDuration * (wasFinalEnemy ? 1.3f : 1f),
-            wasCritical,
-            wasFinalEnemy,
-            defeatFeedbackMultiplier,
-            true);
+            request.FeedbackMultiplier);
     }
 
     private void HandlePlayerStatusDefeated(
@@ -713,8 +925,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 ? 1
                 : -1;
         WaveManager waveManager = FindFirstObjectByType<WaveManager>();
-
-        RecordDefeat(
+        CombatPresentation presentation = GetComponent<CombatPresentation>();
+        CombatPresentation.EnemySnapshot snapshot = presentation == null
+            ? default
+            : presentation.CaptureEnemy(enemy);
+        DefeatPresentationCue cue = RecordDefeat(
             enemy.transform.position,
             horizontalDirection,
             Mathf.Max(0, damage),
@@ -724,13 +939,22 @@ public sealed class CombatFeedbackController : MonoBehaviour
             0f,
             Mathf.Max(0, healthBeforeDamage),
             false);
+        presentation?.PlayImpact(
+            snapshot,
+            horizontalDirection,
+            null,
+            CombatImpactTier.Defeat,
+            cue.FeedbackMultiplier,
+            GetRemainingDefeatPresentationDelay(cue),
+            cue.WasFinalEnemy);
     }
 
     private void SpawnKillComboText(
         Vector3 worldPosition,
+        int firingSequenceKillCount,
         float feedbackMultiplier)
     {
-        int cylinderKillCount = Mathf.Max(1, firingSequenceDefeatCount);
+        int cylinderKillCount = Mathf.Max(1, firingSequenceKillCount);
         string message = cylinderKillCount <= 1
             ? "적 처치!"
             : $"{cylinderKillCount}연속 처치!";
@@ -1181,14 +1405,14 @@ public sealed class CombatFeedbackController : MonoBehaviour
         return comboLowColor;
     }
 
-    internal float GetComboFeedbackMultiplier(int killCount)
+    internal float GetFiringSequenceFeedbackMultiplier(int killCount)
     {
-        return CalculateComboFeedbackMultiplier(
+        return CalculateFiringSequenceFeedbackMultiplier(
             killCount,
-            comboFeedbackStrengthPerKill);
+            firingSequenceFeedbackStrengthPerKill);
     }
 
-    internal static float CalculateComboFeedbackMultiplier(
+    internal static float CalculateFiringSequenceFeedbackMultiplier(
         int killCount,
         float strengthPerKill)
     {
@@ -1214,6 +1438,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         CancelSlowMotionAndRestore();
         ResetFullscreenImpact();
         ClearComboKillTexts();
+        defeatPresentationGeneration++;
+        nextDefeatPresentationTime = defeatPresentationClock;
     }
 
     private void BindUi()
@@ -1565,12 +1791,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
             return;
         }
 
-        if (slowMotionCoroutine != null)
-        {
-            StopCoroutine(slowMotionCoroutine);
-            slowMotionCoroutine = null;
-        }
-
         float baseScale = Mathf.Lerp(0.72f, strongestScale, intensity);
         float scale = Mathf.Clamp(
             1f - (1f - baseScale)
@@ -1578,85 +1798,127 @@ public sealed class CombatFeedbackController : MonoBehaviour
             * timeEffectMultiplier,
             0.05f,
             1f);
-        slowMotionCoroutine = StartCoroutine(SlowMotionRoutine(
-            scale,
-            holdDuration,
-            recoveryDuration));
+        EnsureTimeEffectOwnership();
+        slowMotionStartScale = slowMotionActive
+            ? slowMotionCurrentScale
+            : slowMotionBaseScale;
+        slowMotionCurrentScale = slowMotionStartScale;
+        slowMotionTargetScale = scale;
+        slowMotionAttackDuration = Mathf.Min(
+            0.035f,
+            recoveryDuration * 0.25f);
+        slowMotionHoldDuration = Mathf.Max(0f, holdDuration);
+        slowMotionRecoveryDuration = Mathf.Max(0.01f, recoveryDuration);
+        slowMotionElapsed = 0f;
+        slowMotionActive = true;
+        EnsureTimeEffectRoutine();
     }
 
-    private IEnumerator SlowMotionRoutine(
-        float targetScale,
-        float holdDuration,
-        float recoveryDuration)
+    public void RequestHitStop(float duration)
     {
-        while (Time.timeScale <= 0f || GamePauseController.IsPaused)
+        if (GamePauseController.IsPaused)
         {
-            yield return null;
+            return;
         }
 
-        if (!ownsTimeScale)
+        duration *= CombatAccessibilitySettings.TimeEffectMultiplier;
+
+        if (duration <= 0f)
         {
-            slowMotionBaseScale = Time.timeScale;
-            ownsTimeScale = true;
+            return;
         }
 
-        float startScale = Time.timeScale;
-        float attackDuration = Mathf.Min(0.035f, recoveryDuration * 0.25f);
-        float elapsed = 0f;
+        EnsureTimeEffectOwnership();
+        hitStopRemaining = Mathf.Max(hitStopRemaining, duration);
+        Time.timeScale = 0f;
+        EnsureTimeEffectRoutine();
+    }
 
-        while (elapsed < attackDuration)
+    private void EnsureTimeEffectOwnership()
+    {
+        if (ownsTimeScale)
+        {
+            return;
+        }
+
+        slowMotionBaseScale = Time.timeScale > 0f ? Time.timeScale : 1f;
+        slowMotionCurrentScale = slowMotionBaseScale;
+        ownsTimeScale = true;
+    }
+
+    private void EnsureTimeEffectRoutine()
+    {
+        if (timeEffectCoroutine == null)
+        {
+            timeEffectCoroutine = StartCoroutine(TimeEffectRoutine());
+        }
+    }
+
+    private IEnumerator TimeEffectRoutine()
+    {
+        while (hitStopRemaining > 0f || slowMotionActive)
         {
             yield return null;
 
-            if (GamePauseController.IsPaused || Time.timeScale <= 0f)
+            if (GamePauseController.IsPaused)
             {
+                RestoreSlowMotion();
+                timeEffectCoroutine = null;
+                yield break;
+            }
+
+            float deltaTime = Time.unscaledDeltaTime;
+
+            if (hitStopRemaining > 0f)
+            {
+                hitStopRemaining = Mathf.Max(
+                    0f,
+                    hitStopRemaining - deltaTime);
+                Time.timeScale = 0f;
                 continue;
             }
 
-            elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / attackDuration);
-            Time.timeScale = Mathf.Lerp(
-                startScale,
-                targetScale,
-                Mathf.SmoothStep(0f, 1f, progress));
-        }
+            slowMotionElapsed += deltaTime;
+            float holdEnd = slowMotionAttackDuration
+                + slowMotionHoldDuration;
+            float recoveryEnd = holdEnd + slowMotionRecoveryDuration;
 
-        elapsed = 0f;
-
-        while (elapsed < holdDuration)
-        {
-            yield return null;
-
-            if (GamePauseController.IsPaused || Time.timeScale <= 0f)
+            if (slowMotionElapsed < slowMotionAttackDuration)
             {
-                continue;
+                float progress = slowMotionAttackDuration <= 0f
+                    ? 1f
+                    : Mathf.Clamp01(
+                        slowMotionElapsed / slowMotionAttackDuration);
+                slowMotionCurrentScale = Mathf.Lerp(
+                    slowMotionStartScale,
+                    slowMotionTargetScale,
+                    Mathf.SmoothStep(0f, 1f, progress));
+            }
+            else if (slowMotionElapsed < holdEnd)
+            {
+                slowMotionCurrentScale = slowMotionTargetScale;
+            }
+            else if (slowMotionElapsed < recoveryEnd)
+            {
+                float progress = Mathf.Clamp01(
+                    (slowMotionElapsed - holdEnd)
+                    / slowMotionRecoveryDuration);
+                slowMotionCurrentScale = Mathf.Lerp(
+                    slowMotionTargetScale,
+                    slowMotionBaseScale,
+                    Mathf.SmoothStep(0f, 1f, progress));
+            }
+            else
+            {
+                slowMotionCurrentScale = slowMotionBaseScale;
+                slowMotionActive = false;
             }
 
-            elapsed += Time.unscaledDeltaTime;
-            Time.timeScale = targetScale;
-        }
-
-        elapsed = 0f;
-
-        while (elapsed < recoveryDuration)
-        {
-            yield return null;
-
-            if (GamePauseController.IsPaused || Time.timeScale <= 0f)
-            {
-                continue;
-            }
-
-            elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / recoveryDuration);
-            Time.timeScale = Mathf.Lerp(
-                targetScale,
-                slowMotionBaseScale,
-                Mathf.SmoothStep(0f, 1f, progress));
+            Time.timeScale = slowMotionCurrentScale;
         }
 
         RestoreSlowMotion();
-        slowMotionCoroutine = null;
+        timeEffectCoroutine = null;
     }
 
     private void RestoreSlowMotion()
@@ -1666,15 +1928,19 @@ public sealed class CombatFeedbackController : MonoBehaviour
             Time.timeScale = slowMotionBaseScale;
         }
 
+        hitStopRemaining = 0f;
+        slowMotionActive = false;
+        slowMotionElapsed = 0f;
+        slowMotionCurrentScale = slowMotionBaseScale;
         ownsTimeScale = false;
     }
 
     private void CancelSlowMotionAndRestore()
     {
-        if (slowMotionCoroutine != null)
+        if (timeEffectCoroutine != null)
         {
-            StopCoroutine(slowMotionCoroutine);
-            slowMotionCoroutine = null;
+            StopCoroutine(timeEffectCoroutine);
+            timeEffectCoroutine = null;
         }
 
         RestoreSlowMotion();
@@ -1685,10 +1951,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
         int horizontalDirection,
         float intensity,
         float duration,
-        bool wasCritical,
+        CombatImpactTier impactTier,
+        Color impactColor,
         bool wasFinalEnemy,
         float feedbackMultiplier = 1f,
-        bool restartExisting = false)
+        bool restartExisting = false,
+        bool shotPulse = false)
     {
         if (GamePauseController.IsPaused)
         {
@@ -1764,22 +2032,19 @@ public sealed class CombatFeedbackController : MonoBehaviour
             Center = new Vector2(
                 Mathf.Clamp01(viewportPoint.x),
                 Mathf.Clamp01(viewportPoint.y)),
-            // Defeat impacts restart and amplify the current fullscreen hit.
-            // Keep them radial so the post-process does not look like a
-            // one-sided camera lurch on top of the stronger defeat shake.
-            Direction = restartExisting
-                ? Vector2.zero
-                : horizontalDirection == 0
-                    ? Vector2.right
-                    : new Vector2(Mathf.Sign(horizontalDirection), 0f),
+            Direction = horizontalDirection == 0
+                ? Vector2.right
+                : new Vector2(Mathf.Sign(horizontalDirection), 0f),
             Elapsed = 0f,
             Duration = duration,
             Intensity = Mathf.Clamp01(intensity),
             FeedbackMultiplier = Mathf.Max(0f, feedbackMultiplier),
             StartStrength = startStrength,
             Restartable = restartExisting,
-            Critical = wasCritical,
-            FinalKill = wasFinalEnemy
+            Tier = impactTier,
+            Color = impactColor,
+            FinalKill = wasFinalEnemy,
+            ShotPulse = shotPulse
         };
         ApplyFullscreenGlobals();
     }
@@ -1839,13 +2104,16 @@ public sealed class CombatFeedbackController : MonoBehaviour
             fullscreenDirections[impactIndex] = new Vector4(
                 impact.Direction.x,
                 impact.Direction.y,
-                0f,
+                impact.ShotPulse ? 1f : 0f,
                 0f);
             fullscreenParams[impactIndex] = new Vector4(
                 progress,
                 strength,
-                impact.Critical ? 1f : 0f,
+                (float)impact.Tier / (float)CombatImpactTier.Defeat,
                 impact.FinalKill ? 1f : 0f);
+            Color impactColor = impact.Color;
+            impactColor.a = 1f;
+            fullscreenColors[impactIndex] = impactColor;
             maximumStrength = Mathf.Max(maximumStrength, strength);
 
         }
@@ -1855,6 +2123,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             FullscreenDirectionsId,
             fullscreenDirections);
         Shader.SetGlobalVectorArray(FullscreenParamsId, fullscreenParams);
+        Shader.SetGlobalVectorArray(FullscreenColorsId, fullscreenColors);
         Shader.SetGlobalColor(FullscreenColorId, fullscreenImpactColor);
         Shader.SetGlobalFloat(
             FullscreenAspectId,
@@ -1902,6 +2171,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             fullscreenCenters[impactIndex] = Vector4.zero;
             fullscreenDirections[impactIndex] = Vector4.zero;
             fullscreenParams[impactIndex] = Vector4.zero;
+            fullscreenColors[impactIndex] = Vector4.zero;
         }
 
         Shader.SetGlobalVectorArray(FullscreenCentersId, fullscreenCenters);
@@ -1909,6 +2179,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             FullscreenDirectionsId,
             fullscreenDirections);
         Shader.SetGlobalVectorArray(FullscreenParamsId, fullscreenParams);
+        Shader.SetGlobalVectorArray(FullscreenColorsId, fullscreenColors);
         Shader.SetGlobalFloat(FullscreenIntensityId, 0f);
     }
 

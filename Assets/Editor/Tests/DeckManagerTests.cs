@@ -217,14 +217,14 @@ public sealed class EnemyDamageNumberDisplayTests
 public sealed class ComboFeedbackProgressionTests
 {
     [Test]
-    public void FeedbackMultiplier_IncreasesForEveryComboKill()
+    public void FeedbackMultiplier_IncreasesForEveryFiringSequenceKill()
     {
         float first = CombatFeedbackController
-            .CalculateComboFeedbackMultiplier(1, 0.2f);
+            .CalculateFiringSequenceFeedbackMultiplier(1, 0.2f);
         float second = CombatFeedbackController
-            .CalculateComboFeedbackMultiplier(2, 0.2f);
+            .CalculateFiringSequenceFeedbackMultiplier(2, 0.2f);
         float third = CombatFeedbackController
-            .CalculateComboFeedbackMultiplier(3, 0.2f);
+            .CalculateFiringSequenceFeedbackMultiplier(3, 0.2f);
 
         Assert.That(first, Is.EqualTo(1f));
         Assert.That(second, Is.GreaterThan(first));
@@ -232,14 +232,89 @@ public sealed class ComboFeedbackProgressionTests
     }
 
     [Test]
-    public void ComboPitch_IncreasesForEveryComboKill()
+    public void KillPitch_IncreasesForEveryFiringSequenceKill()
     {
-        float first = SoundManager.CalculateComboPitch(1);
-        float second = SoundManager.CalculateComboPitch(2);
-        float third = SoundManager.CalculateComboPitch(3);
+        float first = SoundManager.CalculateFiringSequenceKillPitch(1);
+        float second = SoundManager.CalculateFiringSequenceKillPitch(2);
+        float third = SoundManager.CalculateFiringSequenceKillPitch(3);
 
         Assert.That(first, Is.EqualTo(1f));
         Assert.That(second, Is.GreaterThan(first));
         Assert.That(third, Is.GreaterThan(second));
+    }
+
+    [Test]
+    public void DefeatPresentationTime_SpacesKillsRecordedTogether()
+    {
+        const float currentTime = 10f;
+        const float interval = 0.18f;
+        float first = CombatFeedbackController
+            .CalculateDefeatPresentationTime(currentTime, 0f);
+        float second = CombatFeedbackController
+            .CalculateDefeatPresentationTime(
+                currentTime,
+                first + interval);
+        float third = CombatFeedbackController
+            .CalculateDefeatPresentationTime(
+                currentTime,
+                second + interval);
+
+        Assert.That(first, Is.EqualTo(currentTime));
+        Assert.That(second - first, Is.EqualTo(interval).Within(0.0001f));
+        Assert.That(third - second, Is.EqualTo(interval).Within(0.0001f));
+    }
+
+    [Test]
+    public void DefeatPresentationTime_PlaysImmediatelyAfterIdleGap()
+    {
+        float presentationTime = CombatFeedbackController
+            .CalculateDefeatPresentationTime(12f, 10.18f);
+
+        Assert.That(presentationTime, Is.EqualTo(12f));
+    }
+}
+
+public sealed class CombatImpactTierUtilityTests
+{
+    [Test]
+    public void Resolve_UsesSeventyFivePercentForDevastatingHit()
+    {
+        CombatImpactTier belowThreshold = CombatImpactTierUtility.Resolve(
+            false,
+            74,
+            100,
+            false);
+        CombatImpactTier atThreshold = CombatImpactTierUtility.Resolve(
+            false,
+            75,
+            100,
+            false);
+
+        Assert.That(belowThreshold, Is.EqualTo(CombatImpactTier.Normal));
+        Assert.That(atThreshold, Is.EqualTo(CombatImpactTier.Devastating));
+    }
+
+    [Test]
+    public void Resolve_DevastatingAndDefeatOverrideCritical()
+    {
+        CombatImpactTier critical = CombatImpactTierUtility.Resolve(
+            true,
+            74,
+            100,
+            false);
+        CombatImpactTier devastating = CombatImpactTierUtility.Resolve(
+            true,
+            75,
+            100,
+            false);
+        CombatImpactTier defeat = CombatImpactTierUtility.Resolve(
+            false,
+            10,
+            100,
+            true);
+
+        Assert.That(critical, Is.EqualTo(CombatImpactTier.Critical));
+        Assert.That(devastating, Is.EqualTo(CombatImpactTier.Devastating));
+        Assert.That(defeat, Is.EqualTo(CombatImpactTier.Defeat));
     }
 }

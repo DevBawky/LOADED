@@ -1817,25 +1817,32 @@ public partial class PlayerShoot
                 if (enemy == null || enemy.CurrentHealth <= 0)
                 {
                     bool preAttackEffectDefeatAlreadyRecorded =
-                        pendingEffectDefeats.Remove(enemy);
-                    combatPresentation?.PlayImpact(
-                        enemySnapshot,
-                        horizontalDirection,
-                        bulletData,
-                        CombatImpactTier.Defeat,
-                        combatFeedback?.NextFiringSequenceDefeatFeedbackMultiplier
-                            ?? 1f);
+                        pendingEffectDefeats.TryGetValue(
+                            enemy,
+                            out ManagedEffectDefeatResult preAttackDefeat);
+                    pendingEffectDefeats.Remove(enemy);
+                    CombatFeedbackController.DefeatPresentationCue cue =
+                        preAttackEffectDefeatAlreadyRecorded
+                            ? preAttackDefeat.PresentationCue
+                            : default;
                     if (!preAttackEffectDefeatAlreadyRecorded)
                     {
-                        combatFeedback?.RecordDefeat(
+                        cue = RecordDefeat(
                             enemySnapshot.Position,
                             horizontalDirection,
                             0,
                             targetMaxHealth,
                             isCritical,
-                            waveManager != null
-                                && waveManager.ActiveEnemies.Count <= 1,
-                            GetCurrentCylinderBuild());
+                            -1);
+                    }
+                    if (!preAttackEffectDefeatAlreadyRecorded
+                        || !preAttackDefeat.PresentationScheduled)
+                    {
+                        PlayDefeatImpact(
+                            enemySnapshot,
+                            horizontalDirection,
+                            bulletData,
+                            cue);
                     }
                     yield return ApplyDefeatTriggeredAbilities(
                         bulletData,
@@ -1863,35 +1870,35 @@ public partial class PlayerShoot
                 combatFeedback?.RecordDamage(
                     reportedDamage,
                     reportedDamage > appliedDamage);
-                combatPresentation?.PlayImpact(
-                    enemySnapshot,
-                    horizontalDirection,
-                    bulletData,
-                    CombatImpactTierUtility.Resolve(
-                        isCritical,
-                        reportedDamage,
-                        targetMaxHealth,
-                        defeatedByAttack),
-                    defeatedByAttack
-                        ? combatFeedback
-                            ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f
-                        : 1f);
                 defeatPresented = defeatedByAttack;
     
                 if (defeatedByAttack)
                 {
-                    combatFeedback?.RecordDefeat(
+                    CombatFeedbackController.DefeatPresentationCue cue =
+                        RecordDefeat(
                         enemySnapshot.Position,
                         horizontalDirection,
                         reportedDamage,
                         targetMaxHealth,
                         isCritical,
-                        waveManager != null && waveManager.ActiveEnemies.Count <= 1,
-                        GetCurrentCylinderBuild(),
                         healthBeforeHit);
+                    PlayDefeatImpact(
+                        enemySnapshot,
+                        horizontalDirection,
+                        bulletData,
+                        cue);
                 }
                 else if (appliedDamage > 0)
                 {
+                    combatPresentation?.PlayImpact(
+                        enemySnapshot,
+                        horizontalDirection,
+                        bulletData,
+                        CombatImpactTierUtility.Resolve(
+                            isCritical,
+                            reportedDamage,
+                            targetMaxHealth,
+                            false));
                     combatFeedback?.RecordHit(
                         enemySnapshot.Position,
                         horizontalDirection,
@@ -1961,7 +1968,10 @@ public partial class PlayerShoot
                     result => managedEffectDefeat = result);
     
                 bool effectDefeatAlreadyRecorded =
-                    pendingEffectDefeats.Remove(enemy);
+                    pendingEffectDefeats.TryGetValue(
+                        enemy,
+                        out ManagedEffectDefeatResult recordedEffectDefeat);
+                pendingEffectDefeats.Remove(enemy);
     
                 bool defeatedByManagedEffect =
                     managedEffectDefeat.WasDefeated;
@@ -1970,16 +1980,13 @@ public partial class PlayerShoot
                 {
                     if (!defeatPresented)
                     {
-                        combatPresentation?.PlayImpact(
-                            enemySnapshot,
-                            horizontalDirection,
-                            bulletData,
-                            CombatImpactTier.Defeat,
-                            combatFeedback
-                                ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f);
+                        CombatFeedbackController.DefeatPresentationCue cue =
+                            effectDefeatAlreadyRecorded
+                                ? recordedEffectDefeat.PresentationCue
+                                : default;
                         if (!effectDefeatAlreadyRecorded)
                         {
-                            combatFeedback?.RecordDefeat(
+                            cue = RecordDefeat(
                                 defeatedByManagedEffect
                                     ? managedEffectDefeat.WorldPosition
                                     : enemySnapshot.Position,
@@ -1991,12 +1998,18 @@ public partial class PlayerShoot
                                     ? managedEffectDefeat.TargetMaxHealth
                                     : targetMaxHealth,
                                 isCritical,
-                                waveManager != null
-                                    && waveManager.ActiveEnemies.Count <= 1,
-                                GetCurrentCylinderBuild(),
                                 defeatedByManagedEffect
                                     ? managedEffectDefeat.HealthBeforeDamage
                                     : -1);
+                        }
+                        if (!effectDefeatAlreadyRecorded
+                            || !recordedEffectDefeat.PresentationScheduled)
+                        {
+                            PlayDefeatImpact(
+                                enemySnapshot,
+                                horizontalDirection,
+                                bulletData,
+                                cue);
                         }
                     }
     
@@ -2054,6 +2067,49 @@ public partial class PlayerShoot
     
             return multiplier;
         }
+
+        private CombatFeedbackController.DefeatPresentationCue RecordDefeat(
+            Vector3 worldPosition,
+            int horizontalDirection,
+            int appliedDamage,
+            int targetMaxHealth,
+            bool wasCritical,
+            int targetHealthBeforeDamage)
+        {
+            return combatFeedback == null
+                ? default
+                : combatFeedback.RecordDefeat(
+                    worldPosition,
+                    horizontalDirection,
+                    appliedDamage,
+                    targetMaxHealth,
+                    wasCritical,
+                    waveManager != null
+                        && waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild(),
+                    targetHealthBeforeDamage);
+        }
+
+        private void PlayDefeatImpact(
+            CombatPresentation.EnemySnapshot snapshot,
+            int horizontalDirection,
+            BulletInstance bullet,
+            CombatFeedbackController.DefeatPresentationCue cue)
+        {
+            float feedbackMultiplier = cue.FeedbackMultiplier > 0f
+                ? cue.FeedbackMultiplier
+                : 1f;
+            combatPresentation?.PlayImpact(
+                snapshot,
+                horizontalDirection,
+                bullet,
+                CombatImpactTier.Defeat,
+                feedbackMultiplier,
+                combatFeedback == null
+                    ? 0f
+                    : combatFeedback.GetRemainingDefeatPresentationDelay(cue),
+                cue.WasFinalEnemy);
+        }
     
         private IEnumerator ApplyEyeOfTheStormDamage(
             BulletInstance sourceBullet,
@@ -2097,31 +2153,21 @@ public partial class PlayerShoot
     
                 bool defeated = healthBeforeDamage > 0
                     && enemy.CurrentHealth <= 0;
-                combatPresentation?.PlayImpact(
-                    snapshot,
-                    horizontalDirection,
-                    sourceBullet,
-                    CombatImpactTierUtility.Resolve(
-                        false,
-                        reportedDamage,
-                        targetMaxHealth,
-                        defeated),
-                    defeated
-                        ? combatFeedback
-                            ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f
-                        : 1f);
-    
                 if (defeated)
                 {
-                    combatFeedback?.RecordDefeat(
+                    CombatFeedbackController.DefeatPresentationCue cue =
+                        RecordDefeat(
                         snapshot.Position,
                         horizontalDirection,
                         reportedDamage,
                         targetMaxHealth,
                         false,
-                        waveManager.ActiveEnemies.Count <= 1,
-                        GetCurrentCylinderBuild(),
                         healthBeforeDamage);
+                    PlayDefeatImpact(
+                        snapshot,
+                        horizontalDirection,
+                        sourceBullet,
+                        cue);
                     relicManager.NotifyEnemyDefeated(
                         enemy,
                         null,
@@ -2132,6 +2178,15 @@ public partial class PlayerShoot
                 }
                 else if (appliedDamage > 0)
                 {
+                    combatPresentation?.PlayImpact(
+                        snapshot,
+                        horizontalDirection,
+                        sourceBullet,
+                        CombatImpactTierUtility.Resolve(
+                            false,
+                            reportedDamage,
+                            targetMaxHealth,
+                            false));
                     combatFeedback?.RecordHit(
                         snapshot.Position,
                         horizontalDirection,
@@ -2226,31 +2281,21 @@ public partial class PlayerShoot
                 combatFeedback?.RecordDamage(
                     reportedDamage,
                     reportedDamage > appliedDamage);
-                combatPresentation?.PlayImpact(
-                    targetSnapshot,
-                    horizontalDirection,
-                    bullet,
-                    CombatImpactTierUtility.Resolve(
-                        false,
-                        reportedDamage,
-                        targetMaxHealth,
-                        defeated),
-                    defeated
-                        ? combatFeedback
-                            ?.NextFiringSequenceDefeatFeedbackMultiplier ?? 1f
-                        : 1f);
-    
                 if (defeated)
                 {
-                    combatFeedback?.RecordDefeat(
+                    CombatFeedbackController.DefeatPresentationCue cue =
+                        RecordDefeat(
                         targetSnapshot.Position,
                         horizontalDirection,
                         reportedDamage,
                         targetMaxHealth,
                         false,
-                        waveManager.ActiveEnemies.Count <= 1,
-                        GetCurrentCylinderBuild(),
                         healthBeforeTransfer);
+                    PlayDefeatImpact(
+                        targetSnapshot,
+                        horizontalDirection,
+                        bullet,
+                        cue);
                     yield return ApplyDefeatTriggeredAbilities(
                         bullet,
                         targetEnemy,
@@ -2262,6 +2307,15 @@ public partial class PlayerShoot
                 }
                 else if (appliedDamage > 0)
                 {
+                    combatPresentation?.PlayImpact(
+                        targetSnapshot,
+                        horizontalDirection,
+                        bullet,
+                        CombatImpactTierUtility.Resolve(
+                            false,
+                            reportedDamage,
+                            targetMaxHealth,
+                            false));
                     combatFeedback?.RecordHit(
                         targetSnapshot.Position,
                         horizontalDirection,

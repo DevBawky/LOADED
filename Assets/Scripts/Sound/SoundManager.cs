@@ -186,10 +186,11 @@ public sealed class SoundManager : MonoBehaviour
         Instance.uiButtonFeedbackInstaller.BindAudio(button);
     }
 
-    public static void PlayComboDie(int comboKillCount)
+    public static void PlayComboDie(int firingSequenceKillCount)
     {
         SoundManager manager = Instance;
-        float pitch = CalculateComboPitch(comboKillCount);
+        float pitch = CalculateFiringSequenceKillPitch(
+            firingSequenceKillCount);
         if (manager.clipLibrary != null
             && manager.clipLibrary.TryGetSfx(
                 "SFX_Combo_Die",
@@ -202,9 +203,10 @@ public sealed class SoundManager : MonoBehaviour
         }
     }
 
-    internal static float CalculateComboPitch(int comboKillCount)
+    internal static float CalculateFiringSequenceKillPitch(
+        int firingSequenceKillCount)
     {
-        int additionalKills = Mathf.Max(0, comboKillCount - 1);
+        int additionalKills = Mathf.Max(0, firingSequenceKillCount - 1);
         return 1f + ComboPitchRange
             * (1f - Mathf.Exp(-additionalKills * ComboPitchGrowthRate));
     }

@@ -45,12 +45,17 @@ public partial class PlayerShoot : MonoBehaviour
             int damage,
             int healthBeforeDamage,
             int targetMaxHealth,
-            Vector3 worldPosition)
+            Vector3 worldPosition,
+            CombatFeedbackController.DefeatPresentationCue presentationCue =
+                default,
+            bool presentationScheduled = false)
         {
             Damage = Mathf.Max(0, damage);
             HealthBeforeDamage = Mathf.Max(0, healthBeforeDamage);
             TargetMaxHealth = Mathf.Max(0, targetMaxHealth);
             WorldPosition = worldPosition;
+            PresentationCue = presentationCue;
+            PresentationScheduled = presentationScheduled;
             WasDefeated = true;
         }
 
@@ -59,6 +64,11 @@ public partial class PlayerShoot : MonoBehaviour
         public int HealthBeforeDamage { get; }
         public int TargetMaxHealth { get; }
         public Vector3 WorldPosition { get; }
+        public CombatFeedbackController.DefeatPresentationCue PresentationCue
+        {
+            get;
+        }
+        public bool PresentationScheduled { get; }
     }
 
     private sealed class DamagePreviewEnemyState
@@ -330,31 +340,52 @@ public partial class PlayerShoot : MonoBehaviour
             return;
         }
 
-        pendingEffectDefeats[enemy] = new ManagedEffectDefeatResult(
-            damage,
-            healthBeforeDamage,
-            enemy.MaxHealth,
-            enemy.transform.position);
-
         int horizontalDirection = playerMove == null
             ? 0
             : enemy.transform.position.x >= playerMove.transform.position.x
                 ? 1
                 : -1;
-        combatFeedback?.RecordDefeat(
-            enemy.transform.position,
+        CombatFeedbackController.DefeatPresentationCue presentationCue =
+            combatFeedback == null
+                ? default
+                : combatFeedback.RecordDefeat(
+                    enemy.transform.position,
+                    horizontalDirection,
+                    damage,
+                    enemy.MaxHealth,
+                    false,
+                    waveManager != null
+                        && waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild(),
+                    healthBeforeDamage);
+        CombatPresentation.EnemySnapshot snapshot = combatPresentation == null
+            ? default
+            : combatPresentation.CaptureEnemy(enemy);
+        combatPresentation?.PlayImpact(
+            snapshot,
             horizontalDirection,
+            currentConsumedBullet,
+            CombatImpactTier.Defeat,
+            presentationCue.FeedbackMultiplier > 0f
+                ? presentationCue.FeedbackMultiplier
+                : 1f,
+            combatFeedback == null
+                ? 0f
+                : combatFeedback.GetRemainingDefeatPresentationDelay(
+                    presentationCue),
+            presentationCue.WasFinalEnemy);
+        pendingEffectDefeats[enemy] = new ManagedEffectDefeatResult(
             damage,
+            healthBeforeDamage,
             enemy.MaxHealth,
-            false,
-            waveManager != null && waveManager.ActiveEnemies.Count <= 1,
-            GetCurrentCylinderBuild(),
-            healthBeforeDamage);
+            enemy.transform.position,
+            presentationCue,
+            true);
     }
 
     private void HandleBattleCompleted()
     {
-        combatFeedback?.ResetCombo();
+        combatFeedback?.ResetCombo(true);
         firingSequence?.ResetTurnTargetHistory();
     }
 

@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.Rendering.Universal;
 
 [DisallowMultipleComponent]
 public sealed class CombatPresentation : MonoBehaviour
@@ -10,8 +10,6 @@ public sealed class CombatPresentation : MonoBehaviour
         Shader.PropertyToID("_PrimaryColor");
     private static readonly int SecondaryColorId =
         Shader.PropertyToID("_SecondaryColor");
-    private static readonly int PulseColorId =
-        Shader.PropertyToID("_PulseColor");
     private static readonly int ProgressId =
         Shader.PropertyToID("_Progress");
     private static readonly int IntensityId =
@@ -20,10 +18,8 @@ public sealed class CombatPresentation : MonoBehaviour
         Shader.PropertyToID("_Direction");
     private static readonly int RayCountId =
         Shader.PropertyToID("_RayCount");
-    private static readonly int CenterId =
-        Shader.PropertyToID("_Center");
-    private static readonly int AspectId =
-        Shader.PropertyToID("_Aspect");
+    private static readonly int EffectModeId =
+        Shader.PropertyToID("_EffectMode");
 
     [System.Serializable]
     public struct EnemySnapshot
@@ -47,19 +43,12 @@ public sealed class CombatPresentation : MonoBehaviour
 
     [Header("Muzzle Flash")]
     [SerializeField] private Material muzzleFlashMaterial;
-    [SerializeField] private Material screenPulseMaterial;
     [Min(0.01f)]
     [SerializeField] private float muzzleFlashDuration = 0.11f;
     [Min(0.01f)]
     [SerializeField] private float muzzleFlashSize = 0.52f;
     [Range(2, 12)]
     [SerializeField] private int muzzleRayCount = 7;
-    [Range(0f, 0.5f)]
-    [SerializeField] private float shotScreenFlashAlpha = 0.075f;
-    [Min(0.01f)]
-    [SerializeField] private float shotScreenPulseDuration = 0.26f;
-    [Range(0f, 4f)]
-    [SerializeField] private float shotScreenPulseIntensity = 1.35f;
     [Range(0, 20)]
     [SerializeField] private int muzzleEmberCount = 9;
     [Min(0f)]
@@ -72,8 +61,6 @@ public sealed class CombatPresentation : MonoBehaviour
     [SerializeField] private float criticalHitStopDuration = 0.055f;
     [Min(0f)]
     [SerializeField] private float devastatingHitStopDuration = 0.068f;
-    [Min(0.01f)]
-    [SerializeField] private float hitFlashDuration = 0.085f;
     [Range(2, 16)]
     [SerializeField] private int hitSparkCount = 6;
     [Range(2, 24)]
@@ -82,8 +69,6 @@ public sealed class CombatPresentation : MonoBehaviour
     [SerializeField] private int devastatingSparkCount = 14;
     [Range(0, 12)]
     [SerializeField] private int impactStreakCount = 4;
-    [Range(0f, 0.5f)]
-    [SerializeField] private float devastatingScreenFlashAlpha = 0.1f;
 
     [Header("Defeat")]
     [Min(0f)]
@@ -96,51 +81,30 @@ public sealed class CombatPresentation : MonoBehaviour
     [SerializeField] private float defeatLiftHeight = 0.22f;
     [Range(4, 24)]
     [SerializeField] private int defeatSparkCount = 12;
-    [Range(0f, 0.75f)]
-    [SerializeField] private float defeatScreenFlashAlpha = 0.2f;
     [SerializeField] private Color defeatDustColor =
         new Color(0.72f, 0.35f, 0.12f, 1f);
 
     private readonly List<GameObject> spawnedEffects = new List<GameObject>();
     private Sprite whiteSprite;
-    private Canvas flashCanvas;
-    private Image flashImage;
-    private Image pulseImage;
     private Material runtimeMuzzleMaterial;
-    private Material runtimePulseMaterial;
-    private Coroutine flashCoroutine;
-    private Coroutine pulseCoroutine;
-    private Coroutine hitStopCoroutine;
-    private float hitStopRemaining;
-    private float timeScaleBeforeHitStop = 1f;
+    private CombatFeedbackController combatFeedback;
 
     private float ScaledIntensity => Mathf.Max(0f, intensity);
 
     private void Awake()
     {
+        combatFeedback = GetComponent<CombatFeedbackController>();
         EnsureRuntimeResources();
     }
 
     private void OnDisable()
     {
-        RestoreTimeScale();
         ClearSpawnedEffects();
 
-        if (flashImage != null)
-        {
-            flashImage.color = Color.clear;
-        }
-
-        if (pulseImage != null)
-        {
-            pulseImage.enabled = false;
-        }
     }
 
     private void OnDestroy()
     {
-        RestoreTimeScale();
-
         if (whiteSprite != null)
         {
             Texture2D texture = whiteSprite.texture;
@@ -150,11 +114,6 @@ public sealed class CombatPresentation : MonoBehaviour
             {
                 Destroy(texture);
             }
-        }
-
-        if (runtimePulseMaterial != null)
-        {
-            Destroy(runtimePulseMaterial);
         }
 
         if (runtimeMuzzleMaterial != null)
@@ -216,28 +175,25 @@ public sealed class CombatPresentation : MonoBehaviour
 
         EnsureRuntimeResources();
         Color accent = GetAccentColor(bullet);
-        float criticalScale = isCritical ? 1.3f : 1f;
+        float criticalScale = isCritical ? 1.15f : 1f;
         int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
         SpawnMuzzleFlash(
             firePoint.position,
             accent,
-            muzzleFlashSize * ScaledIntensity * criticalScale,
+            muzzleFlashSize * ScaledIntensity * criticalScale * 0.84f,
             direction,
             isCritical);
         SpawnMuzzleEmbers(
             firePoint.position,
             direction,
             accent,
-            Mathf.RoundToInt(muzzleEmberCount * criticalScale));
-        PlayScreenPulse(
+            Mathf.RoundToInt(muzzleEmberCount * criticalScale * 0.72f));
+        combatFeedback ??= GetComponent<CombatFeedbackController>();
+        combatFeedback?.PlayShotOpticalKick(
             firePoint.position,
+            direction,
             accent,
-            shotScreenPulseIntensity * ScaledIntensity * criticalScale,
-            shotScreenPulseDuration);
-        PlayScreenFlash(
-            Color.Lerp(Color.white, accent, 0.35f),
-            shotScreenFlashAlpha * ScaledIntensity * criticalScale,
-            muzzleFlashDuration);
+            isCritical);
         PlayHitStop(shotHitStopDuration * criticalScale);
     }
 
@@ -246,10 +202,25 @@ public sealed class CombatPresentation : MonoBehaviour
         int horizontalDirection,
         BulletInstance bullet,
         CombatImpactTier impactTier,
-        float feedbackMultiplier = 1f)
+        float feedbackMultiplier = 1f,
+        float presentationDelay = 0f,
+        bool wasFinalEnemy = false)
     {
         if (!presentationEnabled || !snapshot.IsValid)
         {
+            return;
+        }
+
+        if (impactTier == CombatImpactTier.Defeat
+            && presentationDelay > 0f)
+        {
+            StartCoroutine(PlayImpactAfterDelay(
+                snapshot,
+                horizontalDirection,
+                bullet,
+                feedbackMultiplier,
+                presentationDelay,
+                wasFinalEnemy));
             return;
         }
 
@@ -258,7 +229,22 @@ public sealed class CombatPresentation : MonoBehaviour
         float impactMultiplier = impactTier == CombatImpactTier.Defeat
             ? Mathf.Max(0f, feedbackMultiplier)
             : 1f;
-        SpawnHitFlash(snapshot, accent, impactTier, impactMultiplier);
+        combatFeedback ??= GetComponent<CombatFeedbackController>();
+        combatFeedback?.PlayOpticalImpact(
+            snapshot.Position,
+            horizontalDirection,
+            impactTier,
+            accent,
+            impactMultiplier,
+            wasFinalEnemy);
+        SpawnHitContactFlare(
+            snapshot.Position,
+            horizontalDirection,
+            accent,
+            snapshot.SortingLayerId,
+            snapshot.SortingOrder + 4,
+            impactTier,
+            impactMultiplier);
         int sparkCount = impactTier switch
         {
             CombatImpactTier.Defeat => defeatSparkCount,
@@ -275,6 +261,16 @@ public sealed class CombatPresentation : MonoBehaviour
             snapshot.SortingOrder + 2,
             impactTier,
             impactMultiplier);
+
+        if (impactTier == CombatImpactTier.Normal)
+        {
+            SpawnNormalOpticalGlints(
+                snapshot.Position,
+                horizontalDirection,
+                accent,
+                snapshot.SortingLayerId,
+                snapshot.SortingOrder + 3);
+        }
 
         if (impactTier >= CombatImpactTier.Critical)
         {
@@ -297,25 +293,11 @@ public sealed class CombatPresentation : MonoBehaviour
 
         if (impactTier == CombatImpactTier.Defeat)
         {
-            SpawnDefeatAfterimage(
-                snapshot,
-                horizontalDirection,
-                accent,
-                impactMultiplier);
             PlayHitStop(defeatHitStopDuration * impactMultiplier);
-            PlayScreenFlash(
-                Color.Lerp(Color.white, accent, 0.5f),
-                defeatScreenFlashAlpha * ScaledIntensity * impactMultiplier,
-                defeatAfterimageDuration * 0.55f
-                    * Mathf.Sqrt(Mathf.Max(1f, impactMultiplier)));
         }
         else if (impactTier == CombatImpactTier.Devastating)
         {
             PlayHitStop(devastatingHitStopDuration);
-            PlayScreenFlash(
-                Color.Lerp(Color.white, accent, 0.38f),
-                devastatingScreenFlashAlpha * ScaledIntensity,
-                hitFlashDuration * 1.8f);
         }
         else
         {
@@ -323,6 +305,36 @@ public sealed class CombatPresentation : MonoBehaviour
                 ? criticalHitStopDuration
                 : hitStopDuration);
         }
+    }
+
+    private IEnumerator PlayImpactAfterDelay(
+        EnemySnapshot snapshot,
+        int horizontalDirection,
+        BulletInstance bullet,
+        float feedbackMultiplier,
+        float delay,
+        bool wasFinalEnemy)
+    {
+        float remaining = Mathf.Max(0f, delay);
+
+        while (remaining > 0f)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                remaining -= Time.unscaledDeltaTime;
+            }
+        }
+
+        PlayImpact(
+            snapshot,
+            horizontalDirection,
+            bullet,
+            CombatImpactTier.Defeat,
+            feedbackMultiplier,
+            0f,
+            wasFinalEnemy);
     }
 
     private void EnsureRuntimeResources()
@@ -347,89 +359,6 @@ public sealed class CombatPresentation : MonoBehaviour
             whiteSprite.hideFlags = HideFlags.HideAndDontSave;
         }
 
-        if (flashCanvas != null && flashImage != null)
-        {
-            EnsurePulseImage();
-            return;
-        }
-
-        GameObject canvasObject = new GameObject(
-            "Combat Presentation Screen Flash",
-            typeof(RectTransform),
-            typeof(Canvas),
-            typeof(CanvasScaler),
-            typeof(GraphicRaycaster));
-        canvasObject.transform.SetParent(transform, false);
-        flashCanvas = canvasObject.GetComponent<Canvas>();
-        flashCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        flashCanvas.sortingOrder = short.MaxValue;
-
-        GameObject imageObject = new GameObject(
-            "Flash",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image));
-        imageObject.transform.SetParent(canvasObject.transform, false);
-        RectTransform rectTransform = imageObject.GetComponent<RectTransform>();
-        rectTransform.anchorMin = Vector2.zero;
-        rectTransform.anchorMax = Vector2.one;
-        rectTransform.offsetMin = Vector2.zero;
-        rectTransform.offsetMax = Vector2.zero;
-        flashImage = imageObject.GetComponent<Image>();
-        flashImage.raycastTarget = false;
-        flashImage.color = Color.clear;
-        EnsurePulseImage();
-    }
-
-    private void EnsurePulseImage()
-    {
-        if (pulseImage != null)
-        {
-            return;
-        }
-
-        Material sourceMaterial = screenPulseMaterial;
-        bool sourceWasCreated = false;
-
-        if (sourceMaterial == null)
-        {
-            Shader pulseShader = Shader.Find("Loaded/Combat Screen Pulse");
-
-            if (pulseShader != null)
-            {
-                sourceMaterial = new Material(pulseShader)
-                {
-                    name = "Combat Screen Pulse (Runtime Source)"
-                };
-                sourceWasCreated = true;
-            }
-        }
-
-        if (sourceMaterial == null || flashCanvas == null)
-        {
-            return;
-        }
-
-        runtimePulseMaterial = sourceWasCreated
-            ? sourceMaterial
-            : new Material(sourceMaterial);
-        runtimePulseMaterial.name = "Combat Screen Pulse (Runtime)";
-        GameObject pulseObject = new GameObject(
-            "Shot Pulse",
-            typeof(RectTransform),
-            typeof(CanvasRenderer),
-            typeof(Image));
-        pulseObject.transform.SetParent(flashCanvas.transform, false);
-        RectTransform rectTransform = pulseObject.GetComponent<RectTransform>();
-        rectTransform.anchorMin = Vector2.zero;
-        rectTransform.anchorMax = Vector2.one;
-        rectTransform.offsetMin = Vector2.zero;
-        rectTransform.offsetMax = Vector2.zero;
-        pulseImage = pulseObject.GetComponent<Image>();
-        pulseImage.raycastTarget = false;
-        pulseImage.color = Color.white;
-        pulseImage.material = runtimePulseMaterial;
-        pulseImage.enabled = false;
     }
 
     private void SpawnMuzzleFlash(
@@ -450,6 +379,14 @@ public sealed class CombatPresentation : MonoBehaviour
         GameObject root = CreateEffectRoot("Shader Muzzle Flash", position);
         List<SpriteRenderer> renderers = new List<SpriteRenderer>();
         int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
+        Light2D muzzleLight = root.AddComponent<Light2D>();
+        muzzleLight.lightType = Light2D.LightType.Point;
+        muzzleLight.color = Color.Lerp(accent, Color.white, 0.08f);
+        muzzleLight.intensity = isCritical ? 1.15f : 0.85f;
+        muzzleLight.pointLightInnerRadius = size * 0.18f;
+        muzzleLight.pointLightOuterRadius = size
+            * (isCritical ? 1.65f : 1.4f);
+        muzzleLight.falloffIntensity = 0.68f;
 
         GameObject mainFlash = CreateSpriteObject(
             "Main Flame",
@@ -466,7 +403,7 @@ public sealed class CombatPresentation : MonoBehaviour
             material,
             accent,
             direction,
-            isCritical ? 3.2f : 2.55f,
+            isCritical ? 2.35f : 1.9f,
             muzzleRayCount);
         renderers.Add(mainRenderer);
 
@@ -489,7 +426,7 @@ public sealed class CombatPresentation : MonoBehaviour
             material,
             Color.Lerp(accent, Color.white, 0.22f),
             direction,
-            isCritical ? 2.15f : 1.55f,
+            isCritical ? 1.45f : 1.05f,
             muzzleRayCount + 2);
         renderers.Add(echoRenderer);
 
@@ -497,7 +434,8 @@ public sealed class CombatPresentation : MonoBehaviour
             root,
             renderers,
             muzzleFlashDuration,
-            direction));
+            direction,
+            muzzleLight));
     }
 
     private void SpawnFallbackMuzzleFlash(
@@ -590,6 +528,117 @@ public sealed class CombatPresentation : MonoBehaviour
             DirectionId,
             horizontalDirection == 0 ? 1f : horizontalDirection);
         propertyBlock.SetFloat(RayCountId, Mathf.Max(3, rayCount));
+        propertyBlock.SetFloat(EffectModeId, 0f);
+        renderer.SetPropertyBlock(propertyBlock);
+    }
+
+    private void SpawnHitContactFlare(
+        Vector3 position,
+        int horizontalDirection,
+        Color accent,
+        int sortingLayerId,
+        int sortingOrder,
+        CombatImpactTier impactTier,
+        float feedbackMultiplier)
+    {
+        Material material = ResolveMuzzleMaterial();
+
+        if (material == null)
+        {
+            return;
+        }
+
+        int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
+        float tier = (float)impactTier;
+        float effectMultiplier = impactTier == CombatImpactTier.Defeat
+            ? Mathf.Max(0f, feedbackMultiplier)
+            : 1f;
+        float size = 0.27f
+            * (1f + tier * 0.22f)
+            * ScaledIntensity
+            * effectMultiplier;
+        float duration = (0.09f + tier * 0.025f)
+            * Mathf.Lerp(1f, 1.14f, Mathf.Clamp01(effectMultiplier - 1f));
+        GameObject root = CreateEffectRoot("Localized Hit Flare", position);
+        List<SpriteRenderer> renderers = new List<SpriteRenderer>();
+
+        GameObject contact = CreateSpriteObject(
+            "Contact Burst",
+            root.transform,
+            Color.white,
+            sortingOrder);
+        contact.transform.localScale = new Vector3(
+            size * 2.05f,
+            size * 1.5f,
+            1f);
+        SpriteRenderer contactRenderer = contact.GetComponent<SpriteRenderer>();
+        contactRenderer.sortingLayerID = sortingLayerId;
+        ConfigureHitRenderer(
+            contactRenderer,
+            material,
+            accent,
+            direction,
+            1.55f + tier * 0.42f,
+            5 + Mathf.RoundToInt(tier * 2f));
+        renderers.Add(contactRenderer);
+
+        if (impactTier >= CombatImpactTier.Critical)
+        {
+            GameObject echo = CreateSpriteObject(
+                "Contact Echo",
+                root.transform,
+                Color.white,
+                sortingOrder - 1);
+            echo.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                direction * (12f + tier * 3f));
+            echo.transform.localScale = new Vector3(
+                size * 1.62f,
+                size * 1.18f,
+                1f);
+            SpriteRenderer echoRenderer = echo.GetComponent<SpriteRenderer>();
+            echoRenderer.sortingLayerID = sortingLayerId;
+            ConfigureHitRenderer(
+                echoRenderer,
+                material,
+                Color.Lerp(accent, Color.white, 0.16f),
+                direction,
+                1.08f + tier * 0.3f,
+                7 + Mathf.RoundToInt(tier * 2f));
+            renderers.Add(echoRenderer);
+        }
+
+        StartCoroutine(AnimateShaderImpact(
+            root,
+            renderers,
+            duration,
+            direction));
+    }
+
+    private static void ConfigureHitRenderer(
+        SpriteRenderer renderer,
+        Material material,
+        Color accent,
+        int horizontalDirection,
+        float effectIntensity,
+        int rayCount)
+    {
+        renderer.sharedMaterial = material;
+        Color hotColor = Color.Lerp(
+            accent,
+            new Color(1f, 0.78f, 0.24f, 1f),
+            0.58f);
+        MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
+        propertyBlock.SetColor(PrimaryColorId, accent);
+        propertyBlock.SetColor(SecondaryColorId, hotColor);
+        propertyBlock.SetFloat(ProgressId, 0f);
+        propertyBlock.SetFloat(IntensityId, effectIntensity);
+        propertyBlock.SetFloat(
+            DirectionId,
+            horizontalDirection == 0 ? 1f : horizontalDirection);
+        propertyBlock.SetFloat(RayCountId, Mathf.Max(3, rayCount));
+        propertyBlock.SetFloat(EffectModeId, 1f);
         renderer.SetPropertyBlock(propertyBlock);
     }
 
@@ -648,33 +697,6 @@ public sealed class CombatPresentation : MonoBehaviour
         }
     }
 
-    private void SpawnHitFlash(
-        EnemySnapshot snapshot,
-        Color accent,
-        CombatImpactTier impactTier,
-        float feedbackMultiplier)
-    {
-        float tierStrength = (float)impactTier / (float)CombatImpactTier.Defeat;
-        GameObject flash = CreateSnapshotObject(
-            $"{impactTier} Hit Flash",
-            snapshot,
-            snapshot.SortingOrder + 1);
-        SpriteRenderer renderer = flash.GetComponent<SpriteRenderer>();
-        renderer.color = Color.Lerp(
-            Color.white,
-            accent,
-            Mathf.Lerp(0.12f, 0.38f, tierStrength));
-        float basePeakScale = Mathf.Lerp(1.08f, 1.32f, tierStrength);
-        float peakScale = 1f
-            + (basePeakScale - 1f) * Mathf.Max(0f, feedbackMultiplier);
-        StartCoroutine(AnimateSnapshotFlash(
-            flash,
-            renderer,
-            peakScale,
-            hitFlashDuration * Mathf.Lerp(1f, 1.65f, tierStrength),
-            tierStrength));
-    }
-
     private void SpawnDefeatAfterimage(
         EnemySnapshot snapshot,
         int horizontalDirection,
@@ -724,15 +746,28 @@ public sealed class CombatPresentation : MonoBehaviour
         int scaledCount = Mathf.Max(1, Mathf.RoundToInt(
             count * ScaledIntensity
             * CombatAccessibilitySettings.ParticleDensityMultiplier
+            * 0.58f
             * effectMultiplier));
+        Color heatDust = new Color(0.44f, 0.26f, 0.12f, 0.42f);
+        Color warmGlint = Color.Lerp(
+            new Color(1f, 0.72f, 0.3f, 0.88f),
+            accent,
+            0.38f);
 
         for (int sparkIndex = 0; sparkIndex < scaledCount; sparkIndex++)
         {
-            Color color = sparkIndex % 3 == 0
-                ? defeatDustColor
-                : Color.Lerp(accent, Color.white, Random.Range(0.05f, 0.45f));
+            bool isHeatDust = sparkIndex % 3 == 0;
+            Color color = isHeatDust
+                ? Color.Lerp(
+                    heatDust,
+                    defeatDustColor,
+                    Random.Range(0.06f, 0.2f))
+                : Color.Lerp(warmGlint, accent, Random.Range(0.08f, 0.3f));
+            color.a = isHeatDust
+                ? Random.Range(0.22f, 0.42f)
+                : Random.Range(0.58f, 0.9f);
             GameObject spark = CreateSpriteObject(
-                isDefeated ? "Defeat Debris" : "Hit Spark",
+                isHeatDust ? "Heat Dust Mote" : "Optical Impact Glint",
                 null,
                 color,
                 sortingOrder);
@@ -741,10 +776,10 @@ public sealed class CombatPresentation : MonoBehaviour
             spark.transform.position = position
                 + (Vector3)Random.insideUnitCircle * 0.05f;
 
-            float forwardSpeed = Random.Range(0.9f, isDefeated ? 2.8f : 1.9f);
+            float forwardSpeed = Random.Range(0.45f, isDefeated ? 1.8f : 1.2f);
             Vector2 velocity = new Vector2(
                 direction * forwardSpeed,
-                Random.Range(-0.7f, isDefeated ? 1.8f : 1.1f));
+                Random.Range(-0.5f, isDefeated ? 1.15f : 0.72f));
 
             if (sparkIndex % 4 == 0)
             {
@@ -754,19 +789,80 @@ public sealed class CombatPresentation : MonoBehaviour
             velocity *= effectMultiplier;
 
             spark.transform.localScale = new Vector3(
-                Random.Range(0.045f, 0.13f),
-                Random.Range(0.018f, 0.045f),
+                isHeatDust
+                    ? Random.Range(0.025f, 0.065f)
+                    : Random.Range(0.07f, 0.16f),
+                isHeatDust
+                    ? Random.Range(0.018f, 0.05f)
+                    : Random.Range(0.006f, 0.018f),
                 1f) * Mathf.Lerp(0.75f, 1.25f, ScaledIntensity * 0.5f)
                 * effectMultiplier;
             spark.transform.rotation = Quaternion.Euler(
                 0f,
                 0f,
                 Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg);
-            StartCoroutine(AnimateSpark(
+            StartCoroutine(AnimateOpticalMote(
                 spark,
                 renderer,
                 velocity,
-                isDefeated ? Random.Range(0.24f, 0.42f) : Random.Range(0.12f, 0.24f)));
+                isDefeated
+                    ? Random.Range(0.24f, 0.4f)
+                    : Random.Range(0.13f, 0.25f)));
+        }
+    }
+
+    private void SpawnNormalOpticalGlints(
+        Vector3 position,
+        int horizontalDirection,
+        Color accent,
+        int sortingLayerId,
+        int sortingOrder)
+    {
+        int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
+        int glintCount = Mathf.Max(
+            3,
+            Mathf.RoundToInt(
+                4f * CombatAccessibilitySettings.ParticleDensityMultiplier));
+        Color warmGlint = Color.Lerp(
+            new Color(1f, 0.76f, 0.34f, 0.86f),
+            accent,
+            0.36f);
+
+        for (int glintIndex = 0; glintIndex < glintCount; glintIndex++)
+        {
+            float angle = 360f * glintIndex / glintCount
+                + Random.Range(-24f, 24f);
+            Vector2 radial = Quaternion.Euler(0f, 0f, angle)
+                * Vector2.right;
+            Color color = Color.Lerp(
+                warmGlint,
+                Color.white,
+                Random.Range(0.04f, 0.18f));
+            color.a = Random.Range(0.46f, 0.82f);
+            GameObject glint = CreateSpriteObject(
+                "Local Lens Glint",
+                null,
+                color,
+                sortingOrder);
+            SpriteRenderer renderer = glint.GetComponent<SpriteRenderer>();
+            renderer.sortingLayerID = sortingLayerId;
+            glint.transform.position = position
+                + (Vector3)(radial * Random.Range(0.025f, 0.11f));
+            glint.transform.rotation = Quaternion.Euler(
+                0f,
+                0f,
+                angle + Random.Range(-12f, 12f));
+            glint.transform.localScale = new Vector3(
+                Random.Range(0.055f, 0.13f),
+                Random.Range(0.006f, 0.016f),
+                1f) * Mathf.Lerp(0.85f, 1.2f, ScaledIntensity * 0.5f);
+            Vector2 velocity = radial * Random.Range(0.22f, 0.52f)
+                + Vector2.right * direction * 0.16f;
+            StartCoroutine(AnimateOpticalMote(
+                glint,
+                renderer,
+                velocity,
+                Random.Range(0.13f, 0.22f)));
         }
     }
 
@@ -781,20 +877,26 @@ public sealed class CombatPresentation : MonoBehaviour
         float feedbackMultiplier = 1f)
     {
         int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
-        float tierScale = 1f + (int)impactTier * 0.22f;
+        float tierScale = 0.82f + (int)impactTier * 0.15f;
         float effectMultiplier = impactTier == CombatImpactTier.Defeat
             ? Mathf.Max(0f, feedbackMultiplier)
             : 1f;
         int scaledCount = Mathf.Max(1, Mathf.RoundToInt(
-            count * CombatAccessibilitySettings.ParticleDensityMultiplier
+            count * 0.78f
+            * CombatAccessibilitySettings.ParticleDensityMultiplier
             * effectMultiplier));
 
         for (int streakIndex = 0; streakIndex < scaledCount; streakIndex++)
         {
+            Color refractionColor = Color.Lerp(
+                new Color(1f, 0.72f, 0.3f, 0.72f),
+                accent,
+                Random.Range(0.22f, 0.46f));
+            refractionColor.a = Random.Range(0.34f, 0.68f);
             GameObject streak = CreateSpriteObject(
-                $"{impactTier} Directional Streak",
+                $"{impactTier} Heat Refraction Streak",
                 null,
-                Color.Lerp(accent, Color.white, 0.55f),
+                refractionColor,
                 sortingOrder);
             SpriteRenderer renderer = streak.GetComponent<SpriteRenderer>();
             renderer.sortingLayerID = sortingLayerId;
@@ -803,21 +905,21 @@ public sealed class CombatPresentation : MonoBehaviour
                 Random.Range(-0.16f, 0.16f),
                 0f);
             streak.transform.localScale = new Vector3(
-                Random.Range(0.28f, 0.62f) * tierScale * effectMultiplier,
-                Random.Range(0.012f, 0.03f) * tierScale * effectMultiplier,
+                Random.Range(0.22f, 0.52f) * tierScale * effectMultiplier,
+                Random.Range(0.006f, 0.018f) * tierScale * effectMultiplier,
                 1f);
             streak.transform.rotation = Quaternion.Euler(
                 0f,
                 0f,
                 Random.Range(-9f, 9f));
             Vector2 velocity = new Vector2(
-                direction * Random.Range(1.6f, 3.4f) * tierScale,
-                Random.Range(-0.3f, 0.3f)) * effectMultiplier;
-            StartCoroutine(AnimateSpark(
+                direction * Random.Range(1.2f, 2.6f) * tierScale,
+                Random.Range(-0.22f, 0.22f)) * effectMultiplier;
+            StartCoroutine(AnimateOpticalMote(
                 streak,
                 renderer,
                 velocity,
-                Random.Range(0.09f, 0.17f) * tierScale));
+                Random.Range(0.12f, 0.22f) * tierScale));
         }
     }
 
@@ -833,6 +935,12 @@ public sealed class CombatPresentation : MonoBehaviour
         while (elapsed < duration && root != null)
         {
             yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
             elapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
             float scaleProgress = progress < 0.28f
@@ -863,16 +971,26 @@ public sealed class CombatPresentation : MonoBehaviour
         GameObject root,
         List<SpriteRenderer> renderers,
         float duration,
-        int horizontalDirection)
+        int horizontalDirection,
+        Light2D muzzleLight)
     {
         float elapsed = 0f;
         Vector3 startPosition = root.transform.position;
         Vector3 baseScale = root.transform.localScale;
+        float baseLightIntensity = muzzleLight == null
+            ? 0f
+            : muzzleLight.intensity;
         MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
 
         while (elapsed < duration && root != null)
         {
             yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
             elapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
             float attack = Mathf.SmoothStep(
@@ -896,6 +1014,13 @@ public sealed class CombatPresentation : MonoBehaviour
                 0f,
                 horizontalDirection * progress * 3.5f);
 
+            if (muzzleLight != null)
+            {
+                muzzleLight.intensity = baseLightIntensity
+                    * attack
+                    * decay;
+            }
+
             foreach (SpriteRenderer renderer in renderers)
             {
                 if (renderer == null)
@@ -912,36 +1037,61 @@ public sealed class CombatPresentation : MonoBehaviour
         DestroyEffect(root);
     }
 
-    private IEnumerator AnimateSnapshotFlash(
-        GameObject flash,
-        SpriteRenderer renderer,
-        float peakScale,
+    private IEnumerator AnimateShaderImpact(
+        GameObject root,
+        List<SpriteRenderer> renderers,
         float duration,
-        float tierStrength)
+        int horizontalDirection)
     {
-        Vector3 baseScale = flash.transform.localScale;
         float elapsed = 0f;
+        Vector3 startPosition = root.transform.position;
+        Vector3 baseScale = root.transform.localScale;
+        MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
 
-        while (elapsed < duration && flash != null)
+        while (elapsed < duration && root != null)
         {
             yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
             elapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
+            float attack = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(progress / 0.1f));
+            float release = 1f - Mathf.SmoothStep(0.08f, 1f, progress);
             float pulse = Mathf.Sin(progress * Mathf.PI);
-            float stretch = Mathf.Lerp(1f, peakScale, pulse);
-            float squash = Mathf.Lerp(1f, 2f - peakScale, pulse);
-            flash.transform.localScale = new Vector3(
-                baseScale.x * stretch,
-                baseScale.y * squash,
-                baseScale.z);
-            Color color = renderer.color;
-            color.a = (1f - Mathf.SmoothStep(0f, 1f, progress))
-                * Mathf.Lerp(0.72f, 1f, tierStrength)
-                * CombatAccessibilitySettings.FlashMultiplier;
-            renderer.color = color;
+            root.transform.localScale = baseScale
+                * Mathf.Lerp(0.38f, 1.18f, attack)
+                * Mathf.Lerp(0.74f, 1f, release);
+            root.transform.position = startPosition
+                + Vector3.right
+                * horizontalDirection
+                * 0.045f
+                * pulse;
+            root.transform.rotation = Quaternion.Euler(
+                0f,
+                0f,
+                horizontalDirection * pulse * 4.5f);
+
+            foreach (SpriteRenderer renderer in renderers)
+            {
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                renderer.GetPropertyBlock(propertyBlock);
+                propertyBlock.SetFloat(ProgressId, progress);
+                renderer.SetPropertyBlock(propertyBlock);
+            }
         }
 
-        DestroyEffect(flash);
+        DestroyEffect(root);
     }
 
     private IEnumerator AnimateDefeatAfterimage(
@@ -1025,238 +1175,66 @@ public sealed class CombatPresentation : MonoBehaviour
         DestroyEffect(spark);
     }
 
-    private void PlayScreenPulse(
-        Vector3 worldPosition,
-        Color color,
-        float effectIntensity,
-        float duration)
-    {
-        effectIntensity *= CombatAccessibilitySettings.FlashMultiplier;
-
-        if (effectIntensity <= 0f || duration <= 0f)
-        {
-            return;
-        }
-
-        EnsureRuntimeResources();
-
-        if (pulseImage == null || runtimePulseMaterial == null)
-        {
-            PlayScreenFlash(
-                color,
-                Mathf.Clamp01(effectIntensity * 0.07f),
-                duration * 0.45f);
-            return;
-        }
-
-        if (pulseCoroutine != null)
-        {
-            StopCoroutine(pulseCoroutine);
-        }
-
-        Camera worldCamera = Camera.main;
-        Vector2 center = new Vector2(0.5f, 0.5f);
-
-        if (worldCamera != null)
-        {
-            Vector3 viewportPosition =
-                worldCamera.WorldToViewportPoint(worldPosition);
-
-            if (viewportPosition.z >= 0f)
-            {
-                center = new Vector2(
-                    viewportPosition.x,
-                    viewportPosition.y);
-            }
-        }
-
-        color.a = 1f;
-        runtimePulseMaterial.SetColor(PulseColorId, color);
-        runtimePulseMaterial.SetFloat(IntensityId, effectIntensity);
-        runtimePulseMaterial.SetVector(
-            CenterId,
-            new Vector4(center.x, center.y, 0f, 0f));
-        runtimePulseMaterial.SetFloat(
-            AspectId,
-            Screen.height <= 0
-                ? 1f
-                : (float)Screen.width / Screen.height);
-        runtimePulseMaterial.SetFloat(ProgressId, 0f);
-        pulseImage.enabled = true;
-        pulseCoroutine = StartCoroutine(FadeScreenPulse(duration));
-    }
-
-    private IEnumerator FadeScreenPulse(float duration)
-    {
-        float elapsed = 0f;
-
-        while (elapsed < duration
-               && pulseImage != null
-               && runtimePulseMaterial != null)
-        {
-            yield return null;
-            elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / duration);
-            runtimePulseMaterial.SetFloat(ProgressId, progress);
-        }
-
-        if (pulseImage != null)
-        {
-            pulseImage.enabled = false;
-        }
-
-        pulseCoroutine = null;
-    }
-
-    private void PlayScreenFlash(Color color, float alpha, float duration)
-    {
-        alpha *= CombatAccessibilitySettings.FlashMultiplier;
-
-        if (alpha <= 0f || duration <= 0f)
-        {
-            return;
-        }
-
-        EnsureRuntimeResources();
-
-        if (flashCoroutine != null)
-        {
-            StopCoroutine(flashCoroutine);
-            flashCoroutine = null;
-        }
-
-        Color currentColor = flashImage != null
-            ? flashImage.color
-            : Color.clear;
-        color.a = Mathf.Clamp01(alpha);
-        flashCoroutine = StartCoroutine(FadeScreenFlash(
-            currentColor,
-            color,
-            duration));
-    }
-
-    private IEnumerator FadeScreenFlash(
-        Color currentColor,
-        Color peakColor,
+    private IEnumerator AnimateOpticalMote(
+        GameObject mote,
+        SpriteRenderer renderer,
+        Vector2 velocity,
         float duration)
     {
         float elapsed = 0f;
+        Vector3 initialScale = mote.transform.localScale;
+        float initialAlpha = renderer.color.a;
 
-        while (elapsed < duration && flashImage != null)
+        while (elapsed < duration && mote != null)
         {
             yield return null;
-            elapsed += Time.unscaledDeltaTime;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            float deltaTime = Time.unscaledDeltaTime;
+            elapsed += deltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
-            const float attackPortion = 0.12f;
-            Color color;
-
-            if (progress < attackPortion)
-            {
-                float attack = Mathf.SmoothStep(
-                    0f,
-                    1f,
-                    progress / attackPortion);
-                color = Color.Lerp(currentColor, peakColor, attack);
-            }
-            else
-            {
-                float release = Mathf.InverseLerp(
-                    attackPortion,
-                    1f,
-                    progress);
-                color = peakColor;
-                color.a *= 1f - Mathf.SmoothStep(0f, 1f, release);
-            }
-
-            flashImage.color = color;
+            float pulse = Mathf.Sin(progress * Mathf.PI);
+            mote.transform.position += (Vector3)(velocity * deltaTime);
+            velocity *= Mathf.Exp(-2.8f * deltaTime);
+            mote.transform.localScale = new Vector3(
+                initialScale.x * Mathf.Lerp(0.45f, 1.4f, pulse),
+                initialScale.y * Mathf.Lerp(0.35f, 1.15f, pulse)
+                    * (1f - progress * 0.72f),
+                initialScale.z);
+            Color color = renderer.color;
+            float attack = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(progress / 0.12f));
+            float release = 1f - Mathf.SmoothStep(0.18f, 1f, progress);
+            color.a = initialAlpha * attack * release;
+            renderer.color = color;
         }
 
-        if (flashImage != null)
-        {
-            flashImage.color = Color.clear;
-        }
-
-        flashCoroutine = null;
+        DestroyEffect(mote);
     }
 
     private void PlayHitStop(float duration)
     {
-        duration *= ScaledIntensity
-            * CombatAccessibilitySettings.TimeEffectMultiplier;
+        duration *= ScaledIntensity;
 
         if (duration <= 0f)
         {
             return;
         }
 
-        hitStopRemaining = duration;
-
-        if (hitStopCoroutine == null)
-        {
-            hitStopCoroutine = StartCoroutine(HitStopRoutine());
-        }
-    }
-
-    private IEnumerator HitStopRoutine()
-    {
-        timeScaleBeforeHitStop = Time.timeScale;
-
-        if (timeScaleBeforeHitStop <= 0f)
-        {
-            hitStopCoroutine = null;
-            hitStopRemaining = 0f;
-            yield break;
-        }
-
-        Time.timeScale = 0f;
-
-        while (hitStopRemaining > 0f)
-        {
-            yield return null;
-
-            if (GamePauseController.IsPaused)
-            {
-                if (Time.timeScale <= 0f && timeScaleBeforeHitStop > 0f)
-                {
-                    Time.timeScale = timeScaleBeforeHitStop;
-                }
-
-                hitStopRemaining = 0f;
-                hitStopCoroutine = null;
-                yield break;
-            }
-
-            hitStopRemaining -= Time.unscaledDeltaTime;
-        }
-
-        if (Time.timeScale <= 0f && timeScaleBeforeHitStop > 0f)
-        {
-            Time.timeScale = timeScaleBeforeHitStop;
-        }
-
-        hitStopRemaining = 0f;
-        hitStopCoroutine = null;
-    }
-
-    private void RestoreTimeScale()
-    {
-        if (hitStopCoroutine != null)
-        {
-            StopCoroutine(hitStopCoroutine);
-            hitStopCoroutine = null;
-        }
-
-        if (Time.timeScale <= 0f && timeScaleBeforeHitStop > 0f)
-        {
-            Time.timeScale = timeScaleBeforeHitStop;
-        }
-
-        hitStopRemaining = 0f;
+        combatFeedback ??= GetComponent<CombatFeedbackController>();
+        combatFeedback?.RequestHitStop(duration);
     }
 
     public void CancelHitStopForPause()
     {
-        RestoreTimeScale();
+        combatFeedback ??= GetComponent<CombatFeedbackController>();
+        combatFeedback?.CancelPresentationForPause();
     }
 
     private GameObject CreateEffectRoot(string effectName, Vector3 position)
@@ -1338,7 +1316,9 @@ public sealed class CombatPresentation : MonoBehaviour
 
     private static Color GetAccentColor(BulletInstance bullet)
     {
-        Color accent = bullet == null ? Color.white : bullet.PrimaryLineColor;
+        Color accent = bullet == null
+            ? new Color(1f, 0.3f, 0.06f, 1f)
+            : bullet.PrimaryLineColor;
         accent.a = 1f;
         return accent;
     }
