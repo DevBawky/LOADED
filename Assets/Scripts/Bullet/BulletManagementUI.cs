@@ -65,14 +65,18 @@ public class BulletManagementUI : MonoBehaviour
         new List<BulletInstance>();
     private readonly List<BulletButtonVisualState> spawnedButtonVisuals =
         new List<BulletButtonVisualState>();
+    private readonly List<System.Action<bool>> spawnedHoverActions =
+        new List<System.Action<bool>>();
     private readonly Vector3[] tooltipWorldCorners = new Vector3[4];
     private BulletInstance selectedBullet;
+    private BulletInstance hoveredBullet;
     private bool wasShopActive;
     private EventBulletSelectionMode eventSelectionMode;
     private System.Action<BulletInstance> eventConfirmCallback;
     private System.Action eventCancelCallback;
 
     public BulletInstance SelectedBullet => selectedBullet;
+    public BulletInstance TooltipBullet => hoveredBullet ?? selectedBullet;
     public bool IsOpen => manageBulletsPanel != null
         && manageBulletsPanel.activeInHierarchy;
 
@@ -447,6 +451,9 @@ public class BulletManagementUI : MonoBehaviour
             indicator,
             hoverIndicatorColor,
             selectedIndicatorColor);
+        System.Action<bool> hoverAction = isHovered =>
+            HandleBulletHover(bullet, isHovered);
+        visual.HoverChanged += hoverAction;
         UnityAction clickAction = () => SelectBullet(bullet);
         button.onClick.AddListener(clickAction);
         SoundManager.BindUiButtonSfx(button);
@@ -454,6 +461,19 @@ public class BulletManagementUI : MonoBehaviour
         spawnedClickActions.Add(clickAction);
         spawnedButtonBullets.Add(bullet);
         spawnedButtonVisuals.Add(visual);
+        spawnedHoverActions.Add(hoverAction);
+    }
+
+    private void HandleBulletHover(BulletInstance bullet, bool isHovered)
+    {
+        if (isHovered)
+        {
+            hoveredBullet = bullet;
+        }
+        else if (hoveredBullet == bullet)
+        {
+            hoveredBullet = null;
+        }
     }
 
     private void RefreshSelection()
@@ -803,6 +823,8 @@ public class BulletManagementUI : MonoBehaviour
 
     private void ClearSpawnedButtons()
     {
+        hoveredBullet = null;
+
         for (int index = 0; index < spawnedButtons.Count; index++)
         {
             Button button = spawnedButtons[index];
@@ -817,6 +839,14 @@ public class BulletManagementUI : MonoBehaviour
                 button.onClick.RemoveListener(spawnedClickActions[index]);
             }
 
+            if (index < spawnedButtonVisuals.Count
+                && index < spawnedHoverActions.Count
+                && spawnedButtonVisuals[index] != null)
+            {
+                spawnedButtonVisuals[index].HoverChanged -=
+                    spawnedHoverActions[index];
+            }
+
             button.gameObject.SetActive(false);
             Destroy(button.gameObject);
         }
@@ -825,6 +855,7 @@ public class BulletManagementUI : MonoBehaviour
         spawnedClickActions.Clear();
         spawnedButtonBullets.Clear();
         spawnedButtonVisuals.Clear();
+        spawnedHoverActions.Clear();
     }
 
     private void RefreshButtonSelection()

@@ -24,6 +24,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f26678f0173a474ab0e60009063e56eb, type: 2}
   - {fileID: 11400000, guid: 77dd19b6338e6dc44b51344f42bfb560, type: 2}
   - {fileID: 11400000, guid: 658961ba54988274f86b4014a7aa0a0f, type: 2}
+  earlyBattleEndPercent: 10
+  middleBattleEndPercent: 60
   eliteBattles:
   - {fileID: 11400000, guid: e1788ae2a5c244f29e09e4f2d58a349d, type: 2}
   bossBattle: {fileID: 11400000, guid: 5a34671060124aaa84b424139632763d, type: 2}
@@ -37,9 +39,9 @@ MonoBehaviour:
     minimumCount: 1
     maximumCount: 3
   - nodeType: 3
-    weight: 15
+    weight: 20
     minimumCount: 3
-    maximumCount: 6
+    maximumCount: 8
   - nodeType: 5
     weight: 15
     minimumCount: 3

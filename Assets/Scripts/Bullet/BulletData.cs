@@ -85,6 +85,24 @@ public enum BulletGrade
     Legendary = 3
 }
 
+public enum BulletType
+{
+    [InspectorName("일반")]
+    Normal = 0,
+    [InspectorName("유령")]
+    Ghost = 1,
+    [InspectorName("저격")]
+    Sniper = 2,
+    [InspectorName("폭풍")]
+    Storm = 3,
+    [InspectorName("샷건")]
+    Shotgun = 4,
+    [InspectorName("관통")]
+    Piercing = 5,
+    [InspectorName("디버프")]
+    Debuff = 6
+}
+
 public readonly struct BulletRuntimeTooltipStats
 {
     public BulletRuntimeTooltipStats(
@@ -120,6 +138,9 @@ public class BulletLevelData
         new List<BulletConditionalEventData>();
     [SerializeField] private List<PenetrationChanceData> penetrationChances =
         new List<PenetrationChanceData>();
+    [Min(0)]
+    [Tooltip("산탄 발수입니다. 0이면 기본 레벨의 설정을 이어받습니다.")]
+    [SerializeField] private int shotgunShotCount;
     [SerializeField] private Material lineMaterial;
     [SerializeField] private bool doesNotConsumeTurn;
     [Min(0f)]
@@ -142,6 +163,9 @@ public class BulletLevelData
     public IReadOnlyList<PenetrationChanceData> PenetrationChances =>
         penetrationChances
         ?? (IReadOnlyList<PenetrationChanceData>)Array.Empty<PenetrationChanceData>();
+    public int ShotgunShotCount => shotgunShotCount <= 0
+        ? 0
+        : Mathf.Max(2, shotgunShotCount);
     public Material LineMaterial => lineMaterial;
     public bool DoesNotConsumeTurn => doesNotConsumeTurn;
     public float RecoilStrength => Mathf.Max(0f, recoilStrength);
@@ -160,6 +184,7 @@ public class BulletLevelData
         List<BulletEffectData> effects,
         List<BulletConditionalEventData> conditionalEvents,
         List<PenetrationChanceData> penetrationChances,
+        int shotgunShotCount,
         Material lineMaterial,
         bool doesNotConsumeTurn,
         float recoilStrength,
@@ -174,6 +199,7 @@ public class BulletLevelData
         this.conditionalEvents = CloneConditionalEvents(conditionalEvents);
         this.penetrationChances = ClonePenetrationChances(
             penetrationChances);
+        this.shotgunShotCount = shotgunShotCount;
         this.lineMaterial = lineMaterial;
         this.doesNotConsumeTurn = doesNotConsumeTurn;
         this.recoilStrength = recoilStrength;
@@ -382,6 +408,8 @@ public class BulletData : ScriptableObject
     [Min(0)]
     [SerializeField] private int price;
     [SerializeField] private BulletGrade grade;
+    [Tooltip("탄환의 공통 발사 유형입니다. 기존 탄환은 일반탄을 사용합니다.")]
+    [SerializeField] private BulletType bulletType;
 
     [Header("Display Colors")]
     [SerializeField] private bool useCustomGradeNameColor;
@@ -407,6 +435,9 @@ public class BulletData : ScriptableObject
     [SerializeField] private List<BulletConditionalEventData> conditionalEvents =
         new List<BulletConditionalEventData>();
     [SerializeField] private List<PenetrationChanceData> penetrationChances = new List<PenetrationChanceData>();
+    [Min(2)]
+    [Tooltip("산탄이 한 탄환으로 발사하는 총 발수입니다.")]
+    [SerializeField] private int shotgunShotCount = 2;
     [FormerlySerializedAs("trailMaterial")]
     [SerializeField] private Material lineMaterial;
     [FormerlySerializedAs("trailColor")]
@@ -434,6 +465,9 @@ public class BulletData : ScriptableObject
     public Sprite CylinderIcon => cylinderIcon;
     public int Price => Mathf.Max(0, price);
     public BulletGrade Grade => grade;
+    public BulletType BulletType => bulletType;
+    public string BulletTypeDisplayName => GetBulletTypeDisplayName(bulletType);
+    public string BulletTypeDescription => GetBulletTypeDescription(0);
     public int Damage => damage;
     public int MaxRange => maxRange;
     public float CriticalChance => Mathf.Clamp(criticalChance, 0f, 100f);
@@ -454,12 +488,50 @@ public class BulletData : ScriptableObject
     public float LineWidthMultiplier => Mathf.Max(0.05f, lineWidthMultiplier);
     public Color LineColor => primaryLineColor;
     public bool DoesNotConsumeTurn => doesNotConsumeTurn;
+    public bool DoesNotConsumeReloadTurn =>
+        bulletType == BulletType.Ghost || doesNotConsumeTurn;
+    public int ShotCount => bulletType == BulletType.Shotgun
+        ? Mathf.Max(2, shotgunShotCount)
+        : 1;
     public float RecoilStrength => recoilStrength;
     public Color GradeNameColor => useCustomGradeNameColor
         ? customGradeNameColor
         : GetDefaultGradeColor(grade);
     public int UpgradeCost => Mathf.Max(0, upgradeCost);
     public IReadOnlyList<BulletLevelData> UpgradeLevels => upgradeLevels;
+
+    public static string GetBulletTypeDisplayName(BulletType type)
+    {
+        return type switch
+        {
+            BulletType.Ghost => "유령",
+            BulletType.Sniper => "저격",
+            BulletType.Storm => "폭풍",
+            BulletType.Shotgun => "샷건",
+            BulletType.Piercing => "관통",
+            BulletType.Debuff => "디버프",
+            _ => "일반"
+        };
+    }
+
+    public string GetBulletTypeDescription(int level)
+    {
+        return bulletType switch
+        {
+            BulletType.Ghost => "장전할 때 턴을 소모하지 않습니다.",
+            BulletType.Sniper =>
+                "설정된 관통 확률에 따라 뒤쪽의 적을 추가로 공격합니다.",
+            BulletType.Storm =>
+                "방향과 관계없이 살아 있는 모든 적에게 대미지를 줍니다.",
+            BulletType.Shotgun =>
+                $"탄환 한 발을 소모해 한 번에 {GetShotCount(level)}발을 발사합니다.",
+            BulletType.Piercing =>
+                "설정된 관통 횟수와 확률에 따라 뒤쪽의 적을 추가로 공격합니다.",
+            BulletType.Debuff =>
+                "독, 기절, 표식, 약화 등의 디버프를 부여하거나 활용합니다.",
+            _ => string.Empty
+        };
+    }
 
     private void OnValidate()
     {
@@ -693,6 +765,19 @@ public class BulletData : ScriptableObject
             : levelData.PenetrationChances;
     }
 
+    public int GetShotCount(int level)
+    {
+        if (bulletType != BulletType.Shotgun)
+        {
+            return 1;
+        }
+
+        BulletLevelData levelData = GetUpgradeLevelData(level);
+        return levelData == null || levelData.ShotgunShotCount <= 0
+            ? Mathf.Max(2, shotgunShotCount)
+            : levelData.ShotgunShotCount;
+    }
+
     public Material GetLineMaterial(int level)
     {
         BulletLevelData levelData = GetUpgradeLevelData(level);
@@ -793,6 +878,7 @@ public class BulletData : ScriptableObject
             effects,
             conditionalEvents,
             penetrationChances,
+            shotgunShotCount,
             lineMaterial,
             doesNotConsumeTurn,
             recoilStrength,

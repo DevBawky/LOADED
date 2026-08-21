@@ -65,11 +65,11 @@
 
 ### 변경 내역
 
-- `Assets/Scripts/Bullet/SO` 아래 작성된 `BulletData` 57종을 상점과 도감의 기준 목록으로 사용한다.
+- `Assets/Scripts/Bullet/SO` 아래 작성된 `BulletData` 58종을 상점과 도감의 기준 목록으로 사용한다.
 - Battle의 `ShopManager`, Shop/Event/Treasure 관리자 프리팹의 `ShopManager`, MainMenu의 `BulletDictionaryController`를 포함해 프로젝트 내 모든 동일 타입 소유자를 검사한다.
 - 기존 풀 순서와 항목은 유지하고 누락된 탄환만 에셋 경로 오름차순으로 뒤에 추가한다. 이미 등록된 항목은 중복 추가하지 않는다.
 - `Tools > LOADED > Sync All Bullet Pools` 메뉴가 현재 작성된 모든 탄환을 자동 검색하므로, 이후 신규 탄환을 만들 때 동기화 도구의 하드코딩 목록을 수정할 필요가 없다.
-- `BulletPoolIntegrityTests`는 모든 상점/도감 소유자에 57종이 빠짐없이 한 번씩 등록되어 있고 null 항목이 없는지 검증한다.
+- `BulletPoolIntegrityTests`는 모든 상점/도감 소유자에 58종이 빠짐없이 한 번씩 등록되어 있고 null 항목이 없는지 검증한다.
 - 테스트 실패 메시지는 Unity의 C# 9 컴파일러와 호환되도록 누락 탄환 이름 목록을 보간 문자열 밖에서 먼저 생성한다. 보간식 내부에 여러 줄 LINQ 식을 넣지 않는다.
 
 ### 적용 방법

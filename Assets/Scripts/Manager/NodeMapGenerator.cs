@@ -49,7 +49,9 @@ public static class NodeMapGenerator
         IReadOnlyList<NodeMapGenerationRule> generationRules = null,
         int middleBattleCount = -1,
         int lateBattleCount = -1,
-        int eliteBattleCount = -1)
+        int eliteBattleCount = -1,
+        float earlyBattleEndProgress = 1f / 3f,
+        float middleBattleEndProgress = 2f / 3f)
     {
         columnCount = Mathf.Max(3, columnCount);
         maximumRows = Mathf.Max(2, maximumRows);
@@ -119,6 +121,8 @@ public static class NodeMapGenerator
             lateBattleCount,
             eliteBattleCount,
             columnCount - 1,
+            earlyBattleEndProgress,
+            middleBattleEndProgress,
             random);
 
         for (int column = 0; column < columns.Count - 1; column++)
@@ -143,6 +147,8 @@ public static class NodeMapGenerator
         int lateBattleCount,
         int eliteBattleCount,
         int maximumColumn,
+        float earlyBattleEndProgress,
+        float middleBattleEndProgress,
         System.Random random)
     {
         IReadOnlyList<NodeMapGenerationRule> sourceRules =
@@ -294,7 +300,9 @@ public static class NodeMapGenerator
             {
                 int poolCount = GetNormalBattleProgressSection(
                     node.column,
-                    maximumColumn) switch
+                    maximumColumn,
+                    earlyBattleEndProgress,
+                    middleBattleEndProgress) switch
                 {
                     NodeMapBattleProgressSection.Middle => middleBattleCount,
                     NodeMapBattleProgressSection.Late => lateBattleCount,
@@ -378,7 +386,9 @@ public static class NodeMapGenerator
 
     public static NodeMapBattleProgressSection GetNormalBattleProgressSection(
         int column,
-        int maximumColumn)
+        int maximumColumn,
+        float earlyBattleEndProgress = 1f / 3f,
+        float middleBattleEndProgress = 2f / 3f)
     {
         int firstPlayableColumn = 1;
         int lastPlayableColumn = Mathf.Max(
@@ -391,12 +401,17 @@ public static class NodeMapGenerator
                 lastPlayableColumn,
                 Mathf.Clamp(column, firstPlayableColumn, lastPlayableColumn));
 
-        if (progress <= 1f / 3f)
+        float earlyBoundary = Mathf.Clamp01(earlyBattleEndProgress);
+        float middleBoundary = Mathf.Clamp(
+            middleBattleEndProgress,
+            earlyBoundary,
+            1f);
+        if (progress <= earlyBoundary)
         {
             return NodeMapBattleProgressSection.Early;
         }
 
-        return progress <= 2f / 3f
+        return progress <= middleBoundary
             ? NodeMapBattleProgressSection.Middle
             : NodeMapBattleProgressSection.Late;
     }

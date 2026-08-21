@@ -340,6 +340,26 @@ public partial class PlayerShoot
                     bulletIndex,
                     ref previewBulletsFired,
                     ref previewCriticalShots);
+
+                for (int shotgunShotIndex = 1;
+                     shotgunShotIndex < resolvedBullet.ShotCount;
+                     shotgunShotIndex++)
+                {
+                    if (!SimulatePreviewShot(
+                            resolvedBullet,
+                            firedBullet,
+                            shotDirection,
+                            damageMultiplier,
+                            guaranteedCritical,
+                            true,
+                            emphasized,
+                            bulletIndex,
+                            ref previewBulletsFired,
+                            ref previewCriticalShots))
+                    {
+                        break;
+                    }
+                }
     
                 BulletEffectData chainEffect = FindSpecialEffect(
                     resolvedBullet,

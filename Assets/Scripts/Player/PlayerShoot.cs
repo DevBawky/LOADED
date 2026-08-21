@@ -421,7 +421,8 @@ public partial class PlayerShoot : MonoBehaviour
             relicManager ??= FindFirstObjectByType<RelicManager>(
                 FindObjectsInactive.Include);
             bool consumesTurn = relicManager == null
-                ? loadedBullet == null || !loadedBullet.DoesNotConsumeTurn
+                ? loadedBullet == null
+                    || !loadedBullet.DoesNotConsumeReloadTurn
                 : relicManager.ShouldReloadConsumeTurn(
                     loadedBullet,
                     wasCylinderEmpty);

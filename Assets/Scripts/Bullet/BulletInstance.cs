@@ -147,6 +147,15 @@ public sealed class BulletInstance
         : data.GetDetailedDescription(Level);
     public Sprite CylinderIcon => data == null ? null : data.CylinderIcon;
     public BulletGrade Grade => data == null ? BulletGrade.Normal : data.Grade;
+    public BulletType BulletType => data == null
+        ? BulletType.Normal
+        : data.BulletType;
+    public string BulletTypeDisplayName => data == null
+        ? BulletData.GetBulletTypeDisplayName(BulletType.Normal)
+        : data.BulletTypeDisplayName;
+    public string BulletTypeDescription => data == null
+        ? string.Empty
+        : data.GetBulletTypeDescription(Level);
     public Color GradeNameColor => data == null
         ? Color.white
         : data.GradeNameColor;
@@ -183,6 +192,10 @@ public sealed class BulletInstance
         : data.GetLineWidthMultiplier(Level);
     public bool DoesNotConsumeTurn => data != null
         && data.GetDoesNotConsumeTurn(Level);
+    public bool DoesNotConsumeReloadTurn => data != null
+        && (data.BulletType == BulletType.Ghost
+            || data.GetDoesNotConsumeTurn(Level));
+    public int ShotCount => data == null ? 1 : data.GetShotCount(Level);
     public float RecoilStrength => data == null
         ? 0f
         : data.GetRecoilStrength(Level);

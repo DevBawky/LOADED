@@ -39,7 +39,9 @@ internal static class BulletEffectUtility
 
     public static bool IsBoardWideShot(BulletInstance bullet)
     {
-        return Find(bullet, BulletEffectType.QuickDraw) != null;
+        return bullet != null
+            && (bullet.BulletType == BulletType.Storm
+                || Find(bullet, BulletEffectType.QuickDraw) != null);
     }
 
     public static float GetWallImpactTransferPercent(

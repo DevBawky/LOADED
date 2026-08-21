@@ -901,7 +901,7 @@ public sealed class RelicManager : MonoBehaviour
         }
 
         // 탄환 자체의 무료 장전 능력과 겹치더라도 홀스터 표식은 이번 장전에 소모한다.
-        if (loadedBullet.DoesNotConsumeTurn || holsterReload)
+        if (loadedBullet.DoesNotConsumeReloadTurn || holsterReload)
         {
             return false;
         }

@@ -20,6 +20,7 @@ MonoBehaviour:
   cylinderIcon: {fileID: -7139839002076282498, guid: 28bca4a9ab16a7f4d8493bc4bcdc23f1, type: 3}
   price: 10
   grade: 2
+  bulletType: 6
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}

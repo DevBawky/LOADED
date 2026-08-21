@@ -5,6 +5,13 @@ using UnityEngine;
 
 public partial class PlayerShoot
 {
+    internal static bool ShouldWaitBeforeAdditionalShot(
+        bool hasRequiredShotgunShot,
+        float interval)
+    {
+        return !hasRequiredShotgunShot && interval > 0f;
+    }
+
     private sealed class FiringSequenceController
     {
         private readonly struct ReplayShot
@@ -354,7 +361,11 @@ public partial class PlayerShoot
                     int shellCost = shellEffect == null
                         ? 0
                         : Mathf.Max(1, shellEffect.StackCount);
+                    int shotgunAdditionalShotCount = Mathf.Max(
+                        0,
+                        resolvedBullet.ShotCount - 1);
                     int additionalShotCount = 0;
+                    int chainAdditionalShotCount = 0;
                     bool keepFiring;
     
                     do
@@ -377,14 +388,26 @@ public partial class PlayerShoot
                             break;
                         }
     
-                        keepFiring = chainEffect != null
-                            && RollChainFire(chainEffect, additionalShotCount);
+                        bool hasRequiredShotgunShot =
+                            additionalShotCount < shotgunAdditionalShotCount;
+                        keepFiring = hasRequiredShotgunShot
+                            || chainEffect != null
+                            && RollChainFire(
+                                chainEffect,
+                                chainAdditionalShotCount);
     
                         if (keepFiring)
                         {
                             additionalShotCount++;
+
+                            if (!hasRequiredShotgunShot)
+                            {
+                                chainAdditionalShotCount++;
+                            }
     
-                            if (shotInterval > 0f)
+                            if (ShouldWaitBeforeAdditionalShot(
+                                hasRequiredShotgunShot,
+                                shotInterval))
                             {
                                 yield return WaitForShotInterval();
                             }

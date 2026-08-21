@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
 
 public sealed class BulletEffectUtilityTests
 {
@@ -100,6 +101,144 @@ public sealed class BulletEffectUtilityTests
     }
 
     [Test]
+    public void NewBulletDataDefaultsToNormalType()
+    {
+        BulletData data = ScriptableObject.CreateInstance<BulletData>();
+
+        try
+        {
+            Assert.That(data.BulletType, Is.EqualTo(BulletType.Normal));
+            Assert.That(data.BulletTypeDisplayName, Is.EqualTo("일반"));
+            Assert.That(data.ShotCount, Is.EqualTo(1));
+            Assert.That(data.DoesNotConsumeReloadTurn, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void GhostBulletReloadDoesNotConsumeTurnButShotStillDoes()
+    {
+        BulletData data = CreateBulletOfType(BulletType.Ghost);
+
+        try
+        {
+            BulletInstance bullet = new BulletInstance(data, 0);
+
+            Assert.That(bullet.DoesNotConsumeReloadTurn, Is.True);
+            Assert.That(bullet.DoesNotConsumeTurn, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void SniperBulletExposesPenetrationTypeDescription()
+    {
+        BulletData data = CreateBulletOfType(BulletType.Sniper);
+
+        try
+        {
+            Assert.That(data.BulletTypeDisplayName, Is.EqualTo("저격"));
+            Assert.That(data.GetBulletTypeDescription(0), Does.Contain("관통 확률"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void StormBulletUsesBoardWideTargeting()
+    {
+        BulletData data = CreateBulletOfType(BulletType.Storm);
+
+        try
+        {
+            Assert.That(
+                BulletEffectUtility.IsBoardWideShot(
+                    new BulletInstance(data, 0)),
+                Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void TyphoonAssetUsesStormBulletType()
+    {
+        BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(
+            "Assets/Scripts/Bullet/SO/Ace/Typhoon.asset");
+
+        Assert.That(data, Is.Not.Null);
+        Assert.That(data.BulletType, Is.EqualTo(BulletType.Storm));
+        Assert.That(
+            BulletEffectUtility.IsBoardWideShot(
+                new BulletInstance(data, 0)),
+            Is.True);
+    }
+
+    [TestCase("Assets/Scripts/Bullet/SO/Ace/Ghost.asset", BulletType.Ghost)]
+    [TestCase("Assets/Scripts/Bullet/SO/Legendary/Pierce.asset", BulletType.Piercing)]
+    [TestCase("Assets/Scripts/Bullet/SO/Rare/Venom.asset", BulletType.Debuff)]
+    [TestCase("Assets/Scripts/Bullet/SO/Rare/Stun.asset", BulletType.Debuff)]
+    [TestCase("Assets/Scripts/Bullet/SO/Rare/Mark.asset", BulletType.Debuff)]
+    [TestCase("Assets/Scripts/Bullet/SO/Rare/Weakness.asset", BulletType.Debuff)]
+    [TestCase("Assets/Scripts/Bullet/SO/Ace/Amplifier.asset", BulletType.Debuff)]
+    [TestCase("Assets/Scripts/Bullet/SO/Ace/Venom Burst.asset", BulletType.Debuff)]
+    [TestCase("Assets/Scripts/Bullet/SO/Ace/Tracking.asset", BulletType.Debuff)]
+    public void AuthoredBulletUsesExpectedType(string path, BulletType expected)
+    {
+        BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(path);
+
+        Assert.That(data, Is.Not.Null);
+        Assert.That(data.BulletType, Is.EqualTo(expected));
+        Assert.That(data.BulletTypeDisplayName, Does.Not.EndWith("탄"));
+        Assert.That(data.GetBulletTypeDescription(0), Is.Not.Empty);
+    }
+
+    [Test]
+    public void ShotgunUsesConfiguredShotCount()
+    {
+        BulletData data = CreateBulletOfType(BulletType.Shotgun);
+        SerializedObject serialized = new SerializedObject(data);
+        serialized.FindProperty("shotgunShotCount").intValue = 4;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+
+        try
+        {
+            Assert.That(new BulletInstance(data, 0).ShotCount, Is.EqualTo(4));
+            Assert.That(data.GetBulletTypeDescription(0), Does.Contain("4발"));
+        }
+        finally
+        {
+            Object.DestroyImmediate(data);
+        }
+    }
+
+    [TestCase(true, 0.2f, false)]
+    [TestCase(true, 0f, false)]
+    [TestCase(false, 0.2f, true)]
+    [TestCase(false, 0f, false)]
+    public void RequiredShotgunShotsSkipTheAdditionalShotInterval(
+        bool hasRequiredShotgunShot,
+        float interval,
+        bool expected)
+    {
+        Assert.That(
+            PlayerShoot.ShouldWaitBeforeAdditionalShot(
+                hasRequiredShotgunShot,
+                interval),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
     public void NewBulletCapstonesChangeTheirCorePlayPattern()
     {
         BulletData evasion = Load(
@@ -129,6 +268,15 @@ public sealed class BulletEffectUtilityTests
     {
         BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(path);
         Assert.That(data, Is.Not.Null, path);
+        return data;
+    }
+
+    private static BulletData CreateBulletOfType(BulletType bulletType)
+    {
+        BulletData data = ScriptableObject.CreateInstance<BulletData>();
+        SerializedObject serialized = new SerializedObject(data);
+        serialized.FindProperty("bulletType").enumValueIndex = (int)bulletType;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
         return data;
     }
 

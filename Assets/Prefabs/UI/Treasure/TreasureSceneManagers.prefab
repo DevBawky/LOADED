@@ -288,6 +288,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345009, type: 2}
   - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345002, type: 2}
   - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345001, type: 2}
+  - {fileID: 11400000, guid: 2838b42f520519147b57cc3f93b5e3e0, type: 2}
   gradeWeights:
   - grade: 0
     appearanceWeight: 30
