@@ -176,6 +176,13 @@ public sealed class RelicInstance
                 Mathf.Max(0, acquisitionOrder));
     }
 
+    public bool HasTrackedBullet(int acquisitionOrder)
+    {
+        return trackedBulletAcquisitionOrders != null
+            && trackedBulletAcquisitionOrders.Contains(
+                Mathf.Max(0, acquisitionOrder));
+    }
+
     public void RestoreState(RunRelicSaveData state)
     {
         if (state == null)

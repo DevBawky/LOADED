@@ -32,8 +32,33 @@ public sealed class CombatPresentation : MonoBehaviour
         public Color Color;
         public int SortingLayerId;
         public int SortingOrder;
+        public bool Captured;
 
-        public bool IsValid => Sprite != null;
+        public bool IsValid => Captured || Sprite != null;
+        public bool HasSprite => Sprite != null;
+    }
+
+    internal readonly struct ImpactSignature
+    {
+        public ImpactSignature(
+            bool usesSnapAccent,
+            bool usesPrecisionLock,
+            bool usesCompressionBurst,
+            bool usesDefeatSilhouette,
+            bool usesFinalExecutionSeal)
+        {
+            UsesSnapAccent = usesSnapAccent;
+            UsesPrecisionLock = usesPrecisionLock;
+            UsesCompressionBurst = usesCompressionBurst;
+            UsesDefeatSilhouette = usesDefeatSilhouette;
+            UsesFinalExecutionSeal = usesFinalExecutionSeal;
+        }
+
+        public bool UsesSnapAccent { get; }
+        public bool UsesPrecisionLock { get; }
+        public bool UsesCompressionBurst { get; }
+        public bool UsesDefeatSilhouette { get; }
+        public bool UsesFinalExecutionSeal { get; }
     }
 
     [Header("Master")]
@@ -70,6 +95,18 @@ public sealed class CombatPresentation : MonoBehaviour
     [Range(0, 12)]
     [SerializeField] private int impactStreakCount = 4;
 
+    [Header("Impact Signatures")]
+    [Min(0.05f)]
+    [SerializeField] private float normalSnapDuration = 0.09f;
+    [Min(0.05f)]
+    [SerializeField] private float criticalPrecisionDuration = 0.14f;
+    [Min(0.05f)]
+    [SerializeField] private float devastatingCompressionDuration = 0.18f;
+    [Min(0f)]
+    [SerializeField] private float devastatingSecondaryWaveDelay = 0.045f;
+    [Min(0.05f)]
+    [SerializeField] private float devastatingSecondaryWaveDuration = 0.2f;
+
     [Header("Defeat")]
     [Min(0f)]
     [SerializeField] private float defeatHitStopDuration = 0.075f;
@@ -81,6 +118,12 @@ public sealed class CombatPresentation : MonoBehaviour
     [SerializeField] private float defeatLiftHeight = 0.22f;
     [Range(4, 24)]
     [SerializeField] private int defeatSparkCount = 12;
+    [Min(0f)]
+    [SerializeField] private float defeatSilhouetteHoldDuration = 0.055f;
+    [Min(0.05f)]
+    [SerializeField] private float defeatSilhouetteDuration = 0.26f;
+    [Min(1f)]
+    [SerializeField] private float finalDefeatDurationMultiplier = 1.45f;
     [SerializeField] private Color defeatDustColor =
         new Color(0.72f, 0.35f, 0.12f, 1f);
 
@@ -88,17 +131,69 @@ public sealed class CombatPresentation : MonoBehaviour
     private Sprite whiteSprite;
     private Material runtimeMuzzleMaterial;
     private CombatFeedbackController combatFeedback;
+    private CombatImpactSignaturePresenter impactSignaturePresenter;
 
     private float ScaledIntensity => Mathf.Max(0f, intensity);
+
+    internal static ImpactSignature ResolveImpactSignature(
+        CombatImpactTier impactTier,
+        bool wasFinalEnemy)
+    {
+        return impactTier switch
+        {
+            CombatImpactTier.Normal => new ImpactSignature(
+                true,
+                false,
+                false,
+                false,
+                false),
+            CombatImpactTier.Critical => new ImpactSignature(
+                false,
+                true,
+                false,
+                false,
+                false),
+            CombatImpactTier.Devastating => new ImpactSignature(
+                false,
+                false,
+                true,
+                false,
+                false),
+            CombatImpactTier.Defeat => new ImpactSignature(
+                false,
+                false,
+                true,
+                true,
+                wasFinalEnemy),
+            _ => default
+        };
+    }
+
+    internal static Color ResolveImpactWaveColor(
+        Color primaryLineColor,
+        Color secondaryLineColor)
+    {
+        primaryLineColor.a = 1f;
+        secondaryLineColor.a = 1f;
+        Color waveColor = Color.Lerp(
+            primaryLineColor,
+            secondaryLineColor,
+            0.68f);
+        waveColor = Color.Lerp(waveColor, Color.white, 0.12f);
+        waveColor.a = 1f;
+        return waveColor;
+    }
 
     private void Awake()
     {
         combatFeedback = GetComponent<CombatFeedbackController>();
         EnsureRuntimeResources();
+        EnsureImpactSignaturePresenter();
     }
 
     private void OnDisable()
     {
+        impactSignaturePresenter?.Clear();
         ClearSpawnedEffects();
 
     }
@@ -129,24 +224,58 @@ public sealed class CombatPresentation : MonoBehaviour
             return default;
         }
 
-        SpriteRenderer renderer = enemy.GetComponentInChildren<SpriteRenderer>();
-
-        if (renderer == null || renderer.sprite == null)
+        EnemySnapshot snapshot = new EnemySnapshot
         {
-            return default;
+            Position = enemy.transform.position,
+            Rotation = enemy.transform.rotation,
+            Scale = Vector3.one,
+            Color = Color.white,
+            Captured = true
+        };
+        SpriteRenderer renderer = FindSnapshotRenderer(enemy);
+
+        if (renderer == null)
+        {
+            return snapshot;
         }
 
-        return new EnemySnapshot
+        snapshot.Sprite = renderer.sprite;
+        snapshot.Material = renderer.sharedMaterial;
+        snapshot.Position = renderer.transform.position;
+        snapshot.Rotation = renderer.transform.rotation;
+        snapshot.Scale = renderer.transform.lossyScale;
+        snapshot.Color = renderer.color;
+        snapshot.SortingLayerId = renderer.sortingLayerID;
+        snapshot.SortingOrder = renderer.sortingOrder;
+        return snapshot;
+    }
+
+    private static SpriteRenderer FindSnapshotRenderer(EnemyController enemy)
+    {
+        SpriteRenderer selectedRenderer = null;
+        float selectedArea = -1f;
+
+        foreach (SpriteRenderer renderer in
+                 enemy.GetComponentsInChildren<SpriteRenderer>(true))
         {
-            Sprite = renderer.sprite,
-            Material = renderer.sharedMaterial,
-            Position = renderer.transform.position,
-            Rotation = renderer.transform.rotation,
-            Scale = renderer.transform.lossyScale,
-            Color = renderer.color,
-            SortingLayerId = renderer.sortingLayerID,
-            SortingOrder = renderer.sortingOrder
-        };
+            if (renderer == null || renderer.sprite == null)
+            {
+                continue;
+            }
+
+            Vector3 spriteSize = renderer.sprite.bounds.size;
+            Vector3 scale = renderer.transform.lossyScale;
+            float area = Mathf.Abs(spriteSize.x * scale.x)
+                * Mathf.Abs(spriteSize.y * scale.y);
+
+            if (area > selectedArea)
+            {
+                selectedRenderer = renderer;
+                selectedArea = area;
+            }
+        }
+
+        return selectedRenderer;
     }
 
     public void PlayReload(
@@ -226,6 +355,9 @@ public sealed class CombatPresentation : MonoBehaviour
 
         EnsureRuntimeResources();
         Color accent = GetAccentColor(bullet);
+        Color waveAccent = ResolveImpactWaveColor(
+            accent,
+            GetSecondaryAccentColor(bullet));
         float impactMultiplier = impactTier == CombatImpactTier.Defeat
             ? Mathf.Max(0f, feedbackMultiplier)
             : 1f;
@@ -241,6 +373,7 @@ public sealed class CombatPresentation : MonoBehaviour
             snapshot.Position,
             horizontalDirection,
             accent,
+            waveAccent,
             snapshot.SortingLayerId,
             snapshot.SortingOrder + 4,
             impactTier,
@@ -290,6 +423,20 @@ public sealed class CombatPresentation : MonoBehaviour
                 impactTier,
                 impactMultiplier);
         }
+
+        ImpactSignature signature = ResolveImpactSignature(
+            impactTier,
+            wasFinalEnemy);
+        EnsureImpactSignaturePresenter();
+        impactSignaturePresenter?.Play(
+            signature,
+            snapshot,
+            horizontalDirection,
+            accent,
+            waveAccent,
+            impactMultiplier,
+            wasFinalEnemy,
+            CreateImpactSignatureSettings());
 
         if (impactTier == CombatImpactTier.Defeat)
         {
@@ -359,6 +506,35 @@ public sealed class CombatPresentation : MonoBehaviour
             whiteSprite.hideFlags = HideFlags.HideAndDontSave;
         }
 
+    }
+
+    private void EnsureImpactSignaturePresenter()
+    {
+        if (impactSignaturePresenter == null && whiteSprite != null)
+        {
+            impactSignaturePresenter = new CombatImpactSignaturePresenter(
+                this,
+                whiteSprite);
+        }
+    }
+
+    private CombatImpactSignaturePresenter.Settings
+        CreateImpactSignatureSettings()
+    {
+        return new CombatImpactSignaturePresenter.Settings(
+            ScaledIntensity,
+            normalSnapDuration,
+            criticalPrecisionDuration,
+            devastatingCompressionDuration,
+            devastatingSecondaryWaveDelay,
+            devastatingSecondaryWaveDuration,
+            defeatAfterimageDuration,
+            defeatKnockbackDistance,
+            defeatLiftHeight,
+            defeatSilhouetteHoldDuration,
+            defeatSilhouetteDuration,
+            finalDefeatDurationMultiplier,
+            defeatDustColor);
     }
 
     private void SpawnMuzzleFlash(
@@ -536,6 +712,7 @@ public sealed class CombatPresentation : MonoBehaviour
         Vector3 position,
         int horizontalDirection,
         Color accent,
+        Color waveAccent,
         int sortingLayerId,
         int sortingOrder,
         CombatImpactTier impactTier,
@@ -577,6 +754,7 @@ public sealed class CombatPresentation : MonoBehaviour
             contactRenderer,
             material,
             accent,
+            waveAccent,
             direction,
             1.55f + tier * 0.42f,
             5 + Mathf.RoundToInt(tier * 2f));
@@ -603,6 +781,7 @@ public sealed class CombatPresentation : MonoBehaviour
                 echoRenderer,
                 material,
                 Color.Lerp(accent, Color.white, 0.16f),
+                waveAccent,
                 direction,
                 1.08f + tier * 0.3f,
                 7 + Mathf.RoundToInt(tier * 2f));
@@ -620,15 +799,16 @@ public sealed class CombatPresentation : MonoBehaviour
         SpriteRenderer renderer,
         Material material,
         Color accent,
+        Color waveAccent,
         int horizontalDirection,
         float effectIntensity,
         int rayCount)
     {
         renderer.sharedMaterial = material;
         Color hotColor = Color.Lerp(
-            accent,
+            waveAccent,
             new Color(1f, 0.78f, 0.24f, 1f),
-            0.58f);
+            0.24f);
         MaterialPropertyBlock propertyBlock = new MaterialPropertyBlock();
         propertyBlock.SetColor(PrimaryColorId, accent);
         propertyBlock.SetColor(SecondaryColorId, hotColor);
@@ -694,37 +874,6 @@ public sealed class CombatPresentation : MonoBehaviour
                 isSmoke
                     ? Random.Range(0.25f, 0.42f)
                     : Random.Range(0.14f, 0.28f)));
-        }
-    }
-
-    private void SpawnDefeatAfterimage(
-        EnemySnapshot snapshot,
-        int horizontalDirection,
-        Color accent,
-        float feedbackMultiplier)
-    {
-        int echoCount = Mathf.Max(
-            3,
-            Mathf.RoundToInt(3f * Mathf.Max(1f, feedbackMultiplier)));
-
-        for (int echoIndex = 0; echoIndex < echoCount; echoIndex++)
-        {
-            GameObject afterimage = CreateSnapshotObject(
-                $"Defeat Afterimage {echoIndex + 1}",
-                snapshot,
-                snapshot.SortingOrder - echoIndex);
-            SpriteRenderer renderer = afterimage.GetComponent<SpriteRenderer>();
-            renderer.color = Color.Lerp(
-                snapshot.Color,
-                Color.Lerp(defeatDustColor, accent, 0.35f),
-                0.38f + echoIndex * 0.13f);
-            StartCoroutine(AnimateDefeatAfterimage(
-                afterimage,
-                renderer,
-                horizontalDirection,
-                echoIndex * 0.035f,
-                1f - echoIndex * 0.16f,
-                feedbackMultiplier));
         }
     }
 
@@ -1094,58 +1243,6 @@ public sealed class CombatPresentation : MonoBehaviour
         DestroyEffect(root);
     }
 
-    private IEnumerator AnimateDefeatAfterimage(
-        GameObject afterimage,
-        SpriteRenderer renderer,
-        int horizontalDirection,
-        float delay,
-        float distanceScale,
-        float feedbackMultiplier)
-    {
-        Vector3 startPosition = afterimage.transform.position;
-        Vector3 startScale = afterimage.transform.localScale;
-        Quaternion startRotation = afterimage.transform.rotation;
-        float elapsed = 0f;
-        int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
-
-        while (delay > 0f && afterimage != null)
-        {
-            yield return null;
-            delay -= Time.unscaledDeltaTime;
-        }
-
-        while (elapsed < defeatAfterimageDuration && afterimage != null)
-        {
-            yield return null;
-            elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / defeatAfterimageDuration);
-            float eased = 1f - Mathf.Pow(1f - progress, 3f);
-            Vector3 position = startPosition;
-            position.x += direction * defeatKnockbackDistance
-                * ScaledIntensity * distanceScale * feedbackMultiplier * eased;
-            position.y += Mathf.Sin(progress * Mathf.PI)
-                * defeatLiftHeight * ScaledIntensity * feedbackMultiplier;
-            afterimage.transform.position = position;
-            afterimage.transform.rotation = startRotation
-                * Quaternion.Euler(0f, 0f, -direction * 14f * eased);
-            afterimage.transform.localScale = new Vector3(
-                startScale.x * Mathf.Lerp(
-                    1f,
-                    1f + 0.12f * feedbackMultiplier,
-                    eased),
-                startScale.y * Mathf.Lerp(
-                    1f,
-                    1f - 0.32f * feedbackMultiplier,
-                    eased),
-                startScale.z);
-            Color color = renderer.color;
-            color.a = 1f - Mathf.SmoothStep(0.18f, 1f, progress);
-            renderer.color = color;
-        }
-
-        DestroyEffect(afterimage);
-    }
-
     private IEnumerator AnimateSpark(
         GameObject spark,
         SpriteRenderer renderer,
@@ -1268,28 +1365,6 @@ public sealed class CombatPresentation : MonoBehaviour
         return spriteObject;
     }
 
-    private GameObject CreateSnapshotObject(
-        string objectName,
-        EnemySnapshot snapshot,
-        int sortingOrder)
-    {
-        GameObject snapshotObject = new GameObject(
-            objectName,
-            typeof(SpriteRenderer));
-        snapshotObject.transform.SetPositionAndRotation(
-            snapshot.Position,
-            snapshot.Rotation);
-        snapshotObject.transform.localScale = snapshot.Scale;
-        SpriteRenderer renderer = snapshotObject.GetComponent<SpriteRenderer>();
-        renderer.sprite = snapshot.Sprite;
-        renderer.sharedMaterial = snapshot.Material;
-        renderer.color = snapshot.Color;
-        renderer.sortingLayerID = snapshot.SortingLayerId;
-        renderer.sortingOrder = sortingOrder;
-        spawnedEffects.Add(snapshotObject);
-        return snapshotObject;
-    }
-
     private void DestroyEffect(GameObject effect)
     {
         if (effect == null)
@@ -1319,6 +1394,15 @@ public sealed class CombatPresentation : MonoBehaviour
         Color accent = bullet == null
             ? new Color(1f, 0.3f, 0.06f, 1f)
             : bullet.PrimaryLineColor;
+        accent.a = 1f;
+        return accent;
+    }
+
+    private static Color GetSecondaryAccentColor(BulletInstance bullet)
+    {
+        Color accent = bullet == null
+            ? GetAccentColor(null)
+            : bullet.SecondaryLineColor;
         accent.a = 1f;
         return accent;
     }

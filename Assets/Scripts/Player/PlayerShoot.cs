@@ -229,7 +229,8 @@ public partial class PlayerShoot : MonoBehaviour
             transform,
             firePoint,
             boardManager,
-            waveManager);
+            waveManager,
+            relicManager);
         damagePreview = new DamagePreviewController(this);
         firingSequence = new FiringSequenceController(this);
 
@@ -416,9 +417,6 @@ public partial class PlayerShoot : MonoBehaviour
             case PlayerShootInputAction.Shoot:
                 Shoot();
                 break;
-            case PlayerShootInputAction.EjectNextBullet:
-                EjectNextLoadedBullet();
-                break;
         }
     }
 
@@ -512,7 +510,7 @@ public partial class PlayerShoot : MonoBehaviour
         StartCoroutine(firingSequence.Execute(horizontalDirection));
     }
 
-    public void EjectNextLoadedBullet()
+    public bool TryEjectLoadedBullet(int loadedBulletIndex)
     {
         if (GamePauseController.IsPaused
             || LoadingTransitionController.IsTransitioning
@@ -520,7 +518,7 @@ public partial class PlayerShoot : MonoBehaviour
             || cylinderUI != null && cylinderUI.IsDragging
             || !TryBeginAction())
         {
-            return;
+            return false;
         }
 
         if (deckManager == null || playerMove == null)
@@ -528,25 +526,21 @@ public partial class PlayerShoot : MonoBehaviour
             Debug.LogError(
                 "Deck Manager and Player Move must be assigned in the Inspector.",
                 this);
-            return;
+            return false;
         }
 
         if (!playerMove.CanStartAction
-            || deckManager.LoadedBullets.Count == 0)
+            || loadedBulletIndex < 0
+            || loadedBulletIndex >= deckManager.LoadedBullets.Count)
         {
-            return;
+            return false;
         }
 
         ClearLoadedBulletDamagePreview();
 
-        if (!deckManager.TryEjectNextLoadedBullet(out _))
-        {
-            return;
-        }
-
-        BehaviourActionStarted?.Invoke(
-            PlayerBehaviourAction.EjectNextBullet);
-        playerMove.CompleteTurn();
+        return deckManager.TryEjectLoadedBullet(
+            loadedBulletIndex,
+            out _);
     }
 
     public bool ShowLoadedBulletDamagePreview(int loadedBulletIndex)

@@ -24,7 +24,7 @@ MonoBehaviour:
   maxStack: 1
   effects:
   - effectType: 20
-    finalDamageMultiplier: 3
+    finalDamageMultiplier: 2
     movementDamageMultiplierPerStack: 1.1
     survivingHealth: 1
     movementSources: 3

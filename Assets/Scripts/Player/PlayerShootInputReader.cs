@@ -5,8 +5,7 @@ internal enum PlayerShootInputAction
 {
     None = 0,
     Reload = 1,
-    Shoot = 2,
-    EjectNextBullet = 3
+    Shoot = 2
 }
 
 /// <summary>
@@ -29,11 +28,6 @@ internal static class PlayerShootInputReader
             if (keyboard.spaceKey.wasPressedThisFrame)
             {
                 return PlayerShootInputAction.Shoot;
-            }
-
-            if (keyboard.sKey.wasPressedThisFrame)
-            {
-                return PlayerShootInputAction.EjectNextBullet;
             }
         }
 

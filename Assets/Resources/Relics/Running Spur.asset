@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: running_spur
   displayName: "\uC9C8\uC8FC\uC758 \uBC15\uCC28"
-  description: "\uD6A8\uACFC \uC5C6\uC74C."
+  description: "이동 시 20% 확률로 턴을 소모하지 않습니다."
   icon: {fileID: 3032890415557049533, guid: 5137ef53bcdfa014ab13013fb2771ba6, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
   maxStack: 1
-  effects: []
+  effects:
+  - effectType: 25
+    primerBaseChance: 20

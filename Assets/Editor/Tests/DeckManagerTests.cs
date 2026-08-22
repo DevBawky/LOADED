@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 
 public class DeckManagerTests
@@ -68,6 +69,17 @@ public class DeckManagerTests
     }
 
     [Test]
+    public void EventRewardCanBeAddedAtAuthoredUpgradeLevel()
+    {
+        Assert.That(deckManager.TryAddBullet(bulletData, 2), Is.True);
+
+        BulletInstance added = deckManager.PeekNextBullet();
+        Assert.That(added, Is.Not.Null);
+        Assert.That(added.Level, Is.EqualTo(2));
+        Assert.That(deckManager.TotalBulletCount, Is.EqualTo(1));
+    }
+
+    [Test]
     public void EjectNextLoadedBulletMovesOnlyFirstShotToGraveyard()
     {
         Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
@@ -85,6 +97,64 @@ public class DeckManagerTests
         Assert.That(deckManager.Graveyard, Has.Count.EqualTo(1));
         Assert.That(deckManager.Graveyard[0], Is.SameAs(next));
         Assert.That(deckManager.TotalBulletCount, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void EjectSelectedLoadedBulletMovesOnlyRequestedChamber()
+    {
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        Assert.That(deckManager.TryReload(out BulletInstance first), Is.True);
+        Assert.That(deckManager.TryReload(out BulletInstance second), Is.True);
+
+        Assert.That(
+            deckManager.TryEjectLoadedBullet(0, out BulletInstance ejected),
+            Is.True);
+        Assert.That(ejected, Is.SameAs(first));
+        Assert.That(deckManager.LoadedBullets, Has.Count.EqualTo(1));
+        Assert.That(deckManager.LoadedBullets[0], Is.SameAs(second));
+        Assert.That(deckManager.Graveyard, Does.Contain(first));
+        Assert.That(deckManager.TotalBulletCount, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void ChamberEjectThroughPlayerShootDoesNotConsumeTurn()
+    {
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        Assert.That(deckManager.TryReload(out _), Is.True);
+
+        PlayerMove playerMove = gameObject.AddComponent<PlayerMove>();
+        PlayerShoot playerShoot = gameObject.AddComponent<PlayerShoot>();
+        SerializedObject serializedShoot = new SerializedObject(playerShoot);
+        serializedShoot.FindProperty("deckManager").objectReferenceValue =
+            deckManager;
+        serializedShoot.FindProperty("playerMove").objectReferenceValue =
+            playerMove;
+        serializedShoot.ApplyModifiedPropertiesWithoutUndo();
+
+        Assert.That(playerShoot.TryEjectLoadedBullet(0), Is.True);
+        Assert.That(playerMove.TurnCount, Is.Zero);
+        Assert.That(deckManager.LoadedBullets, Is.Empty);
+        Assert.That(deckManager.TotalBulletCount, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void WaitCompletesExactlyOneTurn()
+    {
+        PlayerMove playerMove = gameObject.AddComponent<PlayerMove>();
+        int completionCount = 0;
+        PlayerBehaviourAction startedAction = default;
+        playerMove.TurnCompleted += () => completionCount++;
+        playerMove.BehaviourActionStarted += action =>
+            startedAction = action;
+
+        playerMove.Wait();
+
+        Assert.That(playerMove.TurnCount, Is.EqualTo(1));
+        Assert.That(completionCount, Is.EqualTo(1));
+        Assert.That(startedAction, Is.EqualTo(PlayerBehaviourAction.Wait));
     }
 
     [Test]
@@ -316,5 +386,126 @@ public sealed class CombatImpactTierUtilityTests
         Assert.That(critical, Is.EqualTo(CombatImpactTier.Critical));
         Assert.That(devastating, Is.EqualTo(CombatImpactTier.Devastating));
         Assert.That(defeat, Is.EqualTo(CombatImpactTier.Defeat));
+    }
+}
+
+public sealed class CombatPresentationSignatureTests
+{
+    [Test]
+    public void EnemySnapshot_PositionOnlyCaptureRemainsValid()
+    {
+        CombatPresentation.EnemySnapshot missingSnapshot = default;
+        CombatPresentation.EnemySnapshot positionOnlySnapshot =
+            new CombatPresentation.EnemySnapshot
+            {
+                Captured = true,
+                Position = new Vector3(2f, 3f, 0f)
+            };
+
+        Assert.That(missingSnapshot.IsValid, Is.False);
+        Assert.That(positionOnlySnapshot.IsValid, Is.True);
+        Assert.That(positionOnlySnapshot.HasSprite, Is.False);
+    }
+
+    [Test]
+    public void FindFirstAvailableFullscreenImpactSlot_ReturnsNoSlotWhenAllActive()
+    {
+        int availableSlot = CombatFeedbackController
+            .FindFirstAvailableFullscreenImpactSlot(0b1011, 4);
+        int fullResult = CombatFeedbackController
+            .FindFirstAvailableFullscreenImpactSlot(0b1111, 4);
+
+        Assert.That(availableSlot, Is.EqualTo(2));
+        Assert.That(fullResult, Is.EqualTo(-1));
+    }
+
+    [Test]
+    public void ImpactSignatureAnimation_ProtectsMinimumVisibleFrames()
+    {
+        const float duration = 0.1f;
+        float elapsed = 0f;
+
+        elapsed = CombatImpactSignaturePresenter.AdvanceAnimationTime(
+            elapsed,
+            duration,
+            1f,
+            1);
+
+        Assert.That(elapsed, Is.LessThan(duration));
+        Assert.That(
+            CombatImpactSignaturePresenter.ShouldContinueAnimation(
+                duration,
+                duration,
+                CombatImpactSignaturePresenter.MinimumVisibleFrameCount - 1),
+            Is.True);
+        Assert.That(
+            CombatImpactSignaturePresenter.ShouldContinueAnimation(
+                duration,
+                duration,
+                CombatImpactSignaturePresenter.MinimumVisibleFrameCount),
+            Is.False);
+    }
+
+    [Test]
+    public void ResolveImpactWaveColor_BlendsBothBulletLineColors()
+    {
+        Color waveColor = CombatPresentation.ResolveImpactWaveColor(
+            Color.red,
+            Color.blue);
+        Color darkWaveColor = CombatPresentation.ResolveImpactWaveColor(
+            Color.black,
+            Color.black);
+
+        Assert.That(waveColor.r, Is.GreaterThan(0f));
+        Assert.That(waveColor.b, Is.GreaterThan(waveColor.r));
+        Assert.That(waveColor.a, Is.EqualTo(1f));
+        Assert.That(darkWaveColor.r, Is.GreaterThan(0f));
+    }
+
+    [Test]
+    public void ResolveImpactSignature_GivesEachImpactTierDistinctBeats()
+    {
+        CombatPresentation.ImpactSignature normal = CombatPresentation
+            .ResolveImpactSignature(CombatImpactTier.Normal, false);
+        CombatPresentation.ImpactSignature critical = CombatPresentation
+            .ResolveImpactSignature(CombatImpactTier.Critical, false);
+        CombatPresentation.ImpactSignature devastating = CombatPresentation
+            .ResolveImpactSignature(CombatImpactTier.Devastating, false);
+        CombatPresentation.ImpactSignature defeat = CombatPresentation
+            .ResolveImpactSignature(CombatImpactTier.Defeat, false);
+
+        Assert.That(normal.UsesSnapAccent, Is.True);
+        Assert.That(normal.UsesPrecisionLock, Is.False);
+        Assert.That(normal.UsesCompressionBurst, Is.False);
+        Assert.That(normal.UsesDefeatSilhouette, Is.False);
+        Assert.That(critical.UsesSnapAccent, Is.False);
+        Assert.That(critical.UsesPrecisionLock, Is.True);
+        Assert.That(critical.UsesCompressionBurst, Is.False);
+        Assert.That(devastating.UsesPrecisionLock, Is.False);
+        Assert.That(devastating.UsesCompressionBurst, Is.True);
+        Assert.That(devastating.UsesDefeatSilhouette, Is.False);
+        Assert.That(defeat.UsesCompressionBurst, Is.True);
+        Assert.That(defeat.UsesDefeatSilhouette, Is.True);
+    }
+
+    [Test]
+    public void ResolveImpactSignature_ReservesExecutionSealForFinalDefeat()
+    {
+        CombatPresentation.ImpactSignature finalDevastating =
+            CombatPresentation.ResolveImpactSignature(
+                CombatImpactTier.Devastating,
+                true);
+        CombatPresentation.ImpactSignature regularDefeat =
+            CombatPresentation.ResolveImpactSignature(
+                CombatImpactTier.Defeat,
+                false);
+        CombatPresentation.ImpactSignature finalDefeat =
+            CombatPresentation.ResolveImpactSignature(
+                CombatImpactTier.Defeat,
+                true);
+
+        Assert.That(finalDevastating.UsesFinalExecutionSeal, Is.False);
+        Assert.That(regularDefeat.UsesFinalExecutionSeal, Is.False);
+        Assert.That(finalDefeat.UsesFinalExecutionSeal, Is.True);
     }
 }

@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
+  m_Name: Event_WarRemains
+  m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
+  eventId: remains-of-war
+  displayName: 전쟁의 잔해
+  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
+  dialogue: 불탄 참호에는 주인 없는 탄약과 군표가 흩어져 있다. 멀리서 다시 총성이 가까워진다.
+  choices:
+  - buttonText: "[탄약 상자를 뒤진다] 화약 주머니(+3)를 얻는다."
+    outcomeText: 그을린 상자 밑에서 멀쩡한 화약 주머니를 찾아냈다.
+    requirements:
+    - type: 4
+      amount: 0
+      unavailableReason: 탄환 보유 공간이 부족합니다.
+    attemptEffects: []
+    effects:
+    - type: 4
+      amount: 0
+      bullet: {fileID: 11400000, guid: b1010000000000000000000000000002, type: 2}
+      bulletLevel: 3
+  - buttonText: "[군표를 챙긴다] 10 골드를 얻는다."
+    outcomeText: 쓸 만한 군표와 금화를 급히 주머니에 쓸어 담았다.
+    requirements: []
+    attemptEffects: []
+    effects:
+    - type: 0
+      amount: 10
+  - buttonText: "[몸을 낮추고 떠난다] 잔해를 건드리지 않는다."
+    outcomeText: 다음 포성이 참호를 덮치기 전에 빠져나왔다.
+    requirements: []
+    attemptEffects: []
+    effects: []
+  baseWeight: 10
+  oncePerRun: 1
+  weightRules: []
+  normalBattleChancePercent: 15
+  eliteBattleChancePercent: 10
+  shopChancePercent: 0

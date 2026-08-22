@@ -165,6 +165,10 @@ public sealed class RelicEffectDataDrawer : PropertyDrawer
             case RelicEffectType.FirstShotFinalMultiplier:
             case RelicEffectType.LastShotFinalMultiplier:
             case RelicEffectType.LuckyChamber:
+            case RelicEffectType.PredatorHolster:
+            case RelicEffectType.InfectiousIncubator:
+            case RelicEffectType.Carriage:
+            case RelicEffectType.ExecutionersOath:
                 DrawField(
                     ref row,
                     property,
@@ -173,50 +177,38 @@ public sealed class RelicEffectDataDrawer : PropertyDrawer
                     "조건을 만족하면 다른 최종 배율과 곱합니다. 2는 x2입니다.");
                 break;
             case RelicEffectType.ClosedCircuit:
-                DrawField(ref row, property, "circuitShotThreshold", "필요 사격 횟수", "이 횟수마다 가장 오래된 사용 탄환을 장전합니다.");
-                DrawField(ref row, property, "circuitMaxReloadsPerCylinder", "실린더당 최대 발동", "한 실린더의 무한 순환을 막는 발동 상한입니다.");
-                break;
-            case RelicEffectType.InfectiousIncubator:
-                DrawField(ref row, property, "debuffTransferPercent", "디버프 이전 비율 (%)", "각 디버프 스택에 개별 적용하고 올림합니다.");
+                DrawField(ref row, property, "debuffTransferPercent", "후방 피해 전이율 (%)", "직접 피해를 받은 적 뒤의 가장 가까운 적에게 적용합니다.");
                 break;
             case RelicEffectType.EyeOfTheStorm:
                 DrawField(ref row, property, "stormDamagePercent", "최고 피해 복제 비율 (%)", "모든 적 피해 조건을 달성했을 때 적용합니다.");
                 break;
-            case RelicEffectType.Carriage:
-                DrawField(ref row, property, "movementTilesPerFreeReload", "무료 재장전당 이동 칸", "실제 이동 거리를 누적합니다.");
-                DrawField(ref row, property, "freeReloadStorageLimit", "무료 재장전 저장 상한", "동시에 보유할 수 있는 무료 재장전 횟수입니다.");
-                DrawField(ref row, property, "movementSources", "인정할 이동 원인", "일반 이동, 위치 교환, 강제 이동 중 집계할 원인입니다.");
+            case RelicEffectType.EmptyBeat:
+            case RelicEffectType.RunningSpur:
+                DrawField(ref row, property, "primerBaseChance", "턴 미소모 확률 (%)", "실제 행동을 완료한 뒤 한 번 판정합니다.");
                 break;
             case RelicEffectType.GoldPanner:
-                DrawField(ref row, property, "goldNuggetChance", "골드당 금덩이 확률 (%)", "획득한 골드 1개마다 독립 판정합니다.");
-                DrawField(ref row, property, "nuggetsRequired", "필요 금덩이", "다음 탄환 폭증 시 이 수만큼 소비합니다.");
-                DrawField(ref row, property, "finalDamageMultiplier", "최종 피해 배율", "금덩이 조건을 만족한 다음 탄환에 적용합니다.");
+                DrawField(ref row, property, "goldNuggetChance", "7배 획득 확률 (%)", "적 처치 골드가 확정될 때 한 번 판정합니다.");
+                DrawField(ref row, property, "nuggetsRequired", "골드 배율", "발동 시 적 처치 골드에 곱합니다.");
                 break;
             case RelicEffectType.CrackedPrimer:
-                DrawField(ref row, property, "primerBaseChance", "초기 확률 (%)", "성공 후 돌아가는 확률입니다.");
-                DrawField(ref row, property, "primerFailureChanceBonus", "실패 보정 (%p)", "실패할 때마다 다음 판정에 더합니다.");
-                DrawField(ref row, property, "finalDamageMultiplier", "최종 피해 배율", "발동한 실제 사격에 적용합니다.");
+                DrawField(ref row, property, "primerBaseChance", "재사용 확률 (%)", "물리 탄환마다 한 번 판정하며 재사용 사격은 다시 판정하지 않습니다.");
                 break;
             case RelicEffectType.Scale:
-                DrawField(ref row, property, "scaleMaximumDamagePercent", "피해 증가 상한 (%)", "이전 실린더에서 잃은 최대 체력 비율을 제한합니다.");
+                DrawField(ref row, property, "scaleMaximumDamagePercent", "기본 피해 증가 (%)", "생존 적 수에 따른 감소 전 증가량입니다.");
+                DrawField(ref row, property, "primerFailureChanceBonus", "적당 감소량 (%p)", "생존 적 한 명마다 기본 증가량에서 뺍니다.");
                 break;
             case RelicEffectType.FamilyWill:
-                DrawField(ref row, property, "memorialDamagePercentPerBullet", "파괴 탄환당 추모 위력 (%)", "영구 파괴 기록 하나당 추가되는 위력입니다.");
-                DrawField(ref row, property, "memorialMaximumDamagePercent", "추모 위력 상한 (%)", "첫 실린더 추가 사격의 최대 위력입니다.");
-                break;
-            case RelicEffectType.ExecutionersOath:
-                DrawExecutionMultipliers(ref row, property);
+                DrawField(ref row, property, "memorialDamagePercentPerBullet", "보스당 최종 피해 증가 (%)", "보스 처치 카운터마다 모든 탄환에 더합니다.");
                 break;
             case RelicEffectType.MutationCatalyst:
-                DrawField(ref row, property, "mutationChancePerDebuffType", "디버프 종류당 확률 (%)", "대상의 활성 디버프 종류 수에 곱합니다.");
-                DrawField(ref row, property, "mutationMaximumChance", "최대 확률 (%)", "변이 발동 확률의 상한입니다.");
-                DrawField(ref row, property, "finalDamageMultiplier", "최종 피해 배율", "변이가 발생한 대상 피해에 적용합니다.");
+                DrawField(ref row, property, "mutationMaximumChance", "디버프 추가 확률 (%)", "이미 디버프가 있는 적에게 명중할 때 판정합니다.");
                 break;
             case RelicEffectType.BrinkTrigger:
                 DrawField(ref row, property, "brinkHealthThresholdPercent", "체력 조건 (%)", "현재 체력이 이 비율 이하일 때 활성화됩니다.");
-                DrawField(ref row, property, "brinkBaseChance", "초기 확률 (%)", "실린더의 첫 판정 확률입니다.");
-                DrawField(ref row, property, "brinkFailureChanceBonus", "실패 보정 (%p)", "같은 실린더에서 실패할 때마다 더합니다.");
-                DrawField(ref row, property, "finalDamageMultiplier", "최종 피해 배율", "실린더당 첫 성공 탄환에 적용합니다.");
+                DrawField(ref row, property, "finalDamageMultiplier", "최종 피해 배율", "체력 조건을 만족하는 모든 탄환에 적용합니다.");
+                break;
+            case RelicEffectType.AdvancedScope:
+                DrawField(ref row, property, "shotRangeBonus", "사거리 증가", "모든 탄환의 유효 사거리와 미리보기에 더합니다.");
                 break;
         }
 
@@ -267,17 +259,21 @@ public sealed class RelicEffectDataDrawer : PropertyDrawer
             RelicEffectType.FirstShotFinalMultiplier => 1,
             RelicEffectType.LastShotFinalMultiplier => 1,
             RelicEffectType.LuckyChamber => 1,
-            RelicEffectType.ClosedCircuit => 2,
+            RelicEffectType.PredatorHolster => 1,
+            RelicEffectType.ClosedCircuit => 1,
             RelicEffectType.InfectiousIncubator => 1,
+            RelicEffectType.EmptyBeat => 1,
             RelicEffectType.EyeOfTheStorm => 1,
-            RelicEffectType.Carriage => 3,
-            RelicEffectType.GoldPanner => 3,
-            RelicEffectType.CrackedPrimer => 3,
-            RelicEffectType.Scale => 1,
-            RelicEffectType.FamilyWill => 2,
-            RelicEffectType.ExecutionersOath => 4,
-            RelicEffectType.MutationCatalyst => 3,
-            RelicEffectType.BrinkTrigger => 4,
+            RelicEffectType.Carriage => 1,
+            RelicEffectType.GoldPanner => 2,
+            RelicEffectType.CrackedPrimer => 1,
+            RelicEffectType.Scale => 2,
+            RelicEffectType.FamilyWill => 1,
+            RelicEffectType.ExecutionersOath => 1,
+            RelicEffectType.MutationCatalyst => 1,
+            RelicEffectType.BrinkTrigger => 2,
+            RelicEffectType.AdvancedScope => 1,
+            RelicEffectType.RunningSpur => 1,
             _ => 0
         };
     }
@@ -295,33 +291,37 @@ public sealed class RelicEffectDataDrawer : PropertyDrawer
             RelicEffectType.LastShotFinalMultiplier =>
                 "장전 탄환이 남지 않은 상태에서 발생하는 사격의 최종 피해를 곱합니다.",
             RelicEffectType.PredatorHolster =>
-                "처치 탄환을 다음 장전 순서로 옮기고 그 재장전을 무료로 만듭니다.",
+                "적 처치 후 다음에 장전되는 탄환 1발에 피해 증가 표식을 부여합니다.",
             RelicEffectType.ClosedCircuit =>
-                "기본·연쇄·탄피 사격 횟수를 누적해 가장 오래전에 사용한 탄환을 빈 약실에 즉시 장전합니다.",
+                "직접 피해를 받은 적 뒤의 가장 가까운 적에게 피해 일부를 전이합니다.",
             RelicEffectType.InfectiousIncubator =>
-                "죽은 적이 보유한 각 디버프를 가장 가까운 생존 적에게 이전합니다.",
+                "디버프를 보유한 적에게 주는 최종 피해를 증가시킵니다.",
             RelicEffectType.EmptyBeat =>
-                "완전히 빈 실린더에 넣는 첫 탄환의 재장전 턴을 면제합니다.",
+                "재장전할 때 일정 확률로 턴 소모를 면제합니다.",
             RelicEffectType.EyeOfTheStorm =>
                 "한 실린더에서 모든 적을 공격하면 기록한 최고 단일 피해를 광역 피해로 변환합니다.",
             RelicEffectType.Carriage =>
-                "실제 플레이어 이동 거리를 무료 재장전 횟수로 변환합니다.",
+                "발차기로 충돌 피해를 줄 때 피해를 증가시킵니다.",
             RelicEffectType.GoldPanner =>
-                "전투 중 획득한 골드로 금덩이를 찾고 다음 탄환을 치명타·폭증시킵니다.",
+                "적 처치 기본 골드가 확정될 때 일정 확률로 획득량을 곱합니다.",
             RelicEffectType.CrackedPrimer =>
-                "모든 실제 사격에 폭증 확률을 부여하고 실패할수록 다음 확률을 올립니다.",
+                "물리 탄환 발사마다 일정 확률로 같은 탄환을 한 번 더 발사합니다.",
             RelicEffectType.Scale =>
-                "실린더 사격 중 잃은 체력 비율을 다음 실린더 전체의 피해로 변환합니다.",
+                "필드의 생존 적 수가 적을수록 최종 피해를 증가시킵니다.",
             RelicEffectType.FamilyWill =>
-                "영구 파괴 횟수를 저장하고 이후 전투의 첫 실린더에 추모 추가 사격을 만듭니다.",
+                "보스 처치 횟수를 저장하고 모든 탄환의 최종 피해를 영구 증가시킵니다.",
             RelicEffectType.LuckyChamber =>
                 "실린더의 무작위 약실 하나를 선택해 그 탄환을 폭증시킵니다.",
             RelicEffectType.ExecutionersOath =>
-                "연속 처치 성공 시 다음 사격의 피해 단계를 올리고 실패 시 초기화합니다.",
+                "적을 처치한 다음 탄환을 강화하며 연속 처치하면 효과를 이어갑니다.",
             RelicEffectType.MutationCatalyst =>
-                "대상의 활성 디버프 종류 수에 비례한 확률로 해당 대상 피해를 폭증시킵니다.",
+                "디버프가 있는 적에게 명중할 때 무작위 디버프 1스택을 추가할 수 있습니다.",
             RelicEffectType.BrinkTrigger =>
-                "낮은 체력에서 탄환 폭증을 판정하며 실패할수록 같은 실린더의 확률이 상승합니다.",
+                "낮은 체력에서 모든 탄환의 최종 피해를 증가시킵니다.",
+            RelicEffectType.AdvancedScope =>
+                "모든 탄환의 실제 사거리와 사거리 미리보기를 늘립니다.",
+            RelicEffectType.RunningSpur =>
+                "정상 이동을 완료한 뒤 일정 확률로 턴 소모를 면제합니다.",
             _ => "효과가 없습니다."
         };
     }

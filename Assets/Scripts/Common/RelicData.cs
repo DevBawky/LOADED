@@ -30,7 +30,9 @@ public enum RelicEffectType
     LuckyChamber = 20,
     ExecutionersOath = 21,
     MutationCatalyst = 22,
-    BrinkTrigger = 23
+    BrinkTrigger = 23,
+    AdvancedScope = 24,
+    RunningSpur = 25
 }
 
 public enum RelicMovementStackReset
@@ -130,6 +132,9 @@ public sealed class RelicEffectData
     [Range(0f, 100f)]
     [Tooltip("벼랑 끝의 방아쇠가 실패할 때 추가되는 확률입니다.")]
     [SerializeField] private double brinkFailureChanceBonus = 10d;
+    [Min(0)]
+    [Tooltip("모든 탄환 사거리에 추가되는 거리(타일).")]
+    [SerializeField] private int shotRangeBonus = 1;
 
     public RelicEffectType EffectType => effectType;
     public double FinalDamageMultiplier =>
@@ -168,6 +173,7 @@ public sealed class RelicEffectData
     public double BrinkBaseChance => ClampPercent(brinkBaseChance);
     public double BrinkFailureChanceBonus =>
         ClampPercent(brinkFailureChanceBonus);
+    public int ShotRangeBonus => Mathf.Max(0, shotRangeBonus);
 
     public string GetAbilityDescription()
     {
@@ -186,63 +192,61 @@ public sealed class RelicEffectData
                 "장전 탄환이 남지 않은 사격의 최종 피해가 "
                 + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
             RelicEffectType.PredatorHolster =>
-                "적을 처치한 탄환을 다음 장전 순서로 옮기고 해당 재장전을 무료로 만듭니다.",
+                "적을 처치하면 다음에 장전되는 탄환 1발의 최종 피해가 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
             RelicEffectType.ClosedCircuit =>
-                $"실제 사격 {CircuitShotThreshold}회마다 가장 오래전에 사용한 탄환을 즉시 장전합니다. "
-                + $"실린더당 최대 {CircuitMaxReloadsPerCylinder}회입니다.",
+                "적에게 피해를 주면 그 뒤의 가장 가까운 적에게 "
+                + $"{FormatNumber(DebuffTransferPercent)}% 피해를 전이합니다.",
             RelicEffectType.InfectiousIncubator =>
-                "디버프 상태의 적이 죽으면 남은 각 디버프의 "
-                + $"{FormatNumber(DebuffTransferPercent)}%를 가장 가까운 적에게 이전합니다.",
+                "디버프를 보유한 적에게 주는 최종 피해가 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
             RelicEffectType.EmptyBeat =>
-                "빈 실린더에 넣는 첫 탄환의 재장전은 턴을 소모하지 않습니다.",
+                $"{FormatNumber(PrimerBaseChance)}% 확률로 재장전 시 턴을 소모하지 않습니다.",
             RelicEffectType.EyeOfTheStorm =>
                 "한 실린더에서 모든 적을 공격하면 최고 단일 피해의 "
                 + $"{FormatNumber(StormDamagePercent)}%를 모든 생존 적에게 가합니다.",
             RelicEffectType.Carriage =>
-                $"실제 이동 {MovementTilesPerFreeReload}칸마다 무료 재장전 1회를 얻습니다. "
-                + $"최대 {FreeReloadStorageLimit}회 저장합니다.",
-            RelicEffectType.GoldPanner =>
-                $"골드 1개마다 {FormatNumber(GoldNuggetChance)}% 확률로 금덩이를 얻습니다. "
-                + $"{NuggetsRequired}개를 소비한 다음 탄환은 치명타 확정 및 최종 피해 "
+                "발차기 피해가 "
                 + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
+            RelicEffectType.GoldPanner =>
+                $"적 처치 골드를 {FormatNumber(GoldNuggetChance)}% 확률로 "
+                + $"{NuggetsRequired}배 획득합니다.",
             RelicEffectType.CrackedPrimer =>
-                $"{FormatNumber(PrimerBaseChance)}% 확률로 최종 피해 x{FormatNumber(FinalDamageMultiplier)}. "
-                + $"실패 시 확률 +{FormatNumber(PrimerFailureChanceBonus)}%p, 성공 시 초기화합니다.",
+                $"탄환 발사 시 {FormatNumber(PrimerBaseChance)}% 확률로 한 번 더 발사합니다.",
             RelicEffectType.Scale =>
-                "이전 실린더 사격 중 잃은 최대 체력 비율만큼 다음 실린더의 최종 피해가 증가합니다. "
-                + $"최대 +{FormatNumber(ScaleMaximumDamagePercent)}%입니다.",
+                "필드의 생존 적 수가 적을수록 최종 피해가 증가합니다. "
+                + $"증가량: max(0, {FormatNumber(ScaleMaximumDamagePercent)}"
+                + $"-{FormatNumber(PrimerFailureChanceBonus)}×적 수)%.",
             RelicEffectType.FamilyWill =>
-                "영구 파괴된 탄환 하나당 모든 전투의 첫 실린더에 "
-                + $"{FormatNumber(MemorialDamagePercentPerBullet)}% 위력의 추모 사격을 추가합니다. "
-                + $"최대 {FormatNumber(MemorialMaximumDamagePercent)}%입니다.",
+                "보스를 처치할 때마다 모든 탄환의 최종 피해가 영구적으로 "
+                + $"+{FormatNumber(MemorialDamagePercentPerBullet)}% 증가합니다.",
             RelicEffectType.LuckyChamber =>
-                "실린더의 무작위 약실 하나를 공개하고 해당 탄환의 최종 피해를 "
+                "6발이 장전되면 무작위 약실 하나를 지정하고 해당 탄환의 최종 피해를 "
                 + $"x{FormatNumber(FinalDamageMultiplier)}로 만듭니다.",
             RelicEffectType.ExecutionersOath =>
-                "연속 처치에 성공할 때마다 다음 사격의 최종 피해 단계가 상승하고 실패하면 초기화됩니다.",
+                "적을 처치하면 다음 탄환의 최종 피해가 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다. "
+                + "그 탄환도 적을 처치하면 효과가 이어집니다.",
             RelicEffectType.MutationCatalyst =>
-                "대상의 활성 디버프 종류당 "
-                + $"{FormatNumber(MutationChancePerDebuffType)}% 확률로 현재 피해를 "
-                + $"x{FormatNumber(FinalDamageMultiplier)}로 만듭니다. "
-                + $"최대 확률은 {FormatNumber(MutationMaximumChance)}%입니다.",
+                "디버프가 있는 적에게 명중하면 "
+                + $"{FormatNumber(MutationMaximumChance)}% 확률로 "
+                + "무작위 디버프 1스택을 추가합니다.",
             RelicEffectType.BrinkTrigger =>
                 $"체력 {FormatNumber(BrinkHealthThresholdPercent)}% 이하에서 "
-                + $"{FormatNumber(BrinkBaseChance)}% 확률로 최종 피해 x{FormatNumber(FinalDamageMultiplier)}. "
-                + $"실패 시 확률 +{FormatNumber(BrinkFailureChanceBonus)}%p입니다.",
+                + $"모든 탄환의 최종 피해가 x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
+            RelicEffectType.AdvancedScope =>
+                $"모든 탄환의 사거리가 {ShotRangeBonus} 증가합니다.",
+            RelicEffectType.RunningSpur =>
+                $"이동 시 {FormatNumber(PrimerBaseChance)}% 확률로 턴을 소모하지 않습니다.",
             _ => "효과가 없습니다."
         };
     }
 
     public double GetExecutionMultiplier(int streak)
     {
-        if (streak <= 0 || ExecutionDamageMultipliers.Count == 0)
-        {
-            return 1d;
-        }
-
-        int index = Mathf.Min(streak, ExecutionDamageMultipliers.Count) - 1;
-        return Math.Max(1d, SanitizeNonNegative(
-            ExecutionDamageMultipliers[index]));
+        return streak <= 0
+            ? 1d
+            : Math.Max(1d, FinalDamageMultiplier);
     }
 
     private static double SanitizeNonNegative(double value)
@@ -297,7 +301,16 @@ public sealed class RelicData : ScriptableObject
     public string DisplayName => string.IsNullOrWhiteSpace(displayName)
         ? name
         : displayName;
-    public string Description => description ?? string.Empty;
+    public string Description
+    {
+        get
+        {
+            string summary = BuildEffectSummary();
+            return string.IsNullOrWhiteSpace(summary)
+                ? description ?? string.Empty
+                : summary;
+        }
+    }
     public Sprite Icon => icon;
     public RelicLifetimeType LifetimeType => lifetimeType;
     public int InitialCharges => lifetimeType == RelicLifetimeType.Consumable

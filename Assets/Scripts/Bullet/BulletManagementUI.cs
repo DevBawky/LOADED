@@ -67,12 +67,19 @@ public class BulletManagementUI : MonoBehaviour
         new List<BulletButtonVisualState>();
     private readonly List<System.Action<bool>> spawnedHoverActions =
         new List<System.Action<bool>>();
+    private readonly List<BulletInstance> eventSelectedBullets =
+        new List<BulletInstance>();
     private readonly Vector3[] tooltipWorldCorners = new Vector3[4];
     private BulletInstance selectedBullet;
     private BulletInstance hoveredBullet;
     private bool wasShopActive;
     private EventBulletSelectionMode eventSelectionMode;
-    private System.Action<BulletInstance> eventConfirmCallback;
+    private int eventRequiredSelectionCount = 1;
+    private System.Func<BulletInstance, bool> eventSelectionPredicate;
+    private System.Func<IReadOnlyList<BulletInstance>, bool>
+        eventSelectionValidator;
+    private System.Action<IReadOnlyList<BulletInstance>>
+        eventConfirmCallback;
     private System.Action eventCancelCallback;
 
     public BulletInstance SelectedBullet => selectedBullet;
@@ -131,7 +138,35 @@ public class BulletManagementUI : MonoBehaviour
         System.Action<BulletInstance> onConfirm,
         System.Action onCancel)
     {
-        if (mode == EventBulletSelectionMode.None)
+        return OpenEventSelection(
+            runtimeRoot,
+            runtimeDeckManager,
+            mode,
+            1,
+            null,
+            null,
+            bullets =>
+            {
+                if (bullets != null && bullets.Count > 0)
+                {
+                    onConfirm?.Invoke(bullets[0]);
+                }
+            },
+            onCancel);
+    }
+
+    public bool OpenEventSelection(
+        Transform runtimeRoot,
+        DeckManager runtimeDeckManager,
+        EventBulletSelectionMode mode,
+        int requiredSelectionCount,
+        System.Func<BulletInstance, bool> selectionPredicate,
+        System.Func<IReadOnlyList<BulletInstance>, bool> selectionValidator,
+        System.Action<IReadOnlyList<BulletInstance>> onConfirm,
+        System.Action onCancel)
+    {
+        if (mode == EventBulletSelectionMode.None
+            || requiredSelectionCount <= 0)
         {
             return false;
         }
@@ -165,6 +200,9 @@ public class BulletManagementUI : MonoBehaviour
         HideUpgradeTooltip();
 
         eventSelectionMode = mode;
+        eventRequiredSelectionCount = requiredSelectionCount;
+        eventSelectionPredicate = selectionPredicate;
+        eventSelectionValidator = selectionValidator;
         eventConfirmCallback = onConfirm;
         eventCancelCallback = onCancel;
         SetManagementView(true);
@@ -336,6 +374,29 @@ public class BulletManagementUI : MonoBehaviour
 
     private void SelectBullet(BulletInstance bullet)
     {
+        if (eventSelectionMode != EventBulletSelectionMode.None)
+        {
+            if (bullet == null || eventSelectionPredicate != null
+                && !eventSelectionPredicate(bullet))
+            {
+                return;
+            }
+
+            if (eventSelectedBullets.Contains(bullet))
+            {
+                eventSelectedBullets.Remove(bullet);
+            }
+            else if (eventSelectedBullets.Count
+                     < eventRequiredSelectionCount)
+            {
+                eventSelectedBullets.Add(bullet);
+            }
+
+            selectedBullet = bullet;
+            RefreshSelection();
+            return;
+        }
+
         selectedBullet = bullet;
         RefreshSelection();
     }
@@ -389,7 +450,8 @@ public class BulletManagementUI : MonoBehaviour
                 this);
         }
 
-        if (selectedBullet == null && ownedBullets.Count > 0)
+        if (selectedBullet == null && ownedBullets.Count > 0
+            && eventSelectionMode == EventBulletSelectionMode.None)
         {
             selectedBullet = ownedBullets[0];
         }
@@ -456,6 +518,12 @@ public class BulletManagementUI : MonoBehaviour
         visual.HoverChanged += hoverAction;
         UnityAction clickAction = () => SelectBullet(bullet);
         button.onClick.AddListener(clickAction);
+        if (eventSelectionMode != EventBulletSelectionMode.None
+            && eventSelectionPredicate != null
+            && !eventSelectionPredicate(bullet))
+        {
+            button.interactable = false;
+        }
         SoundManager.BindUiButtonSfx(button);
         spawnedButtons.Add(button);
         spawnedClickActions.Add(clickAction);
@@ -635,6 +703,35 @@ public class BulletManagementUI : MonoBehaviour
             bulletDescriptionText.text = string.Empty;
         }
 
+        if (eventSelectionMode != EventBulletSelectionMode.None)
+        {
+            bool isRemove = eventSelectionMode
+                == EventBulletSelectionMode.Remove;
+            if (removeButton != null)
+            {
+                removeButton.gameObject.SetActive(isRemove);
+                removeButton.interactable = IsEventSelectionValid();
+            }
+            if (upgradeButton != null)
+            {
+                upgradeButton.gameObject.SetActive(!isRemove);
+                upgradeButton.interactable = IsEventSelectionValid();
+            }
+            if (removeButtonText != null)
+            {
+                removeButtonText.text =
+                    $"선택 완료 ({eventSelectedBullets.Count}/{eventRequiredSelectionCount})";
+            }
+            if (upgradeButtonText != null)
+            {
+                upgradeButtonText.text =
+                    $"선택 완료 ({eventSelectedBullets.Count}/{eventRequiredSelectionCount})";
+            }
+            SetWarning(
+                $"조건에 맞는 탄환을 {eventRequiredSelectionCount}개 선택하세요.");
+            return;
+        }
+
         if (removeButton != null)
         {
             removeButton.interactable = false;
@@ -684,9 +781,7 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         bool isRemove = eventSelectionMode == EventBulletSelectionMode.Remove;
-        bool valid = isRemove
-            ? deckManager != null && deckManager.CanRemoveBullet(selectedBullet)
-            : selectedBullet.CanUpgrade;
+        bool valid = IsEventSelectionValid();
 
         if (removeButton != null)
         {
@@ -702,34 +797,32 @@ public class BulletManagementUI : MonoBehaviour
 
         if (removeButtonText != null)
         {
-            removeButtonText.text = "무료 제거";
+            removeButtonText.text =
+                $"선택 완료 ({eventSelectedBullets.Count}/{eventRequiredSelectionCount})";
         }
 
         if (upgradeButtonText != null)
         {
-            upgradeButtonText.text = "무료 강화";
+            upgradeButtonText.text =
+                $"선택 완료 ({eventSelectedBullets.Count}/{eventRequiredSelectionCount})";
         }
 
-        SetWarning(valid ? string.Empty : isRemove
-            ? "최소 1개의 탄환은 보유해야 합니다."
-            : "이미 최대 강화 단계인 탄환입니다.");
+        SetWarning(valid ? string.Empty
+            : $"조건에 맞는 탄환을 {eventRequiredSelectionCount}개 선택하세요.");
     }
 
     private void ConfirmEventSelection()
     {
-        bool valid = selectedBullet != null && deckManager != null
-            && (eventSelectionMode == EventBulletSelectionMode.Remove
-                ? deckManager.CanRemoveBullet(selectedBullet)
-                : eventSelectionMode == EventBulletSelectionMode.Upgrade
-                    && selectedBullet.CanUpgrade);
-        if (!valid)
+        if (!IsEventSelectionValid())
         {
             RefreshSelection();
             return;
         }
 
-        BulletInstance confirmed = selectedBullet;
-        System.Action<BulletInstance> callback = eventConfirmCallback;
+        List<BulletInstance> confirmed =
+            new List<BulletInstance>(eventSelectedBullets);
+        System.Action<IReadOnlyList<BulletInstance>> callback =
+            eventConfirmCallback;
         ResetEventSelection();
         SetManagementView(false);
         HideUpgradeTooltip();
@@ -738,11 +831,47 @@ public class BulletManagementUI : MonoBehaviour
         callback?.Invoke(confirmed);
     }
 
+    private bool IsEventSelectionValid()
+    {
+        if (deckManager == null
+            || eventSelectedBullets.Count != eventRequiredSelectionCount)
+        {
+            return false;
+        }
+
+        foreach (BulletInstance bullet in eventSelectedBullets)
+        {
+            if (bullet == null || !deckManager.Contains(bullet)
+                || eventSelectionPredicate != null
+                && !eventSelectionPredicate(bullet)
+                || eventSelectionMode == EventBulletSelectionMode.Upgrade
+                && !bullet.CanUpgrade)
+            {
+                return false;
+            }
+        }
+
+        if (eventSelectionMode == EventBulletSelectionMode.Remove
+            && deckManager.OwnedBulletCount
+                - eventSelectedBullets.Count
+                < DeckManager.MinimumOwnedBulletCount)
+        {
+            return false;
+        }
+
+        return eventSelectionValidator == null
+            || eventSelectionValidator(eventSelectedBullets);
+    }
+
     private void ResetEventSelection()
     {
         eventSelectionMode = EventBulletSelectionMode.None;
+        eventRequiredSelectionCount = 1;
+        eventSelectionPredicate = null;
+        eventSelectionValidator = null;
         eventConfirmCallback = null;
         eventCancelCallback = null;
+        eventSelectedBullets.Clear();
 
         if (removeButton != null)
         {
@@ -869,7 +998,11 @@ public class BulletManagementUI : MonoBehaviour
             BulletButtonVisualState visual = spawnedButtonVisuals[index];
             if (visual != null)
             {
-                visual.SetSelected(spawnedButtonBullets[index] == selectedBullet);
+                visual.SetSelected(eventSelectionMode
+                    != EventBulletSelectionMode.None
+                        ? eventSelectedBullets.Contains(
+                            spawnedButtonBullets[index])
+                        : spawnedButtonBullets[index] == selectedBullet);
             }
         }
     }

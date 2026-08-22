@@ -47,9 +47,9 @@ public sealed class RelicManagerTests
     }
 
     [Test]
-    public void RetiredRelics_HaveNoAbilities()
+    public void RequestedRelics_AreAuthoredWithActiveAbilities()
     {
-        string[] retiredRelicIds =
+        string[] activeRelicIds =
         {
             "predator_holster",
             "closed_circuit",
@@ -62,13 +62,13 @@ public sealed class RelicManagerTests
             "family_will"
         };
 
-        foreach (string relicId in retiredRelicIds)
+        foreach (string relicId in activeRelicIds)
         {
             RelicData relic = manager.ResolveRelicData(relicId);
 
             Assert.That(relic, Is.Not.Null, relicId);
-            Assert.That(relic.Effects, Is.Empty, relicId);
-            Assert.That(relic.Description, Is.EqualTo("효과 없음."), relicId);
+            Assert.That(relic.Effects, Is.Not.Empty, relicId);
+            Assert.That(relic.Description, Does.Not.Contain("효과 없음"), relicId);
         }
     }
 
@@ -188,15 +188,13 @@ public sealed class RelicManagerTests
     }
 
     [Test]
-    public void Carriage_EarnsAndConsumesStoredFreeReloads()
+    public void Carriage_IncreasesKickDamageByFiftyPercent()
     {
         RelicData carriage = CreateRelic(
             "carriage",
             effectType: RelicEffectType.Carriage);
-        SetEffectInt(carriage, "movementTilesPerFreeReload", 5);
-        SetEffectInt(carriage, "freeReloadStorageLimit", 2);
+        SetEffectDouble(carriage, "finalDamageMultiplier", 1.5d);
         manager.TryAcquire(carriage);
-        manager.BeginBattle();
         int activationCount = 0;
         manager.RelicTriggered += (_, effect) =>
         {
@@ -206,173 +204,104 @@ public sealed class RelicManagerTests
             }
         };
 
-        manager.RecordPlayerMovement(new PlayerMovementContext(
-            0,
-            12,
-            12,
-            PlayerMovementSource.BulletPositionSwap));
-
-        RelicInstance instance = manager.OwnedRelics[0];
-        Assert.That(instance.PrimaryCounter, Is.EqualTo(2));
-        Assert.That(instance.SecondaryCounter, Is.EqualTo(2));
-        Assert.That(manager.GetRelicStatusText(instance), Is.EqualTo("2"));
-        Assert.That(activationCount, Is.EqualTo(1));
-        Assert.That(manager.ShouldReloadConsumeTurn(
-            new BulletInstance(null, 1),
-            false), Is.False);
-        Assert.That(instance.SecondaryCounter, Is.EqualTo(1));
-        Assert.That(manager.GetRelicStatusText(instance), Is.EqualTo("1"));
+        Assert.That(
+            manager.GetKickDamageMultiplier(),
+            Is.EqualTo(1.5d).Within(0.000001d));
         Assert.That(activationCount, Is.EqualTo(1));
     }
 
     [Test]
-    public void PredatorHolster_KillingBulletIsNextAndReloadsForFree()
+    public void PredatorHolster_BuffsNextReloadedBullet()
     {
-        GameObject deckObject = new GameObject("Holster Deck Test");
         GameObject enemyObject = new GameObject("Holster Enemy Test");
-        BulletData bulletData = ScriptableObject.CreateInstance<BulletData>();
 
         try
         {
-            DeckManager deckManager = deckObject.AddComponent<DeckManager>();
             EnemyController enemy = enemyObject.AddComponent<EnemyController>();
             RelicData holster = CreateRelic(
                 "predator-holster",
                 effectType: RelicEffectType.PredatorHolster);
+            SetEffectDouble(holster, "finalDamageMultiplier", 1.12d);
             manager.TryAcquire(holster);
-            Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
-            Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
-            Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
-            Assert.That(deckManager.TryReload(out _), Is.True);
-            Assert.That(deckManager.TryReload(out _), Is.True);
-            Assert.That(deckManager.TryFireLoadedBullet(
-                out BulletInstance killingBullet), Is.True);
-            int defeatedEnemyInstanceId = enemy.GetInstanceID();
-            Object.DestroyImmediate(enemyObject);
-            enemyObject = null;
+            BulletInstance reloadedBullet = new BulletInstance(null, 17);
 
-            manager.NotifyEnemyDefeated(
-                enemy,
-                killingBullet,
-                null,
-                null,
-                deckManager,
-                defeatedEnemyInstanceId);
-
-            Assert.That(deckManager.PeekNextBullet(), Is.SameAs(killingBullet));
-            Assert.That(deckManager.TryFireLoadedBullet(out _), Is.True);
-            deckManager.CompleteFiringSequence();
-            manager.NotifyCylinderCompleted(deckManager);
-            Assert.That(deckManager.ReshuffleDeck(), Is.True);
-            Assert.That(deckManager.PeekNextBullet(), Is.SameAs(killingBullet));
-            Assert.That(deckManager.TryReload(
-                out BulletInstance reloadedBullet), Is.True);
-            Assert.That(reloadedBullet, Is.SameAs(killingBullet));
+            manager.NotifyEnemyDefeated(enemy, null, null, null);
             Assert.That(manager.ShouldReloadConsumeTurn(
                 reloadedBullet,
-                true), Is.False);
+                true), Is.True);
             Assert.That(
-                manager.OwnedRelics[0].TrackedBulletAcquisitionOrders,
-                Is.Empty);
+                manager.OwnedRelics[0].HasTrackedBullet(
+                    reloadedBullet.AcquisitionOrder),
+                Is.True);
+
+            manager.NotifyCylinderStarted(1, null, 100, 100);
+            manager.NotifyShotStarted(
+                true,
+                false,
+                0,
+                100,
+                100,
+                true,
+                true,
+                reloadedBullet.AcquisitionOrder);
+            Assert.That(
+                manager.GetOutgoingAttackDamageMultiplier(),
+                Is.EqualTo(1.12d).Within(0.000001d));
         }
         finally
         {
             Object.DestroyImmediate(enemyObject);
-            Object.DestroyImmediate(deckObject);
-            Object.DestroyImmediate(bulletData);
         }
     }
 
     [Test]
-    public void GoldPanner_ConsumesNuggetsForCriticalFiveTimesShot()
+    public void GoldPanner_MultipliesEnemyGoldDrop()
     {
         RelicData panner = CreateRelic(
             "gold-panner",
             effectType: RelicEffectType.GoldPanner);
         SetEffectDouble(panner, "goldNuggetChance", 100d);
-        SetEffectInt(panner, "nuggetsRequired", 3);
-        SetEffectDouble(panner, "finalDamageMultiplier", 5d);
+        SetEffectInt(panner, "nuggetsRequired", 7);
         manager.TryAcquire(panner);
-        manager.BeginBattle();
         double evaluatedChance = -1d;
         manager.RelicProbabilityEvaluated += (_, chance) =>
             evaluatedChance = chance;
-        manager.NotifyGoldGained(3);
-        Assert.That(
-            manager.GetRelicStatusText(manager.OwnedRelics[0]),
-            Is.EqualTo("3"));
-        manager.NotifyCylinderStarted(1, null, 100, 100);
 
-        manager.NotifyShotStarted(true, false, 0, 100, 100);
-
-        Assert.That(manager.CurrentShotForcesCritical, Is.True);
-        Assert.That(manager.GetOutgoingAttackDamageMultiplier(),
-            Is.EqualTo(5d));
-        Assert.That(manager.OwnedRelics[0].PrimaryCounter, Is.Zero);
-        Assert.That(
-            manager.GetRelicStatusText(manager.OwnedRelics[0]),
-            Is.EqualTo("0"));
+        Assert.That(manager.GetEnemyGoldDropMultiplier(), Is.EqualTo(7));
         Assert.That(evaluatedChance, Is.EqualTo(100d));
     }
 
     [Test]
-    public void Scale_AppliesPreviousCylinderHealthLossToNextCylinder()
+    public void Scale_UsesLivingEnemyCountFormula()
     {
         RelicData scale = CreateRelic(
             "scale",
             effectType: RelicEffectType.Scale);
-        SetEffectDouble(scale, "scaleMaximumDamagePercent", 100d);
+        SetEffectDouble(scale, "scaleMaximumDamagePercent", 15d);
+        SetEffectDouble(scale, "primerFailureChanceBonus", 3d);
         manager.TryAcquire(scale);
-        manager.BeginBattle();
-        manager.NotifyCylinderStarted(1, null, 100, 100);
-        manager.NotifyPlayerHealthLost(25, 100);
-        manager.NotifyCylinderCompleted();
 
-        int activationCount = 0;
-        manager.RelicTriggered += (_, effect) =>
-        {
-            if (effect.EffectType == RelicEffectType.Scale)
-            {
-                activationCount++;
-            }
-        };
-
-        manager.NotifyCylinderStarted(1, null, 75, 100);
-        manager.NotifyShotStarted(true, false, 0, 75, 100, true, true);
-
-        Assert.That(manager.GetOutgoingAttackDamageMultiplier(),
-            Is.EqualTo(1.25d).Within(0.000001d));
-        Assert.That(activationCount, Is.EqualTo(1));
+        Assert.That(
+            manager.GetPreviewTargetConditionalDamageMultiplier(0, 1),
+            Is.EqualTo(1.12d).Within(0.000001d));
+        Assert.That(
+            manager.GetPreviewTargetConditionalDamageMultiplier(0, 5),
+            Is.EqualTo(1d).Within(0.000001d));
     }
 
     [Test]
-    public void FamilyWill_AddsMemorialShotFromDestroyedBullets()
+    public void FamilyWill_AddsFivePercentPerBossDefeated()
     {
         RelicData will = CreateRelic(
             "family-will",
             effectType: RelicEffectType.FamilyWill);
-        SetEffectDouble(will, "memorialDamagePercentPerBullet", 20d);
-        SetEffectDouble(will, "memorialMaximumDamagePercent", 100d);
+        SetEffectDouble(will, "memorialDamagePercentPerBullet", 5d);
         manager.TryAcquire(will);
-        manager.NotifyBulletDestroyed(new BulletInstance(null, 4));
-        manager.NotifyBulletDestroyed(new BulletInstance(null, 8));
-        manager.BeginBattle();
+        manager.OwnedRelics[0].SetPrimaryCounter(2);
 
-        manager.NotifyCylinderStarted(1, null, 100, 100);
-
-        Assert.That(manager.GetMemorialExtraShotMultiplier(),
-            Is.EqualTo(0.4d).Within(0.000001d));
-
-        int activationCount = 0;
-        manager.RelicTriggered += (_, effect) =>
-        {
-            if (effect.EffectType == RelicEffectType.FamilyWill)
-            {
-                activationCount++;
-            }
-        };
-        manager.NotifyMemorialShotTriggered();
-        Assert.That(activationCount, Is.EqualTo(1));
+        Assert.That(
+            manager.GetOutgoingAttackDamageMultiplier(),
+            Is.EqualTo(1.1d).Within(0.000001d));
     }
 
     [Test]
@@ -451,7 +380,8 @@ public sealed class RelicManagerTests
     {
         manager.TryAcquire(CreateRelic(
             "execution-oath",
-            effectType: RelicEffectType.ExecutionersOath));
+            effectType: RelicEffectType.ExecutionersOath,
+            amount: 1.15d));
         manager.OwnedRelics[0].SetPrimaryCounter(1);
         Assert.That(
             manager.GetRelicStatusText(manager.OwnedRelics[0]),
@@ -462,7 +392,7 @@ public sealed class RelicManagerTests
             6,
             out double oathMultiplier,
             out _), Is.True);
-        Assert.That(oathMultiplier, Is.EqualTo(1.5d).Within(0.000001d));
+        Assert.That(oathMultiplier, Is.EqualTo(1.15d).Within(0.000001d));
         int activationCount = 0;
         manager.RelicTriggered += (_, effect) =>
         {
@@ -534,23 +464,69 @@ public sealed class RelicManagerTests
         RelicData primer = CreateRelic(
             "primer-status",
             effectType: RelicEffectType.CrackedPrimer);
-        SetEffectDouble(primer, "primerBaseChance", 5d);
-        SetEffectDouble(primer, "primerFailureChanceBonus", 5d);
+        SetEffectDouble(primer, "primerBaseChance", 10d);
         manager.TryAcquire(primer);
         manager.OwnedRelics[0].SetPrimaryCounter(3);
 
+        Assert.That(
+            manager.GetRelicStatusText(manager.OwnedRelics[0]),
+            Is.EqualTo("10%"));
+    }
+
+    [Test]
+    public void AdvancedScope_AddsOneToEveryBulletRange()
+    {
+        RelicData scope = CreateRelic(
+            "advanced-scope",
+            effectType: RelicEffectType.AdvancedScope);
+        SetEffectInt(scope, "shotRangeBonus", 1);
+        manager.TryAcquire(scope);
+
+        Assert.That(
+            manager.GetShotRange(new BulletInstance(null, 1)),
+            Is.EqualTo(2));
+    }
+
+    [Test]
+    public void FreeTurnRelics_UseAuthoredPercentages()
+    {
+        RelicData emptyBeat = CreateRelic(
+            "empty-beat",
+            effectType: RelicEffectType.EmptyBeat);
+        SetEffectDouble(emptyBeat, "primerBaseChance", 100d);
+        manager.TryAcquire(emptyBeat);
+
+        Assert.That(
+            manager.ShouldReloadConsumeTurn(
+                new BulletInstance(null, 1),
+                false),
+            Is.False);
+
+        manager.TryRemoveAt(0);
+        RelicData spur = CreateRelic(
+            "running-spur",
+            effectType: RelicEffectType.RunningSpur);
+        SetEffectDouble(spur, "primerBaseChance", 100d);
+        manager.TryAcquire(spur);
+
+        Assert.That(manager.ShouldMovementConsumeTurn(), Is.False);
+    }
+
+    [Test]
+    public void ClosedCircuit_TransfersTwentyPercentDamage()
+    {
         RelicData circuit = CreateRelic(
-            "circuit-status",
+            "closed-circuit",
             effectType: RelicEffectType.ClosedCircuit);
-        SetEffectInt(circuit, "circuitShotThreshold", 5);
+        SetEffectDouble(circuit, "debuffTransferPercent", 20d);
         manager.TryAcquire(circuit);
 
         Assert.That(
-            manager.GetRelicStatusText(manager.OwnedRelics[0]),
-            Is.EqualTo("20%"));
-        Assert.That(
-            manager.GetRelicStatusText(manager.OwnedRelics[1]),
-            Is.EqualTo("5"));
+            manager.TryGetPreviewClosedCircuitTransferDamage(
+                100,
+                out int damage),
+            Is.True);
+        Assert.That(damage, Is.EqualTo(20));
     }
 
     [Test]
@@ -654,6 +630,7 @@ public sealed class RelicManagerTests
             effect.FindPropertyRelative("finalDamageMultiplier").doubleValue =
                 effectType == RelicEffectType.FirstShotFinalMultiplier
                     || effectType == RelicEffectType.LastShotFinalMultiplier
+                    || effectType == RelicEffectType.ExecutionersOath
                         ? amount
                         : 2d;
             effect.FindPropertyRelative(

@@ -137,7 +137,7 @@ MonoBehaviour:
     variants:
     - {fileID: 8300000, guid: 05d0536a3eefc80438f95f9662331f52, type: 3}
     - {fileID: 8300000, guid: 3516c279da18eaa40b97de96d4d0356d, type: 3}
-    volume: 1.5
+    volume: 2
     minPitch: 1
     maxPitch: 1.05
   - id: SFX_Attack_Thief
@@ -179,7 +179,7 @@ MonoBehaviour:
     category: 2
     clip: {fileID: 8300000, guid: 4cd09583b8a6b84458802477b5f63502, type: 3}
     variants: []
-    volume: 2
+    volume: 1.5
     minPitch: 1.2
     maxPitch: 2
   - id: SFX_Critical
@@ -207,7 +207,7 @@ MonoBehaviour:
     category: 0
     clip: {fileID: 8300000, guid: 80e82ebeab50dac4cbbc50d04c3c6bb0, type: 3}
     variants: []
-    volume: 1.3
+    volume: 1.5
     minPitch: 1
     maxPitch: 1
   - id: UI_Button_Hover_Click

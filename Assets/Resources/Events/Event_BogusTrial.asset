@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
+  m_Name: Event_BogusTrial
+  m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
+  eventId: bogus-trial
+  displayName: 엉터리 재판
+  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
+  dialogue: 불량배가 빈 술통을 두드리며 개정을 선언한다. 죄목도 판결도 이미 정해진 표정이다.
+  choices:
+  - buttonText: "[심판을 제시한다] 심판탄을 보유했다면 서로 다른 탄환 2개를 한 번에 골라 각각 무료 강화한다."
+    outcomeText: 심판탄을 본 불량배들은 판결을 뒤집고 탄환 두 발을 손봐 주었다.
+    requirements:
+    - type: 8
+      amount: 1
+      bulletId: bullet_judgment
+      unavailableReason: 심판탄을 보유하고 있지 않습니다.
+    attemptEffects: []
+    effects:
+    - type: 6
+      amount: 0
+    bulletSelectionCount: 2
+    requireDistinctBulletTypes: 1
+  - buttonText: "[벌금을 낸다] 원하는 아이템 1개를 몰수당한다."
+    outcomeText: 불량배는 선택한 물건을 압수품이라 부르며 챙겼다.
+    requirements:
+    - type: 9
+      amount: 1
+      unavailableReason: 몰수할 아이템이 없습니다.
+    attemptEffects: []
+    effects:
+    - type: 11
+      amount: 0
+    itemSelectionCount: 1
+  - buttonText: "[판결을 거부한다] HP 12를 잃고 포위망을 뚫는다."
+    outcomeText: 엉터리 법정은 주먹으로 폐정되었다.
+    requirements: []
+    attemptEffects: []
+    effects:
+    - type: 3
+      amount: 12
+  baseWeight: 8
+  oncePerRun: 1
+  weightRules: []
+  normalBattleChancePercent: 10
+  eliteBattleChancePercent: 12
+  shopChancePercent: 0

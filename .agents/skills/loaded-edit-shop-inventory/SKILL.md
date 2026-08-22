@@ -25,6 +25,10 @@ Preserve deterministic weighted selection when a seed or current RNG sequence is
 
 Trace shop save capture/restore and checkpoint timing for any offer or purchase change. Changes to bullet capacity, relic capacity, or item persistence also require their domain and run-save checks.
 
+## Complete authored catalog registration
+
+When a task adds, moves, or removes `BulletData`, include registration in every authored `ShopManager.bulletPool`, including Battle, Shop, Event, and Treasure owners. Use the bullet-deck workflow and `Tools > LOADED > Sync All Bullet Pools`; editor import auto-sync does not count as completion if it was skipped because a loaded scene was dirty. Confirm `BulletPoolIntegrityTests` passes and the sync is idempotent before finishing the task. Do not treat `DeckManager.startingBullets` as an offer catalog.
+
 ## Verify
 
 Add or run focused EditMode tests for weighted selection, uniqueness, insufficient currency, full capacity, duplicate acquisition, and transaction atomicity. In Play Mode check shop entry/exit, reroll or refresh if applicable, purchase feedback, currency display, inventory/tooltips, reward pickup, treasure choices, scene return, and continue-game restoration.

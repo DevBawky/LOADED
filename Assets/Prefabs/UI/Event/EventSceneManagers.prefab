@@ -479,11 +479,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EventSceneController
   eventPool:
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0103, type: 2}
+  - {fileID: 11400000, guid: 6d79c3bca61b4d8f8605ae5f465e3ffc, type: 2}
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0101, type: 2}
+  - {fileID: 11400000, guid: 160ab491e07a4e2198a257634bd90532, type: 2}
+  - {fileID: 11400000, guid: 39350e94ddbc433da8cb8903569a43fe, type: 2}
+  - {fileID: 11400000, guid: 4a1542230f974e7380d73f37c66047ed, type: 2}
   - {fileID: 11400000, guid: f1ddfc405a6165643b65256581c6723e, type: 2}
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0102, type: 2}
+  - {fileID: 11400000, guid: 302faa6dcb714fbfbfb85f6f3c04f4c0, type: 2}
+  - {fileID: 11400000, guid: dc37a7469f76494aa625a2cd6baa5ea7, type: 2}
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0105, type: 2}
+  - {fileID: 11400000, guid: 941cd494a8ef4076a0ceba5f3a5bf933, type: 2}
   - {fileID: 11400000, guid: 25bd9a261fb550d4393baa18c59bf7dd, type: 2}
+  - {fileID: 11400000, guid: c58310ab95004b85b89df744373bf420, type: 2}
+  - {fileID: 11400000, guid: 1c3063a701344c7d83f1b8885d1ff850, type: 2}
+  - {fileID: 11400000, guid: 794f00ae7a5e4340b1583a52beefd91b, type: 2}
+  - {fileID: 11400000, guid: b9a1fa9f308d4faebbaa044f162bf43d, type: 2}
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0104, type: 2}
   - {fileID: 11400000, guid: 0142b1f489cd4a94c995c741f0321b7c, type: 2}
   dataResolver: {fileID: 0}
@@ -493,10 +504,14 @@ MonoBehaviour:
   relicManager: {fileID: 0}
   stateManager: {fileID: 0}
   bulletSelectionUI: {fileID: 0}
+  inventorySelectionUI: {fileID: 0}
+  relicSelectionUI: {fileID: 0}
   eventCanvasRoot: {fileID: 0}
   artworkImage: {fileID: 0}
   titleText: {fileID: 0}
   dialogueText: {fileID: 0}
+  resultText: {fileID: 0}
+  reelResultImages: []
   choiceButtons: []
   choiceTexts: []
   playerHealthFillImage: {fileID: 0}

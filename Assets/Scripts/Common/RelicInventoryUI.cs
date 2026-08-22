@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
@@ -47,6 +48,15 @@ public sealed class RelicInventoryUI : MonoBehaviour
     private Sprite activationRingSprite;
     private RelicTooltipUI tooltip;
     private RelicInstance hoveredRelic;
+    private readonly List<RelicInstance> eventSelectedRelics =
+        new List<RelicInstance>();
+    private int eventRequiredSelectionCount;
+    private Func<RelicInstance, bool> eventSelectionPredicate;
+    private Action<IReadOnlyList<RelicInstance>> eventConfirmCallback;
+    private Action eventCancelCallback;
+
+    public event Action<int, int> EventSelectionChanged;
+    public bool IsEventSelectionActive => eventRequiredSelectionCount > 0;
 
     private void Awake()
     {
@@ -97,6 +107,11 @@ public sealed class RelicInventoryUI : MonoBehaviour
         }
 
         HideTooltip();
+
+        if (IsEventSelectionActive)
+        {
+            CancelEventSelection();
+        }
     }
 
     private void OnDestroy()
@@ -550,7 +565,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
         return 1f + shifted * shifted * (2.5f * shifted + 1.5f);
     }
 
-    private static void DestroyRuntimeObject(Object value)
+    private static void DestroyRuntimeObject(UnityEngine.Object value)
     {
         if (value == null)
         {
@@ -646,6 +661,104 @@ public sealed class RelicInventoryUI : MonoBehaviour
         }
     }
 
+    public bool BeginEventSelection(
+        int requiredSelectionCount,
+        Func<RelicInstance, bool> selectionPredicate,
+        Action<IReadOnlyList<RelicInstance>> onConfirm,
+        Action onCancel)
+    {
+        if (relicManager == null || requiredSelectionCount <= 0)
+        {
+            return false;
+        }
+
+        int eligibleCount = 0;
+        foreach (RelicInstance relic in relicManager.OwnedRelics)
+        {
+            if (relic?.Data != null && (selectionPredicate == null
+                || selectionPredicate(relic)))
+            {
+                eligibleCount++;
+            }
+        }
+
+        if (eligibleCount < requiredSelectionCount)
+        {
+            return false;
+        }
+
+        eventSelectedRelics.Clear();
+        eventRequiredSelectionCount = requiredSelectionCount;
+        eventSelectionPredicate = selectionPredicate;
+        eventConfirmCallback = onConfirm;
+        eventCancelCallback = onCancel;
+        EventSelectionChanged?.Invoke(0, eventRequiredSelectionCount);
+        Refresh();
+        return true;
+    }
+
+    public bool ConfirmEventSelection()
+    {
+        if (!IsEventSelectionActive
+            || eventSelectedRelics.Count != eventRequiredSelectionCount)
+        {
+            return false;
+        }
+
+        List<RelicInstance> confirmed =
+            new List<RelicInstance>(eventSelectedRelics);
+        Action<IReadOnlyList<RelicInstance>> callback = eventConfirmCallback;
+        ResetEventSelection();
+        callback?.Invoke(confirmed);
+        return true;
+    }
+
+    public void CancelEventSelection()
+    {
+        if (!IsEventSelectionActive)
+        {
+            return;
+        }
+
+        Action callback = eventCancelCallback;
+        ResetEventSelection();
+        callback?.Invoke();
+    }
+
+    internal void ToggleEventSelection(RelicInstance relic)
+    {
+        if (!IsEventSelectionActive || relic?.Data == null
+            || eventSelectionPredicate != null
+            && !eventSelectionPredicate(relic))
+        {
+            return;
+        }
+
+        if (eventSelectedRelics.Contains(relic))
+        {
+            eventSelectedRelics.Remove(relic);
+        }
+        else if (eventSelectedRelics.Count < eventRequiredSelectionCount)
+        {
+            eventSelectedRelics.Add(relic);
+        }
+
+        EventSelectionChanged?.Invoke(
+            eventSelectedRelics.Count,
+            eventRequiredSelectionCount);
+        Refresh();
+    }
+
+    private void ResetEventSelection()
+    {
+        eventSelectedRelics.Clear();
+        eventRequiredSelectionCount = 0;
+        eventSelectionPredicate = null;
+        eventConfirmCallback = null;
+        eventCancelCallback = null;
+        Refresh();
+    }
+
     private void EnsureTooltip()
     {
         if (tooltip != null)
@@ -669,6 +782,10 @@ public sealed class RelicInventoryUI : MonoBehaviour
             icon.sprite = relic.Data.Icon;
             icon.preserveAspect = true;
             icon.enabled = relic.Data.Icon != null;
+            icon.color = IsEventSelectionActive
+                && eventSelectedRelics.Contains(relic)
+                    ? new Color(1f, 0.72f, 0.2f, 1f)
+                    : Color.white;
         }
 
         TMP_Text stackText = FindStackText(relicObject.transform);
@@ -718,7 +835,8 @@ public sealed class RelicInventoryUI : MonoBehaviour
 public sealed class RelicInventoryIconUI : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler,
-    IPointerMoveHandler
+    IPointerMoveHandler,
+    IPointerClickHandler
 {
     private RelicInventoryUI owner;
     private RelicInstance relic;
@@ -742,5 +860,13 @@ public sealed class RelicInventoryIconUI : MonoBehaviour,
     public void OnPointerMove(PointerEventData eventData)
     {
         owner?.MoveTooltip(relic, eventData.position);
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Left)
+        {
+            owner?.ToggleEventSelection(relic);
+        }
     }
 }

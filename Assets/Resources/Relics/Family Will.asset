@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: family_will
   displayName: "\uAC00\uBB38\uC758 \uC720\uC5B8\uC7A5"
-  description: "\uD6A8\uACFC \uC5C6\uC74C."
+  description: "보스를 처치할 때마다 모든 탄환의 최종 피해가 5% 증가합니다."
   icon: {fileID: 4791827235833286068, guid: 8585f2f7468270846a40bf5f476a25ef, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
   maxStack: 1
-  effects: []
+  effects:
+  - effectType: 19
+    memorialDamagePercentPerBullet: 5

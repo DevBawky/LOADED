@@ -14,10 +14,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: carriage
   displayName: "\uB9C8\uCC28"
-  description: "\uD6A8\uACFC \uC5C6\uC74C."
+  description: "발차기 피해 +50%."
   icon: {fileID: -3930512209836340954, guid: b0b3c6d75ed827c49bf19905461b7a39, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
   maxStack: 1
-  effects: []
+  effects:
+  - effectType: 15
+    finalDamageMultiplier: 1.5

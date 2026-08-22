@@ -31,11 +31,18 @@
 | `FirstRunGuideController` | 튜토리얼 진행과 UI 조정 | immutable `FirstRunGuideContent` |
 | `PlayerCylinderUI` | 실린더 표시, 드래그, 애니메이션 | `CylinderBulletEffectPolicy` |
 | `ShopManager` | 구매 흐름, 오퍼 UI, 새로고침 연출 | `ShopOfferGenerator` |
+| `CombatPresentation` | 총구·기본 명중 표현과 공개 연출 진입점 | `CombatImpactSignaturePresenter` |
 
 `PlayerShoot`의 발사 실행과 데미지 미리보기는 같은 효과 분류와 계산기를
 공유한다. 따라서 미리보기만 별도 규칙을 복제해 실제 발사 결과와 달라지는
 경로를 줄였다. `PlayerShoot`의 기존 이벤트와 공개 메서드는 facade에 남겨
 호출자 호환성을 유지한다.
+
+`CombatPresentation`은 기존 직렬화 필드와 `PlayImpact` 공개 진입점을
+유지한다. 새 상황별 시그니처의 절차적 오브젝트 수명과 애니메이션은 plain
+C# `CombatImpactSignaturePresenter`가 소유하고, facade가 캡처한 적 스냅샷과
+표현 등급만 전달한다. 이 협력 객체는 게임 판정, 시간 배율, 저장 상태를
+소유하지 않는다.
 
 ## 추가 분할하지 않은 대형 클래스
 

@@ -103,7 +103,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
     private bool moved;
     private bool rotated;
-    private bool bulletEjected;
+    private bool waited;
     private bool enemyActionInspected;
     private int reloadCount;
     private bool bulletInfoInspected;
@@ -323,7 +323,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         combatGuideStarted = true;
         moved = false;
         rotated = false;
-        bulletEjected = false;
+        waited = false;
         enemyActionInspected = false;
         reloadCount = 0;
         bulletInfoInspected = false;
@@ -880,7 +880,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         {
             CombatStep.Move => moved,
             CombatStep.Rotate => rotated,
-            CombatStep.EjectNextBullet => bulletEjected,
+            CombatStep.Wait => waited,
             CombatStep.InspectEnemyAction => enemyActionInspected,
             CombatStep.ReloadThree => reloadCount >= 3,
             CombatStep.InspectBulletInfo => bulletInfoInspected,
@@ -925,17 +925,6 @@ public sealed class FirstRunGuideController : MonoBehaviour
         {
             case CombatStep.Move:
                 return TryGetMovePriority(out priority);
-
-            case CombatStep.EjectNextBullet:
-                if (loadedBulletCount <= 0)
-                {
-                    priority = new PriorityMission(
-                        "배출할 탄환 한 발 장전",
-                        "Button | Reload");
-                    return true;
-                }
-
-                break;
 
             case CombatStep.InspectEnemyAction:
                 if (!HasInspectableEnemyAction())
@@ -1440,8 +1429,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
             case PlayerBehaviourAction.Rotate:
                 rotated = true;
                 break;
-            case PlayerBehaviourAction.EjectNextBullet:
-                bulletEjected = true;
+            case PlayerBehaviourAction.Wait:
+                waited = true;
                 break;
             case PlayerBehaviourAction.Reload:
                 reloadCount++;

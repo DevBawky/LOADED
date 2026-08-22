@@ -260,6 +260,7 @@ public partial class PlayerShoot
     
                 if (relicManager != null
                     && relicManager.TryGetLoadedBulletRelicModifiers(
+                        firedBullet,
                         bulletIndex,
                         loadedBullets.Count,
                         initialLoadedCount,
@@ -270,6 +271,17 @@ public partial class PlayerShoot
                         float.MaxValue,
                         Math.Max(0d, damageMultiplier)
                             * Math.Max(0d, relicDamageMultiplier));
+                }
+
+                if (relicManager != null)
+                {
+                    damageMultiplier = (float)Math.Min(
+                        float.MaxValue,
+                        Math.Max(0d, damageMultiplier)
+                            * relicManager
+                                .GetPreviewHealthConditionalDamageMultiplier(
+                                    playerHealth.CurrentHealth,
+                                    playerHealth.MaxHealth));
                 }
                 bool isStackingShot = FindSpecialEffect(
                     resolvedBullet,
@@ -505,6 +517,12 @@ public partial class PlayerShoot
                     resolvedBullet,
                     state,
                     horizontalDirection);
+                targetMultiplier *= (float)(relicManager == null
+                    ? 1d
+                    : relicManager
+                        .GetPreviewTargetConditionalDamageMultiplier(
+                            CountActiveStatusTypes(state),
+                            CountPreviewActiveEnemies()));
                 int attackDamage = CalculateAttackDamage(
                     resolvedBullet,
                     guaranteedCritical,
@@ -547,6 +565,13 @@ public partial class PlayerShoot
                     state,
                     horizontalDirection,
                     transferBaseDamage,
+                    previewColor,
+                    emphasized);
+
+                ApplyPreviewClosedCircuitDamageTransfer(
+                    state,
+                    horizontalDirection,
+                    attackDamage,
                     previewColor,
                     emphasized);
     
@@ -687,7 +712,7 @@ public partial class PlayerShoot
                 && waveManager.TryGetFirstBulletBlocker(
                     transform.position,
                     direction,
-                    bullet.MaxRange,
+                    GetPreviewShotRange(bullet),
                     out IPlayerBulletBlocker previewBlocker))
             {
                 blockerDistance = Mathf.Abs(
@@ -706,7 +731,7 @@ public partial class PlayerShoot
                 int offset = state.TileIndex - previewPlayerTileIndex;
     
                 if (offset * direction > 0
-                    && Mathf.Abs(offset) <= bullet.MaxRange
+                    && Mathf.Abs(offset) <= GetPreviewShotRange(bullet)
                     && Mathf.Abs(offset) < blockerDistance)
                 {
                     targetBuffer.Add(state.Enemy);
@@ -1127,6 +1152,107 @@ public partial class PlayerShoot
                     appliedDamage,
                     color,
                     emphasized));
+        }
+
+        private int GetPreviewShotRange(BulletInstance bullet)
+        {
+            return relicManager == null
+                ? bullet == null ? 1 : bullet.MaxRange
+                : relicManager.GetShotRange(bullet);
+        }
+
+        private int CountPreviewActiveEnemies()
+        {
+            int count = 0;
+
+            foreach (DamagePreviewEnemyState state
+                     in damagePreviewStates.Values)
+            {
+                if (state.Enemy != null && state.RemainingHealth > 0)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private static int CountActiveStatusTypes(
+            DamagePreviewEnemyState state)
+        {
+            if (state == null || state.StatusStacks == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+
+            foreach (int stacks in state.StatusStacks)
+            {
+                if (stacks > 0)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private void ApplyPreviewClosedCircuitDamageTransfer(
+            DamagePreviewEnemyState sourceState,
+            int horizontalDirection,
+            int sourceDamage,
+            Color color,
+            bool emphasized)
+        {
+            if (sourceState == null || sourceState.TileIndex < 0
+                || relicManager == null
+                || !relicManager.TryGetPreviewClosedCircuitTransferDamage(
+                    sourceDamage,
+                    out int transferDamage))
+            {
+                return;
+            }
+
+            int direction = horizontalDirection >= 0 ? 1 : -1;
+            DamagePreviewEnemyState target = null;
+            int targetDistance = int.MaxValue;
+
+            foreach (DamagePreviewEnemyState candidate
+                     in damagePreviewStates.Values)
+            {
+                if (candidate == sourceState || candidate.Enemy == null
+                    || candidate.RemainingHealth <= 0
+                    || candidate.TileIndex < 0)
+                {
+                    continue;
+                }
+
+                int offset = (candidate.TileIndex - sourceState.TileIndex)
+                    * direction;
+
+                if (offset > 0 && offset < targetDistance)
+                {
+                    target = candidate;
+                    targetDistance = offset;
+                }
+            }
+
+            if (target == null)
+            {
+                return;
+            }
+
+            if (target.StatusStacks[(int)StatusEffectType.Mark] > 0)
+            {
+                transferDamage = Mathf.CeilToInt(transferDamage * 1.5f);
+            }
+
+            ApplyPreviewDamage(
+                target,
+                transferDamage,
+                color,
+                emphasized);
         }
     
         private static bool Approximately(Color first, Color second)

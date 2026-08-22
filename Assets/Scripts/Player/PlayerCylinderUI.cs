@@ -431,6 +431,18 @@ public class PlayerCylinderUI : MonoBehaviour
         draggedRect.SetAsLastSibling();
     }
 
+    internal bool TryEjectLoadedBullet(Image bulletImage)
+    {
+        if (isDraggingBullet || bulletImage == null || playerShoot == null)
+        {
+            return false;
+        }
+
+        int bulletIndex = bulletImages.IndexOf(bulletImage);
+        return bulletIndex >= 0
+            && playerShoot.TryEjectLoadedBullet(bulletIndex);
+    }
+
     internal void DragBullet(
         Image bulletImage,
         PointerEventData eventData)
@@ -1265,7 +1277,8 @@ public class PlayerCylinderUI : MonoBehaviour
 public sealed class CylinderBulletDragHandler : MonoBehaviour,
     IBeginDragHandler,
     IDragHandler,
-    IEndDragHandler
+    IEndDragHandler,
+    IPointerClickHandler
 {
     private PlayerCylinderUI cylinderUI;
     private Image bulletImage;
@@ -1289,5 +1302,13 @@ public sealed class CylinderBulletDragHandler : MonoBehaviour,
     public void OnEndDrag(PointerEventData eventData)
     {
         cylinderUI?.EndBulletDrag(bulletImage, eventData);
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right)
+        {
+            cylinderUI?.TryEjectLoadedBullet(bulletImage);
+        }
     }
 }

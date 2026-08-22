@@ -17,6 +17,7 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private Animator playerAnimator;
     [SerializeField] private Transform pushVisualTransform;
     [SerializeField] private CombatFeedbackController combatFeedback;
+    [SerializeField] private RelicManager relicManager;
 
     [Header("Push")]
     [Range(0f, 1f)]
@@ -93,6 +94,8 @@ public class PlayerMove : MonoBehaviour
         statusEffects = GetComponent<StatusEffectController>();
         playerAnimator ??= GetComponent<Animator>();
         combatFeedback ??= GetComponent<CombatFeedbackController>();
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
     }
 
     public void SetWaveManager(WaveManager assignedWaveManager)
@@ -182,6 +185,11 @@ public class PlayerMove : MonoBehaviour
                 return;
             }
 
+            if (keyboard.sKey.wasPressedThisFrame)
+            {
+                Wait();
+                return;
+            }
         }
 
         Mouse mouse = Mouse.current;
@@ -233,6 +241,17 @@ public class PlayerMove : MonoBehaviour
         int targetDirection = transform.localScale.x >= 0f ? -1 : 1;
         BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Rotate);
         StartCoroutine(RotateRoutine(targetDirection));
+    }
+
+    public void Wait()
+    {
+        if (!CanPerformAction())
+        {
+            return;
+        }
+
+        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Wait);
+        CompleteTurn();
     }
 
     private void Move(int direction)
@@ -790,6 +809,17 @@ public class PlayerMove : MonoBehaviour
         int collidedEnemyDamage = Mathf.Max(
             1,
             Mathf.CeilToInt(collidedEnemy.MaxHealth * damageRatio));
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        double kickMultiplier = relicManager == null
+            ? 1d
+            : relicManager.GetKickDamageMultiplier();
+        pushedEnemyDamage = MultiplyDamage(
+            pushedEnemyDamage,
+            kickMultiplier);
+        collidedEnemyDamage = MultiplyDamage(
+            collidedEnemyDamage,
+            kickMultiplier);
 
         pushedEnemy.ApplyCollisionDamage(pushedEnemyDamage);
         collidedEnemy.ApplyCollisionDamage(collidedEnemyDamage);
@@ -808,7 +838,14 @@ public class PlayerMove : MonoBehaviour
             endTileIndex,
             PlayerMovementSource.NormalMove);
         PositionChanged?.Invoke();
-        CompleteTurn();
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
+        if (relicManager == null
+            || relicManager.ShouldMovementConsumeTurn())
+        {
+            CompleteTurn();
+        }
         isActing = false;
     }
 
@@ -884,6 +921,15 @@ public class PlayerMove : MonoBehaviour
             && !isShooting
             && !isActing
             && !isEnemyTurnResolving;
+    }
+
+    private static int MultiplyDamage(int damage, double multiplier)
+    {
+        double result = Math.Ceiling(
+            Mathf.Max(0, damage) * Math.Max(0d, multiplier));
+        return result >= int.MaxValue
+            ? int.MaxValue
+            : (int)Math.Max(0d, result);
     }
 
     private sealed class EnemyPushPlan

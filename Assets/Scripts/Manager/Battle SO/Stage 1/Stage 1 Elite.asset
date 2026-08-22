@@ -17,7 +17,7 @@ MonoBehaviour:
   noticeDescription: "\uAC15\uB825\uD55C \uC801\uB4E4\uC744 \uC18C\uD0D5\uD558\uC2ED\uC2DC\uC624."
   clearNoticeTitle: ELITE CLEAR
   clearNoticeDescription: "\uBAA8\uB4E0 \uC815\uC608 \uC801\uB4E4\uC744 \uC18C\uD0D5\uD588\uC2B5\uB2C8\uB2E4!"
-  battleType: 0
+  battleType: 2
   boardCount: 13
   tilePrefab: {fileID: 6102437938462105721, guid: a8a92d97c094e1b42bdbf5fbb08aa209, type: 3}
   spawnTerm: 1

@@ -14,10 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: scale
   displayName: "\uC800\uC6B8"
-  description: "\uD6A8\uACFC \uC5C6\uC74C."
+  description: "생존 적 수가 적을수록 최종 피해가 max(0, 15-3x적 수)% 증가합니다."
   icon: {fileID: 3055762979536401008, guid: 702be552c58ef7342a0d8717dbb1a735, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
   maxStack: 1
-  effects: []
+  effects:
+  - effectType: 18
+    scaleMaximumDamagePercent: 15
+    primerFailureChanceBonus: 3

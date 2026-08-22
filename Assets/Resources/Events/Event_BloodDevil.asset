@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
+  m_Name: Event_BloodDevil
+  m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
+  eventId: blood-drinking-devil
+  displayName: 흡혈 악마
+  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
+  dialogue: "악마는 빈 잔 세 개를 늘어놓고 입술을 핥는다.\n\n“네 피 반 잔이면, 내 탄환 중 하나를 고르게 해 주지.”"
+  choices:
+  - buttonText: "[피를 내준다] 현재 HP의 50%를 잃고 무작위 탄환 3개 중 하나를 고른다."
+    outcomeText: 잔이 차오르자 악마가 탄환 세 발을 탁자 위에 굴렸다.
+    requirements:
+    - type: 4
+      amount: 0
+      unavailableReason: 탄환 보유 공간이 부족합니다.
+    attemptEffects:
+    - type: 9
+      amount: 50
+    effects: []
+    specialAction: 1
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    offeredBulletLevel: 0
+  - buttonText: "[거절한다] 목덜미를 가리고 자리를 뜬다."
+    outcomeText: 악마는 다음 손님을 기다리며 빈 잔을 닦았다.
+    requirements: []
+    attemptEffects: []
+    effects: []
+  baseWeight: 9
+  oncePerRun: 1
+  weightRules: []
+  normalBattleChancePercent: 12
+  eliteBattleChancePercent: 4
+  shopChancePercent: 0

@@ -48,8 +48,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
         public float Duration;
         public float Intensity;
         public float FeedbackMultiplier;
-        public float StartStrength;
-        public bool Restartable;
         public CombatImpactTier Tier;
         public Color Color;
         public bool FinalKill;
@@ -291,6 +289,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private Coroutine timeEffectCoroutine;
     private readonly FullscreenImpactState[] fullscreenImpacts =
         new FullscreenImpactState[MaxFullscreenImpacts];
+    private readonly Queue<FullscreenImpactState> pendingFullscreenImpacts =
+        new Queue<FullscreenImpactState>();
     private readonly Vector4[] fullscreenCenters =
         new Vector4[MaxFullscreenImpacts];
     private readonly Vector4[] fullscreenDirections =
@@ -638,8 +638,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             impactTier,
             impactColor,
             wasFinalEnemy,
-            feedbackMultiplier,
-            impactTier == CombatImpactTier.Defeat);
+            feedbackMultiplier);
     }
 
     public void PlayShotOpticalKick(
@@ -661,7 +660,6 @@ public sealed class CombatFeedbackController : MonoBehaviour
             shotColor,
             false,
             1f,
-            false,
             true);
     }
 
@@ -1955,14 +1953,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         Color impactColor,
         bool wasFinalEnemy,
         float feedbackMultiplier = 1f,
-        bool restartExisting = false,
         bool shotPulse = false)
     {
-        if (GamePauseController.IsPaused)
-        {
-            return;
-        }
-
         intensity *= CombatAccessibilitySettings.FlashMultiplier;
 
         if (!fullscreenImpactEnabled || duration <= 0f || intensity <= 0f)
@@ -1970,63 +1962,26 @@ public sealed class CombatFeedbackController : MonoBehaviour
             return;
         }
 
-        Camera mainCamera = Camera.main;
-
-        if (mainCamera == null)
-        {
-            return;
-        }
-
-        int selectedIndex = -1;
-        float startStrength = 0f;
-
-        if (restartExisting)
-        {
-            for (int impactIndex = 0;
-                 impactIndex < fullscreenImpacts.Length;
-                 impactIndex++)
-            {
-                FullscreenImpactState candidate = fullscreenImpacts[impactIndex];
-
-                if (!candidate.Active || !candidate.Restartable)
-                {
-                    continue;
-                }
-
-                selectedIndex = impactIndex;
-                startStrength = EvaluateFullscreenImpactStrength(candidate);
-                break;
-            }
-        }
-
-        float oldestProgress = -1f;
-
+        int activeSlotMask = 0;
         for (int impactIndex = 0;
-             selectedIndex < 0 && impactIndex < fullscreenImpacts.Length;
+             impactIndex < fullscreenImpacts.Length;
              impactIndex++)
         {
-            FullscreenImpactState candidate = fullscreenImpacts[impactIndex];
-
-            if (!candidate.Active)
+            if (fullscreenImpacts[impactIndex].Active)
             {
-                selectedIndex = impactIndex;
-                oldestProgress = float.MaxValue;
-                break;
-            }
-
-            float progress = candidate.Duration <= 0f
-                ? 1f
-                : candidate.Elapsed / candidate.Duration;
-
-            if (progress > oldestProgress)
-            {
-                oldestProgress = progress;
-                selectedIndex = impactIndex;
+                activeSlotMask |= 1 << impactIndex;
             }
         }
 
-        Vector3 viewportPoint = mainCamera.WorldToViewportPoint(worldPosition);
-        fullscreenImpacts[selectedIndex] = new FullscreenImpactState
+        int selectedIndex = FindFirstAvailableFullscreenImpactSlot(
+            activeSlotMask,
+            fullscreenImpacts.Length);
+
+        Camera mainCamera = Camera.main;
+        Vector3 viewportPoint = mainCamera == null
+            ? new Vector3(0.5f, 0.5f, 1f)
+            : mainCamera.WorldToViewportPoint(worldPosition);
+        FullscreenImpactState impact = new FullscreenImpactState
         {
             Active = true,
             Center = new Vector2(
@@ -2039,14 +1994,39 @@ public sealed class CombatFeedbackController : MonoBehaviour
             Duration = duration,
             Intensity = Mathf.Clamp01(intensity),
             FeedbackMultiplier = Mathf.Max(0f, feedbackMultiplier),
-            StartStrength = startStrength,
-            Restartable = restartExisting,
             Tier = impactTier,
             Color = impactColor,
             FinalKill = wasFinalEnemy,
             ShotPulse = shotPulse
         };
+
+        if (selectedIndex < 0)
+        {
+            pendingFullscreenImpacts.Enqueue(impact);
+        }
+        else
+        {
+            fullscreenImpacts[selectedIndex] = impact;
+        }
+
         ApplyFullscreenGlobals();
+    }
+
+    internal static int FindFirstAvailableFullscreenImpactSlot(
+        int activeSlotMask,
+        int capacity)
+    {
+        int safeCapacity = Mathf.Clamp(capacity, 0, sizeof(int) * 8);
+
+        for (int slotIndex = 0; slotIndex < safeCapacity; slotIndex++)
+        {
+            if ((activeSlotMask & 1 << slotIndex) == 0)
+            {
+                return slotIndex;
+            }
+        }
+
+        return -1;
     }
 
     private void UpdateFullscreenImpacts(float deltaTime)
@@ -2079,9 +2059,26 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
                 fullscreenImpacts[impactIndex] = impact;
             }
+
+            ActivatePendingFullscreenImpacts();
         }
 
         ApplyFullscreenGlobals();
+    }
+
+    private void ActivatePendingFullscreenImpacts()
+    {
+        for (int impactIndex = 0;
+             impactIndex < fullscreenImpacts.Length
+             && pendingFullscreenImpacts.Count > 0;
+             impactIndex++)
+        {
+            if (!fullscreenImpacts[impactIndex].Active)
+            {
+                fullscreenImpacts[impactIndex] =
+                    pendingFullscreenImpacts.Dequeue();
+            }
+        }
     }
 
     private void ApplyFullscreenGlobals()
@@ -2132,7 +2129,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
         Shader.SetGlobalFloat(FullscreenRgbSplitId, rgbSplitStrength);
         Shader.SetGlobalFloat(FullscreenRadialZoomId, radialZoomStrength);
         Shader.SetGlobalFloat(FullscreenTearId, directionalTearStrength);
-        Shader.SetGlobalFloat(FullscreenIntensityId, maximumStrength);
+        Shader.SetGlobalFloat(
+            FullscreenIntensityId,
+            GamePauseController.IsPaused ? 0f : maximumStrength);
     }
 
     private static float EvaluateFullscreenImpactStrength(
@@ -2153,7 +2152,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 0f,
                 1f,
                 progress / attackPortion);
-            return Mathf.Lerp(impact.StartStrength, targetStrength, attack);
+            return targetStrength * attack;
         }
 
         float release = Mathf.InverseLerp(attackPortion, 1f, progress);
@@ -2163,6 +2162,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void ResetFullscreenImpact()
     {
+        pendingFullscreenImpacts.Clear();
+
         for (int impactIndex = 0;
              impactIndex < fullscreenImpacts.Length;
              impactIndex++)
@@ -2183,6 +2184,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         Shader.SetGlobalFloat(FullscreenIntensityId, 0f);
     }
 
+    private static void HideFullscreenImpact()
+    {
+        Shader.SetGlobalFloat(FullscreenIntensityId, 0f);
+    }
+
     public void CancelPresentationForPause()
     {
         if (volumePulseCoroutine != null)
@@ -2193,7 +2199,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         CancelSlowMotionAndRestore();
         RestoreVolume();
-        ResetFullscreenImpact();
+        HideFullscreenImpact();
     }
 
 }

@@ -49,7 +49,7 @@ MonoBehaviour:
     - 3
     - 5
     mutationChancePerDebuffType: 15
-    mutationMaximumChance: 60
+    mutationMaximumChance: 40
     brinkHealthThresholdPercent: 25
     brinkBaseChance: 30
     brinkFailureChanceBonus: 10

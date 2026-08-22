@@ -1,0 +1,67 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
+  m_Name: Event_PoisonProofBody
+  m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
+  eventId: poison-proof-body
+  displayName: 만독불침지체
+  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
+  dialogue: 뱀 사냥꾼이 검은 액체가 든 잔을 내민다. “독에서 살아남는 법은, 살아남을 만큼 마시는 거야.”
+  choices:
+  - buttonText: "[독을 들이킨다] 다음 전투 시작 시 독+5. 뱀 독, 베놈, 맹독을 얻는다."
+    outcomeText: 목구멍이 타들어 갔다. 사냥꾼은 만족스럽게 독 묶음을 건넸다.
+    requirements:
+    - type: 4
+      amount: 0
+      unavailableReason: 탄환 보유 공간이 부족합니다.
+    - type: 5
+      amount: 0
+      unavailableReason: 아이템 보유 공간이 부족합니다.
+    attemptEffects: []
+    effects:
+    - type: 10
+      amount: 5
+      statusEffectType: 1
+    - type: 7
+      amount: 0
+      item: {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
+    - type: 4
+      amount: 0
+      bullet: {fileID: 11400000, guid: 310b3e790ca558641b654f60fc863234, type: 2}
+    - type: 4
+      amount: 0
+      bullet: {fileID: 11400000, guid: c201000000000000000000000000000b, type: 2}
+  - buttonText: "[혀끝만 적신다] 다음 전투 시작 시 독+2. 뱀 독을 얻는다."
+    outcomeText: 한 방울만으로도 혀가 저렸다. 사냥꾼은 작은 병을 건넸다.
+    requirements:
+    - type: 5
+      amount: 0
+      unavailableReason: 아이템 보유 공간이 부족합니다.
+    attemptEffects: []
+    effects:
+    - type: 10
+      amount: 2
+      statusEffectType: 1
+    - type: 7
+      amount: 0
+      item: {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
+  - buttonText: "[거절한다] 잔을 밀어내고 뱀 사냥꾼을 지나친다."
+    outcomeText: 사냥꾼은 어깨를 으쓱하고 남은 독을 마셨다.
+    requirements: []
+    attemptEffects: []
+    effects: []
+  baseWeight: 7
+  oncePerRun: 1
+  weightRules: []
+  normalBattleChancePercent: 15
+  eliteBattleChancePercent: 8
+  shopChancePercent: 0

@@ -58,6 +58,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         relicManager = FindFirstObjectByType<RelicManager>(
             FindObjectsInactive.Include);
         ResolveUIReferences();
+        ResolveStatusEffectUI();
         currentHealth = Mathf.Clamp(startingHealth, 0, maxHealth);
         CreateDamageFlashVolume();
         RefreshUI();
@@ -286,6 +287,28 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
                     healthText = text;
                     break;
                 }
+            }
+        }
+    }
+
+    private void ResolveStatusEffectUI()
+    {
+        if (statusEffects == null)
+        {
+            return;
+        }
+
+        statusEffects.enabled = true;
+        Transform[] transforms = FindObjectsByType<Transform>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+        foreach (Transform candidate in transforms)
+        {
+            if (candidate != null && candidate.gameObject.scene.IsValid()
+                && candidate.name == "Layout | Status")
+            {
+                statusEffects.ConfigureIconParent(candidate);
+                return;
             }
         }
     }

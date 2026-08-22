@@ -395,6 +395,7 @@ public class StateManager : MonoBehaviour
         playerHealth.RestoreRunHealth(
             saveData.currentHealth,
             saveData.maxHealth);
+        playerHealth.RestoreStatusRunState(saveData.playerStatusEffects);
         currencyManager.RestoreRunMoney(saveData.money);
         playerInventory.RestoreRunState(
             saveData.inventoryItemAssetNames,

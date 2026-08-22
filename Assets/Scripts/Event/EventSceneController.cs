@@ -14,6 +14,8 @@ using UnityEngine.UI;
 public sealed class EventSceneController : MonoBehaviour
 {
     private const string NodeMapSceneName = "NodeMap";
+    private const string BattleSceneName = "Battle";
+    private const string ShopSceneName = "Shop";
 
     [Header("Event Pool")]
     [Tooltip("비어 있으면 Resources/Events의 모든 EventDefinition을 사용합니다.")]
@@ -28,12 +30,16 @@ public sealed class EventSceneController : MonoBehaviour
     [SerializeField] private RelicManager relicManager;
     [SerializeField] private StateManager stateManager;
     [SerializeField] private BulletManagementUI bulletSelectionUI;
+    [SerializeField] private InventoryUI inventorySelectionUI;
+    [SerializeField] private RelicInventoryUI relicSelectionUI;
 
     [Header("Event UI")]
     [SerializeField] private Transform eventCanvasRoot;
     [SerializeField] private Image artworkImage;
     [SerializeField] private TMP_Text titleText;
     [SerializeField] private TMP_Text dialogueText;
+    [SerializeField] private TMP_Text resultText;
+    [SerializeField] private Image[] reelResultImages = Array.Empty<Image>();
     [SerializeField] private Button[] choiceButtons = Array.Empty<Button>();
     [SerializeField] private TMP_Text[] choiceTexts = Array.Empty<TMP_Text>();
 
@@ -64,9 +70,16 @@ public sealed class EventSceneController : MonoBehaviour
 
     private readonly List<BulletInstance> bulletBuffer =
         new List<BulletInstance>();
+    private readonly List<BulletData> bulletOfferBuffer =
+        new List<BulletData>();
     private RunSaveData runData;
     private EventDefinition currentEvent;
     private EventChoiceData pendingChoice;
+    private IReadOnlyList<BulletInstance> pendingSelectedBullets =
+        Array.Empty<BulletInstance>();
+    private IReadOnlyList<int> pendingSelectedItemSlots = Array.Empty<int>();
+    private IReadOnlyList<RelicInstance> pendingSelectedRelics =
+        Array.Empty<RelicInstance>();
     private InventoryTooltipUI eventTooltipUI;
     private bool initialized;
     private bool leaving;
@@ -234,8 +247,14 @@ public sealed class EventSceneController : MonoBehaviour
             runData.activeEventId = currentEvent.StableId;
             runData.eventChoiceResolved = false;
             runData.eventOutcomeText = string.Empty;
+            runData.eventResultText = string.Empty;
+            runData.eventReelSymbolKeys.Clear();
             runData.eventChoiceSelectionCounts.Clear();
             runData.eventChoiceFailureCounts.Clear();
+            ClearPendingInteractionState();
+            runData.eventFollowUpDestination =
+                (int)EventFollowUpDestination.NodeMap;
+            runData.eventFollowUpBattleIndex = -1;
         }
 
         EnsureChoiceProgressCapacity();
@@ -243,7 +262,15 @@ public sealed class EventSceneController : MonoBehaviour
         ConfigureSharedPresentation();
         initialized = true;
 
-        if (runData.eventChoiceResolved)
+        if (runData.eventInteractionStage == 1)
+        {
+            ShowRandomBulletOffer();
+        }
+        else if (runData.eventInteractionStage == 2)
+        {
+            ShowQuizAnswers();
+        }
+        else if (runData.eventChoiceResolved)
         {
             ShowOutcome(runData.eventOutcomeText);
         }
@@ -261,10 +288,9 @@ public sealed class EventSceneController : MonoBehaviour
 
     private List<EventDefinition> BuildEventPool()
     {
-        IEnumerable<EventDefinition> source = eventPool != null
-            && eventPool.Any(definition => definition != null)
-                ? eventPool
-                : Resources.LoadAll<EventDefinition>("Events");
+        IEnumerable<EventDefinition> source =
+            (eventPool ?? Array.Empty<EventDefinition>())
+            .Concat(Resources.LoadAll<EventDefinition>("Events"));
         return source.Where(definition => definition != null)
             .GroupBy(definition => definition.StableId)
             .Select(group => group.First())
@@ -290,6 +316,8 @@ public sealed class EventSceneController : MonoBehaviour
     private void ConfigureSharedPresentation()
     {
         RefreshHealthPresentation();
+        EnsureResultText();
+        SetResultText(runData.eventResultText);
 
         if (artworkImage != null)
         {
@@ -333,6 +361,7 @@ public sealed class EventSceneController : MonoBehaviour
 
     private void ShowEventChoices()
     {
+        SetResultText(runData.eventResultText);
         if (dialogueText != null)
         {
             dialogueText.text = string.IsNullOrWhiteSpace(
@@ -429,6 +458,19 @@ public sealed class EventSceneController : MonoBehaviour
                         < DeckManager.MaximumOwnedBulletCount,
                 EventChoiceRequirementType.ItemSpaceExists =>
                     !playerInventory.IsFull,
+                EventChoiceRequirementType.OwnedBulletCountAtLeast =>
+                    deckManager.OwnedBulletCount >= requirement.amount,
+                EventChoiceRequirementType.BulletGradeCountAtLeast =>
+                    CountOwnedBullets(bullet => bullet.Grade
+                        == requirement.bulletGrade) >= requirement.amount,
+                EventChoiceRequirementType.BulletIdExists =>
+                    CountOwnedBullets(bullet => bullet.Data != null
+                        && bullet.Data.BulletId == requirement.bulletId) >=
+                    Mathf.Max(1, requirement.amount),
+                EventChoiceRequirementType.ItemExists =>
+                    CountOwnedItems() >= Mathf.Max(1, requirement.amount),
+                EventChoiceRequirementType.RelicCountAtLeast =>
+                    relicManager.OwnedRelics.Count >= requirement.amount,
                 _ => true
             };
 
@@ -439,7 +481,46 @@ public sealed class EventSceneController : MonoBehaviour
             }
         }
 
+        if (!IsTargetSelectionAvailable(choice, out unavailableReason))
+        {
+            return false;
+        }
+
+        if (choice.specialAction == EventSpecialAction.RandomBulletOffer
+            && deckManager.OwnedBulletCount
+                >= DeckManager.MaximumOwnedBulletCount)
+        {
+            unavailableReason = "탄환 보유 공간이 부족합니다.";
+            return false;
+        }
+
+        if (choice.specialAction == EventSpecialAction.SlotMachine
+            && !HasSlotRewardCandidate())
+        {
+            unavailableReason = "잭팟 탄환을 받을 공간이 필요합니다.";
+            return false;
+        }
+
+        if (choice.specialAction == EventSpecialAction.BulletQuiz
+            && (deckManager.OwnedBulletCount == 0
+                || dataResolver.BulletCatalog.Count < 3))
+        {
+            unavailableReason = "퀴즈를 만들 탄환 정보가 부족합니다.";
+            return false;
+        }
+
         return AreEffectsAvailable(choice, out unavailableReason);
+    }
+
+    private bool HasSlotRewardCandidate()
+    {
+        int bulletSpaces = DeckManager.MaximumOwnedBulletCount
+            - deckManager.OwnedBulletCount;
+        return bulletSpaces >= 2 && dataResolver.BulletCatalog.Any(
+                bullet => bullet != null
+                    && bullet.BulletId != "bullet_jackpot")
+            || bulletSpaces >= 1 && !playerInventory.IsFull
+                && dataResolver.ItemCatalog.Any(item => item != null);
     }
 
     private bool AreEffectsAvailable(
@@ -511,13 +592,6 @@ public sealed class EventSceneController : MonoBehaviour
                         previousSelections);
                     break;
                 case EventEffectType.AddBullet:
-                    if (effect.bullet == null)
-                    {
-                        unavailableReason =
-                            "획득할 탄환이 설정되지 않았습니다.";
-                        return false;
-                    }
-
                     bulletsToAdd++;
                     break;
                 case EventEffectType.AddItem:
@@ -544,6 +618,22 @@ public sealed class EventSceneController : MonoBehaviour
                     {
                         unavailableReason =
                             "강화할 수 있는 탄환이 없습니다.";
+                        return false;
+                    }
+
+                    break;
+                case EventEffectType.RemoveChosenItem:
+                    if (CountOwnedItems() <= 0)
+                    {
+                        unavailableReason = "몰수할 아이템이 없습니다.";
+                        return false;
+                    }
+
+                    break;
+                case EventEffectType.RemoveChosenRelic:
+                    if (relicManager.OwnedRelics.Count <= 0)
+                    {
+                        unavailableReason = "넘길 유물이 없습니다.";
                         return false;
                     }
 
@@ -590,6 +680,118 @@ public sealed class EventSceneController : MonoBehaviour
         return bulletBuffer.Any(bullet => bullet != null && bullet.CanUpgrade);
     }
 
+    private bool IsTargetSelectionAvailable(
+        EventChoiceData choice,
+        out string unavailableReason)
+    {
+        unavailableReason = string.Empty;
+        IEnumerable<EventEffect> allEffects =
+            (choice.attemptEffects ?? Array.Empty<EventEffect>())
+            .Concat(choice.effects ?? Array.Empty<EventEffect>())
+            .Concat(choice.failureEffects ?? Array.Empty<EventEffect>());
+        bool removesBullet = allEffects.Any(effect => effect != null
+            && effect.type == EventEffectType.RemoveChosenBullet);
+        bool upgradesBullet = allEffects.Any(effect => effect != null
+            && effect.type == EventEffectType.UpgradeChosenBullet);
+        int bulletCount = Mathf.Max(1, choice.bulletSelectionCount);
+        if (removesBullet || upgradesBullet)
+        {
+            if (removesBullet && deckManager.OwnedBulletCount - bulletCount
+                < DeckManager.MinimumOwnedBulletCount)
+            {
+                unavailableReason = "선택 후에도 탄환을 1개 이상 보유해야 합니다.";
+                return false;
+            }
+
+            deckManager.GetOwnedBullets(bulletBuffer);
+            List<BulletInstance> candidates = bulletBuffer.Where(bullet =>
+                    IsBulletEligibleForChoice(
+                        bullet,
+                        choice,
+                        upgradesBullet))
+                .ToList();
+            bool hasGroup = choice.requireSameBulletGrade
+                ? candidates.GroupBy(bullet => bullet.Grade).Any(group =>
+                    CountSelectableBulletTypes(
+                        group,
+                        choice.requireDistinctBulletTypes) >= bulletCount)
+                : CountSelectableBulletTypes(
+                    candidates,
+                    choice.requireDistinctBulletTypes) >= bulletCount;
+            if (!hasGroup)
+            {
+                unavailableReason =
+                    $"조건에 맞는 탄환 {bulletCount}개가 필요합니다.";
+                return false;
+            }
+        }
+
+        if (allEffects.Any(effect => effect != null
+                && effect.type == EventEffectType.RemoveChosenItem)
+            && CountOwnedItems() < Mathf.Max(1, choice.itemSelectionCount))
+        {
+            unavailableReason = "몰수할 아이템이 부족합니다.";
+            return false;
+        }
+
+        if (allEffects.Any(effect => effect != null
+                && effect.type == EventEffectType.RemoveChosenRelic)
+            && relicManager.OwnedRelics.Count
+                < Mathf.Max(1, choice.relicSelectionCount))
+        {
+            unavailableReason = "넘길 유물이 부족합니다.";
+            return false;
+        }
+
+        return true;
+    }
+
+    private static int CountSelectableBulletTypes(
+        IEnumerable<BulletInstance> bullets,
+        bool distinctTypes)
+    {
+        return distinctTypes
+            ? bullets.Where(bullet => bullet?.Data != null)
+                .Select(bullet => bullet.Data)
+                .Distinct()
+                .Count()
+            : bullets.Count();
+    }
+
+    private static bool IsBulletEligibleForChoice(
+        BulletInstance bullet,
+        EventChoiceData choice,
+        bool requireUpgrade)
+    {
+        return bullet?.Data != null
+            && (!requireUpgrade || bullet.CanUpgrade)
+            && (!choice.restrictBulletGrade
+                || bullet.Grade == choice.requiredBulletGrade)
+            && (string.IsNullOrWhiteSpace(choice.requiredBulletId)
+                || bullet.Data.BulletId == choice.requiredBulletId);
+    }
+
+    private int CountOwnedBullets(Func<BulletInstance, bool> predicate)
+    {
+        deckManager.GetOwnedBullets(bulletBuffer);
+        return bulletBuffer.Count(bullet => bullet != null
+            && (predicate == null || predicate(bullet)));
+    }
+
+    private int CountOwnedItems()
+    {
+        int count = 0;
+        for (int index = 0; index < playerInventory.SlotCount; index++)
+        {
+            if (playerInventory.GetItem(index) != null)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
     private void SelectChoice(EventChoiceData choice)
     {
         eventTooltipUI?.HideEventRewardPreview();
@@ -600,6 +802,16 @@ public sealed class EventSceneController : MonoBehaviour
         }
 
         pendingChoice = choice;
+        pendingSelectedBullets = Array.Empty<BulletInstance>();
+        pendingSelectedItemSlots = Array.Empty<int>();
+        pendingSelectedRelics = Array.Empty<RelicInstance>();
+
+        if (choice.specialAction == EventSpecialAction.BulletQuiz)
+        {
+            BeginBulletQuiz(choice);
+            return;
+        }
+
         int previousSelections = GetChoiceProgress(
             runData.eventChoiceSelectionCounts,
             GetChoiceIndex(choice));
@@ -612,11 +824,62 @@ public sealed class EventSceneController : MonoBehaviour
                 previousSelections))
             .FirstOrDefault(effect => effect != null
                 && (effect.type == EventEffectType.RemoveChosenBullet
-                    || effect.type == EventEffectType.UpgradeChosenBullet));
+                    || effect.type == EventEffectType.UpgradeChosenBullet
+                    || effect.type == EventEffectType.RemoveChosenItem
+                    || effect.type == EventEffectType.RemoveChosenRelic));
 
         if (targetedEffect == null)
         {
-            ResolveChoice(choice, null);
+            ResolveChoice(
+                choice,
+                pendingSelectedBullets,
+                pendingSelectedItemSlots,
+                pendingSelectedRelics);
+            return;
+        }
+
+
+        if (targetedEffect.type == EventEffectType.RemoveChosenItem)
+        {
+            if (inventorySelectionUI == null
+                || !inventorySelectionUI.BeginEventSelection(
+                    Mathf.Max(1, choice.itemSelectionCount),
+                    null,
+                    HandleItemsSelected,
+                    HandleTargetSelectionCancelled))
+            {
+                pendingChoice = null;
+                return;
+            }
+
+            inventorySelectionUI.EventSelectionChanged +=
+                HandleInventorySelectionChanged;
+            ShowExternalSelectionControls(
+                "아이템 선택 완료",
+                inventorySelectionUI.ConfirmEventSelection,
+                inventorySelectionUI.CancelEventSelection);
+            return;
+        }
+
+        if (targetedEffect.type == EventEffectType.RemoveChosenRelic)
+        {
+            if (relicSelectionUI == null
+                || !relicSelectionUI.BeginEventSelection(
+                    Mathf.Max(1, choice.relicSelectionCount),
+                    null,
+                    HandleRelicsSelected,
+                    HandleTargetSelectionCancelled))
+            {
+                pendingChoice = null;
+                return;
+            }
+
+            relicSelectionUI.EventSelectionChanged +=
+                HandleRelicSelectionChanged;
+            ShowExternalSelectionControls(
+                "유물 선택 완료",
+                relicSelectionUI.ConfirmEventSelection,
+                relicSelectionUI.CancelEventSelection);
             return;
         }
 
@@ -629,8 +892,18 @@ public sealed class EventSceneController : MonoBehaviour
                 eventCanvasRoot,
                 deckManager,
                 mode,
-                HandleBulletSelected,
-                HandleBulletSelectionCancelled))
+                Mathf.Max(1, choice.bulletSelectionCount),
+                bullet => IsBulletEligibleForChoice(
+                    bullet,
+                    choice,
+                    mode == EventBulletSelectionMode.Upgrade),
+                bullets => EventRuntimeRules.IsValidBulletGroup(
+                    bullets,
+                    Mathf.Max(1, choice.bulletSelectionCount),
+                    choice.requireDistinctBulletTypes,
+                    choice.requireSameBulletGrade),
+                HandleBulletsSelected,
+                HandleTargetSelectionCancelled))
         {
             Debug.LogError(
                 "The Event scene is missing a configured bullet management panel.",
@@ -639,25 +912,74 @@ public sealed class EventSceneController : MonoBehaviour
         }
     }
 
-    private void HandleBulletSelected(BulletInstance bullet)
+    private void HandleBulletsSelected(
+        IReadOnlyList<BulletInstance> bullets)
     {
         EventChoiceData choice = pendingChoice;
         pendingChoice = null;
         if (choice != null)
         {
-            ResolveChoice(choice, bullet);
+            ResolveChoice(
+                choice,
+                bullets,
+                pendingSelectedItemSlots,
+                pendingSelectedRelics);
         }
     }
 
-    private void HandleBulletSelectionCancelled()
+    private void HandleItemsSelected(IReadOnlyList<int> slots)
     {
+        inventorySelectionUI.EventSelectionChanged -=
+            HandleInventorySelectionChanged;
+        EventChoiceData choice = pendingChoice;
+        pendingChoice = null;
+        if (choice != null)
+        {
+            ResolveChoice(
+                choice,
+                pendingSelectedBullets,
+                slots,
+                pendingSelectedRelics);
+        }
+    }
+
+    private void HandleRelicsSelected(IReadOnlyList<RelicInstance> relics)
+    {
+        relicSelectionUI.EventSelectionChanged -=
+            HandleRelicSelectionChanged;
+        EventChoiceData choice = pendingChoice;
+        pendingChoice = null;
+        if (choice != null)
+        {
+            ResolveChoice(
+                choice,
+                pendingSelectedBullets,
+                pendingSelectedItemSlots,
+                relics);
+        }
+    }
+
+    private void HandleTargetSelectionCancelled()
+    {
+        if (inventorySelectionUI != null)
+        {
+            inventorySelectionUI.EventSelectionChanged -=
+                HandleInventorySelectionChanged;
+        }
+        if (relicSelectionUI != null)
+        {
+            relicSelectionUI.EventSelectionChanged -=
+                HandleRelicSelectionChanged;
+        }
         pendingChoice = null;
         ShowEventChoices();
     }
 
     private void ResolveChoice(
         EventChoiceData choice,
-        BulletInstance chosenBullet)
+        IReadOnlyList<BulletInstance> chosenBullets,
+        IReadOnlyList<int> chosenItemSlots,
+        IReadOnlyList<RelicInstance> chosenRelics)
     {
         int choiceIndex = GetChoiceIndex(choice);
         if (choiceIndex < 0)
@@ -675,9 +997,28 @@ public sealed class EventSceneController : MonoBehaviour
             runData.eventChoiceFailureCounts,
             choiceIndex);
 
+        if (choice.specialAction == EventSpecialAction.RandomBulletOffer)
+        {
+            BeginRandomBulletOffer(
+                choice,
+                chosenBullets,
+                chosenItemSlots,
+                chosenRelics,
+                previousSelections);
+            return;
+        }
+
+        if (choice.specialAction == EventSpecialAction.SlotMachine)
+        {
+            ResolveSlotMachine(choice, previousSelections);
+            return;
+        }
+
         ApplyEffects(
             GetActiveEffects(choice.attemptEffects, previousSelections),
-            chosenBullet,
+            chosenBullets,
+            chosenItemSlots,
+            chosenRelics,
             previousSelections);
 
         float successChance = GetSuccessChance(choice, previousFailures);
@@ -688,7 +1029,9 @@ public sealed class EventSceneController : MonoBehaviour
             : choice.failureEffects;
         ApplyEffects(
             GetActiveEffects(branchEffects, previousSelections),
-            chosenBullet,
+            chosenBullets,
+            chosenItemSlots,
+            chosenRelics,
             previousSelections);
 
         EnsureChoiceProgressCapacity();
@@ -722,18 +1065,14 @@ public sealed class EventSceneController : MonoBehaviour
             return;
         }
 
-        if (!runData.completedEventIds.Contains(currentEvent.StableId))
-        {
-            runData.completedEventIds.Add(currentEvent.StableId);
-        }
-
-        SaveEventState();
-        ShowOutcome(runData.eventOutcomeText);
+        CompleteEvent(runData.eventOutcomeText);
     }
 
     private void ApplyEffects(
         IEnumerable<EventEffect> effects,
-        BulletInstance chosenBullet,
+        IReadOnlyList<BulletInstance> chosenBullets,
+        IReadOnlyList<int> chosenItemSlots,
+        IReadOnlyList<RelicInstance> chosenRelics,
         int previousSelections)
     {
         foreach (EventEffect effect in effects)
@@ -760,24 +1099,806 @@ public sealed class EventSceneController : MonoBehaviour
                     ChangeRunHealth(-(long)amount);
                     break;
                 case EventEffectType.AddBullet:
-                    deckManager.TryAddBullet(effect.bullet);
+                    AddBulletReward(effect, chosenBullets);
                     break;
                 case EventEffectType.RemoveChosenBullet:
-                    deckManager.TryRemoveBullet(chosenBullet);
+                    foreach (BulletInstance bullet in chosenBullets
+                                 ?? Array.Empty<BulletInstance>())
+                    {
+                        deckManager.TryRemoveBullet(bullet);
+                    }
                     break;
                 case EventEffectType.UpgradeChosenBullet:
-                    deckManager.TryUpgradeBullet(chosenBullet);
+                    foreach (BulletInstance bullet in chosenBullets
+                                 ?? Array.Empty<BulletInstance>())
+                    {
+                        deckManager.TryUpgradeBullet(bullet);
+                    }
                     break;
                 case EventEffectType.AddItem:
                     playerInventory.TryAdd(effect.item);
+                    break;
+                case EventEffectType.IncreaseMaxHealthPercent:
+                    IncreaseRunMaxHealthPercent(amount);
+                    break;
+                case EventEffectType.LoseCurrentHealthPercent:
+                    LoseCurrentHealthPercent(amount);
+                    break;
+                case EventEffectType.AddPendingStatusEffect:
+                    AddPendingStatusEffect(effect.statusEffectType, amount);
+                    break;
+                case EventEffectType.RemoveChosenItem:
+                    foreach (int slotIndex in chosenItemSlots
+                                 ?? Array.Empty<int>())
+                    {
+                        playerInventory.TryRemove(slotIndex);
+                    }
+                    break;
+                case EventEffectType.RemoveChosenRelic:
+                    RemoveChosenRelics(chosenRelics);
                     break;
             }
         }
     }
 
+    private void AddBulletReward(
+        EventEffect effect,
+        IReadOnlyList<BulletInstance> chosenBullets)
+    {
+        if (effect.bullet != null)
+        {
+            deckManager.TryAddBullet(effect.bullet, effect.bulletLevel);
+            return;
+        }
+
+        EventRuntimeRules.GenerateBulletOffers(
+            dataResolver.BulletCatalog,
+            dataResolver.BulletGradeWeights,
+            1,
+            effect.randomBulletGradeMode,
+            effect.fixedBulletGrade,
+            effect.oneGradeHigherChancePercent,
+            chosenBullets,
+            bulletOfferBuffer);
+        if (bulletOfferBuffer.Count > 0)
+        {
+            deckManager.TryAddBullet(
+                bulletOfferBuffer[0],
+                effect.bulletLevel);
+        }
+    }
+
+    private void IncreaseRunMaxHealthPercent(int percent)
+    {
+        if (percent <= 0)
+        {
+            return;
+        }
+
+        int previousMaximum = Mathf.Max(1, runData.maxHealth);
+        int increase = Mathf.Max(
+            1,
+            Mathf.CeilToInt(previousMaximum * percent / 100f));
+        runData.maxHealth = (int)Math.Min(
+            int.MaxValue,
+            (long)previousMaximum + increase);
+        runData.currentHealth = (int)Math.Min(
+            runData.maxHealth,
+            (long)runData.currentHealth + increase);
+    }
+
+    private void LoseCurrentHealthPercent(int percent)
+    {
+        int loss = Mathf.CeilToInt(
+            Mathf.Max(1, runData.currentHealth) * Mathf.Max(0, percent)
+            / 100f);
+        ChangeRunHealth(-loss);
+    }
+
+    private void AddPendingStatusEffect(StatusEffectType type, int stacks)
+    {
+        if (stacks <= 0)
+        {
+            return;
+        }
+
+        runData.pendingNextBattlePlayerStatusEffects ??=
+            new RunStatusEffectSaveData();
+        RunStatusEffectSaveData pending =
+            runData.pendingNextBattlePlayerStatusEffects;
+        switch (type)
+        {
+            case StatusEffectType.Mark:
+                pending.markStacks = SaturatingAdd(
+                    pending.markStacks,
+                    stacks);
+                break;
+            case StatusEffectType.Poison:
+                pending.poisonStacks = SaturatingAdd(
+                    pending.poisonStacks,
+                    stacks);
+                pending.poisonCreditedToPlayer = false;
+                break;
+            case StatusEffectType.Stun:
+                pending.stunStacks = SaturatingAdd(
+                    pending.stunStacks,
+                    stacks);
+                break;
+            case StatusEffectType.Weakness:
+                pending.weaknessStacks = SaturatingAdd(
+                    pending.weaknessStacks,
+                    stacks);
+                break;
+        }
+    }
+
+    private static int SaturatingAdd(int current, int added)
+    {
+        return (int)Math.Min(
+            int.MaxValue,
+            (long)Mathf.Max(0, current) + Mathf.Max(0, added));
+    }
+
+    private void RemoveChosenRelics(
+        IReadOnlyList<RelicInstance> chosenRelics)
+    {
+        if (chosenRelics == null)
+        {
+            return;
+        }
+
+        List<int> indices = chosenRelics
+            .Select(FindOwnedRelicIndex)
+            .Where(index => index >= 0)
+            .Distinct()
+            .OrderByDescending(index => index)
+            .ToList();
+        foreach (int index in indices)
+        {
+            relicManager.TryRemoveAt(index, RelicRemovalReason.Removed);
+        }
+    }
+
+    private int FindOwnedRelicIndex(RelicInstance relic)
+    {
+        for (int index = 0; index < relicManager.OwnedRelics.Count; index++)
+        {
+            if (ReferenceEquals(relicManager.OwnedRelics[index], relic))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private void BeginRandomBulletOffer(
+        EventChoiceData choice,
+        IReadOnlyList<BulletInstance> chosenBullets,
+        IReadOnlyList<int> chosenItemSlots,
+        IReadOnlyList<RelicInstance> chosenRelics,
+        int previousSelections)
+    {
+        EventRuntimeRules.GenerateBulletOffers(
+            dataResolver.BulletCatalog,
+            dataResolver.BulletGradeWeights,
+            Mathf.Clamp(choice.randomBulletOfferCount, 1, 3),
+            choice.offerGradeMode,
+            choice.fixedOfferGrade,
+            choice.offerOneGradeHigherChancePercent,
+            chosenBullets,
+            bulletOfferBuffer);
+        if (bulletOfferBuffer.Count == 0)
+        {
+            pendingChoice = null;
+            ShowEventChoices();
+            return;
+        }
+
+        ApplyEffects(
+            GetActiveEffects(choice.attemptEffects, previousSelections),
+            chosenBullets,
+            chosenItemSlots,
+            chosenRelics,
+            previousSelections);
+        ApplyEffects(
+            GetActiveEffects(choice.effects, previousSelections)
+                .Where(effect => effect.type != EventEffectType.AddBullet),
+            chosenBullets,
+            chosenItemSlots,
+            chosenRelics,
+            previousSelections);
+        int choiceIndex = GetChoiceIndex(choice);
+        EnsureChoiceProgressCapacity();
+        runData.eventChoiceSelectionCounts[choiceIndex] =
+            previousSelections + 1;
+        runData.eventPendingChoiceIndex = choiceIndex;
+        runData.eventInteractionStage = 1;
+        runData.eventOfferAssetNames.Clear();
+        runData.eventOfferAssetNames.AddRange(
+            bulletOfferBuffer.Select(bullet => bullet.name));
+        runData.eventOutcomeText = string.IsNullOrWhiteSpace(choice.outcomeText)
+            ? "대가를 치렀다. 이제 하나를 골라야 한다."
+            : choice.outcomeText;
+        pendingChoice = null;
+        RefreshHealthPresentation();
+        SaveEventState();
+        ShowRandomBulletOffer();
+    }
+
+    private void ShowRandomBulletOffer()
+    {
+        int choiceIndex = runData.eventPendingChoiceIndex;
+        EventChoiceData choice = currentEvent?.choices != null
+            && choiceIndex >= 0 && choiceIndex < currentEvent.choices.Length
+                ? currentEvent.choices[choiceIndex]
+                : null;
+        if (choice == null)
+        {
+            ClearPendingInteractionState();
+            ShowEventChoices();
+            return;
+        }
+
+        dialogueText.text = runData.eventOutcomeText;
+        bulletOfferBuffer.Clear();
+        foreach (string assetName in runData.eventOfferAssetNames)
+        {
+            BulletData bullet = EventRuntimeRules.FindBulletByAssetName(
+                dataResolver.BulletCatalog,
+                assetName);
+            if (bullet != null)
+            {
+                bulletOfferBuffer.Add(bullet);
+            }
+        }
+
+        ConfigureDynamicChoices(
+            bulletOfferBuffer.Select(bullet => bullet.GetDisplayName(
+                    choice.offeredBulletLevel)).ToList(),
+            index => SelectRandomBulletOffer(index, choice));
+    }
+
+    private void SelectRandomBulletOffer(
+        int index,
+        EventChoiceData choice)
+    {
+        if (index < 0 || index >= bulletOfferBuffer.Count
+            || !deckManager.TryAddBullet(
+                bulletOfferBuffer[index],
+                choice.offeredBulletLevel))
+        {
+            return;
+        }
+
+        string acquiredName = bulletOfferBuffer[index].GetDisplayName(
+            choice.offeredBulletLevel);
+        string outcome = $"{runData.eventOutcomeText}\n{acquiredName}을(를) 챙겼다.";
+        ClearPendingInteractionState();
+        CompleteEvent(outcome);
+    }
+
+    private void BeginBulletQuiz(EventChoiceData choice)
+    {
+        deckManager.GetOwnedBullets(bulletBuffer);
+        BulletInstance target = bulletBuffer.Count == 0
+            ? null
+            : bulletBuffer[UnityEngine.Random.Range(0, bulletBuffer.Count)];
+        if (target?.Data == null)
+        {
+            pendingChoice = null;
+            ShowEventChoices();
+            return;
+        }
+
+        List<BulletData> answers = dataResolver.BulletCatalog
+            .Where(bullet => bullet != null && bullet != target.Data)
+            .OrderBy(bullet => bullet.Grade == target.Grade ? 0 : 1)
+            .Take(2)
+            .ToList();
+        answers.Add(target.Data);
+        for (int index = answers.Count - 1; index > 0; index--)
+        {
+            int swapIndex = UnityEngine.Random.Range(0, index + 1);
+            (answers[index], answers[swapIndex]) =
+                (answers[swapIndex], answers[index]);
+        }
+
+        runData.eventPendingChoiceIndex = GetChoiceIndex(choice);
+        runData.eventQuizCorrectAssetName = target.Data.name;
+        runData.eventOfferAssetNames.Clear();
+        runData.eventOfferAssetNames.AddRange(
+            answers.Select(answer => answer.name));
+        runData.eventOutcomeText =
+            $"노인은 탄환의 내용물을 가리고 {target.Grade} 등급 테두리만 내밀었다.";
+        runData.eventResultText =
+            $"<color=#{ColorUtility.ToHtmlStringRGB(target.GradeNameColor)}>◆ {target.Grade} ◆</color>";
+        runData.eventInteractionStage = 2;
+        pendingChoice = null;
+        SaveEventState();
+        ShowQuizAnswers();
+    }
+
+    private void ShowQuizAnswers()
+    {
+        dialogueText.text = runData.eventOutcomeText;
+        SetResultText(runData.eventResultText);
+        List<string> labels = runData.eventOfferAssetNames
+            .Select(assetName => EventRuntimeRules.FindBulletByAssetName(
+                dataResolver.BulletCatalog,
+                assetName))
+            .Where(bullet => bullet != null)
+            .Select(bullet => bullet.GetDisplayName(0))
+            .ToList();
+        ConfigureDynamicChoices(labels, ResolveQuizAnswer);
+    }
+
+    private void ResolveQuizAnswer(int index)
+    {
+        if (index < 0 || index >= runData.eventOfferAssetNames.Count)
+        {
+            return;
+        }
+
+        bool correct = runData.eventOfferAssetNames[index]
+            == runData.eventQuizCorrectAssetName;
+        if (correct)
+        {
+            currencyManager.AddMoney(30);
+        }
+
+        string outcome = correct
+            ? "노인이 무릎을 치며 30 골드를 쏟아 놓았다."
+            : "노인은 틀렸다며 낄낄댔다. 보상은 없었다.";
+        ClearPendingInteractionState();
+        CompleteEvent(outcome);
+    }
+
+    private void ResolveSlotMachine(
+        EventChoiceData choice,
+        int previousSelections)
+    {
+        ApplyEffects(
+            GetActiveEffects(choice.attemptEffects, previousSelections),
+            Array.Empty<BulletInstance>(),
+            Array.Empty<int>(),
+            Array.Empty<RelicInstance>(),
+            previousSelections);
+        List<string> symbols = BuildEligibleSlotSymbols();
+        if (symbols.Count == 0)
+        {
+            return;
+        }
+
+        string[] reels = new string[3];
+        for (int index = 0; index < reels.Length; index++)
+        {
+            reels[index] = symbols[UnityEngine.Random.Range(0, symbols.Count)];
+        }
+
+        string[] displayNames = reels.Select(GetSlotSymbolDisplayName).ToArray();
+        runData.eventResultText =
+            $"[ {displayNames[0]} ]  [ {displayNames[1]} ]  [ {displayNames[2]} ]";
+        runData.eventReelSymbolKeys.Clear();
+        runData.eventReelSymbolKeys.AddRange(reels);
+        bool triple = reels[0] == reels[1] && reels[1] == reels[2];
+        bool pair = !triple && (reels[0] == reels[1]
+            || reels[0] == reels[2] || reels[1] == reels[2]);
+        string outcome;
+        if (triple)
+        {
+            GrantSlotSymbol(reels[0]);
+            BulletData jackpot = EventRuntimeRules.FindBulletById(
+                dataResolver.BulletCatalog,
+                "bullet_jackpot");
+            if (jackpot != null)
+            {
+                deckManager.TryAddBullet(
+                    jackpot,
+                    BulletData.MaximumUpgradeLevel);
+            }
+
+            outcome = "세 릴이 맞물렸다. 그림의 전리품과 잭팟탄(+3)이 튀어나왔다.";
+        }
+        else if (pair)
+        {
+            int cost = GetActiveEffects(
+                    choice.attemptEffects,
+                    previousSelections)
+                .Where(effect => effect.type == EventEffectType.LoseMoney)
+                .Sum(effect => GetEffectAmount(effect, previousSelections));
+            currencyManager.AddMoney(cost * 3);
+            outcome = $"두 릴이 맞았다. {cost * 3} 골드를 받았다.";
+        }
+        else
+        {
+            outcome = "릴은 서로 다른 그림에서 멎었다. 도박사는 돈을 쓸어 갔다.";
+        }
+
+        int choiceIndex = GetChoiceIndex(choice);
+        EnsureChoiceProgressCapacity();
+        runData.eventChoiceSelectionCounts[choiceIndex] =
+            previousSelections + 1;
+        runData.eventOutcomeText = outcome;
+        runData.eventChoiceResolved = !choice.continueAfterSuccess;
+        RefreshHealthPresentation();
+        if (choice.continueAfterSuccess)
+        {
+            SaveEventState();
+            ShowEventChoices();
+            return;
+        }
+
+        CompleteEvent(outcome);
+    }
+
+    private List<string> BuildEligibleSlotSymbols()
+    {
+        int bulletSpaces = DeckManager.MaximumOwnedBulletCount
+            - deckManager.OwnedBulletCount;
+        List<string> symbols = new List<string>();
+        if (bulletSpaces >= 2)
+        {
+            symbols.AddRange(dataResolver.BulletCatalog
+                .Where(bullet => bullet != null
+                    && bullet.BulletId != "bullet_jackpot")
+                .Take(6)
+                .Select(bullet => "B:" + bullet.name));
+        }
+        if (bulletSpaces >= 1 && !playerInventory.IsFull)
+        {
+            symbols.AddRange(dataResolver.ItemCatalog
+                .Where(item => item != null)
+                .Take(4)
+                .Select(item => "I:" + item.name));
+        }
+
+        return symbols;
+    }
+
+    private string GetSlotSymbolDisplayName(string symbol)
+    {
+        if (symbol.StartsWith("B:"))
+        {
+            BulletData bullet = EventRuntimeRules.FindBulletByAssetName(
+                dataResolver.BulletCatalog,
+                symbol.Substring(2));
+            return bullet == null ? "?" : bullet.GetDisplayName(0);
+        }
+
+        ItemData item = EventRuntimeRules.FindItemByAssetName(
+            dataResolver.ItemCatalog,
+            symbol.Substring(2));
+        return item == null || string.IsNullOrWhiteSpace(item.DisplayName)
+            ? item?.name ?? "?"
+            : item.DisplayName;
+    }
+
+    private void GrantSlotSymbol(string symbol)
+    {
+        if (symbol.StartsWith("B:"))
+        {
+            BulletData bullet = EventRuntimeRules.FindBulletByAssetName(
+                dataResolver.BulletCatalog,
+                symbol.Substring(2));
+            deckManager.TryAddBullet(bullet);
+            return;
+        }
+
+        playerInventory.TryAdd(EventRuntimeRules.FindItemByAssetName(
+            dataResolver.ItemCatalog,
+            symbol.Substring(2)));
+    }
+
+    private void CompleteEvent(string outcome)
+    {
+        runData.eventChoiceResolved = true;
+        runData.eventOutcomeText = string.IsNullOrWhiteSpace(outcome)
+            ? fallbackOutcome
+            : outcome;
+        if (!runData.completedEventIds.Contains(currentEvent.StableId))
+        {
+            runData.completedEventIds.Add(currentEvent.StableId);
+        }
+
+        SelectAndStoreFollowUp();
+        SaveEventState();
+        ShowOutcome(runData.eventOutcomeText);
+    }
+
+    private void SelectAndStoreFollowUp()
+    {
+        EventFollowUpDestination destination =
+            EventRuntimeRules.SelectFollowUp(
+                currentEvent.normalBattleChancePercent,
+                currentEvent.eliteBattleChancePercent,
+                currentEvent.shopChancePercent);
+        int battleIndex = -1;
+        if (destination == EventFollowUpDestination.NormalBattle
+            || destination == EventFollowUpDestination.EliteBattle)
+        {
+            BattleType requestedType = destination
+                == EventFollowUpDestination.EliteBattle
+                    ? BattleType.Elite
+                    : BattleType.Normal;
+            battleIndex = SelectFollowUpBattleIndex(requestedType);
+            if (battleIndex < 0)
+            {
+                destination = EventFollowUpDestination.NodeMap;
+            }
+        }
+
+        runData.eventFollowUpDestination = (int)destination;
+        runData.eventFollowUpBattleIndex = battleIndex;
+    }
+
+    private int SelectFollowUpBattleIndex(BattleType requestedType)
+    {
+        StageData stage = stateManager == null ? null : stateManager.CurrentStage;
+        if (stage == null)
+        {
+            return -1;
+        }
+
+        List<int> candidates = new List<int>();
+        for (int index = 0; index < stage.Battles.Count; index++)
+        {
+            BattleData battle = stage.Battles[index];
+            if (battle != null && battle.BattleType == requestedType)
+            {
+                candidates.Add(index);
+            }
+        }
+
+        return candidates.Count == 0
+            ? -1
+            : candidates[UnityEngine.Random.Range(0, candidates.Count)];
+    }
+
+    private void ConfigureDynamicChoices(
+        IReadOnlyList<string> labels,
+        Action<int> onSelected)
+    {
+        int visibleCount = Mathf.Min(3, labels?.Count ?? 0);
+        for (int index = 0; index < choiceButtons.Length; index++)
+        {
+            Button button = choiceButtons[index];
+            if (button == null)
+            {
+                continue;
+            }
+
+            button.onClick.RemoveAllListeners();
+            ClearChoiceRewardPreview(button);
+            bool visible = index < visibleCount;
+            button.gameObject.SetActive(visible);
+            button.interactable = visible;
+            if (!visible)
+            {
+                continue;
+            }
+
+            int selectedIndex = index;
+            TMP_Text label = index < choiceTexts.Length
+                ? choiceTexts[index]
+                : button.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.text = labels[index];
+            }
+
+            button.onClick.AddListener(() => onSelected(selectedIndex));
+            SoundManager.BindUiButtonSfx(button);
+        }
+    }
+
+    private void ShowExternalSelectionControls(
+        string confirmLabel,
+        Func<bool> confirmAction,
+        Action cancelAction)
+    {
+        for (int index = 0; index < choiceButtons.Length; index++)
+        {
+            Button button = choiceButtons[index];
+            if (button == null)
+            {
+                continue;
+            }
+
+            button.onClick.RemoveAllListeners();
+            ClearChoiceRewardPreview(button);
+            button.gameObject.SetActive(index < 2);
+            button.interactable = index < 2;
+            if (index == 0)
+            {
+                TMP_Text label = choiceTexts.Length > index
+                    ? choiceTexts[index]
+                    : button.GetComponentInChildren<TMP_Text>(true);
+                if (label != null)
+                {
+                    label.text = confirmLabel;
+                }
+                button.onClick.AddListener(() => confirmAction?.Invoke());
+            }
+            else if (index == 1)
+            {
+                TMP_Text label = choiceTexts.Length > index
+                    ? choiceTexts[index]
+                    : button.GetComponentInChildren<TMP_Text>(true);
+                if (label != null)
+                {
+                    label.text = "취소";
+                }
+                button.onClick.AddListener(() => cancelAction?.Invoke());
+            }
+        }
+    }
+
+    private void HandleInventorySelectionChanged(int selected, int required)
+    {
+        SetExternalConfirmLabel($"아이템 선택 완료 ({selected}/{required})");
+    }
+
+    private void HandleRelicSelectionChanged(int selected, int required)
+    {
+        SetExternalConfirmLabel($"유물 선택 완료 ({selected}/{required})");
+    }
+
+    private void SetExternalConfirmLabel(string value)
+    {
+        if (choiceTexts.Length > 0 && choiceTexts[0] != null)
+        {
+            choiceTexts[0].text = value;
+        }
+    }
+
+    private void ClearPendingInteractionState()
+    {
+        runData.eventInteractionStage = 0;
+        runData.eventPendingChoiceIndex = -1;
+        runData.eventOfferAssetNames.Clear();
+        runData.eventQuizCorrectAssetName = string.Empty;
+    }
+
+    private void EnsureResultText()
+    {
+        if (resultText != null || dialogueText == null)
+        {
+            return;
+        }
+
+        GameObject resultObject = Instantiate(
+            dialogueText.gameObject,
+            dialogueText.transform.parent);
+        resultObject.name = "Text | Event Result";
+        resultText = resultObject.GetComponent<TMP_Text>();
+        RectTransform resultRect = resultObject.transform as RectTransform;
+        if (resultRect != null)
+        {
+            resultRect.anchorMin = new Vector2(0.055f, 0.39f);
+            resultRect.anchorMax = new Vector2(0.945f, 0.49f);
+            resultRect.offsetMin = Vector2.zero;
+            resultRect.offsetMax = Vector2.zero;
+        }
+        resultText.alignment = TextAlignmentOptions.Center;
+        resultText.fontSize = Mathf.Max(16f, dialogueText.fontSize - 2f);
+        resultText.raycastTarget = false;
+    }
+
+    private void SetResultText(string value)
+    {
+        EnsureResultText();
+        SetReelResultImages(runData?.eventReelSymbolKeys);
+        bool reelsVisible = reelResultImages != null
+            && reelResultImages.Length == 3
+            && runData?.eventReelSymbolKeys?.Count == 3;
+        bool visible = !reelsVisible && resultText != null
+            && !string.IsNullOrWhiteSpace(value);
+        if (resultText != null)
+        {
+            resultText.gameObject.SetActive(visible);
+            resultText.text = visible ? value : string.Empty;
+        }
+
+        RectTransform dialogueRect = dialogueText == null
+            ? null
+            : dialogueText.transform as RectTransform;
+        if (dialogueRect != null)
+        {
+            Vector2 anchorMin = dialogueRect.anchorMin;
+            anchorMin.y = visible || reelsVisible ? 0.50f : 0.39f;
+            dialogueRect.anchorMin = anchorMin;
+        }
+    }
+
+    private void SetReelResultImages(IReadOnlyList<string> symbols)
+    {
+        EnsureReelResultImages();
+        bool visible = symbols != null && symbols.Count == 3;
+        for (int index = 0; index < reelResultImages.Length; index++)
+        {
+            Image image = reelResultImages[index];
+            if (image == null)
+            {
+                continue;
+            }
+
+            image.gameObject.SetActive(visible);
+            image.sprite = visible ? GetSlotSymbolSprite(symbols[index]) : null;
+            image.enabled = visible && image.sprite != null;
+        }
+    }
+
+    private void EnsureReelResultImages()
+    {
+        if (reelResultImages != null && reelResultImages.Length == 3
+            || dialogueText == null)
+        {
+            return;
+        }
+
+        GameObject layoutObject = new GameObject(
+            "Layout | Event Reel Result",
+            typeof(RectTransform));
+        layoutObject.layer = dialogueText.gameObject.layer;
+        RectTransform layout = layoutObject.GetComponent<RectTransform>();
+        layout.SetParent(dialogueText.transform.parent, false);
+        layout.anchorMin = new Vector2(0.20f, 0.39f);
+        layout.anchorMax = new Vector2(0.80f, 0.49f);
+        layout.offsetMin = Vector2.zero;
+        layout.offsetMax = Vector2.zero;
+
+        reelResultImages = new Image[3];
+        for (int index = 0; index < reelResultImages.Length; index++)
+        {
+            GameObject imageObject = new GameObject(
+                $"Image | Reel {index + 1}",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image));
+            imageObject.layer = layoutObject.layer;
+            RectTransform imageRect = imageObject.GetComponent<RectTransform>();
+            imageRect.SetParent(layout, false);
+            float minimum = index / 3f;
+            float maximum = (index + 1) / 3f;
+            imageRect.anchorMin = new Vector2(minimum, 0f);
+            imageRect.anchorMax = new Vector2(maximum, 1f);
+            imageRect.offsetMin = new Vector2(8f, 0f);
+            imageRect.offsetMax = new Vector2(-8f, 0f);
+            Image image = imageObject.GetComponent<Image>();
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            image.color = Color.white;
+            image.gameObject.SetActive(false);
+            reelResultImages[index] = image;
+        }
+    }
+
+    private Sprite GetSlotSymbolSprite(string symbol)
+    {
+        if (string.IsNullOrWhiteSpace(symbol) || symbol.Length <= 2)
+        {
+            return null;
+        }
+
+        if (symbol.StartsWith("B:"))
+        {
+            BulletData bullet = EventRuntimeRules.FindBulletByAssetName(
+                dataResolver.BulletCatalog,
+                symbol.Substring(2));
+            return bullet == null ? null : bullet.CylinderIcon;
+        }
+
+        ItemData item = EventRuntimeRules.FindItemByAssetName(
+            dataResolver.ItemCatalog,
+            symbol.Substring(2));
+        return item == null ? null : item.Icon;
+    }
+
     private void ShowOutcome(string outcome)
     {
         eventTooltipUI?.HideEventRewardPreview();
+        SetResultText(runData?.eventResultText);
         if (dialogueText != null)
         {
             dialogueText.text = string.IsNullOrWhiteSpace(outcome)
@@ -807,10 +1928,92 @@ public sealed class EventSceneController : MonoBehaviour
                 : button.GetComponentInChildren<TMP_Text>(true);
             if (label != null)
             {
-                label.text = continueLabel;
+                label.text = GetFollowUpLabel();
             }
 
-            button.onClick.AddListener(ReturnToNodeMap);
+            button.onClick.AddListener(ContinueFromEvent);
+        }
+    }
+
+    private string GetFollowUpLabel()
+    {
+        EventFollowUpDestination destination = runData == null
+            ? EventFollowUpDestination.NodeMap
+            : (EventFollowUpDestination)runData.eventFollowUpDestination;
+        return destination switch
+        {
+            EventFollowUpDestination.NormalBattle => "일반 전투로",
+            EventFollowUpDestination.EliteBattle => "엘리트 전투로",
+            EventFollowUpDestination.Shop => "상점으로",
+            _ => continueLabel
+        };
+    }
+
+    private void ContinueFromEvent()
+    {
+        if (leaving || runData == null)
+        {
+            return;
+        }
+
+        EventFollowUpDestination destination =
+            (EventFollowUpDestination)runData.eventFollowUpDestination;
+        switch (destination)
+        {
+            case EventFollowUpDestination.NormalBattle:
+            case EventFollowUpDestination.EliteBattle:
+                ContinueToFollowUpBattle();
+                break;
+            case EventFollowUpDestination.Shop:
+                ContinueToFollowUpShop();
+                break;
+            default:
+                ReturnToNodeMap();
+                break;
+        }
+    }
+
+    private void ContinueToFollowUpBattle()
+    {
+        int battleIndex = runData.eventFollowUpBattleIndex;
+        if (battleIndex < 0
+            || !NodeMapSaveSystem.SetSelectedBattleIndex(battleIndex))
+        {
+            ReturnToNodeMap();
+            return;
+        }
+
+        leaving = true;
+        SaveEventState();
+        ClearCompletedEventState();
+        RunSaveSystem.Save(runData);
+        if (!RunSaveSystem.PrepareForSelectedBattle(
+                runData.stageIndex,
+                battleIndex))
+        {
+            leaving = false;
+            ReturnToNodeMap();
+            return;
+        }
+
+        RunSaveSystem.RequestStart(RunStartMode.Continue);
+        if (!LoadingTransitionController.LoadScene(BattleSceneName))
+        {
+            SceneManager.LoadScene(BattleSceneName);
+        }
+    }
+
+    private void ContinueToFollowUpShop()
+    {
+        leaving = true;
+        SaveEventState();
+        ClearCompletedEventState();
+        runData.flowState = (int)GameFlowState.Shop;
+        runData.shopVisitActive = false;
+        RunSaveSystem.Save(runData);
+        if (!LoadingTransitionController.LoadScene(ShopSceneName))
+        {
+            SceneManager.LoadScene(ShopSceneName);
         }
     }
 
@@ -826,11 +2029,7 @@ public sealed class EventSceneController : MonoBehaviour
         NodeMapSaveSystem.CompleteActiveNode();
         if (runData != null)
         {
-            runData.activeEventId = string.Empty;
-            runData.eventChoiceResolved = false;
-            runData.eventOutcomeText = string.Empty;
-            runData.eventChoiceSelectionCounts.Clear();
-            runData.eventChoiceFailureCounts.Clear();
+            ClearCompletedEventState();
             RunSaveSystem.Save(runData);
         }
 
@@ -838,6 +2037,21 @@ public sealed class EventSceneController : MonoBehaviour
         {
             SceneManager.LoadScene(NodeMapSceneName);
         }
+    }
+
+    private void ClearCompletedEventState()
+    {
+        runData.activeEventId = string.Empty;
+        runData.eventChoiceResolved = false;
+        runData.eventOutcomeText = string.Empty;
+        runData.eventResultText = string.Empty;
+        runData.eventReelSymbolKeys.Clear();
+        runData.eventChoiceSelectionCounts.Clear();
+        runData.eventChoiceFailureCounts.Clear();
+        runData.eventFollowUpDestination =
+            (int)EventFollowUpDestination.NodeMap;
+        runData.eventFollowUpBattleIndex = -1;
+        ClearPendingInteractionState();
     }
 
     private bool SaveEventState()
@@ -903,6 +2117,10 @@ public sealed class EventSceneController : MonoBehaviour
             FindObjectsInactive.Include);
         bulletSelectionUI ??= FindFirstObjectByType<BulletManagementUI>(
             FindObjectsInactive.Include);
+        inventorySelectionUI ??= FindFirstObjectByType<InventoryUI>(
+            FindObjectsInactive.Include);
+        relicSelectionUI ??= FindFirstObjectByType<RelicInventoryUI>(
+            FindObjectsInactive.Include);
 
         if (eventCanvasRoot == null)
         {
@@ -927,6 +2145,9 @@ public sealed class EventSceneController : MonoBehaviour
         dialogueText ??= FindNamedComponent<TMP_Text>(
             eventCanvasRoot,
             "Text | Event Dialogue");
+        resultText ??= FindNamedComponent<TMP_Text>(
+            eventCanvasRoot,
+            "Text | Event Result");
 
         if (choiceButtons == null || choiceButtons.Length == 0)
         {

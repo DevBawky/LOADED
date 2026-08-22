@@ -11,7 +11,7 @@ public enum PlayerBehaviourAction
     MoveLeft = 0,
     MoveRight = 1,
     Rotate = 2,
-    EjectNextBullet = 3,
+    Wait = 3,
     Reload = 4,
     Shoot = 5
 }
@@ -25,9 +25,7 @@ public sealed class BehaviourTileActionUI : MonoBehaviour
     private const string SceneMoveLeftButtonName = "Button | Move L";
     private const string SceneMoveRightButtonName = "Button | Move R";
     private const string RotateButtonName = "Button | Rotate";
-    // Preserve the serialized hierarchy name until the action icon prefab is
-    // intentionally migrated in the Unity Editor.
-    private const string CylinderEjectButtonName = "Button | Wait";
+    private const string WaitButtonName = "Button | Wait";
     private const string ReloadButtonName = "Button | Reload";
     private const string ShootButtonName = "Button | Shoot";
 
@@ -190,10 +188,10 @@ public sealed class BehaviourTileActionUI : MonoBehaviour
                 if (playerMove == null) return false;
                 action = playerMove.Rotate;
                 return true;
-            case CylinderEjectButtonName:
-                actionType = PlayerBehaviourAction.EjectNextBullet;
-                if (playerShoot == null) return false;
-                action = playerShoot.EjectNextLoadedBullet;
+            case WaitButtonName:
+                actionType = PlayerBehaviourAction.Wait;
+                if (playerMove == null) return false;
+                action = playerMove.Wait;
                 return true;
             case ReloadButtonName:
                 actionType = PlayerBehaviourAction.Reload;

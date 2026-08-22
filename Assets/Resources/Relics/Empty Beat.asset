@@ -36,7 +36,7 @@ MonoBehaviour:
     freeReloadStorageLimit: 2
     goldNuggetChance: 10
     nuggetsRequired: 3
-    primerBaseChance: 5
+    primerBaseChance: 30
     primerFailureChanceBonus: 5
     scaleMaximumDamagePercent: 100
     memorialDamagePercentPerBullet: 20

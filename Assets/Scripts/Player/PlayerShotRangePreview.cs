@@ -21,6 +21,7 @@ internal sealed class PlayerShotRangePreview
     private readonly Transform firePoint;
     private readonly BoardManager boardManager;
     private readonly WaveManager waveManager;
+    private readonly RelicManager relicManager;
     private readonly List<EnemyController> targets =
         new List<EnemyController>();
 
@@ -33,12 +34,14 @@ internal sealed class PlayerShotRangePreview
         Transform owner,
         Transform firePoint,
         BoardManager boardManager,
-        WaveManager waveManager)
+        WaveManager waveManager,
+        RelicManager relicManager)
     {
         this.owner = owner;
         this.firePoint = firePoint;
         this.boardManager = boardManager;
         this.waveManager = waveManager;
+        this.relicManager = relicManager;
     }
 
     public bool Show(
@@ -169,8 +172,11 @@ internal sealed class PlayerShotRangePreview
         LineRenderer line)
     {
         int direction = owner.localScale.x >= 0f ? 1 : -1;
+        int shotRange = relicManager == null
+            ? bullet.MaxRange
+            : relicManager.GetShotRange(bullet);
         int endTileIndex = Mathf.Clamp(
-            playerTileIndex + direction * bullet.MaxRange,
+            playerTileIndex + direction * shotRange,
             0,
             boardManager.BoardCount - 1);
 
@@ -188,7 +194,7 @@ internal sealed class PlayerShotRangePreview
         waveManager?.GetEnemiesInDirection(
             owner.position,
             direction,
-            bullet.MaxRange,
+            shotRange,
             targets);
 
         Vector3 solidEnd = endPosition;

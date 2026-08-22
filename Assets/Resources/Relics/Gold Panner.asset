@@ -14,10 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: gold_panner
   displayName: "\uC0AC\uAE08 \uC120\uBCC4\uAE30"
-  description: "\uD6A8\uACFC \uC5C6\uC74C."
+  description: "적 처치 시 5% 확률로 골드를 7배 획득합니다."
   icon: {fileID: 3320616201011708611, guid: 11b3e8f1af311ca4aa977157e5fd7247, type: 3}
   lifetimeType: 0
   initialCharges: 1
   canStack: 0
   maxStack: 1
-  effects: []
+  effects:
+  - effectType: 16
+    goldNuggetChance: 5
+    nuggetsRequired: 7

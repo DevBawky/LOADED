@@ -262,4 +262,4 @@ Use a strong silhouette, clean pixel art, warm brown, gold, orange, and steel co
 
 ## 후속 변경: 약실 교환 아이콘
 
-대기 행동이 약실 교환으로 대체되면서 기존 `ActionUI_Wait.png`의 파일과 GUID는 유지하고 이미지만 열린 실린더에서 탄환이 빠져나오는 픽셀 아트로 교체했다. 프리팹의 직렬화 참조를 보존하기 위해 파일명과 `.meta`는 변경하지 않았다.
+대기 행동이 약실 교환으로 대체되면서 기존 `ActionUI_Wait.png`의 파일과 GUID는 유지하고 이미지만 열린 실린더에서 탄환이 빠져나오는 픽셀 아트로 교체했다. 이후 S 키와 Wait 버튼이 다시 대기로 복원되면서 같은 파일과 GUID를 유지한 채 원래의 모래시계 아이콘으로 되돌렸다. 약실 제거는 실린더 탄환 우클릭으로 분리했다.

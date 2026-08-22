@@ -346,6 +346,7 @@ public partial class PlayerShoot
                     BulletEffectData chainEffect = FindSpecialEffect(
                         resolvedBullet,
                         BulletEffectType.ChainFire);
+                    bool primerReusePending = false;
                     float criticalChanceBonus =
                         firedBullet.ConsumeTemporaryCriticalChanceBonus();
                     criticalChanceBonus += GetSpecialCriticalChanceBonus(
@@ -387,20 +388,36 @@ public partial class PlayerShoot
                         {
                             break;
                         }
-    
+
+                        if (additionalShotCount == 0)
+                        {
+                            primerReusePending = relicManager != null
+                                && relicManager.TryReuseFiredBullet();
+                        }
+
                         bool hasRequiredShotgunShot =
                             additionalShotCount < shotgunAdditionalShotCount;
-                        keepFiring = hasRequiredShotgunShot
-                            || chainEffect != null
+                        bool hasPrimerReuseShot =
+                            !hasRequiredShotgunShot && primerReusePending;
+                        bool hasChainShot = !hasRequiredShotgunShot
+                            && !hasPrimerReuseShot
+                            && chainEffect != null
                             && RollChainFire(
                                 chainEffect,
                                 chainAdditionalShotCount);
-    
+                        keepFiring = hasRequiredShotgunShot
+                            || hasPrimerReuseShot
+                            || hasChainShot;
+
                         if (keepFiring)
                         {
                             additionalShotCount++;
 
-                            if (!hasRequiredShotgunShot)
+                            if (hasPrimerReuseShot)
+                            {
+                                primerReusePending = false;
+                            }
+                            else if (hasChainShot)
                             {
                                 chainAdditionalShotCount++;
                             }
@@ -661,7 +678,7 @@ public partial class PlayerShoot
                 && waveManager.TryGetFirstBulletBlocker(
                     transform.position,
                     horizontalDirection,
-                    bulletData.MaxRange,
+                    GetShotRange(bulletData),
                     out bulletBlocker);
     
             if (hasBulletBlocker)
@@ -686,7 +703,10 @@ public partial class PlayerShoot
                 playerHealth.MaxHealth,
                 isBaseBullet && activeShotIndex == 0,
                 isBaseBullet && deckManager != null
-                    && deckManager.LoadedBullets.Count == 0);
+                    && deckManager.LoadedBullets.Count == 0,
+                currentConsumedBullet == null
+                    ? -1
+                    : currentConsumedBullet.AcquisitionOrder);
     
             Vector3 endPoint;
     
@@ -714,7 +734,7 @@ public partial class PlayerShoot
                 hitBuffer.Clear();
                 endPoint = GetMissEndPoint(
                     horizontalDirection,
-                    bulletData.MaxRange);
+                    GetShotRange(bulletData));
             }
     
             bool isCritical = relicManager != null
@@ -848,7 +868,7 @@ public partial class PlayerShoot
             waveManager.GetEnemiesInDirection(
                 transform.position,
                 horizontalDirection,
-                bullet.MaxRange,
+                GetShotRange(bullet),
                 targetBuffer);
     
             for (int targetIndex = targetBuffer.Count - 1;
@@ -882,7 +902,7 @@ public partial class PlayerShoot
                 && waveManager.TryGetFirstBulletBlocker(
                     transform.position,
                     horizontalDirection,
-                    bullet.MaxRange,
+                    GetShotRange(bullet),
                     out _);
         }
     
@@ -990,7 +1010,8 @@ public partial class PlayerShoot
                     ? 1d
                     : relicManager.GetTargetConditionalDamageMultiplier(
                         enemy.GetInstanceID(),
-                        enemy.ActiveStatusTypeCount));
+                        enemy.ActiveStatusTypeCount,
+                        CountActiveEnemies()));
                 int attackDamage = CalculateAttackDamage(
                     bullet,
                     isCritical,
@@ -1776,6 +1797,7 @@ public partial class PlayerShoot
                     out sourceTileIndex);
                 int healthBeforeHit = enemy.CurrentHealth;
                 int targetMaxHealth = enemy.MaxHealth;
+                bool hadDebuffBeforeHit = enemy.ActiveStatusTypeCount > 0;
                 bool defeatPresented = false;
                 float targetDamageMultiplier = GetTargetDamageMultiplier(
                     bulletData,
@@ -1785,7 +1807,8 @@ public partial class PlayerShoot
                     ? 1d
                     : relicManager.GetTargetConditionalDamageMultiplier(
                         enemy.GetInstanceID(),
-                        enemy.ActiveStatusTypeCount));
+                        enemy.ActiveStatusTypeCount,
+                        CountActiveEnemies()));
                 int attackDamage = CalculateAttackDamage(
                     bulletData,
                     isCritical,
@@ -1915,6 +1938,18 @@ public partial class PlayerShoot
                     horizontalDirection,
                     attackDamage,
                     processedDefeatIds);
+
+                yield return ApplyClosedCircuitDamageTransfer(
+                    bulletData,
+                    sourceTileIndex,
+                    horizontalDirection,
+                    reportedDamage,
+                    processedDefeatIds);
+
+                if (hadDebuffBeforeHit && enemy.CurrentHealth > 0)
+                {
+                    relicManager?.TryApplyMutationCatalyst(enemy);
+                }
     
                 IReadOnlyList<BulletEffectData> effects = bulletData.Effects;
     
@@ -2066,6 +2101,33 @@ public partial class PlayerShoot
             }
     
             return multiplier;
+        }
+
+        private int GetShotRange(BulletInstance bullet)
+        {
+            return relicManager == null
+                ? bullet == null ? 1 : bullet.MaxRange
+                : relicManager.GetShotRange(bullet);
+        }
+
+        private int CountActiveEnemies()
+        {
+            if (waveManager == null)
+            {
+                return 0;
+            }
+
+            int count = 0;
+
+            foreach (EnemyController enemy in waveManager.ActiveEnemies)
+            {
+                if (enemy != null && enemy.CurrentHealth > 0)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         private CombatFeedbackController.DefeatPresentationCue RecordDefeat(
@@ -2327,6 +2389,119 @@ public partial class PlayerShoot
             }
         }
     
+        private IEnumerator ApplyClosedCircuitDamageTransfer(
+            BulletInstance bullet,
+            int sourceTileIndex,
+            int horizontalDirection,
+            int sourceDamage,
+            HashSet<int> processedDefeatIds)
+        {
+            if (sourceTileIndex < 0 || boardManager == null
+                || waveManager == null || relicManager == null
+                || !relicManager.TryGetClosedCircuitTransferDamage(
+                    sourceDamage,
+                    out int transferDamage))
+            {
+                yield break;
+            }
+
+            int direction = horizontalDirection >= 0 ? 1 : -1;
+            EnemyController target = null;
+            int targetDistance = int.MaxValue;
+
+            foreach (EnemyController candidate in waveManager.ActiveEnemies)
+            {
+                if (candidate == null || candidate.CurrentHealth <= 0
+                    || !boardManager.TryGetTileIndex(
+                        candidate.transform.position,
+                        out int candidateTile))
+                {
+                    continue;
+                }
+
+                int offset = (candidateTile - sourceTileIndex) * direction;
+
+                if (offset > 0 && offset < targetDistance)
+                {
+                    target = candidate;
+                    targetDistance = offset;
+                }
+            }
+
+            if (target == null)
+            {
+                yield break;
+            }
+
+            CombatPresentation.EnemySnapshot snapshot =
+                combatPresentation == null
+                    ? default
+                    : combatPresentation.CaptureEnemy(target);
+            int healthBeforeDamage = target.CurrentHealth;
+            int targetMaxHealth = target.MaxHealth;
+            int targetInstanceId = target.GetInstanceID();
+            int reportedDamage = target.PredictAttackDamage(transferDamage);
+            int appliedDamage = target.ApplyAttackDamage(
+                transferDamage,
+                false);
+
+            if (appliedDamage > 0)
+            {
+                owner.DamageDealt?.Invoke(reportedDamage);
+                relicManager.NotifyEnemyDamaged(target, reportedDamage);
+            }
+
+            bool defeated = healthBeforeDamage > 0
+                && target.CurrentHealth <= 0;
+            combatFeedback?.RecordDamage(
+                reportedDamage,
+                reportedDamage > appliedDamage);
+
+            if (defeated)
+            {
+                CombatFeedbackController.DefeatPresentationCue cue =
+                    RecordDefeat(
+                        snapshot.Position,
+                        horizontalDirection,
+                        reportedDamage,
+                        targetMaxHealth,
+                        false,
+                        healthBeforeDamage);
+                PlayDefeatImpact(
+                    snapshot,
+                    horizontalDirection,
+                    bullet,
+                    cue);
+                yield return ApplyDefeatTriggeredAbilities(
+                    bullet,
+                    target,
+                    targetInstanceId,
+                    horizontalDirection,
+                    reportedDamage,
+                    snapshot.Position,
+                    processedDefeatIds);
+            }
+            else if (appliedDamage > 0)
+            {
+                combatPresentation?.PlayImpact(
+                    snapshot,
+                    horizontalDirection,
+                    bullet,
+                    CombatImpactTierUtility.Resolve(
+                        false,
+                        reportedDamage,
+                        targetMaxHealth,
+                        false));
+                combatFeedback?.RecordHit(
+                    snapshot.Position,
+                    horizontalDirection,
+                    reportedDamage,
+                    targetMaxHealth,
+                    false,
+                    GetCurrentCylinderBuild());
+            }
+        }
+
         private IEnumerator ApplyDefeatTriggeredAbilities(
             BulletInstance bullet,
             EnemyController enemy,

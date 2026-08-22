@@ -30,7 +30,7 @@ MonoBehaviour:
     effects:
     - type: 4
       amount: 0
-      bullet: {fileID: 11400000, guid: c2010000000000000000000000000011, type: 2}
+      bullet: {fileID: 0}
   - buttonText: "[\uB5A0\uB09C\uB2E4] \uB300\uC2E0 \uC5EC\uBE44\uB97C \uCC59\uAE34\uB2E4."
     outcomeText: "\uB2F9\uC2E0\uC740 \uC791\uC740 \uB3C8\uC8FC\uBA38\uB2C8\uB9CC
       \uCC59\uACA8 \uAE38\uC744 \uC7AC\uCD09\uD588\uB2E4."
