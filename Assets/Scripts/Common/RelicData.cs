@@ -180,65 +180,70 @@ public sealed class RelicEffectData
         return effectType switch
         {
             RelicEffectType.PreventLethalDamage =>
-                $"죽음에 이르는 피해를 막고 체력을 {SurvivingHealth} 남깁니다.",
+                $"치명 피해 1회 방지, 체력 {SurvivingHealth} 유지",
             RelicEffectType.MovementDamageMultiplier =>
-                "인정되는 이동 1타일마다 다음 공격의 최종 피해가 "
-                + $"x{FormatNumber(MovementDamageMultiplierPerStack)} 누적됩니다. "
-                + $"스택 소비: {GetResetLabel(MovementStackReset)}.",
+                "이동 1칸당 다음 공격 최종 피해 "
+                + $"x{FormatNumber(MovementDamageMultiplierPerStack)}\n"
+                + $"스택 소모: {GetResetLabel(MovementStackReset)}",
             RelicEffectType.FirstShotFinalMultiplier =>
-                "한 실린더의 첫 사격 최종 피해가 "
-                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
+                "실린더 첫 사격 최종 피해 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}",
             RelicEffectType.LastShotFinalMultiplier =>
-                "장전 탄환이 남지 않은 사격의 최종 피해가 "
-                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
+                "실린더 마지막 사격 최종 피해 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}",
             RelicEffectType.PredatorHolster =>
-                "적을 처치하면 다음에 장전되는 탄환 1발의 최종 피해가 "
-                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
+                "적 처치 시 다음 장전 탄환 1발 최종 피해 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}",
             RelicEffectType.ClosedCircuit =>
-                "적에게 피해를 주면 그 뒤의 가장 가까운 적에게 "
-                + $"{FormatNumber(DebuffTransferPercent)}% 피해를 전이합니다.",
+                "피해 시 뒤의 가장 가까운 적에게 피해 "
+                + $"{FormatNumber(DebuffTransferPercent)}% 전이",
             RelicEffectType.InfectiousIncubator =>
-                "디버프를 보유한 적에게 주는 최종 피해가 "
-                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
+                "디버프 보유 적 대상 최종 피해 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}\n"
+                + "해당 적 처치 시 디버프 "
+                + $"{FormatNumber(DebuffTransferPercent)}%를 가장 가까운 적에게 이전",
             RelicEffectType.EmptyBeat =>
-                $"{FormatNumber(PrimerBaseChance)}% 확률로 재장전 시 턴을 소모하지 않습니다.",
+                "재장전 시 턴 소모 없음 "
+                + $"({FormatNumber(PrimerBaseChance)}%)",
             RelicEffectType.EyeOfTheStorm =>
-                "한 실린더에서 모든 적을 공격하면 최고 단일 피해의 "
-                + $"{FormatNumber(StormDamagePercent)}%를 모든 생존 적에게 가합니다.",
+                "실린더 내 모든 적 공격 시 최고 단일 피해의 "
+                + $"{FormatNumber(StormDamagePercent)}%를 생존 적 전체에 적용",
             RelicEffectType.Carriage =>
-                "발차기 피해가 "
-                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
+                $"발차기 피해 x{FormatNumber(FinalDamageMultiplier)}\n"
+                + $"{MovementTilesPerFreeReload}칸 이동마다 무료 재장전 +1 "
+                + $"(최대 {FreeReloadStorageLimit}회 저장)",
             RelicEffectType.GoldPanner =>
-                $"적 처치 골드를 {FormatNumber(GoldNuggetChance)}% 확률로 "
-                + $"{NuggetsRequired}배 획득합니다.",
+                $"적 처치 골드 x{NuggetsRequired} "
+                + $"({FormatNumber(GoldNuggetChance)}%)",
             RelicEffectType.CrackedPrimer =>
-                $"탄환 발사 시 {FormatNumber(PrimerBaseChance)}% 확률로 한 번 더 발사합니다.",
+                "탄환 발사 시 추가 발사 "
+                + $"({FormatNumber(PrimerBaseChance)}%)",
             RelicEffectType.Scale =>
-                "필드의 생존 적 수가 적을수록 최종 피해가 증가합니다. "
+                "생존 적 수가 적을수록 최종 피해 증가\n"
                 + $"증가량: max(0, {FormatNumber(ScaleMaximumDamagePercent)}"
-                + $"-{FormatNumber(PrimerFailureChanceBonus)}×적 수)%.",
+                + $"-{FormatNumber(PrimerFailureChanceBonus)}×적 수)%",
             RelicEffectType.FamilyWill =>
-                "보스를 처치할 때마다 모든 탄환의 최종 피해가 영구적으로 "
-                + $"+{FormatNumber(MemorialDamagePercentPerBullet)}% 증가합니다.",
+                "보스 처치 시 모든 탄환 최종 피해 영구 "
+                + $"+{FormatNumber(MemorialDamagePercentPerBullet)}%",
             RelicEffectType.LuckyChamber =>
-                "6발이 장전되면 무작위 약실 하나를 지정하고 해당 탄환의 최종 피해를 "
-                + $"x{FormatNumber(FinalDamageMultiplier)}로 만듭니다.",
+                "6발 장전 시 무작위 탄환 1발의 최종 피해 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}",
             RelicEffectType.ExecutionersOath =>
-                "적을 처치하면 다음 탄환의 최종 피해가 "
-                + $"x{FormatNumber(FinalDamageMultiplier)}가 됩니다. "
-                + "그 탄환도 적을 처치하면 효과가 이어집니다.",
+                "적 처치 시 다음 탄환 최종 피해 "
+                + $"x{FormatNumber(FinalDamageMultiplier)}\n"
+                + "연속 처치 시 효과 유지",
             RelicEffectType.MutationCatalyst =>
-                "디버프가 있는 적에게 명중하면 "
-                + $"{FormatNumber(MutationMaximumChance)}% 확률로 "
-                + "무작위 디버프 1스택을 추가합니다.",
+                "디버프 보유 적 명중 시 무작위 디버프 +1 "
+                + $"({FormatNumber(MutationMaximumChance)}%)",
             RelicEffectType.BrinkTrigger =>
-                $"체력 {FormatNumber(BrinkHealthThresholdPercent)}% 이하에서 "
-                + $"모든 탄환의 최종 피해가 x{FormatNumber(FinalDamageMultiplier)}가 됩니다.",
+                $"체력 {FormatNumber(BrinkHealthThresholdPercent)}% 이하: "
+                + $"모든 탄환 최종 피해 x{FormatNumber(FinalDamageMultiplier)}",
             RelicEffectType.AdvancedScope =>
-                $"모든 탄환의 사거리가 {ShotRangeBonus} 증가합니다.",
+                $"모든 탄환 사거리 +{ShotRangeBonus}",
             RelicEffectType.RunningSpur =>
-                $"이동 시 {FormatNumber(PrimerBaseChance)}% 확률로 턴을 소모하지 않습니다.",
-            _ => "효과가 없습니다."
+                "이동 시 턴 소모 없음 "
+                + $"({FormatNumber(PrimerBaseChance)}%)",
+            _ => "효과 없음"
         };
     }
 

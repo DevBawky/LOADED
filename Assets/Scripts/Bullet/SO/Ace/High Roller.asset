@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_high_roller
   displayName: "\uD558\uC774\uB864\uB7EC"
-  description: "\uC783\uC740 \uCCB4\uB825 \uBE44\uC728\uC5D0 \uB530\uB77C \uCD5C\uC885
-    \uD53C\uD574\uAC00 \uCD5C\uB300 +100% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  description: "잃은 체력 비율에 따라 최종 피해 최대 +100%"
   cylinderIcon: {fileID: 4656583910546094230, guid: 3a80b985b7e13bc4d90990d7f824a8b3, type: 3}
   price: 10
   grade: 2
@@ -47,8 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uC783\uC740 \uCCB4\uB825 \uBE44\uC728\uC5D0 \uB530\uB77C \uCD5C\uC885
-      \uD53C\uD574\uAC00 \uCD5C\uB300 +130% \uC99D\uAC00\uD569\uB2C8\uB2E4."
+  - description: "잃은 체력 비율에 따라 최종 피해 최대 +130%"
     damage: 24
     maxRange: 5
     criticalChance: 24
@@ -68,9 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "\uC783\uC740 \uCCB4\uB825 \uBE44\uC728\uC5D0 \uB530\uB77C \uCD5C\uC885
-      \uD53C\uD574\uAC00 \uCD5C\uB300 +160% \uC99D\uAC00\uD569\uB2C8\uB2E4. 50% \uD655\uB960\uB85C
-      \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "잃은 체력 비율에 따라 최종 피해 최대 +160%\n관통 1회 (50%)"
     damage: 28
     maxRange: 6
     criticalChance: 30
@@ -91,9 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uC783\uC740 \uCCB4\uB825 \uBE44\uC728\uC5D0 \uB530\uB77C \uCD5C\uC885
-      \uD53C\uD574\uAC00 \uCD5C\uB300 +200% \uC99D\uAC00\uD569\uB2C8\uB2E4. \uC801
-      2\uBA85 \uAD00\uD1B5."
+  - description: "잃은 체력 비율에 따라 최종 피해 최대 +200%\n관통 2회"
     damage: 34
     maxRange: 6
     criticalChance: 38

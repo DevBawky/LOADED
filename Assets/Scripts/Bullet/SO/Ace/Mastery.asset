@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_mastery
   displayName: "\uD1B5\uB2EC"
-  description: "\uCE58\uBA85\uD0C0 \uD655\uB960 5%, \uCE58\uBA85\uD0C0 \uBC30\uC728
-    x7."
+  description: "치명타 확률 5%\n치명타 배율 x7"
   cylinderIcon: {fileID: 1143175659841188501, guid: f2d720128da7fa64ea235046d96d07d9, type: 3}
   price: 20
   grade: 3
@@ -39,8 +38,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 50
   upgradeLevels:
-  - description: "\uCE58\uBA85\uD0C0 \uD655\uB960 7%, \uCE58\uBA85\uD0C0 \uBC30\uC728
-      x8."
+  - description: "치명타 확률 7%\n치명타 배율 x8"
     damage: 20
     maxRange: 5
     criticalChance: 7
@@ -52,8 +50,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uCE58\uBA85\uD0C0 \uD655\uB960 10%, \uCE58\uBA85\uD0C0 \uBC30\uC728
-      x10. 50% \uD655\uB960\uB85C \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "치명타 확률 10%\n치명타 배율 x10\n관통 1회 (50%)"
     damage: 25
     maxRange: 6
     criticalChance: 10
@@ -66,8 +63,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 200
-  - description: "\uCE58\uBA85\uD0C0 \uD655\uB960 15%, \uCE58\uBA85\uD0C0 \uBC30\uC728
-      x12. \uC801 2\uBA85 \uAD00\uD1B5."
+  - description: "치명타 확률 15%\n치명타 배율 x12\n관통 2회"
     damage: 30
     maxRange: 6
     criticalChance: 15

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_buckshot
   displayName: "\uC0B0\uD0C4"
-  description: "\uAE30\uBCF8\uC801\uC778 \uC0B0\uD0C4 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  description: "기본 산탄"
   cylinderIcon: {fileID: -4775050287358454370, guid: c2fddaa8c2d3d9d439522ec2f93eb93b, type: 3}
   price: 3
   grade: 0
@@ -40,7 +40,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 5
   upgradeLevels:
-  - description: "\uAE30\uBCF8\uC801\uC778 \uC0B0\uD0C4 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  - description: "기본 산탄"
     damage: 7
     maxRange: 1
     criticalChance: 20
@@ -53,7 +53,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 10
-  - description: "\uAE30\uBCF8\uC801\uC778 \uC0B0\uD0C4 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  - description: "기본 산탄"
     damage: 8
     maxRange: 1
     criticalChance: 27
@@ -66,7 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 15
-  - description: "\uAE30\uBCF8\uC801\uC778 \uC0B0\uD0C4 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  - description: "기본 산탄"
     damage: 10
     maxRange: 1
     criticalChance: 35

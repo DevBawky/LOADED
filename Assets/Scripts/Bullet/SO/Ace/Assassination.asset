@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_assassination
   displayName: "\uC554\uC0B4"
-  description: "\uC774\uBC88 \uD134\uC5D0 \uC774\uBBF8 \uD53C\uACA9\uB41C \uC801\uC5D0\uAC8C
-    \uCD5C\uC885 \uD53C\uD574 +10%."
+  description: "이번 턴 피격된 적 대상 최종 피해 +10%"
   cylinderIcon: {fileID: 5399805441871120436, guid: e583a383ece0afc4fb6f687626534661, type: 3}
   price: 10
   grade: 2
@@ -47,8 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uC774\uBC88 \uD134\uC5D0 \uC774\uBBF8 \uD53C\uACA9\uB41C \uC801\uC5D0\uAC8C
-      \uCD5C\uC885 \uD53C\uD574 +20%."
+  - description: "이번 턴 피격된 적 대상 최종 피해 +20%"
     damage: 32
     maxRange: 5
     criticalChance: 30
@@ -68,8 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "\uC774\uBC88 \uD134\uC5D0 \uC774\uBBF8 \uD53C\uACA9\uB41C \uC801\uC5D0\uAC8C
-      \uCD5C\uC885 \uD53C\uD574 +35%. 50% \uD655\uB960\uB85C \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "이번 턴 피격된 적 대상 최종 피해 +35%\n관통 1회 (50%)"
     damage: 37
     maxRange: 6
     criticalChance: 35
@@ -90,8 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uC774\uBC88 \uD134\uC5D0 \uC774\uBBF8 \uD53C\uACA9\uB41C \uC801\uC5D0\uAC8C
-      \uCD5C\uC885 \uD53C\uD574 +50%. \uC801 2\uBA85 \uAD00\uD1B5."
+  - description: "이번 턴 피격된 적 대상 최종 피해 +50%\n관통 2회"
     damage: 43
     maxRange: 6
     criticalChance: 45

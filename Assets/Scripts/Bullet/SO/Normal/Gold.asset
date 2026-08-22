@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uD669\uAE08\uD0C4"
-  description: "\uC801 \uBA85\uC911 \uC2DC \uACE8\uB4DC +1 (30%)\n\uCE58\uBA85\uD0C0
-    \uC2DC \uACE8\uB4DC +1 (50%)"
+  description: "적 명중 시 골드 +1 (30%)\n치명타 시 골드 +1 (50%)"
   cylinderIcon: {fileID: 21300000, guid: 9f3da703d3a3228458471a1253b1a404, type: 3}
   price: 3
   grade: 0
@@ -57,8 +56,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 5
   upgradeLevels:
-  - description: "\uC801 \uBA85\uC911 \uC2DC 70% \uD655\uB960\uB85C \uACE8\uB4DC
-      +1\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +1 (70%)"
+  - description: "적 명중 시 골드 +1 (70%)\n치명타 시 골드 +1 (70%)"
     damage: 5
     maxRange: 3
     criticalChance: 25
@@ -88,8 +86,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 10
-  - description: "\uC801 \uBA85\uC911 \uC2DC \uACE8\uB4DC +1\n\uCE58\uBA85\uD0C0
-      \uC2DC \uACE8\uB4DC +2 (80%)\n\uAD00\uD1B5 1\uD68C (30%)"
+  - description: "적 명중 시 골드 +1\n치명타 시 골드 +2 (80%)\n관통 1회 (30%)"
     damage: 7
     maxRange: 3
     criticalChance: 32
@@ -120,9 +117,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 15
-  - description: "\uC801 \uBA85\uC911 \uC2DC \uACE8\uB4DC +2\n\uCE58\uBA85\uD0C0
-      \uC2DC \uACE8\uB4DC +3 (70%)\n\uAD00\uD1B5 1\uD68C (50%)\n\uC801 \uCC98\uCE58
-      \uC2DC \uACE8\uB4DC +2"
+  - description: "적 명중 시 골드 +2\n치명타 시 골드 +3 (70%)\n관통 1회 (50%)\n적 처치 시 골드 +2"
     damage: 10
     maxRange: 4
     criticalChance: 40

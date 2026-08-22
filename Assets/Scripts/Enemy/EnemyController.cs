@@ -2681,6 +2681,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             avatarInstance.GetComponentInChildren<Animator>(true);
         avatarSortingRenderer =
             avatarInstance.GetComponentInChildren<SpriteRenderer>(true);
+        ApplyAvatarPresentation();
 
         if (avatarAnimator != null
             && avatarAnimator.GetComponent<EnemyAnimationSfx>() == null)
@@ -2728,6 +2729,39 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         PlayAvatarIdle();
         RefreshGunnerReloadedAnimation();
+    }
+
+    private void ApplyAvatarPresentation()
+    {
+        if (avatarInstance == null || enemyData == null)
+        {
+            return;
+        }
+
+        Material materialOverride = enemyData.AvatarMaterialOverride;
+        Color tint = enemyData.AvatarTint;
+        SpriteRenderer[] renderers =
+            avatarInstance.GetComponentsInChildren<SpriteRenderer>(true);
+
+        foreach (SpriteRenderer renderer in renderers)
+        {
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            if (materialOverride != null)
+            {
+                renderer.sharedMaterial = materialOverride;
+            }
+
+            Color original = renderer.color;
+            renderer.color = new Color(
+                original.r * tint.r,
+                original.g * tint.g,
+                original.b * tint.b,
+                original.a * tint.a);
+        }
     }
 
     private IEnumerator PlayAvatarAttackAnimation()

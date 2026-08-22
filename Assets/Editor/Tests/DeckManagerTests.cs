@@ -123,7 +123,9 @@ public class DeckManagerTests
     {
         Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
         Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
-        Assert.That(deckManager.TryReload(out _), Is.True);
+        Assert.That(
+            deckManager.TryReload(out BulletInstance loadedBullet),
+            Is.True);
 
         PlayerMove playerMove = gameObject.AddComponent<PlayerMove>();
         PlayerShoot playerShoot = gameObject.AddComponent<PlayerShoot>();
@@ -133,11 +135,38 @@ public class DeckManagerTests
         serializedShoot.FindProperty("playerMove").objectReferenceValue =
             playerMove;
         serializedShoot.ApplyModifiedPropertiesWithoutUndo();
+        BulletInstance notifiedBullet = null;
+        playerShoot.LoadedBulletEjected += bullet => notifiedBullet = bullet;
 
         Assert.That(playerShoot.TryEjectLoadedBullet(0), Is.True);
+        Assert.That(notifiedBullet, Is.SameAs(loadedBullet));
         Assert.That(playerMove.TurnCount, Is.Zero);
         Assert.That(deckManager.LoadedBullets, Is.Empty);
         Assert.That(deckManager.TotalBulletCount, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void ChamberEjectGuideFollowsReloadAndPrecedesCylinderInspection()
+    {
+        FirstRunGuideContent.GuideStepDefinition[] steps =
+            FirstRunGuideContent.CombatSteps;
+        int reloadIndex = System.Array.FindIndex(
+            steps,
+            step => step.Step == FirstRunGuideContent.CombatStep.ReloadThree);
+        int ejectIndex = System.Array.FindIndex(
+            steps,
+            step => step.Step == FirstRunGuideContent.CombatStep.EjectChamber);
+        int inspectIndex = System.Array.FindIndex(
+            steps,
+            step => step.Step
+                == FirstRunGuideContent.CombatStep.InspectBulletInfo);
+
+        Assert.That(ejectIndex, Is.EqualTo(reloadIndex + 1));
+        Assert.That(inspectIndex, Is.EqualTo(ejectIndex + 1));
+        Assert.That(
+            steps[ejectIndex].TargetKind,
+            Is.EqualTo(FirstRunGuideContent.TargetKind.Cylinder));
+        Assert.That(steps[ejectIndex].Mission, Does.Contain("우클릭"));
     }
 
     [Test]

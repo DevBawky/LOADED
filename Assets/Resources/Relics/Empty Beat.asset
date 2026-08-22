@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: empty_beat
   displayName: "\uBE48 \uBC15\uC790"
-  description: "\uBE48 \uC2E4\uB9B0\uB354\uC5D0 \uB123\uB294 \uCCAB \uD0C4\uD658\uC740
-    \uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  description: "재장전 시 턴 소모 없음 (30%)"
   icon: {fileID: -6923115294847491430, guid: f7f3030fadff6664887c3a93a42b45a6, type: 3}
   lifetimeType: 0
   initialCharges: 1

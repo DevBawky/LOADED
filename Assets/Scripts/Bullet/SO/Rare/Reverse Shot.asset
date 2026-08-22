@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_reverse_shot
   displayName: "\uB9AC\uBC84\uC2A4\uD0C4"
-  description: "\uBC14\uB77C\uBCF4\uB294 \uBC29\uD5A5\uC758 \uBC18\uB300\uB85C \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
+  description: "반대 방향으로 발사"
   cylinderIcon: {fileID: 3738047707726589837, guid: a193a4f38f0397644958f8f9469b323d, type: 3}
   price: 6
   grade: 1
@@ -46,8 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uBC14\uB77C\uBCF4\uB294 \uBC29\uD5A5\uC758 \uBC18\uB300\uB85C
-      \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
+  - description: "반대 방향으로 발사"
     damage: 40
     maxRange: 6
     criticalChance: 22
@@ -67,8 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "\uBC14\uB77C\uBCF4\uB294 \uBC29\uD5A5\uC758 \uBC18\uB300\uB85C
-      \uBC1C\uC0AC\uD569\uB2C8\uB2E4. 50% \uD655\uB960\uB85C \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "반대 방향으로 발사\n관통 1회 (50%)"
     damage: 45
     maxRange: 6
     criticalChance: 25
@@ -89,8 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "\uBC14\uB77C\uBCF4\uB294 \uBC29\uD5A5\uC758 \uBC18\uB300\uB85C
-      \uBC1C\uC0AC\uD569\uB2C8\uB2E4. \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "반대 방향으로 발사\n관통 1회"
     damage: 50
     maxRange: 7
     criticalChance: 30

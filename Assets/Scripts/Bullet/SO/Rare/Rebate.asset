@@ -87,7 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "치명타 시 골드 +5\n관통 최대 3회 (각 50%)\n재장전 시 턴을 소모하지 않습니다."
+  - description: "치명타 시 골드 +5\n관통 최대 3회 (각 50%)\n재장전 시 턴 소모 없음"
     damage: 21
     maxRange: 5
     criticalChance: 70

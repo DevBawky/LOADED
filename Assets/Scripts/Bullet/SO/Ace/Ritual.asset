@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_conscious
   displayName: "\uC758\uC2DD"
-  description: "\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 +1. \uC9D1\uC911\uB2F9 \uCE58\uBA85\uD0C0
-    \uBC30\uC728 +0.25. \uBE44\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911\uC744 \uC783\uACE0
-    25% \uD655\uB960\uB85C \uD30C\uAD34\uB429\uB2C8\uB2E4."
+  description: "치명타 시 집중 +1\n집중당 치명타 배율 +0.25\n비치명타 시 집중 소모, 파괴 (25%)"
   cylinderIcon: {fileID: -8566870937137478152, guid: 5f250a5053ab8974a9f3d27f631a0185, type: 3}
   price: 10
   grade: 2
@@ -48,9 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 +1. \uC9D1\uC911\uB2F9 \uCE58\uBA85\uD0C0
-      \uBC30\uC728 +0.3. \uBE44\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911\uC744 \uC783\uACE0
-      20% \uD655\uB960\uB85C \uD30C\uAD34\uB429\uB2C8\uB2E4."
+  - description: "치명타 시 집중 +1\n집중당 치명타 배율 +0.3\n비치명타 시 집중 소모, 파괴 (20%)"
     damage: 15
     maxRange: 4
     criticalChance: 30
@@ -70,9 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 +1. \uC9D1\uC911\uB2F9 \uCE58\uBA85\uD0C0
-      \uBC30\uC728 +0.4. \uBE44\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911\uC744 \uC783\uACE0
-      10% \uD655\uB960\uB85C \uD30C\uAD34\uB429\uB2C8\uB2E4."
+  - description: "치명타 시 집중 +1\n집중당 치명타 배율 +0.4\n비치명타 시 집중 소모, 파괴 (10%)"
     damage: 18
     maxRange: 5
     criticalChance: 38
@@ -92,8 +86,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 +2. \uC9D1\uC911\uB2F9 \uCE58\uBA85\uD0C0
-      \uBC30\uC728 +0.5. \uBE44\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911\uB9CC \uC783\uC2B5\uB2C8\uB2E4."
+  - description: "치명타 시 집중 +2\n집중당 치명타 배율 +0.5\n비치명타 시 집중 소모"
     damage: 22
     maxRange: 5
     criticalChance: 50

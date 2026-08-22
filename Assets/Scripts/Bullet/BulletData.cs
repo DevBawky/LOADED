@@ -518,17 +518,17 @@ public class BulletData : ScriptableObject
     {
         return bulletType switch
         {
-            BulletType.Ghost => "장전할 때 턴을 소모하지 않습니다.",
+            BulletType.Ghost => "장전 시 턴 소모 없음",
             BulletType.Sniper =>
-                "설정된 관통 확률에 따라 뒤쪽의 적을 추가로 공격합니다.",
+                "관통 확률에 따라 뒤쪽 적 추가 공격",
             BulletType.Storm =>
-                "방향과 관계없이 살아 있는 모든 적에게 대미지를 줍니다.",
+                "방향과 관계없이 생존 적 전체 공격",
             BulletType.Shotgun =>
-                $"탄환 한 발을 소모해 한 번에 {GetShotCount(level)}발을 발사합니다.",
+                $"탄환 1발 소모, 한 번에 {GetShotCount(level)}발 발사",
             BulletType.Piercing =>
-                "설정된 관통 횟수와 확률에 따라 뒤쪽의 적을 추가로 공격합니다.",
+                "관통 횟수·확률에 따라 뒤쪽 적 추가 공격",
             BulletType.Debuff =>
-                "독, 기절, 표식, 약화 등의 디버프를 부여하거나 활용합니다.",
+                "독·기절·표식·약화 부여 또는 활용",
             _ => string.Empty
         };
     }
@@ -645,7 +645,7 @@ public class BulletData : ScriptableObject
             Mathf.RoundToInt(baseDamage * runtimeStats.DamageMultiplier));
         int damageDifference = currentDamage - baseDamage;
 
-        builder.Append("대미지: ")
+        builder.Append("피해: ")
             .Append(baseDamage);
 
         if (damageDifference > 0)
@@ -667,7 +667,7 @@ public class BulletData : ScriptableObject
 
         if (runtimeStats.DamageMultiplier > 1.0001f)
         {
-            builder.Append("현재 대미지 배율: x")
+            builder.Append("현재 피해 배율: x")
                 .AppendLine(runtimeStats.DamageMultiplier.ToString("0.##"));
         }
 
@@ -679,7 +679,7 @@ public class BulletData : ScriptableObject
             baseCriticalChance + runtimeStats.CriticalChanceBonus,
             0f,
             100f);
-        builder.Append("크리티컬 확률: ")
+        builder.Append("치명타 확률: ")
             .Append(baseCriticalChance.ToString("0.##"));
 
         if (currentCriticalChance > baseCriticalChance + 0.001f)
@@ -692,7 +692,7 @@ public class BulletData : ScriptableObject
         }
 
         builder.AppendLine("%");
-        builder.Append("크리티컬 배율: x")
+        builder.Append("치명타 배율: x")
             .AppendLine(GetCriticalDamageMultiplier(level).ToString("0.##"));
 
         if (runtimeStats.StateLines.Count > 0)

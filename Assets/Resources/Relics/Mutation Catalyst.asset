@@ -14,10 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: mutation_catalyst
   displayName: "\uBCC0\uC774 \uCD09\uB9E4"
-  description: "\uB300\uC0C1\uC758 \uC11C\uB85C \uB2E4\uB978 \uD65C\uC131 \uB514\uBC84\uD504
-    \uD558\uB098\uB2F9 15% \uD655\uB960\uB85C \uD574\uB2F9 \uB300\uC0C1\uC5D0\uAC8C
-    \uC8FC\uB294 \uD604\uC7AC \uD53C\uD574\uAC00 3\uBC30\uAC00 \uB429\uB2C8\uB2E4.
-    \uD655\uB960\uC740 \uCD5C\uB300 60%\uC785\uB2C8\uB2E4."
+  description: "디버프 보유 적 명중 시 무작위 디버프 +1 (40%)"
   icon: {fileID: 3082983114703229126, guid: d216fcf3fe437d14ba28a96bc3abe9b1, type: 3}
   lifetimeType: 0
   initialCharges: 1

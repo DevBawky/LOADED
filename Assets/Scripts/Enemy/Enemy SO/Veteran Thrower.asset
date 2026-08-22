@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69e667af92ed4e86b5d259be5262b93c, type: 3}
+  m_Name: Veteran Thrower
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyId: stage1_veteran_thrower
+  displayName: "\uBCA0\uD14C\uB791 \uD22C\uCC99\uBCD1"
+  description: "\uAC15\uD654\uB41C \uD654\uC5FC\uBCD1\uC73C\uB85C \uB354 \uD070 \uD53C\uD574\uB97C
+    \uB178\uB9AC\uB294 \uD22C\uCC99\uBCD1."
+  avatar: {fileID: 1233976601806711513, guid: 6718b6967c22ff54490cf76113040c67, type: 3}
+  avatarMaterialOverride: {fileID: 0}
+  avatarTint: {r: 1, g: 0.48, b: 0.28, a: 1}
+  maxHealth: 75
+  minimumGoldDrop: 4
+  maximumGoldDrop: 8
+  dropChance: 10
+  dropItems:
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 9d333057caa04b4488526d9103463201, type: 2}
+    bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
+    bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 1
+    itemData: {fileID: 11400000, guid: 1c726a25a24e426a8b770796f000af19, type: 2}
+    bulletData: {fileID: 0}
+  behaviorType: 2
+  preferredDistance: 2
+  maxQueuedAttacks: 1
+  queuedActionInterval: 0.2
+  queueElementRevealDuration: 0.25
+  meleeAdditionalAttackChance: 0.5
+  firingRange: 4
+  recoveryTurns: 1
+  maxSupportCharges: 2
+  supportHealAmount: 10
+  supportShieldAmount: 10
+  supportHealThreshold: 0.5
+  thrownProjectileSprite: {fileID: 2621594590084429933, guid: 1a9826fbb8e645f4681f8d9409f83106, type: 3}
+  thrownProjectileColor: {r: 1, g: 1, b: 1, a: 1}
+  thrownProjectileSize: 0.35
+  thrownProjectileDuration: 0.5
+  thrownProjectileArcHeight: 2
+  explosionVfxPrefab: {fileID: 4718121390383761467, guid: d3e57e74f862aa24cb848b9f51503cd2, type: 3}
+  explosionVfxScale: 3
+  gunnerTelegraphMaterial: {fileID: 2100000, guid: bd6175fa699fcd4418120cc1b7431df4, type: 2}
+  throwerTelegraphMaterial: {fileID: 2100000, guid: bd6175fa699fcd4418120cc1b7431df4, type: 2}
+  supportTelegraphMaterial: {fileID: 0}
+  supportHealColor: {r: 0.25, g: 1, b: 0.35, a: 1}
+  supportShieldColor: {r: 0.2, g: 0.8, b: 1, a: 1}
+  telegraphLineWidth: 0.08
+  telegraphVerticalOffset: 0.15
+  throwerTelegraphSegments: 40
+  telegraphSortingOrder: 20
+  actions:
+  - {fileID: 11400000, guid: 7e1cbe3d707bdae4dbd479728766a343, type: 2}
+  - {fileID: 11400000, guid: 0783b330e5e04314ab2034a662fbf2f4, type: 2}
+  randomizeStartingActionIndex: 0
+  bigBarrel:
+    phaseTwoHealthRatio: 0.5
+    bombDamage: 20
+    bossSelfExplosionDamage: 10
+    bombExplosionRadius: 1
+    bombFuseTurns: 3
+    phaseTwoBombFuseTurns: 2
+    shotgunDamage: 15
+    bossBombPrefab: {fileID: 0}
+    bombArcHeight: 2
+    bombTelegraphMaterial: {fileID: 0}
+    shotgunTelegraphMaterial: {fileID: 0}

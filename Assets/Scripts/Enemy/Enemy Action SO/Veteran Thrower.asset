@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57ee2ab9487741fa84ee7612fa65163e, type: 3}
+  m_Name: Veteran Thrower
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyActionData
+  displayName: "\uAC15\uD654 \uD654\uC5FC\uBCD1"
+  actionType: 4
+  movementDistance: 0
+  attackData: {fileID: 11400000, guid: 13e18b6308b72994192f15b5774d8555, type: 2}
+  icon: {fileID: 8865756261830827420, guid: 42e485ac8d43e8843a141b738584b4ea, type: 3}
+  description: "\uBCA0\uD14C\uB791 \uD22C\uCC99\uBCD1\uC774 \uAC15\uD654 \uD654\uC5FC\uBCD1\uC744
+    \uB358\uC838 \uD53C\uD574 22\uB97C \uC90D\uB2C8\uB2E4."

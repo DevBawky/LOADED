@@ -8,6 +8,8 @@ public class EnemyDataEditor : Editor
     private SerializedProperty displayName;
     private SerializedProperty description;
     private SerializedProperty avatar;
+    private SerializedProperty avatarMaterialOverride;
+    private SerializedProperty avatarTint;
     private SerializedProperty maxHealth;
     private SerializedProperty minimumGoldDrop;
     private SerializedProperty maximumGoldDrop;
@@ -49,6 +51,8 @@ public class EnemyDataEditor : Editor
         displayName = Find("displayName");
         description = Find("description");
         avatar = Find("avatar");
+        avatarMaterialOverride = Find("avatarMaterialOverride");
+        avatarTint = Find("avatarTint");
         maxHealth = Find("maxHealth");
         minimumGoldDrop = Find("minimumGoldDrop");
         maximumGoldDrop = Find("maximumGoldDrop");
@@ -95,6 +99,10 @@ public class EnemyDataEditor : Editor
         }
 
         DrawSection("기본 정보", enemyId, displayName, description, avatar);
+        DrawSection(
+            "Avatar 변형",
+            avatarMaterialOverride,
+            avatarTint);
         DrawSection(
             "전투 능력치",
             maxHealth,

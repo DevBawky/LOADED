@@ -113,6 +113,10 @@ public class EnemyData : ScriptableObject
     [SerializeField] private string description;
     [Tooltip("적 루트에 생성할 Animator 포함 Avatar 프리팹입니다.")]
     [SerializeField] private GameObject avatar;
+    [Tooltip("Avatar의 모든 SpriteRenderer에 선택적으로 적용할 머티리얼입니다. 비어 있으면 Avatar 원본 머티리얼을 유지합니다.")]
+    [SerializeField] private Material avatarMaterialOverride;
+    [Tooltip("Avatar 원본 색상에 곱해지는 색상입니다. 같은 Avatar를 공유하는 변형 적을 구분할 때 사용합니다.")]
+    [SerializeField] private Color avatarTint = Color.white;
 
     [Header("Stats")]
     [Min(1)]
@@ -229,6 +233,8 @@ public class EnemyData : ScriptableObject
     public string DisplayName => displayName;
     public string Description => description;
     public GameObject Avatar => avatar;
+    public Material AvatarMaterialOverride => avatarMaterialOverride;
+    public Color AvatarTint => avatarTint;
     public int MaxHealth => maxHealth;
     public int MinimumGoldDrop => Mathf.Max(1, minimumGoldDrop);
     public int MaximumGoldDrop => Mathf.Max(MinimumGoldDrop, maximumGoldDrop);

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: infectious_incubator
   displayName: "\uAC10\uC5FC\uC131 \uBC30\uC591\uAE30"
-  description: "디버프가 있는 적에게 주는 최종 피해가 5% 증가합니다."
+  description: "디버프 보유 적 대상 최종 피해 x1.05\n해당 적 처치 시 디버프 50%를 가장 가까운 적에게 이전"
   icon: {fileID: -3699325851578420857, guid: 602e5accbd0804145a54e0710290bde6, type: 3}
   lifetimeType: 0
   initialCharges: 1

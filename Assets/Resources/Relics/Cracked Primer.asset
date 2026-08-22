@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: cracked_primer
   displayName: "\uAE08\uC774 \uAC04 \uB1CC\uAD00"
-  description: "탄환 발사 시 10% 확률로 한 번 더 발사합니다."
+  description: "탄환 발사 시 추가 발사 (10%)"
   icon: {fileID: 693051727126636872, guid: b596cc87f76283043a386ccf6d27576c, type: 3}
   lifetimeType: 0
   initialCharges: 1

@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57ee2ab9487741fa84ee7612fa65163e, type: 3}
+  m_Name: Veteran Ranged Attack
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyActionData
+  displayName: "\uC815\uBC00 \uC0AC\uACA9"
+  actionType: 4
+  movementDistance: 0
+  attackData: {fileID: 11400000, guid: 7e370d061449d4f488f1ecf0f87aaf22, type: 2}
+  icon: {fileID: -3820126930878895879, guid: 0d13e4e91cfbe47428ceae931233d953, type: 3}
+  description: "\uBCA0\uD14C\uB791 \uCD1D\uC7A1\uC774\uAC00 \uC815\uBC00\uD558\uAC8C
+    \uC870\uC900\uD574 \uD53C\uD574 22\uB97C \uC90D\uB2C8\uB2E4."

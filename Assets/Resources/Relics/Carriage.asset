@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: carriage
   displayName: "\uB9C8\uCC28"
-  description: "발차기 피해 +50%."
+  description: "발차기 피해 x1.5\n5칸 이동마다 무료 재장전 +1 (최대 2회 저장)"
   icon: {fileID: -3930512209836340954, guid: b0b3c6d75ed827c49bf19905461b7a39, type: 3}
   lifetimeType: 0
   initialCharges: 1

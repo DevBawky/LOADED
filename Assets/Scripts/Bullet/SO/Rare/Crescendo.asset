@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_crescendo
   displayName: "\uACE0\uC870\uD0C4"
-  description: "\uAE30\uBCF8 \uB300\uBBF8\uC9C0 - \uBCF4\uC720 \uD0C4\uD658 \uC218
-    \xD7 1.8"
+  description: "기본 피해 - 보유 탄환 수 × 1.8"
   cylinderIcon: {fileID: -2972723935435730105, guid: 43ae68553f5a1b346b45a82ee1119f64, type: 3}
   price: 6
   grade: 1
@@ -45,8 +44,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uAE30\uBCF8 \uB300\uBBF8\uC9C0 - \uBCF4\uC720 \uD0C4\uD658 \uC218
-      \xD7 1.5"
+  - description: "기본 피해 - 보유 탄환 수 × 1.5"
     damage: 60
     maxRange: 4
     criticalChance: 28
@@ -66,8 +64,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "\uAE30\uBCF8 \uB300\uBBF8\uC9C0 - \uBCF4\uC720 \uD0C4\uD658 \uC218
-      \xD7 1.2\n\uAD00\uD1B5 1\uD68C(50%)"
+  - description: "기본 피해 - 보유 탄환 수 × 1.2\n관통 1회(50%)"
     damage: 70
     maxRange: 5
     criticalChance: 32
@@ -88,8 +85,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "\uAE30\uBCF8 \uB300\uBBF8\uC9C0 - \uBCF4\uC720 \uD0C4\uD658 \uC218
-      \xD7 1\n\uAD00\uD1B5 \uCD5C\uB300 2\uD68C(\uAC01 50%)"
+  - description: "기본 피해 - 보유 탄환 수 × 1\n관통 최대 2회(각 50%)"
     damage: 100
     maxRange: 5
     criticalChance: 38

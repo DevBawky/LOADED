@@ -4,6 +4,41 @@ using UnityEngine;
 
 public sealed class BulletEffectUtilityTests
 {
+    [Test]
+    public void CloneDoesNotExposeBorrowedRuntimeStateAsStackText()
+    {
+        BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(
+            "Assets/Scripts/Bullet/SO/Ace/Clone.asset");
+        BulletInstance bullet = new BulletInstance(data, 0);
+        bullet.AddAbilityStacks(3);
+
+        Assert.That(data, Is.Not.Null);
+        Assert.That(bullet.CurrentStackCount, Is.EqualTo(3));
+        Assert.That(
+            bullet.GetStatusDisplayText(default),
+            Is.Empty);
+    }
+
+    [Test]
+    public void SeismometerAbilityStacksResetAfterFiring()
+    {
+        BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(
+            "Assets/Scripts/Bullet/SO/Rare/Seismometer.asset");
+        BulletInstance bullet = new BulletInstance(data, 0);
+        bullet.AddAbilityStacks(4);
+
+        Assert.That(data, Is.Not.Null);
+        Assert.That(
+            BulletEffectUtility.Find(
+                bullet,
+                BulletEffectType.Seismometer),
+            Is.Not.Null);
+
+        PlayerShoot.ResetPostFireAbilityStacks(bullet, bullet);
+
+        Assert.That(bullet.AbilityStacks, Is.Zero);
+    }
+
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Seismometer.asset",
         BulletGrade.Rare, 6, 10, 20, 40)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Reverse Shot.asset",

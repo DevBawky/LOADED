@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uC2A4\uC651\uD0C4"
-  description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658"
+  description: "대상과 위치 교환"
   cylinderIcon: {fileID: -1611615653400164907, guid: 96884931d179a6f4f83b01b601888336, type: 3}
   price: 6
   grade: 1
@@ -46,7 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (30%)"
+  - description: "대상과 위치 교환\n기절 +1 (30%)"
     damage: 7
     maxRange: 3
     criticalChance: 40
@@ -74,8 +74,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (50%)\n\uCE58\uBA85\uD0C0
-      \uC2DC \uC57D\uD654 +2"
+  - description: "대상과 위치 교환\n기절 +1 (50%)\n치명타 시 약화 +2"
     damage: 10
     maxRange: 4
     criticalChance: 55
@@ -113,9 +112,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (70%)\n\uCE58\uBA85\uD0C0
-      \uC2DC \uC57D\uD654 +3\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
-      \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "대상과 위치 교환\n기절 +1 (70%)\n치명타 시 약화 +3\n재장전 시 턴 소모 없음"
     damage: 13
     maxRange: 5
     criticalChance: 70

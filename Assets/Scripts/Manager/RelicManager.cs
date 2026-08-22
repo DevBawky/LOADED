@@ -158,22 +158,9 @@ public sealed class RelicManager : MonoBehaviour
 
             switch (effect.EffectType)
             {
-                case RelicEffectType.CrackedPrimer:
-                case RelicEffectType.EmptyBeat:
-                case RelicEffectType.RunningSpur:
-                    return FormatStatusNumber(effect.PrimerBaseChance) + "%";
                 case RelicEffectType.MovementDamageMultiplier:
                     return relic.MovementStacks > 0
                         ? relic.MovementStacks.ToString(
-                            CultureInfo.InvariantCulture)
-                        : string.Empty;
-                case RelicEffectType.LuckyChamber:
-                    return string.Empty;
-                case RelicEffectType.ExecutionersOath:
-                    return relic.PrimaryCounter > 0 ? "1" : string.Empty;
-                case RelicEffectType.PredatorHolster:
-                    return relic.PrimaryCounter > 0
-                        ? relic.PrimaryCounter.ToString(
                             CultureInfo.InvariantCulture)
                         : string.Empty;
             }
@@ -1170,8 +1157,14 @@ public sealed class RelicManager : MonoBehaviour
                 out RelicInstance holsterRelic,
                 out RelicEffectData holsterEffect))
         {
-            holsterRelic.AddPrimaryCounter(1);
-            Trigger(holsterRelic, holsterEffect);
+            bool alreadyPrepared = holsterRelic.PrimaryCounter > 0
+                || holsterRelic.TrackedBulletAcquisitionOrders.Count > 0;
+
+            if (!alreadyPrepared)
+            {
+                holsterRelic.SetPrimaryCounter(1);
+                Trigger(holsterRelic, holsterEffect);
+            }
         }
 
         if (defeatedEnemy?.Data != null
@@ -1540,6 +1533,7 @@ public sealed class RelicManager : MonoBehaviour
                 data,
                 saved.acquisitionOrder);
             relic.RestoreState(saved);
+            NormalizePredatorHolsterState(relic);
 
             if (!relic.IsSpent)
             {
@@ -1550,6 +1544,21 @@ public sealed class RelicManager : MonoBehaviour
         RecalculateNextAcquisitionOrder();
         InventoryChanged?.Invoke();
         return true;
+    }
+
+    private static void NormalizePredatorHolsterState(RelicInstance relic)
+    {
+        if (relic?.Data == null
+            || !relic.Data.HasEffect(RelicEffectType.PredatorHolster))
+        {
+            return;
+        }
+
+        relic.LimitTrackedBullets(1);
+        relic.SetPrimaryCounter(
+            relic.TrackedBulletAcquisitionOrders.Count > 0
+                ? 0
+                : Mathf.Min(1, relic.PrimaryCounter));
     }
 
     public RelicData ResolveRelicData(string relicId)

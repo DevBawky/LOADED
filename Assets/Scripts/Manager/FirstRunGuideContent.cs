@@ -7,6 +7,7 @@ internal static class FirstRunGuideContent
         Wait,
         InspectEnemyAction,
         ReloadThree,
+        EjectChamber,
         InspectBulletInfo,
         ReorderCylinder,
         PreviewDamage,
@@ -144,7 +145,7 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.Wait,
             "대기",
-            "<color=#FF5757><b>S 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 행동 없이 한 턴을 넘깁니다.\n실린더의 탄환을 <color=#FF5757><b>우클릭</b></color>하면 턴을 사용하지 않고 해당 탄환을 약실에서 제거할 수 있습니다.",
+            "<color=#FF5757><b>S 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 행동 없이 한 턴을 넘깁니다.",
             "한 번 대기",
             "Videos/Wait.mp4",
             "Button | Wait"),
@@ -163,6 +164,14 @@ internal static class FirstRunGuideContent
             "탄환 3회 장전",
             "Videos/Reload.mp4",
             "Button | Reload"),
+        new GuideStepDefinition(
+            CombatStep.EjectChamber,
+            "약실 제거",
+            "실린더에서 제거할 탄환을 <color=#FF5757><b>마우스 우클릭</b></color>하세요.\n제거한 탄환은 파괴되지 않고 <color=#FFD05A><b>사용한 탄환 순환</b></color>으로 이동합니다.\n약실 제거는 <color=#FFD05A><b>턴을 사용하지 않습니다.</b></color>",
+            "실린더 탄환 한 발 우클릭해 제거",
+            null,
+            null,
+            TargetKind.Cylinder),
         new GuideStepDefinition(
             CombatStep.InspectBulletInfo,
             "탄환 정보 읽기",

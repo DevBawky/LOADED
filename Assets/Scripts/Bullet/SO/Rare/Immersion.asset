@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_immersion
   displayName: "\uBAB0\uB450"
-  description: "\uB2E4\uC74C \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0 \uBC30\uC728 +1."
+  description: "다음 탄환 치명타 배율 +1"
   cylinderIcon: {fileID: -7121647777118075918, guid: a8fb83a4519dfa946bedd9dec6f06d84, type: 3}
   price: 6
   grade: 1
@@ -46,8 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uB2E4\uC74C \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0 \uBC30\uC728
-      +1.5."
+  - description: "다음 탄환 치명타 배율 +1.5"
     damage: 14
     maxRange: 4
     criticalChance: 22
@@ -67,8 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "\uB2E4\uC74C \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0 \uBC30\uC728
-      +2. \uC774\uD6C4 \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +5%p."
+  - description: "다음 탄환 치명타 배율 +2\n이후 탄환 치명타 확률 +5%p"
     damage: 17
     maxRange: 5
     criticalChance: 25
@@ -96,8 +94,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "\uB2E4\uC74C \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0 \uBC30\uC728
-      +3. \uC774\uD6C4 \uD0C4\uD658\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +10%p."
+  - description: "다음 탄환 치명타 배율 +3\n이후 탄환 치명타 확률 +10%p"
     damage: 20
     maxRange: 5
     criticalChance: 30

@@ -11,6 +11,7 @@ public partial class PlayerShoot : MonoBehaviour
     public event Action<BulletInstance> BulletFired;
     public event Action<int> DamageDealt;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
+    public event Action<BulletInstance> LoadedBulletEjected;
     public event Action LoadedBulletDamagePreviewShown;
 
     private readonly struct DamageReservation
@@ -538,9 +539,15 @@ public partial class PlayerShoot : MonoBehaviour
 
         ClearLoadedBulletDamagePreview();
 
-        return deckManager.TryEjectLoadedBullet(
-            loadedBulletIndex,
-            out _);
+        if (!deckManager.TryEjectLoadedBullet(
+                loadedBulletIndex,
+                out BulletInstance ejectedBullet))
+        {
+            return false;
+        }
+
+        LoadedBulletEjected?.Invoke(ejectedBullet);
+        return true;
     }
 
     public bool ShowLoadedBulletDamagePreview(int loadedBulletIndex)

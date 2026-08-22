@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_clone
   displayName: "\uD074\uB860"
-  description: "\uC9C1\uC804\uC5D0 \uBC1C\uC0AC\uB41C \uD0C4\uD658\uC758 \uB300\uBBF8\uC9C0\uC640
-    \uB2A5\uB825\uC744 \uBCF5\uC81C\uD558\uC5EC \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
+  description: "직전 탄환의 피해·효과 복제"
   cylinderIcon: {fileID: -7030108036579215050, guid: 0f16e92e51913424f814240e529661e0, type: 3}
   price: 10
   grade: 2
@@ -45,8 +44,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uC9C1\uC804\uC5D0 \uBC1C\uC0AC\uB41C \uD0C4\uD658\uC744 \uBCF5\uC81C\uD558\uACE0
-      \uBCF5\uC81C\uD0C4 \uCD5C\uC885\uB300\uBBF8\uC9C0 +15%"
+  - description: "직전 탄환 복제\n복제탄 최종 피해 +15%"
     damage: 14
     maxRange: 3
     criticalChance: 22
@@ -66,8 +64,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "\uC9C1\uC804\uC5D0 \uBC1C\uC0AC\uB41C \uD0C4\uD658\uC744 \uBCF5\uC81C\uD558\uACE0
-      \uBCF5\uC81C\uD0C4 \uCD5C\uC885\uB300\uBBF8\uC9C0 +30%"
+  - description: "직전 탄환 복제\n복제탄 최종 피해 +30%"
     damage: 19
     maxRange: 4
     criticalChance: 32
@@ -87,9 +84,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.15
     upgradeCost: 100
-  - description: "\uC9C1\uC804\uC5D0 \uBC1C\uC0AC\uB41C \uD0C4\uD658\uC744 \uBCF5\uC81C\uD558\uACE0
-      \uBCF5\uC81C\uD0C4 \uCD5C\uC885\uB300\uBBF8\uC9C0 +50%\n\uC7AC\uC7A5\uC804
-      \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "직전 탄환 복제\n복제탄 최종 피해 +50%\n재장전 시 턴 소모 없음"
     damage: 26
     maxRange: 5
     criticalChance: 45

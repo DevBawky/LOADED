@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uBCF4\uD1B5\uD0C4"
-  description: "\uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  description: "기본 탄환"
   cylinderIcon: {fileID: 21300000, guid: ff771df025c71e04c9c634cbc6ec431b, type: 3}
   price: 3
   grade: 0
@@ -38,8 +38,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 5
   upgradeLevels:
-  - description: "\uC870\uAE08 \uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
-      \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  - description: "기본 탄환"
     damage: 22
     maxRange: 3
     criticalChance: 20
@@ -51,7 +50,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 10
-  - description: "\uB354 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778 \uD0C4\uD658\uC785\uB2C8\uB2E4."
+  - description: "기본 탄환"
     damage: 25
     maxRange: 3
     criticalChance: 27
@@ -63,8 +62,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 15
-  - description: "\uB354 \uB9CE\uC774 \uAC15\uB825\uD574\uC9C4 \uC77C\uBC18\uC801\uC778
-      \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uAD00\uD1B5 1\uD68C (80%)"
+  - description: "기본 탄환\n관통 1회 (80%)"
     damage: 30
     maxRange: 4
     criticalChance: 35

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_spread
   displayName: "\uD655\uC0B0\uD0C4"
-  description: "\uC774\uD6C4 \uD0C4\uD658\uC758 \uCD5C\uC885 \uD53C\uD574 +15%."
+  description: "이후 탄환 최종 피해 +15%"
   cylinderIcon: {fileID: 6459364409021095807, guid: 1e448a4270ef93e47bfb7ca96b21808e, type: 3}
   price: 10
   grade: 2
@@ -46,7 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uC774\uD6C4 \uD0C4\uD658\uC758 \uCD5C\uC885 \uD53C\uD574 +20%."
+  - description: "이후 탄환 최종 피해 +20%"
     damage: 16
     maxRange: 5
     criticalChance: 24
@@ -66,8 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "\uC774\uD6C4 \uD0C4\uD658\uC758 \uCD5C\uC885 \uD53C\uD574 +30%.
-      50% \uD655\uB960\uB85C \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "이후 탄환 최종 피해 +30%\n관통 1회 (50%)"
     damage: 20
     maxRange: 5
     criticalChance: 28
@@ -88,8 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uC774\uD6C4 \uD0C4\uD658\uC758 \uCD5C\uC885 \uD53C\uD574 +40%.
-      \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "이후 탄환 최종 피해 +40%\n관통 1회"
     damage: 25
     maxRange: 6
     criticalChance: 35

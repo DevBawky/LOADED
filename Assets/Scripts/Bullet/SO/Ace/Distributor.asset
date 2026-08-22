@@ -14,10 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_distributor
   displayName: "\uBD84\uBC30"
-  description: "\uB300\uBBF8\uC9C0 \uCD95\uC801 \uD6A8\uACFC\uB85C \uB204\uC801\uB41C
-    \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 100% \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
-    \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4.\n\uBC1C\uC0AC
-    \uC2DC \uD30C\uAD34 (10%)"
+  description: "누적 피해 보너스 100%를 남은 탄환 전체에 분배\n발사 시 파괴 (10%)"
   cylinderIcon: {fileID: -9192586164993529986, guid: 81c43afc203a57d4dbadd0567903f9e7, type: 3}
   price: 10
   grade: 2
@@ -57,10 +54,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uB300\uBBF8\uC9C0 \uCD95\uC801 \uD6A8\uACFC\uB85C \uB204\uC801\uB41C
-      \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 110% \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
-      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4.\n\uBC1C\uC0AC
-      \uC2DC \uD30C\uAD34 (6%)"
+  - description: "누적 피해 보너스 110%를 남은 탄환 전체에 분배\n발사 시 파괴 (6%)"
     damage: 14
     maxRange: 4
     criticalChance: 18
@@ -90,10 +84,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "\uB300\uBBF8\uC9C0 \uCD95\uC801 \uD6A8\uACFC\uB85C \uB204\uC801\uB41C
-      \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 125% \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
-      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4.\n\uBC1C\uC0AC
-      \uC2DC \uD30C\uAD34 (3%)"
+  - description: "누적 피해 보너스 125%를 남은 탄환 전체에 분배\n발사 시 파괴 (3%)"
     damage: 18
     maxRange: 5
     criticalChance: 22
@@ -123,11 +114,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "\uB300\uBBF8\uC9C0 \uCD95\uC801 \uD6A8\uACFC\uB85C \uB204\uC801\uB41C
-      \uB300\uBBF8\uC9C0 \uBCF4\uB108\uC2A4\uB97C 150% \uC800\uC7A5\uD558\uACE0 \uB0A8\uC740
-      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\uD569\uB2C8\uB2E4. \uBC1C\uC0AC
-      \uC2DC \uD30C\uAD34 (1%)\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
-      \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "누적 피해 보너스 150%를 남은 탄환 전체에 분배\n발사 시 파괴 (1%)\n재장전 시 턴 소모 없음"
     damage: 24
     maxRange: 5
     criticalChance: 28

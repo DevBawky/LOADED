@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: closed_circuit
   displayName: "\uD3D0\uC1C4 \uD68C\uB85C"
-  description: "적에게 피해를 주면 뒤의 적에게 20% 피해를 전이합니다."
+  description: "피해 시 뒤의 가장 가까운 적에게 피해 20% 전이"
   icon: {fileID: 2683132763037565071, guid: 07f05729e44332a4fb054f671d5179dd, type: 3}
   lifetimeType: 0
   initialCharges: 1

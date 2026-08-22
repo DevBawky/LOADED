@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_evasion
   displayName: "\uD68C\uD53C\uD0C4"
-  description: "\uC801\uACFC \uD50C\uB808\uC774\uC5B4\uB97C \uBC18\uB300 \uBC29\uD5A5\uC73C\uB85C
-    1\uCE78 \uC774\uB3D9\uC2DC\uD0B5\uB2C8\uB2E4."
+  description: "적·플레이어 반대 방향으로 1칸 이동"
   cylinderIcon: {fileID: 3249896679004901830, guid: 5364dc00657126e4b9a649732e993e18, type: 3}
   price: 6
   grade: 1
@@ -55,8 +54,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uC801\uC744 2\uCE78 \uBC00\uCE58\uACE0 \uD50C\uB808\uC774\uC5B4\uB97C
-      \uBC18\uB300 \uBC29\uD5A5\uC73C\uB85C 1\uCE78 \uC774\uB3D9\uC2DC\uD0B5\uB2C8\uB2E4."
+  - description: "적 밀치기 2칸\n플레이어 반대 방향으로 1칸 이동"
     damage: 21
     maxRange: 4
     criticalChance: 22
@@ -84,8 +82,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "\uC801\uACFC \uD50C\uB808\uC774\uC5B4\uB97C \uBC18\uB300 \uBC29\uD5A5\uC73C\uB85C
-      2\uCE78 \uC774\uB3D9\uC2DC\uD0B5\uB2C8\uB2E4."
+  - description: "적·플레이어 반대 방향으로 2칸 이동"
     damage: 24
     maxRange: 5
     criticalChance: 25
@@ -113,8 +110,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "\uC801\uC744 3\uCE78 \uBC00\uCE58\uACE0 \uD50C\uB808\uC774\uC5B4\uB97C
-      \uBC18\uB300 \uBC29\uD5A5\uC73C\uB85C 2\uCE78 \uC774\uB3D9\uC2DC\uD0B5\uB2C8\uB2E4."
+  - description: "적 밀치기 3칸\n플레이어 반대 방향으로 2칸 이동"
     damage: 28
     maxRange: 5
     criticalChance: 30

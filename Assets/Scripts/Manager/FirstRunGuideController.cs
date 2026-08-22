@@ -106,6 +106,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private bool waited;
     private bool enemyActionInspected;
     private int reloadCount;
+    private bool chamberEjected;
     private bool bulletInfoInspected;
     private bool cylinderReordered;
     private bool damagePreviewInspected;
@@ -326,6 +327,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         waited = false;
         enemyActionInspected = false;
         reloadCount = 0;
+        chamberEjected = false;
         bulletInfoInspected = false;
         cylinderReordered = false;
         damagePreviewInspected = false;
@@ -883,6 +885,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             CombatStep.Wait => waited,
             CombatStep.InspectEnemyAction => enemyActionInspected,
             CombatStep.ReloadThree => reloadCount >= 3,
+            CombatStep.EjectChamber => chamberEjected,
             CombatStep.InspectBulletInfo => bulletInfoInspected,
             CombatStep.ReorderCylinder => cylinderReordered,
             CombatStep.PreviewDamage => damagePreviewInspected,
@@ -946,6 +949,17 @@ public sealed class FirstRunGuideController : MonoBehaviour
                     priority = new PriorityMission(
                         "실린더를 발사해 장전 공간 만들기",
                         "Button | Shoot");
+                    return true;
+                }
+
+                break;
+
+            case CombatStep.EjectChamber:
+                if (loadedBulletCount <= 0)
+                {
+                    priority = new PriorityMission(
+                        "제거할 탄환 1발 장전",
+                        "Button | Reload");
                     return true;
                 }
 
@@ -1466,6 +1480,12 @@ public sealed class FirstRunGuideController : MonoBehaviour
         EvaluateMission();
     }
 
+    private void HandleLoadedBulletEjected(BulletInstance _)
+    {
+        chamberEjected = true;
+        EvaluateMission();
+    }
+
     private void HandleDamagePreviewShown()
     {
         damagePreviewInspected = true;
@@ -1571,6 +1591,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         playerMove.PushPerformed += HandleKickPerformed;
         playerShoot.BehaviourActionStarted += HandleBehaviourActionStarted;
         playerShoot.BulletFired += HandleBulletFired;
+        playerShoot.LoadedBulletEjected += HandleLoadedBulletEjected;
         playerShoot.LoadedBulletDamagePreviewShown +=
             HandleDamagePreviewShown;
         cylinderUI.BulletOrderChanged += HandleCylinderOrderChanged;
@@ -1598,6 +1619,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         {
             playerShoot.BehaviourActionStarted -= HandleBehaviourActionStarted;
             playerShoot.BulletFired -= HandleBulletFired;
+            playerShoot.LoadedBulletEjected -= HandleLoadedBulletEjected;
             playerShoot.LoadedBulletDamagePreviewShown -=
                 HandleDamagePreviewShown;
         }

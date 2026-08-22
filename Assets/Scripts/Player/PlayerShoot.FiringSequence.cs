@@ -12,6 +12,19 @@ public partial class PlayerShoot
         return !hasRequiredShotgunShot && interval > 0f;
     }
 
+    internal static void ResetPostFireAbilityStacks(
+        BulletInstance firedBullet,
+        BulletInstance resolvedBullet)
+    {
+        if (firedBullet != null
+            && BulletEffectUtility.Find(
+                resolvedBullet,
+                BulletEffectType.Seismometer) != null)
+        {
+            firedBullet.ResetAbilityStacks();
+        }
+    }
+
     private sealed class FiringSequenceController
     {
         private readonly struct ReplayShot
@@ -1522,6 +1535,8 @@ public partial class PlayerShoot
                     Mathf.CeilToInt(
                         firedBullet.AbilityStacks * retentionRatio));
             }
+
+            ResetPostFireAbilityStacks(firedBullet, resolvedBullet);
         }
     
         private void HandleShotResult(

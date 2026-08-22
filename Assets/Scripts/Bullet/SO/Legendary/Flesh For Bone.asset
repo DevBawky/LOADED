@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_flesh_for_bone
   displayName: "\uC721\uCC38\uACE8\uB2E8"
-  description: "\uBC1C\uC0AC \uC2DC \uCCB4\uB825 8\uC744 \uC783\uACE0 \uAE30\uBCF8
-    \uD53C\uD574 +24."
+  description: "발사 시 체력 -8\n기본 피해 +24"
   cylinderIcon: {fileID: -3397261218555428243, guid: 4a51bbf44ad203f448dbbce9d13c0f43, type: 3}
   price: 20
   grade: 3
@@ -47,8 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 50
   upgradeLevels:
-  - description: "\uBC1C\uC0AC \uC2DC \uCCB4\uB825 10\uC744 \uC783\uACE0 \uAE30\uBCF8
-      \uD53C\uD574 +30."
+  - description: "발사 시 체력 -10\n기본 피해 +30"
     damage: 12
     maxRange: 5
     criticalChance: 25
@@ -68,8 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uBC1C\uC0AC \uC2DC \uCCB4\uB825 12\uB97C \uC783\uACE0 \uAE30\uBCF8
-      \uD53C\uD574 +36. 50% \uD655\uB960\uB85C \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "발사 시 체력 -12\n기본 피해 +36\n관통 1회 (50%)"
     damage: 15
     maxRange: 5
     criticalChance: 30
@@ -90,8 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 200
-  - description: "\uBC1C\uC0AC \uC2DC \uCCB4\uB825 15\uB97C \uC783\uACE0 \uAE30\uBCF8
-      \uD53C\uD574 +45. \uC801 2\uBA85 \uAD00\uD1B5."
+  - description: "발사 시 체력 -15\n기본 피해 +45\n관통 2회"
     damage: 20
     maxRange: 6
     criticalChance: 40

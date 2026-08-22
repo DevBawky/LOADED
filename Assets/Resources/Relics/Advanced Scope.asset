@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier:
   relicId: advanced_scope
   displayName: "최고급 조준경"
-  description: "모든 탄환의 사거리가 1 증가합니다."
+  description: "모든 탄환 사거리 +1"
   icon: {fileID: 7992578565702372793, guid: f0a13cfddc45f244f8c3cba4c936929b, type: 3}
   lifetimeType: 0
   initialCharges: 1

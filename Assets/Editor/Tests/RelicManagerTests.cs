@@ -162,7 +162,7 @@ public sealed class RelicManagerTests
     {
         RelicData relicData = CreateRelic(
             "runtime-state",
-            effectType: RelicEffectType.PredatorHolster);
+            effectType: RelicEffectType.FamilyWill);
         manager.TryAcquire(relicData);
         RelicInstance relic = manager.OwnedRelics[0];
         relic.SetPrimaryCounter(7);
@@ -252,6 +252,77 @@ public sealed class RelicManagerTests
         {
             Object.DestroyImmediate(enemyObject);
         }
+    }
+
+    [Test]
+    public void PredatorHolster_ConsecutiveKillsQueueOnlyOneBullet()
+    {
+        GameObject firstEnemyObject = new GameObject("First Holster Enemy");
+        GameObject secondEnemyObject = new GameObject("Second Holster Enemy");
+
+        try
+        {
+            RelicData holster = CreateRelic(
+                "single-predator-holster",
+                effectType: RelicEffectType.PredatorHolster);
+            manager.TryAcquire(holster);
+            RelicInstance relic = manager.OwnedRelics[0];
+
+            manager.NotifyEnemyDefeated(
+                firstEnemyObject.AddComponent<EnemyController>(),
+                null,
+                null,
+                null);
+            manager.NotifyEnemyDefeated(
+                secondEnemyObject.AddComponent<EnemyController>(),
+                null,
+                null,
+                null);
+
+            Assert.That(relic.PrimaryCounter, Is.EqualTo(1));
+            Assert.That(manager.GetRelicStatusText(relic), Is.Empty);
+
+            BulletInstance firstReloaded = new BulletInstance(null, 31);
+            BulletInstance secondReloaded = new BulletInstance(null, 32);
+            manager.ShouldReloadConsumeTurn(firstReloaded, true);
+            manager.ShouldReloadConsumeTurn(secondReloaded, false);
+
+            Assert.That(relic.HasTrackedBullet(31), Is.True);
+            Assert.That(relic.HasTrackedBullet(32), Is.False);
+            Assert.That(
+                relic.TrackedBulletAcquisitionOrders.Count,
+                Is.EqualTo(1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(firstEnemyObject);
+            Object.DestroyImmediate(secondEnemyObject);
+        }
+    }
+
+    [Test]
+    public void PredatorHolster_RestoreNormalizesLegacyQueuedStacks()
+    {
+        RelicData holster = CreateRelic(
+            "legacy-predator-holster",
+            effectType: RelicEffectType.PredatorHolster);
+        manager.TryAcquire(holster);
+        RelicInstance relic = manager.OwnedRelics[0];
+        relic.SetPrimaryCounter(7);
+        relic.AddTrackedBullet(11);
+        relic.AddTrackedBullet(23);
+
+        List<RunRelicSaveData> saved = new List<RunRelicSaveData>();
+        manager.CaptureRunState(saved);
+
+        Assert.That(manager.RestoreRunState(
+            saved,
+            id => id == holster.Id ? holster : null), Is.True);
+        RelicInstance restored = manager.OwnedRelics[0];
+        Assert.That(restored.PrimaryCounter, Is.Zero);
+        Assert.That(
+            restored.TrackedBulletAcquisitionOrders,
+            Is.EqualTo(new[] { 11 }));
     }
 
     [Test]
@@ -385,7 +456,7 @@ public sealed class RelicManagerTests
         manager.OwnedRelics[0].SetPrimaryCounter(1);
         Assert.That(
             manager.GetRelicStatusText(manager.OwnedRelics[0]),
-            Is.EqualTo("1"));
+            Is.Empty);
         Assert.That(manager.TryGetLoadedBulletRelicModifiers(
             5,
             6,
@@ -459,7 +530,7 @@ public sealed class RelicManagerTests
     }
 
     [Test]
-    public void PersistentRelicStatus_ShowsPrimerChanceAndCircuitShots()
+    public void NonStackingRelicStatus_DoesNotShowPrimerChance()
     {
         RelicData primer = CreateRelic(
             "primer-status",
@@ -470,7 +541,7 @@ public sealed class RelicManagerTests
 
         Assert.That(
             manager.GetRelicStatusText(manager.OwnedRelics[0]),
-            Is.EqualTo("10%"));
+            Is.Empty);
     }
 
     [Test]

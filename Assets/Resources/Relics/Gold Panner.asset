@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: gold_panner
   displayName: "\uC0AC\uAE08 \uC120\uBCC4\uAE30"
-  description: "적 처치 시 5% 확률로 골드를 7배 획득합니다."
+  description: "적 처치 골드 x7 (5%)"
   icon: {fileID: 3320616201011708611, guid: 11b3e8f1af311ca4aa977157e5fd7247, type: 3}
   lifetimeType: 0
   initialCharges: 1

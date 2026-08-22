@@ -14,10 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_accumulator
   displayName: "\uCD95\uC804\uAE30"
-  description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
-    \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
-    +20%, \uBC1C\uC0AC \uD6C4 50%\uB97C \uBCF4\uC874\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
-    (8%)"
+  description: "다른 탄환이 치명타를 발생시키면 전력 +1\n전력 하나당 최종 피해 +20%, 발사 후 50%를 보존\n발사 시 파괴 (8%)"
   cylinderIcon: {fileID: 6396061427510755365, guid: 125bc83cf0534c64aaea6b7f4d16d2f6, type: 3}
   price: 10
   grade: 2
@@ -53,10 +50,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
-      \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
-      +25%, \uBC1C\uC0AC \uD6C4 75%\uB97C \uBCF4\uC874\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
-      (6%)"
+  - description: "다른 탄환이 치명타를 발생시키면 전력 +1\n전력 하나당 최종 피해 +25%, 발사 후 75%를 보존\n발사 시 파괴 (6%)"
     damage: 25
     maxRange: 4
     criticalChance: 24
@@ -82,10 +76,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
-      \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
-      +30%, \uBC1C\uC0AC \uD6C4 100%\uB97C \uBCF4\uC874\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
-      (4%)"
+  - description: "다른 탄환이 치명타를 발생시키면 전력 +1\n전력 하나당 최종 피해 +30%, 발사 후 100%를 보존\n발사 시 파괴 (4%)"
     damage: 28
     maxRange: 5
     criticalChance: 28
@@ -111,10 +102,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
-      \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
-      +35%, \uBC1C\uC0AC \uD6C4 100%\uB97C \uBCF4\uC874, \uAE30\uC808 +2\n\uBC1C\uC0AC
-      \uC2DC \uD30C\uAD34 (2%)"
+  - description: "다른 탄환이 치명타를 발생시키면 전력 +1\n전력 하나당 최종 피해 +35%, 발사 후 100%를 보존, 기절 +2\n발사 시 파괴 (2%)"
     damage: 35
     maxRange: 5
     criticalChance: 35

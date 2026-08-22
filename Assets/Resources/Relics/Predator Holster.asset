@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: predator_holster
   displayName: "\uD3EC\uC2DD\uC790\uC758 \uD640\uC2A4\uD130"
-  description: "적 처치 후 다음에 장전되는 탄환 1발의 최종 피해가 12% 증가합니다."
+  description: "적 처치 시 다음 장전 탄환 1발 최종 피해 x1.12"
   icon: {fileID: -8404938866605439318, guid: feed7fdac638ee0498680360b427220e, type: 3}
   lifetimeType: 0
   initialCharges: 1

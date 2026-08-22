@@ -122,13 +122,13 @@ public static class NewBulletAssetBuilder
             "bullet_seismometer",
             "지진계",
             BulletGrade.Rare,
-            Level("이동한 칸마다 스택 +1. 스택당 최종 피해 +10%.",
+            Level("이동 1칸당 이동 스택 +1\n이동 스택당 최종 피해 +10%",
                 20, 4, 20f, 2f, Effect(BulletEffectType.Seismometer, 10f)),
-            Level("이동한 칸마다 스택 +1. 스택당 최종 피해 +12%.",
+            Level("이동 1칸당 이동 스택 +1\n이동 스택당 최종 피해 +12%",
                 22, 4, 22f, 2f, Effect(BulletEffectType.Seismometer, 12f)),
-            Level("이동한 칸마다 스택 +1. 스택당 최종 피해 +15%. 50% 확률로 적 1명 관통.",
+            Level("이동 1칸당 이동 스택 +1\n이동 스택당 최종 피해 +15%\n관통 1회 (50%)",
                 24, 5, 25f, 2f, Effect(BulletEffectType.Seismometer, 15f), 50f),
-            Level("이동한 칸마다 스택 +1. 스택당 최종 피해 +20%. 적 1명 관통.",
+            Level("이동 1칸당 이동 스택 +1\n이동 스택당 최종 피해 +20%\n관통 1회",
                 28, 5, 30f, 2.2f, Effect(BulletEffectType.Seismometer, 20f), 100f));
 
         yield return new BulletSpec(
@@ -136,13 +136,13 @@ public static class NewBulletAssetBuilder
             "bullet_reverse_shot",
             "리버스탄",
             BulletGrade.Rare,
-            Level("바라보는 방향의 반대로 발사합니다.",
+            Level("반대 방향으로 발사",
                 35, 5, 20f, 2f, Effect(BulletEffectType.ReverseShot)),
-            Level("바라보는 방향의 반대로 발사합니다.",
+            Level("반대 방향으로 발사",
                 40, 6, 22f, 2f, Effect(BulletEffectType.ReverseShot)),
-            Level("바라보는 방향의 반대로 발사합니다. 50% 확률로 적 1명 관통.",
+            Level("반대 방향으로 발사\n관통 1회 (50%)",
                 45, 6, 25f, 2f, Effect(BulletEffectType.ReverseShot), 50f),
-            Level("바라보는 방향의 반대로 발사합니다. 적 1명 관통.",
+            Level("반대 방향으로 발사\n관통 1회",
                 50, 7, 30f, 2.2f, Effect(BulletEffectType.ReverseShot), 100f));
 
         yield return new BulletSpec(
@@ -150,13 +150,13 @@ public static class NewBulletAssetBuilder
             "bullet_evasion",
             "회피탄",
             BulletGrade.Rare,
-            EvasionLevel("적과 플레이어를 반대 방향으로 1칸 이동시킵니다.",
+            EvasionLevel("적·플레이어 반대 방향으로 1칸 이동",
                 18, 4, 20f, 1, 1),
-            EvasionLevel("적을 2칸 밀치고 플레이어를 반대 방향으로 1칸 이동시킵니다.",
+            EvasionLevel("적 밀치기 2칸\n플레이어 반대 방향으로 1칸 이동",
                 21, 4, 22f, 2, 1),
-            EvasionLevel("적과 플레이어를 반대 방향으로 2칸 이동시킵니다.",
+            EvasionLevel("적·플레이어 반대 방향으로 2칸 이동",
                 24, 5, 25f, 2, 2),
-            EvasionLevel("적을 3칸 밀치고 플레이어를 반대 방향으로 2칸 이동시킵니다.",
+            EvasionLevel("적 밀치기 3칸\n플레이어 반대 방향으로 2칸 이동",
                 28, 5, 30f, 3, 2));
 
         yield return new BulletSpec(
@@ -164,16 +164,16 @@ public static class NewBulletAssetBuilder
             "bullet_immersion",
             "몰두",
             BulletGrade.Rare,
-            Level("다음 탄환의 치명타 배율 +1.",
+            Level("다음 탄환 치명타 배율 +1",
                 12, 4, 20f, 2f, Effect(BulletEffectType.Immersion, 1f)),
-            Level("다음 탄환의 치명타 배율 +1.5.",
+            Level("다음 탄환 치명타 배율 +1.5",
                 14, 4, 22f, 2f, Effect(BulletEffectType.Immersion, 1.5f)),
-            Level("다음 탄환의 치명타 배율 +2. 이후 탄환의 치명타 확률 +5%p.",
+            Level("다음 탄환 치명타 배율 +2\n이후 탄환 치명타 확률 +5%p",
                 17, 5, 25f, 2f,
                 Effects(
                     new EffectSpec(BulletEffectType.Immersion, 2f),
                     new EffectSpec(BulletEffectType.Concentration, 5f))),
-            Level("다음 탄환의 치명타 배율 +3. 이후 탄환의 치명타 확률 +10%p.",
+            Level("다음 탄환 치명타 배율 +3\n이후 탄환 치명타 확률 +10%p",
                 20, 5, 30f, 2.2f,
                 Effects(
                     new EffectSpec(BulletEffectType.Immersion, 3f),
@@ -184,13 +184,13 @@ public static class NewBulletAssetBuilder
             "bullet_spread",
             "확산탄",
             BulletGrade.Ace,
-            Level("이후 탄환의 최종 피해 +15%.",
+            Level("이후 탄환 최종 피해 +15%",
                 12, 4, 20f, 2f, Effect(BulletEffectType.Spread, 15f)),
-            Level("이후 탄환의 최종 피해 +20%.",
+            Level("이후 탄환 최종 피해 +20%",
                 16, 5, 24f, 2f, Effect(BulletEffectType.Spread, 20f)),
-            Level("이후 탄환의 최종 피해 +30%. 50% 확률로 적 1명 관통.",
+            Level("이후 탄환 최종 피해 +30%\n관통 1회 (50%)",
                 20, 5, 28f, 2.2f, Effect(BulletEffectType.Spread, 30f), 50f),
-            Level("이후 탄환의 최종 피해 +40%. 적 1명 관통.",
+            Level("이후 탄환 최종 피해 +40%\n관통 1회",
                 25, 6, 35f, 2.5f, Effect(BulletEffectType.Spread, 40f), 100f));
 
         yield return new BulletSpec(
@@ -198,13 +198,13 @@ public static class NewBulletAssetBuilder
             "bullet_conscious",
             "의식",
             BulletGrade.Ace,
-            RitualLevel("치명타 시 집중 +1. 집중당 치명타 배율 +0.25. 비치명타 시 집중을 잃고 25% 확률로 파괴됩니다.",
+            RitualLevel("치명타 시 집중 +1\n집중당 치명타 배율 +0.25\n비치명타 시 집중 소모, 파괴 (25%)",
                 12, 4, 25f, 0.25f, 25f, 1),
-            RitualLevel("치명타 시 집중 +1. 집중당 치명타 배율 +0.3. 비치명타 시 집중을 잃고 20% 확률로 파괴됩니다.",
+            RitualLevel("치명타 시 집중 +1\n집중당 치명타 배율 +0.3\n비치명타 시 집중 소모, 파괴 (20%)",
                 15, 4, 30f, 0.3f, 20f, 1),
-            RitualLevel("치명타 시 집중 +1. 집중당 치명타 배율 +0.4. 비치명타 시 집중을 잃고 10% 확률로 파괴됩니다.",
+            RitualLevel("치명타 시 집중 +1\n집중당 치명타 배율 +0.4\n비치명타 시 집중 소모, 파괴 (10%)",
                 18, 5, 38f, 0.4f, 10f, 1),
-            RitualLevel("치명타 시 집중 +2. 집중당 치명타 배율 +0.5. 비치명타 시 집중만 잃습니다.",
+            RitualLevel("치명타 시 집중 +2\n집중당 치명타 배율 +0.5\n비치명타 시 집중 소모",
                 22, 5, 50f, 0.5f, 0f, 2));
 
         yield return new BulletSpec(
@@ -212,13 +212,13 @@ public static class NewBulletAssetBuilder
             "bullet_tracking",
             "추적탄",
             BulletGrade.Ace,
-            TrackingLevel("탄환 효과로 이동할 때마다 추적 +1. 발사 시 추적만큼 무작위 적에게 표식 +1.",
+            TrackingLevel("탄환 효과 이동 시 추적 +1\n발사 시 추적당 무작위 적에게 표식 +1",
                 12, 5, 20f, 1),
-            TrackingLevel("탄환 효과로 이동할 때마다 추적 +1. 발사 시 추적만큼 무작위 적에게 표식 +1.",
+            TrackingLevel("탄환 효과 이동 시 추적 +1\n발사 시 추적당 무작위 적에게 표식 +1",
                 16, 5, 24f, 1),
-            TrackingLevel("탄환 효과로 이동할 때마다 추적 +1. 발사 시 추적만큼 무작위 적에게 표식 +2.",
+            TrackingLevel("탄환 효과 이동 시 추적 +1\n발사 시 추적당 무작위 적에게 표식 +2",
                 20, 6, 28f, 2, 50f),
-            TrackingLevel("탄환 효과로 이동할 때마다 추적 +1. 발사 시 추적만큼 무작위 적에게 표식 +3. 적 1명 관통.",
+            TrackingLevel("탄환 효과 이동 시 추적 +1\n발사 시 추적당 무작위 적에게 표식 +3\n관통 1회",
                 25, 6, 35f, 3, 100f));
 
         yield return new BulletSpec(
@@ -226,13 +226,13 @@ public static class NewBulletAssetBuilder
             "bullet_assassination",
             "암살",
             BulletGrade.Ace,
-            Level("이번 턴에 이미 피격된 적에게 최종 피해 +10%.",
+            Level("이번 턴 피격된 적 대상 최종 피해 +10%",
                 28, 5, 25f, 2f, Effect(BulletEffectType.Assassination, 10f)),
-            Level("이번 턴에 이미 피격된 적에게 최종 피해 +20%.",
+            Level("이번 턴 피격된 적 대상 최종 피해 +20%",
                 32, 5, 30f, 2f, Effect(BulletEffectType.Assassination, 20f)),
-            Level("이번 턴에 이미 피격된 적에게 최종 피해 +35%. 50% 확률로 적 1명 관통.",
+            Level("이번 턴 피격된 적 대상 최종 피해 +35%\n관통 1회 (50%)",
                 37, 6, 35f, 2.2f, Effect(BulletEffectType.Assassination, 35f), 50f),
-            Level("이번 턴에 이미 피격된 적에게 최종 피해 +50%. 적 2명 관통.",
+            Level("이번 턴 피격된 적 대상 최종 피해 +50%\n관통 2회",
                 43, 6, 45f, 2.5f, Effect(BulletEffectType.Assassination, 50f), 100f, 100f));
 
         yield return new BulletSpec(
@@ -240,13 +240,13 @@ public static class NewBulletAssetBuilder
             "bullet_high_roller",
             "하이롤러",
             BulletGrade.Ace,
-            Level("잃은 체력 비율에 따라 최종 피해가 최대 +100% 증가합니다.",
+            Level("잃은 체력 비율에 따라 최종 피해 최대 +100%",
                 20, 5, 20f, 2f, Effect(BulletEffectType.HighRoller, 100f)),
-            Level("잃은 체력 비율에 따라 최종 피해가 최대 +130% 증가합니다.",
+            Level("잃은 체력 비율에 따라 최종 피해 최대 +130%",
                 24, 5, 24f, 2f, Effect(BulletEffectType.HighRoller, 130f)),
-            Level("잃은 체력 비율에 따라 최종 피해가 최대 +160% 증가합니다. 50% 확률로 적 1명 관통.",
+            Level("잃은 체력 비율에 따라 최종 피해 최대 +160%\n관통 1회 (50%)",
                 28, 6, 30f, 2.2f, Effect(BulletEffectType.HighRoller, 160f), 50f),
-            Level("잃은 체력 비율에 따라 최종 피해가 최대 +200% 증가합니다. 적 2명 관통.",
+            Level("잃은 체력 비율에 따라 최종 피해 최대 +200%\n관통 2회",
                 34, 6, 38f, 2.5f, Effect(BulletEffectType.HighRoller, 200f), 100f, 100f));
 
         yield return new BulletSpec(
@@ -254,13 +254,13 @@ public static class NewBulletAssetBuilder
             "bullet_mastery",
             "통달",
             BulletGrade.Legendary,
-            Level("치명타 확률 5%, 치명타 배율 x7.",
+            Level("치명타 확률 5%\n치명타 배율 x7",
                 16, 5, 5f, 7f),
-            Level("치명타 확률 7%, 치명타 배율 x8.",
+            Level("치명타 확률 7%\n치명타 배율 x8",
                 20, 5, 7f, 8f),
-            Level("치명타 확률 10%, 치명타 배율 x10. 50% 확률로 적 1명 관통.",
+            Level("치명타 확률 10%\n치명타 배율 x10\n관통 1회 (50%)",
                 25, 6, 10f, 10f, null, 50f),
-            Level("치명타 확률 15%, 치명타 배율 x12. 적 2명 관통.",
+            Level("치명타 확률 15%\n치명타 배율 x12\n관통 2회",
                 30, 6, 15f, 12f, null, 100f, 100f));
 
         yield return new BulletSpec(
@@ -268,13 +268,13 @@ public static class NewBulletAssetBuilder
             "bullet_finale",
             "피날레",
             BulletGrade.Legendary,
-            Level("실린더의 마지막 탄환이 35% 확률로 한 번 더 발사됩니다.",
+            Level("실린더 마지막 탄환 추가 발사 (35%)",
                 18, 4, 20f, 2f, Effect(BulletEffectType.Finale, 35f)),
-            Level("실린더의 마지막 탄환이 50% 확률로 한 번 더 발사됩니다.",
+            Level("실린더 마지막 탄환 추가 발사 (50%)",
                 22, 5, 25f, 2f, Effect(BulletEffectType.Finale, 50f)),
-            Level("실린더의 마지막 탄환이 70% 확률로 한 번 더 발사됩니다. 적 1명 관통.",
+            Level("실린더 마지막 탄환 추가 발사 (70%)\n관통 1회",
                 28, 5, 30f, 2.3f, Effect(BulletEffectType.Finale, 70f), 100f),
-            Level("실린더의 마지막 탄환이 반드시 한 번 더 발사됩니다. 적 2명 관통.",
+            Level("실린더 마지막 탄환 추가 발사\n관통 2회",
                 35, 6, 40f, 2.7f, Effect(BulletEffectType.Finale, 100f), 100f, 100f));
 
         yield return new BulletSpec(
@@ -282,13 +282,13 @@ public static class NewBulletAssetBuilder
             "bullet_flesh_for_bone",
             "육참골단",
             BulletGrade.Legendary,
-            FleshForBoneLevel("발사 시 체력 8을 잃고 기본 피해 +24.",
+            FleshForBoneLevel("발사 시 체력 -8\n기본 피해 +24",
                 10, 4, 20f, 8f),
-            FleshForBoneLevel("발사 시 체력 10을 잃고 기본 피해 +30.",
+            FleshForBoneLevel("발사 시 체력 -10\n기본 피해 +30",
                 12, 5, 25f, 10f),
-            FleshForBoneLevel("발사 시 체력 12를 잃고 기본 피해 +36. 50% 확률로 적 1명 관통.",
+            FleshForBoneLevel("발사 시 체력 -12\n기본 피해 +36\n관통 1회 (50%)",
                 15, 5, 30f, 12f, 50f),
-            FleshForBoneLevel("발사 시 체력 15를 잃고 기본 피해 +45. 적 2명 관통.",
+            FleshForBoneLevel("발사 시 체력 -15\n기본 피해 +45\n관통 2회",
                 20, 6, 40f, 15f, 100f, 100f));
 
         yield return new BulletSpec(
@@ -296,13 +296,13 @@ public static class NewBulletAssetBuilder
             "bullet_repeat_mark",
             "도돌이표",
             BulletGrade.Legendary,
-            RepeatLevel("25% 확률로 이 실린더에서 앞서 발사한 모든 탄환을 다시 발사합니다.",
+            RepeatLevel("이 실린더에서 앞서 발사한 모든 탄환 재발사 (25%)",
                 15, 5, 15f, 2.5f, 25f),
-            RepeatLevel("35% 확률로 이 실린더에서 앞서 발사한 모든 탄환을 다시 발사합니다.",
+            RepeatLevel("이 실린더에서 앞서 발사한 모든 탄환 재발사 (35%)",
                 18, 5, 20f, 2.5f, 35f),
-            RepeatLevel("50% 확률로 이 실린더에서 앞서 발사한 모든 탄환을 다시 발사합니다. 적 1명 관통.",
+            RepeatLevel("이 실린더에서 앞서 발사한 모든 탄환 재발사 (50%)\n관통 1회",
                 22, 6, 25f, 2.8f, 50f, 100f),
-            RepeatLevel("75% 확률로 이 실린더에서 앞서 발사한 모든 탄환을 다시 발사합니다. 적 2명 관통.",
+            RepeatLevel("이 실린더에서 앞서 발사한 모든 탄환 재발사 (75%)\n관통 2회",
                 28, 6, 35f, 3f, 75f, 100f, 100f));
     }
 

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_lifesteal
   displayName: "\uAC70\uBA38\uB9AC"
-  description: "\uD53C\uD574\uB7C9\uB9CC\uD07C \uD761\uD608 (70%)"
+  description: "피해량만큼 흡혈 (70%)"
   cylinderIcon: {fileID: -7185434700578658702, guid: 021c097390f83374d941ad2d742ed91d, type: 3}
   price: 20
   grade: 3
@@ -46,7 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 50
   upgradeLevels:
-  - description: "\uD53C\uD574\uB7C9\uB9CC\uD07C \uD761\uD608"
+  - description: "피해량만큼 흡혈"
     damage: 5
     maxRange: 3
     criticalChance: 30
@@ -66,8 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uD53C\uD574\uB7C9\uB9CC\uD07C \uD761\uD608\n\uAD00\uD1B5 1\uD68C
-      (50%)"
+  - description: "피해량만큼 흡혈\n관통 1회 (50%)"
     damage: 8
     maxRange: 4
     criticalChance: 30
@@ -88,8 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 200
-  - description: "\uD53C\uD574\uB7C9\uB9CC\uD07C \uD761\uD608\n\uAD00\uD1B5 1\uD68C\n\uBAA8\uB4E0
-      \uC801\uC5D0\uAC8C \uC57D\uD654 +5"
+  - description: "피해량만큼 흡혈\n관통 1회\n모든 적에게 약화 +5"
     damage: 10
     maxRange: 4
     criticalChance: 50

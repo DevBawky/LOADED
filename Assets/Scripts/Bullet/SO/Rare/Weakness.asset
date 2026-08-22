@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_weakness
   displayName: "\uC57D\uD654\uD0C4"
-  description: "\uC57D\uD654 +3"
+  description: "약화 +3"
   cylinderIcon: {fileID: 1555538946713009086, guid: a0f23b1691353f54da65b21310560a46, type: 3}
   price: 6
   grade: 1
@@ -47,7 +47,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uC57D\uD654 +5"
+  - description: "약화 +5"
     damage: 13
     maxRange: 3
     criticalChance: 23
@@ -67,7 +67,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "\uC57D\uD654 +5\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +1"
+  - description: "약화 +5\n치명타 시 골드 +1"
     damage: 19
     maxRange: 4
     criticalChance: 37
@@ -97,8 +97,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "\uC57D\uD654 +5\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +2\n\uC7AC\uC7A5\uC804
-      \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "약화 +5\n치명타 시 골드 +2\n재장전 시 턴 소모 없음"
     damage: 25
     maxRange: 5
     criticalChance: 50

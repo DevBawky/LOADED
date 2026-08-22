@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_repeat_mark
   displayName: "\uB3C4\uB3CC\uC774\uD45C"
-  description: "25% \uD655\uB960\uB85C \uC774 \uC2E4\uB9B0\uB354\uC5D0\uC11C \uC55E\uC11C
-    \uBC1C\uC0AC\uD55C \uBAA8\uB4E0 \uD0C4\uD658\uC744 \uB2E4\uC2DC \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
+  description: "이 실린더에서 앞서 발사한 모든 탄환 재발사 (25%)"
   cylinderIcon: {fileID: -8499927456573142795, guid: db8303b39a7cb5e45b173eea54a2bc1a, type: 3}
   price: 20
   grade: 3
@@ -47,8 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 50
   upgradeLevels:
-  - description: "35% \uD655\uB960\uB85C \uC774 \uC2E4\uB9B0\uB354\uC5D0\uC11C \uC55E\uC11C
-      \uBC1C\uC0AC\uD55C \uBAA8\uB4E0 \uD0C4\uD658\uC744 \uB2E4\uC2DC \uBC1C\uC0AC\uD569\uB2C8\uB2E4."
+  - description: "이 실린더에서 앞서 발사한 모든 탄환 재발사 (35%)"
     damage: 18
     maxRange: 5
     criticalChance: 20
@@ -68,9 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "50% \uD655\uB960\uB85C \uC774 \uC2E4\uB9B0\uB354\uC5D0\uC11C \uC55E\uC11C
-      \uBC1C\uC0AC\uD55C \uBAA8\uB4E0 \uD0C4\uD658\uC744 \uB2E4\uC2DC \uBC1C\uC0AC\uD569\uB2C8\uB2E4.
-      \uC801 1\uBA85 \uAD00\uD1B5."
+  - description: "이 실린더에서 앞서 발사한 모든 탄환 재발사 (50%)\n관통 1회"
     damage: 22
     maxRange: 6
     criticalChance: 25
@@ -91,9 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 200
-  - description: "75% \uD655\uB960\uB85C \uC774 \uC2E4\uB9B0\uB354\uC5D0\uC11C \uC55E\uC11C
-      \uBC1C\uC0AC\uD55C \uBAA8\uB4E0 \uD0C4\uD658\uC744 \uB2E4\uC2DC \uBC1C\uC0AC\uD569\uB2C8\uB2E4.
-      \uC801 2\uBA85 \uAD00\uD1B5."
+  - description: "이 실린더에서 앞서 발사한 모든 탄환 재발사 (75%)\n관통 2회"
     damage: 28
     maxRange: 6
     criticalChance: 35

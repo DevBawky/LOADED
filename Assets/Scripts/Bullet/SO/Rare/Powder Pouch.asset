@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_powder_pouch
   displayName: "\uD654\uC57D \uC8FC\uBA38\uB2C8"
-  description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
-    \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +30%p"
+  description: "발사 시 자신 파괴\n실린더에 남은 탄환들의 치명타 확률 +30%p"
   cylinderIcon: {fileID: -7456226695306883464, guid: e4a881bd99bdb5a41a4d95fd6e40581c, type: 3}
   price: 3
   grade: 1
@@ -45,8 +44,7 @@ MonoBehaviour:
   recoilStrength: 0
   upgradeCost: 3
   upgradeLevels:
-  - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
-      \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +40%p"
+  - description: "발사 시 자신 파괴\n실린더에 남은 탄환들의 치명타 확률 +40%p"
     damage: 0
     maxRange: 3
     criticalChance: 0
@@ -66,8 +64,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0
     upgradeCost: 3
-  - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
-      \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +50%p"
+  - description: "발사 시 자신 파괴\n실린더에 남은 탄환들의 치명타 확률 +50%p"
     damage: 0
     maxRange: 3
     criticalChance: 0
@@ -87,8 +84,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0
     upgradeCost: 3
-  - description: "\uBC1C\uC0AC \uC2DC \uC790\uC2E0 \uD30C\uAD34\n\uC2E4\uB9B0\uB354\uC5D0
-      \uB0A8\uC740 \uD0C4\uD658\uB4E4\uC758 \uCE58\uBA85\uD0C0 \uD655\uB960 +100%p"
+  - description: "발사 시 자신 파괴\n실린더에 남은 탄환들의 치명타 확률 +100%p"
     damage: 0
     maxRange: 3
     criticalChance: 0

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_resonance
   displayName: "\uACF5\uBA85\uD0C4"
-  description: "실린더에 남아 있는 다른 공명탄 하나당 최종대미지 +25%"
+  description: "실린더에 남아 있는 다른 공명탄 하나당 최종 피해 +25%"
   cylinderIcon: {fileID: 7042858435584613796, guid: 7b79d6a48f71d2f44bc1338af5e892f5, type: 3}
   price: 6
   grade: 1
@@ -44,7 +44,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종대미지 +30%"
+  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 피해 +30%"
     damage: 35
     maxRange: 3
     criticalChance: 21
@@ -64,7 +64,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종대미지 +40%"
+  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 피해 +40%"
     damage: 40
     maxRange: 4
     criticalChance: 29
@@ -84,7 +84,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.15
     upgradeCost: 40
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종대미지 +50%"
+  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 피해 +50%"
     damage: 50
     maxRange: 5
     criticalChance: 40
