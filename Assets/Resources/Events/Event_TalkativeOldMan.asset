@@ -13,21 +13,76 @@ MonoBehaviour:
   m_Name: Event_TalkativeOldMan
   m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
   eventId: talkative-old-man
-  displayName: 말 많은 노인
-  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
-  dialogue: 나그네 노인이 길을 막고 한참이나 자기 이야기를 늘어놓는다. 마침내 당신의 탄환 하나를 집어 들고 내용물을 가린다.
+  displayName: "\uB9D0 \uB9CE\uC740 \uB178\uC778"
+  artwork: {fileID: 3433739689762247904, guid: 40642e45f25ae0447be3ddaa57459de6, type: 3}
+  dialogue: "\uB098\uADF8\uB124 \uB178\uC778\uC774 \uAE38\uC744 \uB9C9\uACE0 \uD55C\uCC38\uC774\uB098
+    \uC790\uAE30 \uC774\uC57C\uAE30\uB97C \uB298\uC5B4\uB193\uB294\uB2E4. \uB9C8\uCE68\uB0B4
+    \uB2F9\uC2E0\uC758 \uD0C4\uD658 \uD558\uB098\uB97C \uC9D1\uC5B4 \uB4E4\uACE0
+    \uB0B4\uC6A9\uBB3C\uC744 \uAC00\uB9B0\uB2E4."
   choices:
-  - buttonText: "[퀴즈를 맞힌다] 테두리만 보고 무슨 탄환인지 고른다. 정답이면 30 골드를 받는다."
-    outcomeText: 노인이 탄환을 등 뒤로 감추고 선택지를 읊기 시작했다.
+  - buttonText: "[\uD034\uC988\uB97C \uB9DE\uD78C\uB2E4] \uD14C\uB450\uB9AC\uB9CC
+      \uBCF4\uACE0 \uBB34\uC2A8 \uD0C4\uD658\uC778\uC9C0 \uACE0\uB978\uB2E4. \uC815\uB2F5\uC774\uBA74
+      30 \uACE8\uB4DC\uB97C \uBC1B\uB294\uB2E4."
+    outcomeText: "\uB178\uC778\uC774 \uD0C4\uD658\uC744 \uB4F1 \uB4A4\uB85C \uAC10\uCD94\uACE0
+      \uC120\uD0DD\uC9C0\uB97C \uC74A\uAE30 \uC2DC\uC791\uD588\uB2E4."
     requirements: []
     attemptEffects: []
     effects: []
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
     specialAction: 3
-  - buttonText: "[말을 끊고 떠난다] 더 늦기 전에 자리를 피한다."
-    outcomeText: 노인의 다음 이야기는 등 뒤에서 점점 멀어졌다.
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uB9D0\uC744 \uB04A\uACE0 \uB5A0\uB09C\uB2E4] \uB354 \uB2A6\uAE30
+      \uC804\uC5D0 \uC790\uB9AC\uB97C \uD53C\uD55C\uB2E4."
+    outcomeText: "\uB178\uC778\uC758 \uB2E4\uC74C \uC774\uC57C\uAE30\uB294 \uB4F1
+      \uB4A4\uC5D0\uC11C \uC810\uC810 \uBA40\uC5B4\uC84C\uB2E4."
     requirements: []
     attemptEffects: []
     effects: []
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
   baseWeight: 8
   oncePerRun: 1
   weightRules: []
