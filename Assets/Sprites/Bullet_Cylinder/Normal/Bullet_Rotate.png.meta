@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 5364dc00657126e4b9a649732e993e18
+guid: d8dcac36c1887e741ba3c371eadfabdd
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 3249896679004901830
-    second: Bullet_Avoid_0
+      213: 4810397191914396178
+    second: Bullet_Rotate_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,7 +113,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Bullet_Avoid_0
+      name: Bullet_Rotate_0
       rect:
         serializedVersion: 2
         x: 0
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 6c11fc49fc3f91d20800000000000000
-      internalID: 3249896679004901830
+      spriteID: 21a189c62c6f1c240800000000000000
+      internalID: 4810397191914396178
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Bullet_Avoid_0: 3249896679004901830
+      Bullet_Rotate_0: 4810397191914396178
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
