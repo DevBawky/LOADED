@@ -116,6 +116,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private WaveManager waveManager;
     private bool isInitialized;
     private readonly List<Vector3> movePath = new List<Vector3>();
+    private readonly List<int> movePathTileIndices = new List<int>();
     private readonly List<EnemyController> attackTargetBuffer =
         new List<EnemyController>();
     private EnemyHealthBarFeedback healthBarFeedback;
@@ -434,6 +435,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void OnDisable()
     {
+        waveManager?.ReleaseMovementTiles(this);
         HideAttackTelegraph();
         bossHud?.Unbind(this);
         bossHud = null;
@@ -1259,6 +1261,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 out int playerTileIndex)
             || targetTileIndex == playerTileIndex
             || waveManager.IsTileOccupied(targetTileIndex, this)
+            || waveManager.IsTileReservedForMovement(targetTileIndex, this)
             || waveManager.IsTileReservedForSpawn(targetTileIndex))
         {
             CompleteAction(EnemyTurnActionType.Wait);
@@ -2495,6 +2498,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                     out int playerIndex)
                 || targetIndex == playerIndex
                 || waveManager.IsTileOccupied(targetIndex, this)
+                || waveManager.IsTileReservedForMovement(targetIndex, this)
                 || waveManager.IsTileReservedForSpawn(targetIndex))
             {
                 break;
@@ -2510,7 +2514,20 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private IEnumerator MoveRoutine(Vector3[] path, bool updateRetreatState)
     {
-        yield return actorMotion.MoveAlongPath(path);
+        if (!TryReserveMovePath(path))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            yield break;
+        }
+
+        try
+        {
+            yield return actorMotion.MoveAlongPath(path);
+        }
+        finally
+        {
+            waveManager?.ReleaseMovementTiles(this);
+        }
 
         if (updateRetreatState
             && boardManager.TryGetTileDistance(
@@ -2523,6 +2540,33 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         CompleteAction(EnemyTurnActionType.Move);
+    }
+
+    private bool TryReserveMovePath(IReadOnlyList<Vector3> path)
+    {
+        if (waveManager == null || boardManager == null
+            || path == null || path.Count == 0)
+        {
+            return false;
+        }
+
+        movePathTileIndices.Clear();
+
+        for (int index = 0; index < path.Count; index++)
+        {
+            if (!boardManager.TryGetTileIndex(
+                    path[index],
+                    out int tileIndex))
+            {
+                return false;
+            }
+
+            movePathTileIndices.Add(tileIndex);
+        }
+
+        return waveManager.TryReserveMovementTiles(
+            this,
+            movePathTileIndices);
     }
 
     private IEnumerator RotateRoutine(int directionToPlayer)

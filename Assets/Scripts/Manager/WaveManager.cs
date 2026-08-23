@@ -93,6 +93,10 @@ public class WaveManager : MonoBehaviour
     private DuelClockController duelClockController;
     private readonly List<EnemyTargetData> enemyTargetBuffer =
         new List<EnemyTargetData>();
+    private readonly Dictionary<int, Component> movementTileReservations =
+        new Dictionary<int, Component>();
+    private readonly List<int> movementReservationCleanupBuffer =
+        new List<int>();
 
     public event Action StateChanged;
     public event Action BattleCompleted;
@@ -141,6 +145,7 @@ public class WaveManager : MonoBehaviour
     {
         activeEnemies.Clear();
         reservedSpawnTileIndices.Clear();
+        movementTileReservations.Clear();
         currentWaveIndex = -1;
         remainingSpawnTurns = 0;
         isWaitingForNextWave = false;
@@ -180,6 +185,7 @@ public class WaveManager : MonoBehaviour
 
         isResolvingTurn = false;
         pendingEnemyTurnCycles = 0;
+        movementTileReservations.Clear();
         DeactivateCombatPacing();
 
         if (playerMove != null)
@@ -517,6 +523,178 @@ public class WaveManager : MonoBehaviour
     public bool IsTileOccupied(int tileIndex, EnemyController ignoredEnemy = null)
     {
         return TryGetEnemyAtTile(tileIndex, out _, ignoredEnemy);
+    }
+
+    private bool IsPlayerAtTile(int tileIndex)
+    {
+        return playerMove != null && boardManager != null
+            && boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex)
+            && playerTileIndex == tileIndex;
+    }
+
+    public bool IsTileReservedForMovement(
+        int tileIndex,
+        Component ignoredOwner = null)
+    {
+        RemoveStaleMovementReservations();
+        return movementTileReservations.TryGetValue(
+                tileIndex,
+                out Component owner)
+            && owner != ignoredOwner;
+    }
+
+    internal bool HasMovementReservation(Component owner)
+    {
+        if (owner == null)
+        {
+            return false;
+        }
+
+        RemoveStaleMovementReservations();
+
+        foreach (Component reservedOwner in movementTileReservations.Values)
+        {
+            if (reservedOwner == owner)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    internal bool TryReserveMovementTile(Component owner, int tileIndex)
+    {
+        return TryReserveMovementTiles(owner, new[] { tileIndex });
+    }
+
+    internal bool TryReserveMovementTiles(
+        Component owner,
+        IReadOnlyList<int> tileIndices)
+    {
+        if (owner == null || tileIndices == null || tileIndices.Count == 0)
+        {
+            return false;
+        }
+
+        RemoveStaleMovementReservations();
+
+        for (int index = 0; index < tileIndices.Count; index++)
+        {
+            int tileIndex = tileIndices[index];
+
+            if (tileIndex < 0
+                || movementTileReservations.TryGetValue(
+                    tileIndex,
+                    out Component reservedOwner)
+                && reservedOwner != owner)
+            {
+                return false;
+            }
+        }
+
+        ReleaseMovementTiles(owner);
+
+        for (int index = 0; index < tileIndices.Count; index++)
+        {
+            movementTileReservations[tileIndices[index]] = owner;
+        }
+
+        return true;
+    }
+
+    internal bool TryReserveMovementSwap(
+        Component firstOwner,
+        int firstTargetTileIndex,
+        Component secondOwner,
+        int secondTargetTileIndex)
+    {
+        if (firstOwner == null || secondOwner == null
+            || firstOwner == secondOwner
+            || firstTargetTileIndex < 0 || secondTargetTileIndex < 0
+            || firstTargetTileIndex == secondTargetTileIndex)
+        {
+            return false;
+        }
+
+        RemoveStaleMovementReservations();
+
+        if (IsReservedByAnotherOwner(firstTargetTileIndex, firstOwner, secondOwner)
+            || IsReservedByAnotherOwner(
+                secondTargetTileIndex,
+                firstOwner,
+                secondOwner))
+        {
+            return false;
+        }
+
+        ReleaseMovementTiles(firstOwner);
+        ReleaseMovementTiles(secondOwner);
+        movementTileReservations[firstTargetTileIndex] = firstOwner;
+        movementTileReservations[secondTargetTileIndex] = secondOwner;
+        return true;
+    }
+
+    internal void ReleaseMovementTiles(Component owner)
+    {
+        if (owner == null)
+        {
+            RemoveStaleMovementReservations();
+            return;
+        }
+
+        movementReservationCleanupBuffer.Clear();
+
+        foreach (KeyValuePair<int, Component> reservation
+                 in movementTileReservations)
+        {
+            if (reservation.Value == null || reservation.Value == owner)
+            {
+                movementReservationCleanupBuffer.Add(reservation.Key);
+            }
+        }
+
+        RemoveBufferedMovementReservations();
+    }
+
+    private bool IsReservedByAnotherOwner(
+        int tileIndex,
+        Component firstAllowedOwner,
+        Component secondAllowedOwner)
+    {
+        return movementTileReservations.TryGetValue(
+                tileIndex,
+                out Component reservedOwner)
+            && reservedOwner != firstAllowedOwner
+            && reservedOwner != secondAllowedOwner;
+    }
+
+    private void RemoveStaleMovementReservations()
+    {
+        movementReservationCleanupBuffer.Clear();
+
+        foreach (KeyValuePair<int, Component> reservation
+                 in movementTileReservations)
+        {
+            if (reservation.Value == null)
+            {
+                movementReservationCleanupBuffer.Add(reservation.Key);
+            }
+        }
+
+        RemoveBufferedMovementReservations();
+    }
+
+    private void RemoveBufferedMovementReservations()
+    {
+        foreach (int tileIndex in movementReservationCleanupBuffer)
+        {
+            movementTileReservations.Remove(tileIndex);
+        }
+
+        movementReservationCleanupBuffer.Clear();
     }
 
     public bool TryGetFirstBulletBlocker(
@@ -923,6 +1101,9 @@ public class WaveManager : MonoBehaviour
 
         if (enemyData == null || enemyPrefabTemplate == null
             || CalculateAvailableEnemySlots(GetLivingEnemyCount()) <= 0
+            || IsPlayerAtTile(spawnTileIndex)
+            || IsTileOccupied(spawnTileIndex)
+            || IsTileReservedForMovement(spawnTileIndex)
             || !boardManager.TryGetTilePosition(
                 spawnTileIndex,
                 out Vector3 spawnPosition))
@@ -1054,7 +1235,8 @@ public class WaveManager : MonoBehaviour
 
         for (int tileIndex = 0; tileIndex < boardManager.BoardCount; tileIndex++)
         {
-            if (tileIndex != playerIndex && !IsTileOccupied(tileIndex))
+            if (tileIndex != playerIndex && !IsTileOccupied(tileIndex)
+                && !IsTileReservedForMovement(tileIndex))
             {
                 availableCount++;
             }
@@ -1086,7 +1268,8 @@ public class WaveManager : MonoBehaviour
 
         for (int tileIndex = 0; tileIndex < boardManager.BoardCount; tileIndex++)
         {
-            if (tileIndex == playerIndex || IsTileOccupied(tileIndex))
+            if (tileIndex == playerIndex || IsTileOccupied(tileIndex)
+                || IsTileReservedForMovement(tileIndex))
             {
                 continue;
             }
@@ -1208,6 +1391,7 @@ public class WaveManager : MonoBehaviour
         }
 
         enemy.Defeated -= HandleEnemyDefeated;
+        ReleaseMovementTiles(enemy);
         activeEnemies.Remove(enemy);
 
         if (combatPacingMode == CombatPacingMode.DuelClock)
@@ -1383,6 +1567,7 @@ public class WaveManager : MonoBehaviour
         activeEnemies.Clear();
         bossBombManager?.ClearAll();
         reservedSpawnTileIndices.Clear();
+        movementTileReservations.Clear();
         currentWaveIndex = -1;
         remainingSpawnTurns = 0;
         isWaitingForNextWave = false;

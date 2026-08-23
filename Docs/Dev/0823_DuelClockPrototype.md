@@ -206,6 +206,15 @@ Battle completion or player defeat clears the remaining queue. Legacy
 `TurnCompleted` still dispatches one cycle directly; in Duel Clock mode only
 the controller's committed beats dispatch cycles.
 
+Because Duel Clock allows player input while an enemy cycle is resolving,
+`WaveManager` also owns transient movement-tile reservations. Player movement,
+enemy movement, bullet knockback, position swaps, and enemy spawning all check
+the same registry. A mover reserves its complete path before visual
+interpolation begins and releases it after arriving or when disabled. A
+conflicting path fails as one operation, so concurrent actors cannot select the
+same intermediate or destination tile. These reservations are runtime-only;
+active-battle saves still require combat actions to be settled.
+
 ## Enemy attack active windows
 
 Direct enemy attack animations may author one active hit window with paired

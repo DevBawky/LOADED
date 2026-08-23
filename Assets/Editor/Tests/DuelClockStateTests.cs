@@ -647,6 +647,88 @@ public sealed class EnemyAttackActiveWindowTimingTests
     }
 }
 
+public sealed class WaveManagerMovementReservationTests
+{
+    private readonly List<GameObject> createdObjects = new List<GameObject>();
+
+    [TearDown]
+    public void TearDown()
+    {
+        foreach (GameObject createdObject in createdObjects)
+        {
+            if (createdObject != null)
+            {
+                UnityEngine.Object.DestroyImmediate(createdObject);
+            }
+        }
+
+        createdObjects.Clear();
+    }
+
+    [Test]
+    public void ConflictingPathReservationFailsAtomically()
+    {
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave Manager");
+        BoxCollider2D firstOwner = CreateComponent<BoxCollider2D>("First Owner");
+        BoxCollider2D secondOwner = CreateComponent<BoxCollider2D>("Second Owner");
+
+        Assert.That(
+            waveManager.TryReserveMovementTiles(firstOwner, new[] { 3, 4 }),
+            Is.True);
+        Assert.That(
+            waveManager.TryReserveMovementTiles(secondOwner, new[] { 4, 5 }),
+            Is.False);
+        Assert.That(
+            waveManager.IsTileReservedForMovement(3, firstOwner),
+            Is.False);
+        Assert.That(waveManager.IsTileReservedForMovement(4), Is.True);
+        Assert.That(waveManager.IsTileReservedForMovement(5), Is.False);
+
+        waveManager.ReleaseMovementTiles(firstOwner);
+
+        Assert.That(
+            waveManager.TryReserveMovementTiles(secondOwner, new[] { 4, 5 }),
+            Is.True);
+    }
+
+    [Test]
+    public void SwapReservationClaimsBothDestinationsTogether()
+    {
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave Manager");
+        BoxCollider2D playerOwner = CreateComponent<BoxCollider2D>("Player");
+        BoxCollider2D enemyOwner = CreateComponent<BoxCollider2D>("Enemy");
+        BoxCollider2D thirdOwner = CreateComponent<BoxCollider2D>("Third Actor");
+
+        Assert.That(
+            waveManager.TryReserveMovementSwap(
+                playerOwner,
+                8,
+                enemyOwner,
+                2),
+            Is.True);
+        Assert.That(
+            waveManager.TryReserveMovementTile(thirdOwner, 8),
+            Is.False);
+        Assert.That(
+            waveManager.TryReserveMovementTile(thirdOwner, 2),
+            Is.False);
+
+        waveManager.ReleaseMovementTiles(playerOwner);
+        waveManager.ReleaseMovementTiles(enemyOwner);
+
+        Assert.That(
+            waveManager.TryReserveMovementTile(thirdOwner, 8),
+            Is.True);
+    }
+
+    private T CreateComponent<T>(string objectName) where T : Component
+    {
+        GameObject gameObject = new GameObject(objectName);
+        createdObjects.Add(gameObject);
+        return gameObject.AddComponent<T>();
+    }
+}
+
 public sealed class PlayerMoveDuelClockStatusTests
 {
     private GameObject playerObject;
