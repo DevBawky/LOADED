@@ -944,8 +944,17 @@ public class PlayerMove : MonoBehaviour
             && !isInputLocked
             && !isShooting
             && !isActing
-            && !isEnemyTurnResolving
+            && !ShouldBlockActionForEnemyResolution(
+                isDuelClockActive,
+                isEnemyTurnResolving)
             && (!isDuelClockActive || !IsStunned);
+    }
+
+    internal static bool ShouldBlockActionForEnemyResolution(
+        bool isDuelClockActive,
+        bool isEnemyTurnResolving)
+    {
+        return isEnemyTurnResolving && !isDuelClockActive;
     }
 
     private static int MultiplyDamage(int damage, double multiplier)

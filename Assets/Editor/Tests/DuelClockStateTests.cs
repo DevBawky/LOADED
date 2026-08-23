@@ -480,6 +480,20 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
+    public void DuelClockEnemyResolutionDoesNotBlockPlayerActions()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        playerMove.SetDuelClockActive(true);
+        playerMove.SetEnemyTurnResolving(true);
+
+        Assert.That(playerMove.CanStartAction, Is.True);
+
+        playerMove.SetDuelClockActive(false);
+
+        Assert.That(playerMove.CanStartAction, Is.False);
+    }
+
+    [Test]
     public void RestoredSavedDuelModeOverridesCurrentAuthoredLegacyMode()
     {
         PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
@@ -551,6 +565,85 @@ public sealed class DuelClockControllerTests
             | System.Reflection.BindingFlags.NonPublic);
         Assert.That(method, Is.Not.Null, methodName);
         method.Invoke(target, null);
+    }
+}
+
+public sealed class EnemyAttackActiveWindowTimingTests
+{
+    [Test]
+    public void MissingEndEventUsesImmediateFallback()
+    {
+        AnimationClip clip = CreateOneSecondClip();
+        clip.events = new[]
+        {
+            new AnimationEvent
+            {
+                functionName =
+                    EnemyAttackAnimationEvents.BeginFunctionName,
+                time = 0.25f
+            }
+        };
+
+        try
+        {
+            Assert.That(
+                EnemyAttackActiveWindowTiming.TryCreate(clip, out _),
+                Is.False);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void PairedEventsDefineInclusiveActiveWindow()
+    {
+        AnimationClip clip = CreateOneSecondClip();
+        clip.events = new[]
+        {
+            new AnimationEvent
+            {
+                functionName =
+                    EnemyAttackAnimationEvents.BeginFunctionName,
+                time = 0.25f
+            },
+            new AnimationEvent
+            {
+                functionName =
+                    EnemyAttackAnimationEvents.EndFunctionName,
+                time = 0.5f
+            }
+        };
+
+        try
+        {
+            bool created = EnemyAttackActiveWindowTiming.TryCreate(
+                clip,
+                out EnemyAttackActiveWindowTiming timing);
+
+            Assert.That(created, Is.True);
+            Assert.That(timing.Contains(0.24f), Is.False);
+            Assert.That(timing.Contains(0.25f), Is.True);
+            Assert.That(timing.Contains(0.5f), Is.True);
+            Assert.That(timing.Contains(0.51f), Is.False);
+            Assert.That(timing.Overlaps(0.2f, 0.3f), Is.True);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(clip);
+        }
+    }
+
+    private static AnimationClip CreateOneSecondClip()
+    {
+        AnimationClip clip = new AnimationClip();
+        clip.SetCurve(
+            string.Empty,
+            typeof(Transform),
+            "m_LocalPosition.x",
+            AnimationCurve.Linear(0f, 0f, 1f, 0f));
+        return clip;
     }
 }
 

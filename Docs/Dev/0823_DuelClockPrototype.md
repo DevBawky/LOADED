@@ -175,9 +175,11 @@ board therefore advances at the same authored rate as a board with enemies.
 be committed while the player is shooting or moving, but enemy execution waits
 until that player action settles. Natural and paid-action beats committed
 during the same firing sequence therefore join the same queue. New beats that
-arrive during enemy resolution also join that queue. Input remains locked and
-`IsResolvingTurn` remains true through the complete queue. Tooltip, input-lock,
-and reload presentation state do not delay the resolver. Each beat:
+arrive during enemy resolution also join that queue. In Duel Clock mode,
+`IsResolvingTurn` remains true for save/exit settlement but no longer blocks a
+new player action after the action that preceded the beat has settled. Legacy
+mode retains its enemy-turn input lock. Tooltip, explicit input-lock, and reload
+presentation state do not delay the resolver. Each beat:
 
 1. processes one COUNT of player status effects, including one stun stack when
    present;
@@ -203,6 +205,26 @@ already being resolved.
 Battle completion or player defeat clears the remaining queue. Legacy
 `TurnCompleted` still dispatches one cycle directly; in Duel Clock mode only
 the controller's committed beats dispatch cycles.
+
+## Enemy attack active windows
+
+Direct enemy attack animations may author one active hit window with paired
+`BeginAttackActiveWindow` and `EndAttackActiveWindow` Animation Events. The
+runtime samples the same event times while the animation plays, so a skipped
+visual callback cannot suppress gameplay resolution. A target entering the
+attack range during the window is hit once by that queued attack; remaining in
+range cannot apply repeated damage.
+
+Existing animations with no complete event pair use the compatibility rule:
+the attack checks its live target and applies damage immediately when playback
+starts. Melee, gunner, and Big Barrel shotgun attacks use this rule. Thrower
+attacks retain their fixed warned tile, but determine its current occupant when
+the projectile arrives instead of locking the player hit at launch.
+
+The avatar Animator receives `EnemyAttackAnimationEvents` at runtime, so event
+authors do not add scene or prefab references. Attack range and damage remain
+owned by `EnemyController` and `EnemyAttackData`; animation events only define
+the active timing window.
 
 ## Save compatibility
 

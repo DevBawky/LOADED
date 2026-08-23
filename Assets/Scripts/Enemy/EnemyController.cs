@@ -123,8 +123,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private BossHudController bossHud;
     private Animator avatarAnimator;
     private EnemyAnimationSfx avatarEffects;
+    private EnemyAttackAnimationEvents attackAnimationEvents;
     private SpriteRenderer avatarSortingRenderer;
     private int avatarAnimationSequence;
+    private bool isAttackActiveWindowOpen;
     private bool isStunActive;
     private EnemyRunStateSerializer runStateSerializer;
     private EnemyTelegraphPresenter telegraphPresenter;
@@ -439,6 +441,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         telegraphPresenter.HideShieldIndicator();
 
         isActing = false;
+        isAttackActiveWindowOpen = false;
+    }
+
+    internal void SetAttackActiveWindowOpen(bool isOpen)
+    {
+        isAttackActiveWindowOpen = isActing && isOpen;
     }
 
     private void HandleStatusStacksChanged(
@@ -1347,33 +1355,44 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     {
         EnemyActionData action = PopFirstQueuedAction();
         CaptureBigBarrelShotgunTargets();
-        yield return PlayAvatarAnimation(BigBarrelShotgunAnimationStateHash);
+        bool hasHitPlayer = false;
+        HashSet<EnemyController> hitEnemies = new HashSet<EnemyController>();
 
-        foreach (int targetTileIndex in preparedShotgunTileIndices)
+        void EvaluateShotgunHits()
         {
-            if (currentHealth <= 0)
+            foreach (int targetTileIndex in preparedShotgunTileIndices)
             {
-                break;
-            }
+                if (currentHealth <= 0)
+                {
+                    break;
+                }
 
-            if (boardManager.TryGetTileIndex(
-                    playerMove.transform.position,
-                    out int playerTileIndex)
-                && playerTileIndex == targetTileIndex)
-            {
-                playerHealth.ApplyDamage(enemyData.BigBarrel.ShotgunDamage);
-            }
+                if (!hasHitPlayer
+                    && boardManager.TryGetTileIndex(
+                        playerMove.transform.position,
+                        out int playerTileIndex)
+                    && playerTileIndex == targetTileIndex)
+                {
+                    playerHealth.ApplyDamage(
+                        enemyData.BigBarrel.ShotgunDamage);
+                    hasHitPlayer = true;
+                }
 
-            if (waveManager.TryGetEnemyAtTile(
-                    targetTileIndex,
-                    out EnemyController target,
-                    this))
-            {
-                target.ApplyEnvironmentalDamage(
-                    enemyData.BigBarrel.ShotgunDamage);
+                if (waveManager.TryGetEnemyAtTile(
+                        targetTileIndex,
+                        out EnemyController target,
+                        this)
+                    && hitEnemies.Add(target))
+                {
+                    target.ApplyEnvironmentalDamage(
+                        enemyData.BigBarrel.ShotgunDamage);
+                }
             }
         }
 
+        yield return PlayAvatarAnimation(
+            BigBarrelShotgunAnimationStateHash,
+            EvaluateShotgunHits);
 
         if (action != null && action.AttackData != null)
         {
@@ -1808,25 +1827,35 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             SoundManager.PlaySfx("SFX_Enemy_Shoot");
         }
 
-        if (enemyData.BehaviorType == EnemyBehaviorType.Melee)
-        {
-            yield return PlayAvatarAttackAnimation();
-        }
-
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
             yield return ExecuteThrowerAttack(attackData);
             yield break;
         }
 
+        bool attackResolved = false;
+
+        void EvaluateAttackHit()
+        {
+            if (!attackResolved)
+            {
+                attackResolved = TryApplyDirectAttack(attackData);
+            }
+        }
+
+        yield return PlayAvatarAttackAnimation(EvaluateAttackHit);
+        AttackExecuted?.Invoke(this, attackData);
+    }
+
+    private bool TryApplyDirectAttack(EnemyAttackData attackData)
+    {
         if (!TryGetAttackTarget(
                 attackData,
                 out EnemyController enemyTarget,
                 out bool targetsPlayer,
                 out Vector3 targetPosition))
         {
-            AttackExecuted?.Invoke(this, attackData);
-            yield break;
+            return false;
         }
 
         if (attackData.AttackEffectPrefab != null)
@@ -1841,7 +1870,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             attackData,
             enemyTarget,
             targetsPlayer);
-        AttackExecuted?.Invoke(this, attackData);
+        return true;
     }
 
     private bool TrySelectSupportTarget(
@@ -2008,14 +2037,6 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             yield break;
         }
 
-        // Lock the hit result when the throw begins. The projectile is only a
-        // presentation delay; movement or position refreshes during its flight
-        // must not invalidate a player who occupied the warned tile at launch.
-        bool targetsPlayer = boardManager.TryGetTileIndex(
-                playerMove.transform.position,
-                out int playerTileIndex)
-            && playerTileIndex == preparedTargetTileIndex;
-
         PlayThrowerAttackAnimation();
         yield return PlayThrownProjectile(preparedTargetPosition);
         SoundManager.PlaySfx("SFX_Thrower_Bomb");
@@ -2036,6 +2057,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         EnemyController enemyTarget = null;
+        bool targetsPlayer = boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex)
+            && playerTileIndex == preparedTargetTileIndex;
 
         if (!targetsPlayer)
         {
@@ -2635,6 +2660,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         preparedShotgunTileIndices.Clear();
         lastTurnAction = EnemyTurnActionType.None;
         isActing = false;
+        isAttackActiveWindowOpen = false;
 
         if (statusEffects != null)
         {
@@ -2661,6 +2687,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         avatarInstance = null;
         avatarAnimator = null;
         avatarEffects = null;
+        attackAnimationEvents = null;
         avatarSortingRenderer = null;
 
         if (enemyData == null || enemyData.Avatar == null)
@@ -2692,6 +2719,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (avatarAnimator != null)
         {
             avatarEffects = avatarAnimator.GetComponent<EnemyAnimationSfx>();
+            attackAnimationEvents =
+                avatarAnimator.GetComponent<EnemyAttackAnimationEvents>();
+            attackAnimationEvents ??=
+                avatarAnimator.gameObject.AddComponent<
+                    EnemyAttackAnimationEvents>();
+            attackAnimationEvents.Initialize(this);
         }
 
         if (avatarAnimator == null)
@@ -2764,21 +2797,32 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
     }
 
-    private IEnumerator PlayAvatarAttackAnimation()
+    private IEnumerator PlayAvatarAttackAnimation(Action evaluateAttackHit)
     {
-        yield return PlayAvatarAnimation(AttackAnimationStateHash);
+        yield return PlayAvatarAnimation(
+            AttackAnimationStateHash,
+            evaluateAttackHit);
     }
 
     private IEnumerator PlayAvatarAnimation(int animationStateHash)
+    {
+        yield return PlayAvatarAnimation(animationStateHash, null);
+    }
+
+    private IEnumerator PlayAvatarAnimation(
+        int animationStateHash,
+        Action evaluateAttackHit)
     {
         if (avatarAnimator == null
             || avatarAnimator.runtimeAnimatorController == null
             || !avatarAnimator.HasState(0, animationStateHash))
         {
+            evaluateAttackHit?.Invoke();
             yield break;
         }
 
         int animationSequence = ++avatarAnimationSequence;
+        isAttackActiveWindowOpen = false;
         avatarEffects?.StopEffects();
         avatarAnimator.Play(animationStateHash, 0, 0f);
         avatarAnimator.Update(0f);
@@ -2787,11 +2831,38 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         float duration = Mathf.Max(
             0f,
             attackState.length / Mathf.Max(0.01f, avatarAnimator.speed));
+        bool hasActiveWindow = TryGetAttackActiveWindowTiming(
+            out EnemyAttackActiveWindowTiming activeWindowTiming);
+
+        if (evaluateAttackHit != null && !hasActiveWindow)
+        {
+            evaluateAttackHit();
+        }
+
         float elapsedTime = 0f;
+        float previousNormalizedTime = 0f;
 
         while (elapsedTime < duration && avatarAnimator != null
             && animationSequence == avatarAnimationSequence)
         {
+            if (evaluateAttackHit != null && hasActiveWindow
+                && !GamePauseController.IsPaused)
+            {
+                float normalizedTime = duration <= 0f
+                    ? 1f
+                    : Mathf.Clamp01(elapsedTime / duration);
+
+                if (isAttackActiveWindowOpen
+                    || activeWindowTiming.Overlaps(
+                        previousNormalizedTime,
+                        normalizedTime))
+                {
+                    evaluateAttackHit();
+                }
+
+                previousNormalizedTime = normalizedTime;
+            }
+
             yield return null;
 
             if (!GamePauseController.IsPaused)
@@ -2802,8 +2873,43 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (animationSequence == avatarAnimationSequence)
         {
+            if (evaluateAttackHit != null && hasActiveWindow
+                && activeWindowTiming.Overlaps(
+                    previousNormalizedTime,
+                    1f))
+            {
+                evaluateAttackHit();
+            }
+
+            isAttackActiveWindowOpen = false;
             PlayAvatarIdle();
         }
+    }
+
+    private bool TryGetAttackActiveWindowTiming(
+        out EnemyAttackActiveWindowTiming timing)
+    {
+        timing = default;
+
+        if (avatarAnimator == null)
+        {
+            return false;
+        }
+
+        AnimatorClipInfo[] clipInfo =
+            avatarAnimator.GetCurrentAnimatorClipInfo(0);
+
+        for (int index = 0; index < clipInfo.Length; index++)
+        {
+            if (EnemyAttackActiveWindowTiming.TryCreate(
+                    clipInfo[index].clip,
+                    out timing))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ValidateBigBarrelAnimatorStates()
