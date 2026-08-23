@@ -185,8 +185,10 @@ cylinderBuild = bulletsFiredThisCylinder / initialLoadedBulletCount
 - 공격 방향
 - 진행 시간과 전체 지속 시간
 - 강도
-- 크리티컬 여부
+- 일반·크리티컬·치명적·처치의 충격 등급
+- 탄환 대표 색상
 - 마지막 적 처치 여부
+- 발사 순간 광학 펄스 여부
 
 빈 슬롯이 없으면 진행률이 가장 높은, 즉 종료에 가장 가까운 충격을 새 충격으로 교체한다. 이 방식은 오래된 약한 효과가 새 명중을 가리는 문제를 줄인다.
 
@@ -196,6 +198,7 @@ cylinderBuild = bulletsFiredThisCylinder / initialLoadedBulletCount
 float4 _KillImpactCenters[4];
 float4 _KillImpactDirections[4];
 float4 _KillImpactParams[4];
+float4 _KillImpactColors[4];
 ```
 
 `_KillImpactParams`의 구성은 다음과 같다.
@@ -204,10 +207,12 @@ float4 _KillImpactParams[4];
 | --- | --- |
 | X | 진행률 |
 | Y | 현재 Envelope가 적용된 강도 |
-| Z | 크리티컬 여부 |
+| Z | `Normal=0`, `Critical=1/3`, `Devastating=2/3`, `Defeat=1`로 정규화한 충격 등급 |
 | W | 마지막 적 처치 여부 |
 
-셰이더는 네 충격의 UV 변형, RGB Offset과 발광을 누적한 뒤 원본 카메라 컬러와 합성한다.
+`_KillImpactDirections`의 XY는 사격 방향이며 Z는 발사 순간 광학 펄스 여부다. Z가 1인 항목은 명중용 Impact Snap과 헤일로를 건너뛰고 총구 위치에서 완화된 방향성 렌즈 이동과 초점 펀치, 탄환 Primary Color의 희미한 전면 섬광만 재생한다. 따라서 발사와 명중이 같은 프레임에 가까워도 두 박자가 서로 다른 형태로 합성된다.
+
+`_KillImpactColors`는 각 충격을 발생시킨 탄환의 Primary Color를 전달한다. 셰이더는 공통 주황색을 섞지 않고 일반 명중부터 처치까지 모든 압력파와 파열 헤일로에 이 색을 그대로 사용한다. 발사와 명중 초반에는 같은 색상의 낮은 강도 전면 섬광을 짧게 더해 화면 왜곡을 과도하게 높이지 않고도 타격 박자를 읽을 수 있게 한다. 화면 위에 고정 탄흔을 그리지 않고, 네 충격의 압축파·탄도 아지랑이·RGB Offset·밝은 영역의 광학 산란을 원본 카메라 컬러에 누적한다. 크리티컬 이상의 충격은 등급에 따라 화면 탄성 변형, 2차 압력파와 헤일로, 방향성 재샘플링 잔상, 짧은 노출 하강과 복원을 추가한다.
 
 ### 시간 처리
 
@@ -266,9 +271,11 @@ float4 _KillImpactParams[4];
 | 파일 | 역할 |
 | --- | --- |
 | `Assets/Scripts/Common/CombatFeedbackController.cs` | 콤보, 누적 대미지 UI, Volume, 슬로 모션, Fullscreen Impact, 사운드 총괄 |
+| `Assets/Scripts/Common/CombatPresentation.cs` | 총구 섬광·Point Light, 적 국소 접촉 섬광, 잔광·열기 먼지 생성 |
 | `Assets/Scripts/Player/PlayerShoot.cs` | 실제 피해·처치 이벤트 전달, 실린더 진행도 계산 |
 | `Assets/Scripts/Enemy/EnemyController.cs` | 상태 피해의 실제 적용 대미지 반환 |
 | `Assets/Shaders/KillImpactFullscreen.shader` | 카메라 컬러 기반 다중 충격파 후처리 |
+| `Assets/Shaders/CombatMuzzleFlash.shader` | 총구 화염과 적 접촉 파열 원호를 `Effect Mode`로 분기하는 절차형 셰이더 |
 | `Assets/Materials/KillImpactFullscreen.mat` | Full Screen Pass용 머티리얼 |
 | `Assets/Settings/Renderer2D.asset` | Full Screen Pass Renderer Feature와 컬러 버퍼 입력 설정 |
 | `Assets/Prefabs/Player/Player.prefab` | `CombatFeedbackController`와 기본 튜닝값 |

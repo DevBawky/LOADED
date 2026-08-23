@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: cracked_primer
   displayName: "\uAE08\uC774 \uAC04 \uB1CC\uAD00"
-  description: "\uC0AC\uACA9\uB9C8\uB2E4 5% \uD655\uB960\uB85C \uCD5C\uC885 \uD53C\uD574\uAC00
-    3\uBC30\uAC00 \uB429\uB2C8\uB2E4. \uC2E4\uD328\uD560 \uB54C\uB9C8\uB2E4 \uD655\uB960\uC774
-    5%p \uC99D\uAC00\uD558\uBA70 \uC131\uACF5\uD558\uBA74 \uCD08\uAE30\uD654\uB429\uB2C8\uB2E4."
+  description: "탄환 발사 시 추가 발사 (10%)"
   icon: {fileID: 693051727126636872, guid: b596cc87f76283043a386ccf6d27576c, type: 3}
   lifetimeType: 0
   initialCharges: 1
@@ -24,31 +22,4 @@ MonoBehaviour:
   maxStack: 1
   effects:
   - effectType: 17
-    finalDamageMultiplier: 3
-    movementDamageMultiplierPerStack: 1.1
-    survivingHealth: 1
-    movementSources: 3
-    movementStackReset: 0
-    circuitShotThreshold: 5
-    circuitMaxReloadsPerCylinder: 2
-    debuffTransferPercent: 50
-    stormDamagePercent: 40
-    movementTilesPerFreeReload: 5
-    freeReloadStorageLimit: 2
-    goldNuggetChance: 10
-    nuggetsRequired: 3
-    primerBaseChance: 5
-    primerFailureChanceBonus: 5
-    scaleMaximumDamagePercent: 100
-    memorialDamagePercentPerBullet: 20
-    memorialMaximumDamagePercent: 100
-    executionDamageMultipliers:
-    - 1.5
-    - 2
-    - 3
-    - 5
-    mutationChancePerDebuffType: 15
-    mutationMaximumChance: 60
-    brinkHealthThresholdPercent: 25
-    brinkBaseChance: 30
-    brinkFailureChanceBonus: 10
+    primerBaseChance: 10

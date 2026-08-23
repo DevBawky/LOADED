@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: predator_holster
   displayName: "\uD3EC\uC2DD\uC790\uC758 \uD640\uC2A4\uD130"
-  description: "\uC801\uC744 \uCC98\uCE58\uD55C \uD0C4\uD658\uC740 \uB2E4\uC74C \uC7A5\uC804
-    \uC21C\uC11C\uB85C \uC774\uB3D9\uD558\uBA70, \uB2E4\uC74C \uC7A5\uC804 \uC2DC
-    \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  description: "적 처치 시 다음 장전 탄환 1발 최종 피해 x1.12"
   icon: {fileID: -8404938866605439318, guid: feed7fdac638ee0498680360b427220e, type: 3}
   lifetimeType: 0
   initialCharges: 1
@@ -24,31 +22,4 @@ MonoBehaviour:
   maxStack: 1
   effects:
   - effectType: 10
-    finalDamageMultiplier: 2
-    movementDamageMultiplierPerStack: 1.1
-    survivingHealth: 1
-    movementSources: 3
-    movementStackReset: 0
-    circuitShotThreshold: 5
-    circuitMaxReloadsPerCylinder: 2
-    debuffTransferPercent: 50
-    stormDamagePercent: 40
-    movementTilesPerFreeReload: 5
-    freeReloadStorageLimit: 2
-    goldNuggetChance: 10
-    nuggetsRequired: 3
-    primerBaseChance: 5
-    primerFailureChanceBonus: 5
-    scaleMaximumDamagePercent: 100
-    memorialDamagePercentPerBullet: 20
-    memorialMaximumDamagePercent: 100
-    executionDamageMultipliers:
-    - 1.5
-    - 2
-    - 3
-    - 5
-    mutationChancePerDebuffType: 15
-    mutationMaximumChance: 60
-    brinkHealthThresholdPercent: 25
-    brinkBaseChance: 30
-    brinkFailureChanceBonus: 10
+    finalDamageMultiplier: 1.12

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_mass_produced
   displayName: "\uC591\uC0B0\uD0C4"
-  description: "보유한 일반·레어 탄환 하나당 최종대미지 +13%"
+  description: "보유한 일반·레어 탄환 하나당 최종 피해 +13%"
   cylinderIcon: {fileID: 717467629373744656, guid: bc354602cb3f4404ab5aa5b6c9e503db, type: 3}
   price: 6
   grade: 1
@@ -44,7 +44,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +15%"
+  - description: "보유한 일반·레어 탄환 하나당 최종 피해 +15%"
     damage: 18
     maxRange: 4
     criticalChance: 18
@@ -64,7 +64,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +18%\n관통 1회 (30%)"
+  - description: "보유한 일반·레어 탄환 하나당 최종 피해 +18%\n관통 1회 (30%)"
     damage: 22
     maxRange: 5
     criticalChance: 22
@@ -85,7 +85,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "보유한 일반·레어 탄환 하나당 최종대미지 +23%\n관통 1회 (50%)\n재장전 시 턴을 소모하지 않습니다."
+  - description: "보유한 일반·레어 탄환 하나당 최종 피해 +23%\n관통 1회 (50%)\n재장전 시 턴 소모 없음"
     damage: 28
     maxRange: 5
     criticalChance: 28

@@ -262,6 +262,36 @@ public sealed class NodeMapGeneratorTests
     }
 
     [Test]
+    public void ProgressSection_UsesConfiguredBoundaries()
+    {
+        const int bossColumn = 11;
+
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            3, bossColumn, 0.25f, 0.75f),
+            Is.EqualTo(NodeMapBattleProgressSection.Early));
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            4, bossColumn, 0.25f, 0.75f),
+            Is.EqualTo(NodeMapBattleProgressSection.Middle));
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            7, bossColumn, 0.25f, 0.75f),
+            Is.EqualTo(NodeMapBattleProgressSection.Middle));
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            8, bossColumn, 0.25f, 0.75f),
+            Is.EqualTo(NodeMapBattleProgressSection.Late));
+    }
+
+    [Test]
+    public void ProgressSection_ClampsMiddleBoundaryAfterEarlyBoundary()
+    {
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            7, 11, 0.7f, 0.3f),
+            Is.EqualTo(NodeMapBattleProgressSection.Early));
+        Assert.That(NodeMapGenerator.GetNormalBattleProgressSection(
+            8, 11, 0.7f, 0.3f),
+            Is.EqualTo(NodeMapBattleProgressSection.Late));
+    }
+
+    [Test]
     public void Generate_AssignsNormalBattleIndexFromProgressPool()
     {
         NodeMapGenerationRule[] rules =
@@ -282,7 +312,9 @@ public sealed class NodeMapGeneratorTests
             rules,
             3,
             4,
-            5);
+            5,
+            0.2f,
+            0.8f);
 
         foreach (NodeMapNodeData node in map.nodes.Where(
                      node => node.type == NodeMapNodeType.NormalBattle))
@@ -290,7 +322,9 @@ public sealed class NodeMapGeneratorTests
             int expectedPoolCount =
                 NodeMapGenerator.GetNormalBattleProgressSection(
                     node.column,
-                    10) switch
+                    10,
+                    0.2f,
+                    0.8f) switch
                 {
                     NodeMapBattleProgressSection.Middle => 3,
                     NodeMapBattleProgressSection.Late => 4,

@@ -50,6 +50,7 @@ public class BulletDataEditor : Editor
         Draw("cylinderIcon");
         Draw("price");
         Draw("grade");
+        Draw("bulletType", "Bullet Type");
     }
 
     private void DrawDisplayColors()
@@ -98,6 +99,12 @@ public class BulletDataEditor : Editor
             Draw("effects", includeChildren: true);
             Draw("conditionalEvents", includeChildren: true);
             Draw("penetrationChances", includeChildren: true);
+
+            if (GetSelectedBulletType() == BulletType.Shotgun)
+            {
+                Draw("shotgunShotCount", "Shotgun Shot Count");
+            }
+
             Draw("lineMaterial");
             Draw("doesNotConsumeTurn");
             Draw("recoilStrength");
@@ -138,6 +145,15 @@ public class BulletDataEditor : Editor
                 EditorGUILayout.PropertyField(levelData, GUIContent.none, true);
             }
         }
+    }
+
+    private BulletType GetSelectedBulletType()
+    {
+        SerializedProperty property = serializedObject.FindProperty(
+            "bulletType");
+        return property == null
+            ? BulletType.Normal
+            : (BulletType)property.enumValueIndex;
     }
 
     private void DrawValidationMessages()

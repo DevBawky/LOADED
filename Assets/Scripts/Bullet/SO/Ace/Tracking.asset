@@ -1,0 +1,112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Tracking
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_tracking
+  displayName: "\uCD94\uC801\uD0C4"
+  description: "탄환 효과 이동 시 추적 +1\n발사 시 추적당 무작위 적에게 표식 +1"
+  cylinderIcon: {fileID: -7139839002076282498, guid: 28bca4a9ab16a7f4d8493bc4bcdc23f1, type: 3}
+  price: 10
+  grade: 2
+  bulletType: 6
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 12
+  maxRange: 5
+  criticalChance: 20
+  criticalDamageMultiplier: 2
+  effects:
+  - effectType: 50
+    target: 1
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 0
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
+  conditionalEvents: []
+  penetrationChances: []
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+  secondaryLineColor: {r: 0.72, g: 0.36, b: 0.16, a: 1}
+  lineWidthMultiplier: 0.5
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.1
+  upgradeCost: 20
+  upgradeLevels:
+  - description: "탄환 효과 이동 시 추적 +1\n발사 시 추적당 무작위 적에게 표식 +1"
+    damage: 16
+    maxRange: 5
+    criticalChance: 24
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 50
+      target: 1
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 50
+  - description: "탄환 효과 이동 시 추적 +1\n발사 시 추적당 무작위 적에게 표식 +2"
+    damage: 20
+    maxRange: 6
+    criticalChance: 28
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 50
+      target: 1
+      activationChance: 100
+      stackCount: 2
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 50
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 100
+  - description: "탄환 효과 이동 시 추적 +1\n발사 시 추적당 무작위 적에게 표식 +3\n관통 1회"
+    damage: 25
+    maxRange: 6
+    criticalChance: 35
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 50
+      target: 1
+      activationChance: 100
+      stackCount: 3
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances:
+    - chance: 100
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 0
+

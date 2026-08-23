@@ -15,7 +15,8 @@ internal static class PlayerAttackDamageCalculator
         PlayerHealth playerHealth,
         RelicManager relicManager,
         DeckManager deckManager,
-        bool applyRuntimeRelicModifiers)
+        bool applyRuntimeRelicModifiers,
+        float criticalDamageMultiplierBonus = 0f)
     {
         if (bullet == null || bullet.Damage <= 0 || playerHealth == null)
         {
@@ -28,7 +29,8 @@ internal static class PlayerAttackDamageCalculator
         {
             damage = MultiplyCeiling(
                 damage,
-                bullet.CriticalDamageMultiplier);
+                bullet.CriticalDamageMultiplier
+                    + Mathf.Max(0f, criticalDamageMultiplierBonus));
         }
 
         int modifiedDamage = playerHealth.ModifyOutgoingAttackDamage(damage);
@@ -62,13 +64,26 @@ internal static class PlayerAttackDamageCalculator
         BulletInstance bullet,
         DeckManager deckManager)
     {
+        int baseDamage = bullet.Damage;
+        BulletEffectData fleshForBoneEffect = BulletEffectUtility.Find(
+            bullet,
+            BulletEffectType.FleshForBone);
+
+        if (fleshForBoneEffect != null)
+        {
+            baseDamage = BulletEffectUtility.SaturatingAdd(
+                baseDamage,
+                BulletEffectUtility.GetFleshForBoneBonusDamage(
+                    fleshForBoneEffect.Amount));
+        }
+
         BulletEffectData crescendoEffect = BulletEffectUtility.Find(
             bullet,
             BulletEffectType.Crescendo);
 
         if (crescendoEffect == null || deckManager == null)
         {
-            return bullet.Damage;
+            return baseDamage;
         }
 
         int otherOwnedBulletCount = Mathf.Max(
@@ -79,7 +94,7 @@ internal static class PlayerAttackDamageCalculator
         return Mathf.Max(
             0,
             Mathf.CeilToInt(
-                bullet.Damage
+                baseDamage
                 - otherOwnedBulletCount * crescendoEffect.Amount));
     }
 }

@@ -14,10 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: eye_of_the_storm
   displayName: "\uD3ED\uD48D\uC758 \uB208"
-  description: "\uD55C \uC2E4\uB9B0\uB354\uC5D0\uC11C \uBAA8\uB4E0 \uC801\uC5D0\uAC8C
-    \uD53C\uD574\uB97C \uC8FC\uBA74, \uAE30\uB85D\uB41C \uAC00\uC7A5 \uAC15\uD55C
-    \uB2E8\uC77C \uD53C\uD574\uC758 40%\uB97C \uBAA8\uB4E0 \uC0DD\uC874 \uC801\uC5D0\uAC8C
-    \uAC00\uD569\uB2C8\uB2E4."
+  description: "실린더 내 모든 적 공격 시 최고 단일 피해의 40%를 생존 적 전체에 적용"
   icon: {fileID: 591604309567753858, guid: d92d42f095f878343ac6ec00e42ffdf2, type: 3}
   lifetimeType: 0
   initialCharges: 1

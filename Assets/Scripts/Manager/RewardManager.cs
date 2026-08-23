@@ -11,6 +11,7 @@ public class RewardManager : MonoBehaviour
     [SerializeField] private PlayerInventory playerInventory;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private BoardManager boardManager;
+    private RelicManager relicManager;
 
     [Header("Dropped Item Presentation")]
     [Min(0f)] [SerializeField] private float itemDropDuration = 0.45f;
@@ -27,6 +28,8 @@ public class RewardManager : MonoBehaviour
         playerInventory ??= FindFirstObjectByType<PlayerInventory>();
         playerMove ??= FindFirstObjectByType<PlayerMove>();
         boardManager ??= FindFirstObjectByType<BoardManager>();
+        relicManager = FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
     }
 
     public void CaptureRunState(List<RunDroppedItemSaveData> results)
@@ -125,9 +128,11 @@ public class RewardManager : MonoBehaviour
             return false;
         }
 
+        int gold = ApplyRelicGoldMultiplier(
+            enemyData.RollGuaranteedGoldDrop());
         bool grantedGold = currencyManager != null
             && currencyManager.AddMoneyFromWorld(
-                enemyData.RollGuaranteedGoldDrop(),
+                gold,
                 playerMove == null
                     ? transform.position
                     : playerMove.transform.position);
@@ -144,9 +149,11 @@ public class RewardManager : MonoBehaviour
             return false;
         }
 
+        int gold = ApplyRelicGoldMultiplier(
+            enemyData.RollGuaranteedGoldDrop());
         bool grantedGold = currencyManager != null
             && currencyManager.AddMoneyFromWorld(
-                enemyData.RollGuaranteedGoldDrop(),
+                gold,
                 defeatedPosition);
 
         if (!enemyData.TryRollDrop(out EnemyDropItemData dropItem))
@@ -195,6 +202,17 @@ public class RewardManager : MonoBehaviour
         }
 
         return spawnedAny || grantedGold;
+    }
+
+    private int ApplyRelicGoldMultiplier(int amount)
+    {
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        int multiplier = relicManager == null
+            ? 1
+            : relicManager.GetEnemyGoldDropMultiplier();
+        long result = (long)Mathf.Max(0, amount) * Mathf.Max(1, multiplier);
+        return result >= int.MaxValue ? int.MaxValue : (int)result;
     }
 
     public bool GrantDrop(EnemyDropItemData dropItem)

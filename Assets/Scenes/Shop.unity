@@ -127,9 +127,29 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 728074611084632027, guid: ef403a4fb785ea84e91f8e74369702d9, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 728074611084632027, guid: ef403a4fb785ea84e91f8e74369702d9, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1073490904122373688, guid: ef403a4fb785ea84e91f8e74369702d9, type: 3}
+      propertyPath: m_fontSize
+      value: 18
+      objectReference: {fileID: 0}
     - target: {fileID: 1489666417867097256, guid: ef403a4fb785ea84e91f8e74369702d9, type: 3}
       propertyPath: m_Name
       value: ShopCanvas
+      objectReference: {fileID: 0}
+    - target: {fileID: 1826334920028484845, guid: ef403a4fb785ea84e91f8e74369702d9, type: 3}
+      propertyPath: m_fontSize
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 6656499156618645619, guid: ef403a4fb785ea84e91f8e74369702d9, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6754082065329599368, guid: ef403a4fb785ea84e91f8e74369702d9, type: 3}
       propertyPath: m_Pivot.x

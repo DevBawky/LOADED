@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_monopoly
   displayName: "\uB3C5\uC810\uD0C4"
-  description: "보유 덱에서 가장 많은 등급의 탄환 하나당 최종대미지 +30%"
+  description: "보유 덱에서 가장 많은 등급의 탄환 하나당 최종 피해 +30%"
   cylinderIcon: {fileID: 4899054067224291265, guid: e064e16c94c439e498e8bcc5860442b7, type: 3}
   price: 10
   grade: 2
@@ -44,7 +44,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "보유 덱에서 가장 많은 등급의 탄환 하나당 최종대미지 +40%"
+  - description: "보유 덱에서 가장 많은 등급의 탄환 하나당 최종 피해 +40%"
     damage: 24
     maxRange: 4
     criticalChance: 24
@@ -64,7 +64,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "보유 덱에서 가장 많은 등급의 탄환 하나당 최종대미지 +50%"
+  - description: "보유 덱에서 가장 많은 등급의 탄환 하나당 최종 피해 +50%"
     damage: 28
     maxRange: 5
     criticalChance: 30
@@ -84,7 +84,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "보유 덱에서 가장 많은 등급의 탄환 하나당 최종대미지 +75%"
+  - description: "보유 덱에서 가장 많은 등급의 탄환 하나당 최종 피해 +75%"
     damage: 35
     maxRange: 5
     criticalChance: 38

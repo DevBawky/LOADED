@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uB109\uBC31\uD0C4"
-  description: "\uBC00\uCE58\uAE30 \uCD5C\uB300 1\uCE78"
+  description: "밀치기 최대 1칸"
   cylinderIcon: {fileID: 470928459729146777, guid: 3e42a765c51425c49bf806e06d80546c, type: 3}
   price: 6
   grade: 1
@@ -46,7 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uBC00\uCE58\uAE30 \uCD5C\uB300 2\uCE78"
+  - description: "밀치기 최대 2칸"
     damage: 28
     maxRange: 3
     criticalChance: 24
@@ -66,7 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "\uBC00\uCE58\uAE30 \uCD5C\uB300 3\uCE78\n\uAE30\uC808 +1 (50%)"
+  - description: "밀치기 최대 3칸\n기절 +1 (50%)"
     damage: 35
     maxRange: 4
     criticalChance: 28
@@ -94,7 +94,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "\uBC00\uCE58\uAE30 \uCD5C\uB300 5\uCE78\n\uAE30\uC808 +2 (50%)"
+  - description: "밀치기 최대 5칸\n기절 +2 (50%)"
     damage: 40
     maxRange: 4
     criticalChance: 35

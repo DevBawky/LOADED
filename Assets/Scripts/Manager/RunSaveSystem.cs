@@ -67,6 +67,11 @@ public static class RunSaveSystem
         saveData.isWaitingForNextWave = false;
         saveData.isBattleCompletionPending = false;
         saveData.currentEnemyTurnCycle = 0;
+        saveData.playerStatusEffects =
+            saveData.pendingNextBattlePlayerStatusEffects
+            ?? new RunStatusEffectSaveData();
+        saveData.pendingNextBattlePlayerStatusEffects =
+            new RunStatusEffectSaveData();
         saveData.reservedSpawnTileIndices.Clear();
         saveData.enemies.Clear();
         saveData.bombs.Clear();
@@ -239,6 +244,8 @@ public static class RunSaveSystem
             saveData.playerTurnCount,
             saveData.cumulativeBattleTurnCount);
         saveData.playerStatusEffects ??= new RunStatusEffectSaveData();
+        saveData.pendingNextBattlePlayerStatusEffects ??=
+            new RunStatusEffectSaveData();
         saveData.reservedSpawnTileIndices ??= new List<int>();
         saveData.enemies ??= new List<RunEnemySaveData>();
         saveData.bombs ??= new List<RunBombSaveData>();
@@ -253,6 +260,16 @@ public static class RunSaveSystem
         saveData.eventOutcomeText ??= string.Empty;
         saveData.eventChoiceSelectionCounts ??= new List<int>();
         saveData.eventChoiceFailureCounts ??= new List<int>();
+        saveData.eventOfferAssetNames ??= new List<string>();
+        saveData.eventQuizCorrectAssetName ??= string.Empty;
+        saveData.eventResultText ??= string.Empty;
+        saveData.eventReelSymbolKeys ??= new List<string>();
+        saveData.eventPendingChoiceIndex = Mathf.Max(
+            -1,
+            saveData.eventPendingChoiceIndex);
+        saveData.eventFollowUpBattleIndex = Mathf.Max(
+            -1,
+            saveData.eventFollowUpBattleIndex);
         for (int index = 0;
              index < saveData.eventChoiceSelectionCounts.Count;
              index++)

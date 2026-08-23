@@ -12,18 +12,32 @@ using UnityEngine.UI;
 
 public class NodeMapSettingsDefinition : ScriptableObject
 {
+    // Round upward enough that percent normalization preserves the existing
+    // inclusive one-third and two-thirds boundaries.
+    private const float DefaultEarlyBattleEndPercent = 33.33334f;
+    private const float DefaultMiddleBattleEndPercent = 66.66667f;
+
     [SerializeField] private StageData stage;
     [Header("Normal Battles by Map Progress")]
-    [Tooltip("0% 이상 33% 미만 구간의 일반 전투 목록입니다.")]
+    [Tooltip("0%부터 초입 종료 진행도까지 사용하는 일반 전투 목록입니다.")]
     [FormerlySerializedAs("normalBattles")]
     [SerializeField] private BattleData[] earlyNormalBattles =
         Array.Empty<BattleData>();
-    [Tooltip("33% 이상 66% 미만 구간의 일반 전투 목록입니다.")]
+    [Tooltip("초입 종료 진행도 초과부터 중반 종료 진행도까지 사용하는 일반 전투 목록입니다.")]
     [SerializeField] private BattleData[] middleNormalBattles =
         Array.Empty<BattleData>();
-    [Tooltip("66% 이상 100% 구간의 일반 전투 목록입니다.")]
+    [Tooltip("중반 종료 진행도를 초과한 구간에서 사용하는 일반 전투 목록입니다.")]
     [SerializeField] private BattleData[] lateNormalBattles =
         Array.Empty<BattleData>();
+    [Header("Normal Battle Progress Boundaries")]
+    [Tooltip("초입 전투 구간이 끝나는 맵 진행도(%)입니다.")]
+    [Range(0f, 100f)]
+    [SerializeField] private float earlyBattleEndPercent =
+        DefaultEarlyBattleEndPercent;
+    [Tooltip("중반 전투 구간이 끝나는 맵 진행도(%)입니다. 초입 경계보다 작으면 초입 경계값으로 보정됩니다.")]
+    [Range(0f, 100f)]
+    [SerializeField] private float middleBattleEndPercent =
+        DefaultMiddleBattleEndPercent;
     [Header("Special Battles")]
     [SerializeField] private BattleData[] eliteBattles = Array.Empty<BattleData>();
     [SerializeField] private BattleData bossBattle;
@@ -133,6 +147,12 @@ public class NodeMapSettingsDefinition : ScriptableObject
         middleNormalBattles ?? Array.Empty<BattleData>();
     public IReadOnlyList<BattleData> LateNormalBattles =>
         lateNormalBattles ?? Array.Empty<BattleData>();
+    public float EarlyBattleEndProgress =>
+        Mathf.Clamp01(earlyBattleEndPercent / 100f);
+    public float MiddleBattleEndProgress => Mathf.Clamp(
+        middleBattleEndPercent / 100f,
+        EarlyBattleEndProgress,
+        1f);
     public IReadOnlyList<BattleData> EliteBattles =>
         eliteBattles ?? Array.Empty<BattleData>();
     public BattleData BossBattle => bossBattle;
@@ -168,6 +188,8 @@ public class NodeMapSettingsDefinition : ScriptableObject
                 hash = hash * 31 + MiddleNormalBattles.Count;
                 hash = hash * 31 + LateNormalBattles.Count;
                 hash = hash * 31 + EliteBattles.Count;
+                hash = hash * 31 + EarlyBattleEndProgress.GetHashCode();
+                hash = hash * 31 + MiddleBattleEndProgress.GetHashCode();
 
                 foreach (NodeMapGenerationRule rule in GenerationRules)
                 {
@@ -370,7 +392,9 @@ public class NodeMapControllerDefinition : MonoBehaviour
                 settings.GenerationRules,
                 Mathf.Max(1, settings.MiddleNormalBattles.Count),
                 Mathf.Max(1, settings.LateNormalBattles.Count),
-                Mathf.Max(1, settings.EliteBattles.Count));
+                Mathf.Max(1, settings.EliteBattles.Count),
+                settings.EarlyBattleEndProgress,
+                settings.MiddleBattleEndProgress);
             map.generationSettingsHash = settingsHash;
             NodeMapSaveSystem.Save(map);
         }
@@ -1113,7 +1137,9 @@ public class NodeMapControllerDefinition : MonoBehaviour
         IReadOnlyList<BattleData> normalBattles = settings.GetNormalBattles(
             NodeMapGenerator.GetNormalBattleProgressSection(
                 node.column,
-                maximumColumn));
+                maximumColumn,
+                settings.EarlyBattleEndProgress,
+                settings.MiddleBattleEndProgress));
         BattleData selected = node.type switch
         {
             NodeMapNodeType.Boss => settings.BossBattle,

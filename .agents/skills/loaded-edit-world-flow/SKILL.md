@@ -25,10 +25,23 @@ description: Change LOADED game-flow states, scene navigation, loading transitio
 - Keep node reachability, completed/selected state, stage/battle indices, and saved map consistent.
 - Event choice requirements and effects must share the same run context and update persistence after a successful choice.
 
-When adding authored events, follow `Docs/EventAuthoringGuide.md`; refresh the event definition pool rather than rebuilding the dedicated scene unless its generated structure actually changed.
+## Resumable interaction states
+
+Model multi-step event, shop, treasure, and transition interactions as explicit
+runtime states with legal transitions instead of scattering magic stage values
+and related fields across UI methods. Keep the scene controller as the
+orchestrator, keep presentation state non-authoritative, and save only after a
+coherent transition has committed.
+
+When compatibility requires existing integer or primitive save fields, map
+those values to meaningful runtime states without renaming or retyping the DTO.
+Test restoration at every resumable state and confirm that re-rendering a state
+does not consume RNG or reapply costs and rewards.
+
+When an `EventDefinition` asset is added, moved, or removed, pool registration is part of the same task. Follow `Docs/EventAuthoringGuide.md` and run `Tools > LOADED > Refresh Event Definition Pool`; do not stop after creating the asset. Verify `Assets/Prefabs/UI/Event/EventSceneManagers.prefab` contains every authored event exactly once, with no null reference or duplicate `StableId`. Runtime discovery under `Resources/Events` is a safety net, not a substitute for completing the serialized pool. Rebuild the dedicated scene only when its generated structure actually changed.
 
 ## Verify
 
-Run `NodeMapGeneratorTests`, `EventSelectorTests`, and `SceneIntegrityTests`. Add focused deterministic and transition-state coverage. In Play Mode traverse MainMenu, NodeMap, Battle, Shop, Treasure, Event, Ending, back/continue paths, and interrupted or repeated clicks. Confirm exact build-scene names, checkpoint timing, map restoration, and no missing scripts.
+Run `NodeMapGeneratorTests`, `EventSelectorTests`, and `SceneIntegrityTests`. For event additions, also compare the authored `EventDefinition` set with the serialized Event pool after refreshing it. Add focused deterministic and transition-state coverage. In Play Mode traverse MainMenu, NodeMap, Battle, Shop, Treasure, Event, Ending, back/continue paths, and interrupted or repeated clicks. Confirm exact build-scene names, checkpoint timing, map restoration, and no missing scripts.
 
 Use `Docs/EventAuthoringGuide.md`, `Docs/Dev/0804_LoadingTransition_GameStartUI_BulletIcon.md`, and relevant node/stage documents for the affected path.

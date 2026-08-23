@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: lucky_chamber
   displayName: "\uD589\uC6B4\uC758 \uC57D\uC2E4"
-  description: "\uC0AC\uACA9\uC744 \uC2DC\uC791\uD560 \uB54C \uC7A5\uC804\uB41C \uC57D\uC2E4
-    \uD558\uB098\uB97C \uBB34\uC791\uC704\uB85C \uACF5\uAC1C\uD569\uB2C8\uB2E4. \uD574\uB2F9
-    \uD0C4\uD658\uC758 \uCD5C\uC885 \uD53C\uD574\uAC00 3\uBC30\uAC00 \uB429\uB2C8\uB2E4."
+  description: "6발 장전 시 무작위 탄환 1발의 최종 피해 x2"
   icon: {fileID: -701460462383550924, guid: 69cf80b6d6d49b842bb24a2c760d9c96, type: 3}
   lifetimeType: 0
   initialCharges: 1
@@ -24,7 +22,7 @@ MonoBehaviour:
   maxStack: 1
   effects:
   - effectType: 20
-    finalDamageMultiplier: 3
+    finalDamageMultiplier: 2
     movementDamageMultiplierPerStack: 1.1
     survivingHealth: 1
     movementSources: 3

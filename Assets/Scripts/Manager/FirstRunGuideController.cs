@@ -106,6 +106,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private bool waited;
     private bool enemyActionInspected;
     private int reloadCount;
+    private bool chamberEjected;
     private bool bulletInfoInspected;
     private bool cylinderReordered;
     private bool damagePreviewInspected;
@@ -326,6 +327,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         waited = false;
         enemyActionInspected = false;
         reloadCount = 0;
+        chamberEjected = false;
         bulletInfoInspected = false;
         cylinderReordered = false;
         damagePreviewInspected = false;
@@ -883,6 +885,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             CombatStep.Wait => waited,
             CombatStep.InspectEnemyAction => enemyActionInspected,
             CombatStep.ReloadThree => reloadCount >= 3,
+            CombatStep.EjectChamber => chamberEjected,
             CombatStep.InspectBulletInfo => bulletInfoInspected,
             CombatStep.ReorderCylinder => cylinderReordered,
             CombatStep.PreviewDamage => damagePreviewInspected,
@@ -911,7 +914,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         int loadedBulletCount = deckManager?.LoadedBullets.Count ?? 0;
 
         // Avoiding guaranteed incoming damage always outranks instructional
-        // setup such as facing an enemy, entering range, waiting, or reloading.
+        // setup such as facing an enemy, entering range, ejecting, or reloading.
         if (IsPlayerInPreparedAttackDanger())
         {
             priority = new PriorityMission(
@@ -930,8 +933,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
                 if (!HasInspectableEnemyAction())
                 {
                     priority = new PriorityMission(
-                        "적 행동 아이콘이 나타날 때까지 한 턴 진행",
-                        "Button | Wait");
+                        "적 행동 아이콘이 나타날 때까지 회전하며 한 턴 진행",
+                        "Button | Rotate");
                     return true;
                 }
 
@@ -946,6 +949,17 @@ public sealed class FirstRunGuideController : MonoBehaviour
                     priority = new PriorityMission(
                         "실린더를 발사해 장전 공간 만들기",
                         "Button | Shoot");
+                    return true;
+                }
+
+                break;
+
+            case CombatStep.EjectChamber:
+                if (loadedBulletCount <= 0)
+                {
+                    priority = new PriorityMission(
+                        "제거할 탄환 1발 장전",
+                        "Button | Reload");
                     return true;
                 }
 
@@ -1066,8 +1080,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         else
         {
             priority = new PriorityMission(
-                "이동 경로가 열릴 때까지 한 턴 대기",
-                "Button | Wait");
+                "이동 경로가 열릴 때까지 회전하며 한 턴 진행",
+                "Button | Rotate");
         }
 
         return true;
@@ -1124,8 +1138,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         else
         {
             priority = new PriorityMission(
-                "적이 등장할 때까지 한 턴 진행",
-                "Button | Wait");
+                "적이 등장할 때까지 회전하며 한 턴 진행",
+                "Button | Rotate");
         }
 
         return true;
@@ -1137,8 +1151,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (!TryGetNearestEnemy(out int direction, out int distance))
         {
             priority = new PriorityMission(
-                "적이 등장할 때까지 한 턴 진행",
-                "Button | Wait");
+                "적이 등장할 때까지 회전하며 한 턴 진행",
+                "Button | Rotate");
             return true;
         }
 
@@ -1162,8 +1176,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (playerMove != null && !playerMove.CanPush)
         {
             priority = new PriorityMission(
-                $"발차기 재사용까지 대기 ({playerMove.RemainingPushCooldownTurns}턴)",
-                "Button | Wait");
+                $"발차기 재사용까지 회전 ({playerMove.RemainingPushCooldownTurns}턴)",
+                "Button | Rotate");
             return true;
         }
 
@@ -1466,6 +1480,12 @@ public sealed class FirstRunGuideController : MonoBehaviour
         EvaluateMission();
     }
 
+    private void HandleLoadedBulletEjected(BulletInstance _)
+    {
+        chamberEjected = true;
+        EvaluateMission();
+    }
+
     private void HandleDamagePreviewShown()
     {
         damagePreviewInspected = true;
@@ -1571,6 +1591,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         playerMove.PushPerformed += HandleKickPerformed;
         playerShoot.BehaviourActionStarted += HandleBehaviourActionStarted;
         playerShoot.BulletFired += HandleBulletFired;
+        playerShoot.LoadedBulletEjected += HandleLoadedBulletEjected;
         playerShoot.LoadedBulletDamagePreviewShown +=
             HandleDamagePreviewShown;
         cylinderUI.BulletOrderChanged += HandleCylinderOrderChanged;
@@ -1598,6 +1619,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         {
             playerShoot.BehaviourActionStarted -= HandleBehaviourActionStarted;
             playerShoot.BulletFired -= HandleBulletFired;
+            playerShoot.LoadedBulletEjected -= HandleLoadedBulletEjected;
             playerShoot.LoadedBulletDamagePreviewShown -=
                 HandleDamagePreviewShown;
         }

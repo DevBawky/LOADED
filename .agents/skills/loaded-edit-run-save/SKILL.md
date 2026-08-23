@@ -30,6 +30,11 @@ For every new or changed field, trace all of these paths:
 
 Store stable IDs and primitive state, not Unity object references. Re-resolve authored assets by the project's existing IDs. Keep node-map persistence separate unless the user explicitly requests a schema redesign. Save only at stable state boundaries, after a coherent transaction or action has settled.
 
+For resumable multi-step flows, define meaningful runtime states and legal
+transitions, then map them onto the existing primitive DTO fields when
+possible. Restoring a state must render the saved step without rerolling RNG,
+repaying costs, duplicating rewards, or replaying a completed transition.
+
 ## Verify
 
 Add round-trip and normalization tests for changed DTOs. Exercise new game, checkpoint, return to menu, continue, scene transition, active battle restore, corrupt/missing save fallback, clear save, and both desktop and WebGL branches as relevant. Confirm the actual storage key/file and restored runtime owners, not only JSON text.

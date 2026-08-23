@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_masterpiece
   displayName: "\uBA85\uD488\uD0C4"
-  description: "보유한 에이스·레전드리 탄환 하나당 최종대미지 +25%\n치명타 시 골드 +1"
+  description: "보유한 에이스·레전드리 탄환 하나당 최종 피해 +25%\n치명타 시 골드 +1"
   cylinderIcon: {fileID: 3980920622273506909, guid: 545c7c4fbc9be074ea6a254309f79abe, type: 3}
   price: 10
   grade: 2
@@ -52,7 +52,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "보유한 에이스·레전드리 탄환 하나당 최종대미지 +50%\n치명타 시 골드 +2"
+  - description: "보유한 에이스·레전드리 탄환 하나당 최종 피해 +50%\n치명타 시 골드 +2"
     damage: 20
     maxRange: 4
     criticalChance: 24
@@ -80,7 +80,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "보유한 에이스·레전드리 탄환 하나당 최종대미지 +50%\n치명타 시 골드 +3\n관통 1회 (30%)"
+  - description: "보유한 에이스·레전드리 탄환 하나당 최종 피해 +50%\n치명타 시 골드 +3\n관통 1회 (30%)"
     damage: 26
     maxRange: 5
     criticalChance: 29
@@ -109,7 +109,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "보유한 에이스·레전드리 탄환 하나당 최종대미지 +50%\n치명타 시 골드 +5\n관통 1회\n재장전 시 턴을 소모하지 않습니다."
+  - description: "보유한 에이스·레전드리 탄환 하나당 최종 피해 +50%\n치명타 시 골드 +5\n관통 1회\n재장전 시 턴 소모 없음"
     damage: 34
     maxRange: 5
     criticalChance: 36

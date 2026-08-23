@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_power
   displayName: "\uAC15\uD654\uD0C4"
-  description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
-    \uC2DC \uD30C\uAD34 (5%)"
+  description: "발사 시 파괴 (5%)"
   cylinderIcon: {fileID: -1511212471940627665, guid: 642dc24acacca0c419a6cb6d26f207f6, type: 3}
   price: 10
   grade: 2
@@ -47,8 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
-      \uC2DC \uD30C\uAD34 (5%)\n\uAD00\uD1B5 1\uD68C (20%)"
+  - description: "발사 시 파괴 (5%)\n관통 1회 (20%)"
     damage: 85
     maxRange: 3
     criticalChance: 60
@@ -69,8 +67,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
-      \uC2DC \uD30C\uAD34 (3%)\n\uAD00\uD1B5 1\uD68C (40%)"
+  - description: "발사 시 파괴 (3%)\n관통 1회 (40%)"
     damage: 120
     maxRange: 4
     criticalChance: 70
@@ -91,8 +88,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uAC15\uB825\uD55C \uD0C4\uD658\uC785\uB2C8\uB2E4.\n\uBC1C\uC0AC
-      \uC2DC \uD30C\uAD34 (1%)\n\uC5F0\uC18D \uAD00\uD1B5 (40%)"
+  - description: "발사 시 파괴 (1%)\n연속 관통 (40%)"
     damage: 150
     maxRange: 4
     criticalChance: 85

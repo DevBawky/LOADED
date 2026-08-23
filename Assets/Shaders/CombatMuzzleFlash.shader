@@ -8,6 +8,7 @@ Shader "Loaded/Combat Muzzle Flash"
         _Intensity("Intensity", Range(0.0, 8.0)) = 2.0
         _Direction("Direction", Float) = 1.0
         _RayCount("Ray Count", Range(3.0, 12.0)) = 7.0
+        _EffectMode("Effect Mode", Range(0.0, 1.0)) = 0.0
     }
 
     SubShader
@@ -57,6 +58,8 @@ Shader "Loaded/Combat Muzzle Flash"
                 float _Intensity;
                 float _Direction;
                 float _RayCount;
+                // 0 renders the muzzle burst; 1 renders the contact flare.
+                float _EffectMode;
             CBUFFER_END
 
             float Hash(float2 value)
@@ -115,24 +118,66 @@ Shader "Loaded/Combat Muzzle Flash"
                 float noise = Hash(
                     floor(centered * 18.0 + _Progress * 13.0));
                 float breakup = lerp(0.72, 1.18, noise);
-                float energy = core * 1.8
+                float muzzleEnergy = core * 1.8
                     + horizontalStreak * 1.35
                     + verticalStreak
                     + rays * breakup * 1.2
                     + cone * breakup * 1.6
                     + ring * 0.55;
-                energy *= fade * input.color.a;
+                muzzleEnergy *= fade;
+
+                float impactRadius = lerp(0.06, 0.82, _Progress);
+                float impactWidth = lerp(0.14, 0.025, _Progress);
+                float impactRing = 1.0 - smoothstep(
+                    impactWidth,
+                    impactWidth * 2.0,
+                    abs(distanceFromCenter - impactRadius));
+                float arcNoise = sin(angle * 5.0 + _Progress * 5.0) * 0.62
+                    + sin(angle * 11.0 - _Progress * 3.0) * 0.38;
+                float brokenArcs = smoothstep(-0.22, 0.48, arcNoise);
+                float forwardArc = saturate(
+                    0.58 + cos(angle) * sign(_Direction) * 0.52);
+                float impactCore = exp(-distanceFromCenter * 10.0)
+                    * pow(saturate(1.0 - _Progress), 2.6);
+                float impactSlash = exp(
+                        -abs(centered.y - centered.x * sign(_Direction) * 0.08)
+                        * 26.0)
+                    * (1.0 - smoothstep(0.04, 0.92, abs(centered.x)))
+                    * pow(saturate(1.0 - _Progress), 1.8);
+                float impactFade = pow(saturate(1.0 - _Progress), 0.92);
+                float impactEnergy = impactCore * 1.7
+                    + impactSlash * 0.85
+                    + impactRing
+                        * brokenArcs
+                        * lerp(0.52, 1.45, forwardArc)
+                        * 1.35;
+                impactEnergy *= impactFade;
+
+                float effectMode = saturate(_EffectMode);
+                float energy = lerp(
+                    muzzleEnergy,
+                    impactEnergy,
+                    effectMode) * input.color.a;
 
                 float hotMix = saturate(
                     core * 1.6
                     + horizontalStreak
                     + verticalStreak * 0.8);
-                half3 flameColor = lerp(
+                half3 muzzleColor = lerp(
                     _PrimaryColor.rgb,
                     _SecondaryColor.rgb,
                     hotMix);
-                flameColor = lerp(flameColor, 1.0.xxx, core * 0.78);
-                float alpha = saturate(energy) * fade;
+                muzzleColor = lerp(muzzleColor, 1.0.xxx, core * 0.62);
+                half3 impactColor = lerp(
+                    _PrimaryColor.rgb,
+                    1.0.xxx,
+                    impactCore * 0.28);
+                half3 flameColor = lerp(
+                    muzzleColor,
+                    impactColor,
+                    effectMode);
+                float effectFade = lerp(fade, impactFade, effectMode);
+                float alpha = saturate(energy) * effectFade;
                 half3 outputColor = flameColor
                     * energy
                     * _Intensity

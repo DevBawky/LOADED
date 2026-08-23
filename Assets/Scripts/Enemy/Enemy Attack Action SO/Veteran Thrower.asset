@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88615d6674bc44199ab7dfb3d705db35, type: 3}
+  m_Name: Veteran Thrower
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
+  skillId: stage1_veteran_thrower_attack
+  displayName: "\uAC15\uD654 \uD654\uC5FC\uBCD1"
+  description: "\uBCA0\uD14C\uB791 \uD22C\uCC99\uBCD1\uC774 \uAC15\uD654 \uD654\uC5FC\uBCD1\uC744
+    \uB358\uC838 \uD53C\uD574 22\uB97C \uC90D\uB2C8\uB2E4."
+  damage: 22
+  range: 999
+  knockbackDistance: 0
+  stunDurationTurns: 0
+  markDurationTurns: 0
+  poisonStackCount: 0
+  weaknessDurationTurns: 0
+  attackEffectPrefab: {fileID: 0}

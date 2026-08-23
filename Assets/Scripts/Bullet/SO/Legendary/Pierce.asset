@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_pierce
   displayName: "\uC410\uAE30"
-  description: "\uAD00\uD1B5 2\uD68C"
+  description: "관통 2회"
   cylinderIcon: {fileID: -2250305250062886216, guid: c47efbb67453aee41a9363eb9e0ca4fb, type: 3}
   price: 20
   grade: 3
+  bulletType: 5
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
@@ -40,7 +41,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 50
   upgradeLevels:
-  - description: "\uAD00\uD1B5 3\uD68C"
+  - description: "관통 3회"
     damage: 40
     maxRange: 3
     criticalChance: 40
@@ -55,8 +56,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uAD00\uD1B5 4\uD68C\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
-      \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "관통 4회\n재장전 시 턴 소모 없음"
     damage: 50
     maxRange: 4
     criticalChance: 50
@@ -72,8 +72,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     upgradeCost: 200
-  - description: "\uAD00\uD1B5 5\uD68C\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +1\n\uC7AC\uC7A5\uC804
-      \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "관통 5회\n치명타 시 골드 +1\n재장전 시 턴 소모 없음"
     damage: 70
     maxRange: 5
     criticalChance: 60

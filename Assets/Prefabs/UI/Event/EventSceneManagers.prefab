@@ -61,6 +61,7 @@ MonoBehaviour:
   combatFeedback: {fileID: 0}
   playerMove: {fileID: 0}
   playerHealth: {fileID: 0}
+  relicManager: {fileID: 0}
   gameStartUI: {fileID: 0}
   mainGamePanel: {fileID: 0}
   stageClearPanel: {fileID: 0}
@@ -134,6 +135,20 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d3010000000000000000000000000003, type: 2}
   - {fileID: 11400000, guid: d3010000000000000000000000000004, type: 2}
   - {fileID: 11400000, guid: d3010000000000000000000000000005, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500c, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500e, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500a, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345008, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345005, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500b, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345004, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f34500d, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345006, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345003, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345009, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345002, type: 2}
+  - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345001, type: 2}
+  - {fileID: 11400000, guid: 2838b42f520519147b57cc3f93b5e3e0, type: 2}
   gradeWeights:
   - grade: 0
     appearanceWeight: 30
@@ -464,25 +479,50 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EventSceneController
   eventPool:
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0103, type: 2}
+  - {fileID: 11400000, guid: 6d79c3bca61b4d8f8605ae5f465e3ffc, type: 2}
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0101, type: 2}
+  - {fileID: 11400000, guid: 160ab491e07a4e2198a257634bd90532, type: 2}
+  - {fileID: 11400000, guid: 39350e94ddbc433da8cb8903569a43fe, type: 2}
+  - {fileID: 11400000, guid: 4a1542230f974e7380d73f37c66047ed, type: 2}
   - {fileID: 11400000, guid: f1ddfc405a6165643b65256581c6723e, type: 2}
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0102, type: 2}
+  - {fileID: 11400000, guid: 302faa6dcb714fbfbfb85f6f3c04f4c0, type: 2}
+  - {fileID: 11400000, guid: dc37a7469f76494aa625a2cd6baa5ea7, type: 2}
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0105, type: 2}
+  - {fileID: 11400000, guid: 941cd494a8ef4076a0ceba5f3a5bf933, type: 2}
   - {fileID: 11400000, guid: 25bd9a261fb550d4393baa18c59bf7dd, type: 2}
+  - {fileID: 11400000, guid: c58310ab95004b85b89df744373bf420, type: 2}
+  - {fileID: 11400000, guid: 1c3063a701344c7d83f1b8885d1ff850, type: 2}
+  - {fileID: 11400000, guid: 794f00ae7a5e4340b1583a52beefd91b, type: 2}
+  - {fileID: 11400000, guid: b9a1fa9f308d4faebbaa044f162bf43d, type: 2}
   - {fileID: 11400000, guid: e1a10146765b49d28b7379a0f71a0104, type: 2}
   - {fileID: 11400000, guid: 0142b1f489cd4a94c995c741f0321b7c, type: 2}
   dataResolver: {fileID: 0}
   deckManager: {fileID: 0}
   currencyManager: {fileID: 0}
   playerInventory: {fileID: 0}
+  relicManager: {fileID: 0}
   stateManager: {fileID: 0}
   bulletSelectionUI: {fileID: 0}
+  inventorySelectionUI: {fileID: 0}
+  relicSelectionUI: {fileID: 0}
   eventCanvasRoot: {fileID: 0}
   artworkImage: {fileID: 0}
   titleText: {fileID: 0}
   dialogueText: {fileID: 0}
+  resultText: {fileID: 0}
+  reelResultImages: []
   choiceButtons: []
   choiceTexts: []
+  playerHealthFillImage: {fileID: 0}
+  playerHealthText: {fileID: 0}
+  actionNameColor: {r: 1, g: 0.78, b: 0.32, a: 1}
+  upgradeKeywordColor: {r: 0.48, g: 1, b: 0.58, a: 1}
+  removeKeywordColor: {r: 1, g: 0.42, b: 0.52, a: 1}
+  freeKeywordColor: {r: 0.45, g: 0.94, b: 0.62, a: 1}
+  costKeywordColor: {r: 1, g: 0.82, b: 0.34, a: 1}
+  rewardNameColor: {r: 0.38, g: 0.85, b: 1, a: 1}
+  unavailableReasonColor: {r: 1, g: 0.28, b: 0.28, a: 1}
   continueLabel: "\uACC4\uC18D"
   fallbackOutcome: "\uC120\uD0DD\uC758 \uACB0\uACFC\uAC00 \uAE38 \uC704\uC5D0 \uB0A8\uC558\uC2B5\uB2C8\uB2E4."
 --- !u!1 &8472260209066011998

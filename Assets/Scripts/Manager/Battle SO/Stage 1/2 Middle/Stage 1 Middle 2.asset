@@ -31,12 +31,14 @@ MonoBehaviour:
     - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 2
     - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-      count: 2
+      count: 1
+    - enemyData: {fileID: 11400000, guid: 0fae8caa9273d534480b5ca8a210cc45, type: 2}
+      count: 1
   - enemies:
     - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 4
   - enemies:
     - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 3
-    - enemyData: {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
+    - enemyData: {fileID: 11400000, guid: b065e4a62aeb4e645ac3bb45f643dca6, type: 2}
       count: 1

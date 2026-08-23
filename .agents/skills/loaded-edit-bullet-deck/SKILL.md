@@ -1,6 +1,6 @@
 ---
 name: loaded-edit-bullet-deck
-description: Change LOADED bullet definitions, mutable bullet instances, bullet effects, deck ownership and cycling, cylinder ordering, bullet management UI, upgrades, or bullet shop capacity. Use when BulletData, BulletInstance, DeckManager, or bullet lifecycle invariants are involved.
+description: Change LOADED bullet definitions, mutable bullet instances, bullet effects, deck ownership and cycling, cylinder ordering, bullet catalogs and dictionary registration, bullet management UI, upgrades, or bullet shop capacity. Use when BulletData, BulletInstance, DeckManager, or bullet lifecycle invariants are involved.
 ---
 
 # Edit LOADED Bullet and Deck Systems
@@ -13,6 +13,9 @@ description: Change LOADED bullet definitions, mutable bullet instances, bullet 
 - `BulletEffectUtility` provides shared stateless classification and lookup.
 - `PlayerCylinderUI`, `BulletManagementUI`, `NextBulletUI`, and `BulletLine` render or forward intent; they do not own bullets.
 - `CylinderBulletEffectPolicy` decides effect-indicator visibility.
+- `ShopManager.bulletPool` and `BulletDictionaryController.bullets` are
+  authored catalogs of available bullet definitions. They are not runtime
+  bullet owners and must stay synchronized with authored `BulletData` assets.
 
 When firing, targeting, damage, or preview changes, also use the player-combat skill. When persistence fields change, also use the run-save skill.
 
@@ -37,6 +40,22 @@ Trace the entire path from authored data through runtime instance, deck transfer
 
 Read `Docs/BulletDeckLifecycle.md` for any ownership, capacity, cycling, destruction, or UI change. Use the relevant bullet document under `Docs/Dev/` for a named effect.
 
+Whenever a `BulletData` asset is added, moved, or removed, catalog registration
+is part of the same task. Do not stop after implementing the asset or effect.
+Ensure every `ShopManager.bulletPool` in Battle, Shop, Event, Treasure, and
+other authored owners, plus the MainMenu bullet dictionary, is synchronized.
+Editor import automation may perform this authoring-time update when no loaded
+scene has unsaved changes; otherwise save scenes and run
+`Tools > LOADED > Sync All Bullet Pools`. Preserve existing catalog order,
+reject nulls and duplicates, and append new assets deterministically. Do not
+add the full catalog to `DeckManager.startingBullets`, which is gameplay
+starting inventory rather than an availability catalog.
+
 ## Verify
 
 Run `DeckManagerTests`, `PlayerAttackDamageCalculatorTests`, and affected refactoring-policy tests. Add focused EditMode coverage for deterministic rule changes. In Play Mode verify load, reorder, reload, fire, destroy, graveyard recovery, upgrade, capacity 20, final-bullet depletion, final-enemy priority, and next-bullet UI timing.
+
+For every bullet addition, run the pool sync to idempotence, then run
+`BulletPoolIntegrityTests` and verify the bullet appears in shop offers and the
+MainMenu dictionary. Bullet authoring is incomplete while any shop or
+dictionary catalog is missing the asset.

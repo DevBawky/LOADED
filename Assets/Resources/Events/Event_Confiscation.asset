@@ -1,0 +1,114 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
+  m_Name: Event_Confiscation
+  m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
+  eventId: confiscation
+  displayName: "\uBAB0\uC218"
+  artwork: {fileID: 6658555464872639388, guid: cfb756d0915b9d54c8569b011c5bf39a, type: 3}
+  dialogue: "\uC644\uC7A5\uC744 \uCC2C \uC0AC\uB0B4\uB4E4\uC774 \uAE38\uC744 \uB9C9\uB294\uB2E4.
+    \uC11C\uB958\uC5D0\uB294 \uB2F9\uC2E0\uC758 Legendary \uD0C4\uD658\uC774 \uAE08\uC81C\uD488\uC774\uB77C\uACE0
+    \uC801\uD600 \uC788\uB2E4."
+  choices:
+  - buttonText: "[\uBAB0\uC218\uC5D0 \uC751\uD55C\uB2E4] Legendary \uD0C4\uD658 1\uAC1C\uB97C
+      \uB118\uAE30\uACE0, \uBB34\uC791\uC704 Ace \uD0C4\uD658 3\uAC1C \uC911 \uD558\uB098\uB97C
+      \uACE0\uB978\uB2E4."
+    outcomeText: "\uC0AC\uB0B4\uB4E4\uC740 \uC804\uC124\uC744 \uC555\uC218\uD558\uACE0
+      \uADF8\uBCF4\uB2E4 \uBABB\uD55C \uBCF4\uC0C1 \uC138 \uBC1C\uC744 \uB298\uC5B4\uB193\uC558\uB2E4."
+    requirements:
+    - type: 7
+      amount: 1
+      bulletGrade: 3
+      bulletId: 
+      unavailableReason: "Legendary \uB4F1\uAE09 \uD0C4\uD658\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
+    - type: 6
+      amount: 2
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "\uD0C4\uD658\uC744 \uCD5C\uC18C 1\uAC1C \uB0A8\uACA8\uC57C
+        \uD569\uB2C8\uB2E4."
+    attemptEffects:
+    - type: 5
+      amount: 0
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    effects: []
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 1
+    requiredBulletGrade: 3
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 1
+    randomBulletOfferCount: 3
+    offerGradeMode: 1
+    fixedOfferGrade: 2
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uAC70\uC808\uD55C\uB2E4] \uC11C\uB958\uB97C \uCC22\uACE0 \uC644\uC7A5\uB4E4\uC744
+      \uB178\uB824\uBCF8\uB2E4."
+    outcomeText: "\uC0AC\uB0B4\uB4E4\uC740 \uC695\uC124\uC744 \uD37C\uBD80\uC5C8\uC9C0\uB9CC
+      \uB05D\uB0B4 \uBC29\uC544\uC1E0\uB97C \uB2F9\uAE30\uC9C0 \uBABB\uD588\uB2E4."
+    requirements: []
+    attemptEffects: []
+    effects: []
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  baseWeight: 6
+  oncePerRun: 1
+  weightRules: []
+  normalBattleChancePercent: 4
+  eliteBattleChancePercent: 12
+  shopChancePercent: 0

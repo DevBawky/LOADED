@@ -1,0 +1,224 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
+  m_Name: Event_MoonshineStill
+  m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
+  eventId: moonshine-still
+  displayName: "\uBC00\uC8FC \uC99D\uB958\uC18C"
+  artwork: {fileID: -7258354848284166065, guid: 7728b7e2c2c48b449800a7f6f816c2af, type: 3}
+  dialogue: "\uD611\uACE1 \uC548\uCABD\uC5D0\uC11C \uB2EC\uCF64\uD558\uBA74\uC11C\uB3C4
+    \uB3C5\uD55C \uB0C4\uC0C8\uAC00 \uD48D\uACA8 \uC628\uB2E4. \uC870\uC7A1\uD55C
+    \uC99D\uB958\uAE30 \uC606\uC5D0 \uB193\uC778 \uC0C1\uC790\uC5D0\uB294 \uC220\uBCD1\uACFC
+    \uBC00\uC218\uD488\uC774 \uAC00\uB4DD\uD558\uB2E4."
+  choices:
+  - buttonText: "[\uD55C \uC794 \uB9C8\uC2E0\uB2E4] 5 \uACE8\uB4DC\uB97C \uB0B4\uACE0
+      \uCCB4\uB825\uC744 20 \uD68C\uBCF5\uD55C\uB2E4."
+    outcomeText: "\uBAA9\uAD6C\uBA4D\uC740 \uBD88\uD0C0\uB294 \uB4EF\uD588\uC9C0\uB9CC
+      \uBAB8\uC5D0 \uD798\uC774 \uB418\uB3CC\uC544\uC654\uB2E4."
+    requirements:
+    - type: 1
+      amount: 5
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "5 \uACE8\uB4DC\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+    attemptEffects: []
+    effects:
+    - type: 1
+      amount: 5
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    - type: 2
+      amount: 20
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uC220\uBCD1\uC744 \uD6D4\uCCD0 \uD310\uB2E4] \uCCB4\uB825\uC744
+      6 \uC783\uACE0 15 \uACE8\uB4DC\uB97C \uC5BB\uB294\uB2E4."
+    outcomeText: "\uC8FC\uC778\uC5D0\uAC8C \uB4E4\uCF1C \uD55C \uB300 \uC5BB\uC5B4\uB9DE\uC558\uC9C0\uB9CC
+      \uC220\uBCD1\uC740 \uC81C\uBC95 \uC88B\uC740 \uAC12\uC5D0 \uD314\uB838\uB2E4."
+    requirements: []
+    attemptEffects: []
+    effects:
+    - type: 3
+      amount: 6
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    - type: 0
+      amount: 15
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uBE44\uBC00 \uC0C1\uC790\uB97C \uC0B0\uB2E4] 25 \uACE8\uB4DC\uB97C
+      \uB0B4\uACE0 \uC9D1\uC911 \uD0C4\uD658\uC744 \uC5BB\uB294\uB2E4."
+    outcomeText: "\uC0C1\uC790 \uC548\uC5D0\uB294 \uC815\uAD50\uD558\uAC8C \uAC00\uACF5\uB41C
+      \uC9D1\uC911 \uD0C4\uD658 \uD55C \uBC1C\uC774 \uB4E4\uC5B4 \uC788\uC5C8\uB2E4."
+    requirements:
+    - type: 1
+      amount: 25
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "25 \uACE8\uB4DC\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+    - type: 4
+      amount: 0
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "\uD0C4\uD658 \uBCF4\uC720 \uD55C\uB3C4\uC5D0 \uB3C4\uB2EC\uD588\uC2B5\uB2C8\uB2E4."
+    attemptEffects: []
+    effects:
+    - type: 1
+      amount: 25
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    - type: 4
+      amount: 0
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 11400000, guid: c201000000000000000000000000000f, type: 2}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  baseWeight: 10
+  oncePerRun: 1
+  weightRules:
+  - statistic: 1
+    comparison: 2
+    threshold: 0
+    operation: 0
+    value: 12
+  - statistic: 2
+    comparison: 3
+    threshold: 2
+    operation: 0
+    value: 5
+  normalBattleChancePercent: 0
+  eliteBattleChancePercent: 0
+  shopChancePercent: 0

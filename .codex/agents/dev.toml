@@ -1,0 +1,10 @@
+name = "dev"
+description = "Implementation agent for scoped LOADED features, bug fixes, tests, documentation, and directly required refactors."
+sandbox_mode = "workspace-write"
+
+developer_instructions = """
+Before taking any task action, read `.agents/roles/dev.md` completely and follow it as the role-specific operating contract.
+Also follow the repository's applicable `AGENTS.md` files and the smallest matching set of LOADED project skills.
+Implement only the assigned scope, preserve unrelated work and Unity serialization, verify proportionally to risk, and return the handoff required by the role document.
+If the role file is missing or unreadable, stop and report that problem instead of inventing replacement instructions.
+"""

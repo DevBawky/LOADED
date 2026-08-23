@@ -1,0 +1,81 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Shot
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_buckshot
+  displayName: "\uC0B0\uD0C4"
+  description: "기본 산탄"
+  cylinderIcon: {fileID: -4775050287358454370, guid: c2fddaa8c2d3d9d439522ec2f93eb93b, type: 3}
+  price: 3
+  grade: 0
+  bulletType: 4
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  damage: 4
+  maxRange: 1
+  criticalChance: 15
+  criticalDamageMultiplier: 1.5
+  effects: []
+  conditionalEvents: []
+  penetrationChances: []
+  shotgunShotCount: 3
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.5, g: 0, b: 0, a: 1}
+  secondaryLineColor: {r: 0.3679245, g: 0, b: 0.3570665, a: 1}
+  lineWidthMultiplier: 0.5
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.1
+  upgradeCost: 5
+  upgradeLevels:
+  - description: "기본 산탄"
+    damage: 7
+    maxRange: 1
+    criticalChance: 20
+    criticalDamageMultiplier: 1.6
+    effects: []
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 4
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 10
+  - description: "기본 산탄"
+    damage: 8
+    maxRange: 1
+    criticalChance: 27
+    criticalDamageMultiplier: 1.8
+    effects: []
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 5
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 15
+  - description: "기본 산탄"
+    damage: 10
+    maxRange: 1
+    criticalChance: 35
+    criticalDamageMultiplier: 2
+    effects: []
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 6
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.35
+    upgradeCost: 0

@@ -6,6 +6,8 @@ using UnityEngine.UI;
 
 public class StageProgressUI : MonoBehaviour
 {
+    public const string ShopStageTitle = "상점. 마을";
+
     [Header("References")]
     [SerializeField] private StateManager stateManager;
     [SerializeField] private TMP_Text stageTitleText;
@@ -31,9 +33,10 @@ public class StageProgressUI : MonoBehaviour
     private string externalStageTitle;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    private static void EnsureBattleSceneBinding()
+    internal static void EnsureSupportedSceneBinding()
     {
-        if (SceneManager.GetActiveScene().name != "Battle")
+        string sceneName = SceneManager.GetActiveScene().name;
+        if (sceneName != "Battle" && sceneName != "Shop")
         {
             return;
         }
@@ -156,7 +159,7 @@ public class StageProgressUI : MonoBehaviour
 
         if (stateManager.CurrentState == GameFlowState.Shop)
         {
-            stageTitleText.text = "마을. 상점";
+            stageTitleText.text = ShopStageTitle;
             return;
         }
 

@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: last_chance
   displayName: "\uB9C8\uC9C0\uB9C9 \uAE30\uD68C"
-  description: "\uC8FD\uC74C\uC5D0 \uC774\uB974\uB294 \uD53C\uD574\uB97C 1\uD68C
-    \uB9C9\uACE0 \uCCB4\uB825\uC744 1 \uB0A8\uAE34 \uB4A4 \uD30C\uAD34\uB429\uB2C8\uB2E4."
+  description: "치명 피해 1회 방지, 체력 1 유지"
   icon: {fileID: -2621938786737262761, guid: c8c8ade7fe759fb4dbb81a730f7c5dc8, type: 3}
   lifetimeType: 1
   initialCharges: 1

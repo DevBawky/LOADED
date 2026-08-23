@@ -269,11 +269,6 @@ public static class EventSceneSetupBuilder
 
     private static void BuildSampleEvents()
     {
-        BulletData sampleBullet = AssetDatabase.FindAssets("t:BulletData")
-            .Select(AssetDatabase.GUIDToAssetPath)
-            .Select(AssetDatabase.LoadAssetAtPath<BulletData>)
-            .FirstOrDefault(data => data != null);
-
         CreateOrUpdateEvent(
             EventDataFolder + "/Event_UnvisitedMerchant.asset",
             "unvisited-merchant",
@@ -318,8 +313,7 @@ public static class EventSceneSetupBuilder
                     {
                         new EventEffect
                         {
-                            type = EventEffectType.AddBullet,
-                            bullet = sampleBullet
+                            type = EventEffectType.AddBullet
                         }
                     }
                 },

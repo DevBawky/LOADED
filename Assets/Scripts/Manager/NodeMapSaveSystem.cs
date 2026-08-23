@@ -141,6 +141,19 @@ public static class NodeMapSaveSystem
         return true;
     }
 
+    public static bool SetSelectedBattleIndex(int battleIndex)
+    {
+        if (battleIndex < 0 || !TryLoad(out NodeMapRunData data)
+            || data.activeNodeId < 0)
+        {
+            return false;
+        }
+
+        data.selectedBattleIndex = battleIndex;
+        data.awaitingNodeSelection = false;
+        return Save(data);
+    }
+
     public static bool TryGetActiveNodeScene(out string sceneName)
     {
         sceneName = string.Empty;

@@ -14,15 +14,19 @@ public class BulletLine : MonoBehaviour
     [Min(0.01f)]
     [FormerlySerializedAs("lineDuration")]
     [SerializeField] private float fadeDuration = 0.1f;
+    [Min(0.01f)]
+    [SerializeField] private float maximumVisibleDuration = 0.18f;
+    [Min(0.01f)]
+    [SerializeField] private float maximumTrailWidth = 0.16f;
 
     [Header("Layered Trail")]
     [SerializeField] private bool useLayeredTrail = true;
     [Range(0.1f, 1f)]
-    [SerializeField] private float coreWidthMultiplier = 0.32f;
+    [SerializeField] private float coreWidthMultiplier = 0.28f;
     [Range(1f, 4f)]
-    [SerializeField] private float glowWidthMultiplier = 3.2f;
+    [SerializeField] private float glowWidthMultiplier = 1.65f;
     [Range(0f, 1f)]
-    [SerializeField] private float glowAlpha = 0.28f;
+    [SerializeField] private float glowAlpha = 0.18f;
 
     private MaterialPropertyBlock materialPropertyBlock;
     private readonly List<LineRenderer> trailLayers = new List<LineRenderer>();
@@ -61,8 +65,9 @@ public class BulletLine : MonoBehaviour
 
         lineRenderer.startColor = bulletData.PrimaryLineColor;
         lineRenderer.endColor = bulletData.PrimaryLineColor;
-        lineRenderer.widthMultiplier =
-            baseWidthMultiplier * bulletData.LineWidthMultiplier;
+        lineRenderer.widthMultiplier = Mathf.Min(
+            baseWidthMultiplier * bulletData.LineWidthMultiplier,
+            maximumTrailWidth > 0f ? maximumTrailWidth : 0.16f);
         ApplyLineColors(
             bulletData.PrimaryLineColor,
             bulletData.SecondaryLineColor);
@@ -106,16 +111,16 @@ public class BulletLine : MonoBehaviour
         }
 
         Color coreColor = Color.Lerp(
-            Color.white,
             bulletData.PrimaryLineColor,
-            0.18f);
+            bulletData.SecondaryLineColor,
+            0.32f);
         coreColor.a = 1f;
         CreateTrailLayer(
-            "White Hot Core",
+            "Colored Core",
             startPoint,
             endPoint,
             coreColor,
-            Color.white,
+            bulletData.SecondaryLineColor,
             coreWidthMultiplier,
             lineRenderer.sortingOrder + 1);
 
@@ -185,8 +190,13 @@ public class BulletLine : MonoBehaviour
         }
 
         float elapsedTime = 0f;
+        float visibleDuration = Mathf.Min(
+            Mathf.Max(0.01f, fadeDuration),
+            maximumVisibleDuration > 0f
+                ? maximumVisibleDuration
+                : 0.18f);
 
-        while (elapsedTime < fadeDuration)
+        while (elapsedTime < visibleDuration)
         {
             yield return null;
 
@@ -195,8 +205,8 @@ public class BulletLine : MonoBehaviour
                 continue;
             }
 
-            elapsedTime += Time.deltaTime;
-            float progress = Mathf.Clamp01(elapsedTime / fadeDuration);
+            elapsedTime += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsedTime / visibleDuration);
             float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
             for (int layerIndex = 0;
                  layerIndex < trailLayers.Count;

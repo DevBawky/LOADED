@@ -151,6 +151,10 @@ public class ShopManager : MonoBehaviour
 
     public IReadOnlyList<BulletData> CurrentOffers => currentOffers;
     public IReadOnlyList<ItemData> CurrentItemOffers => currentItemOffers;
+    public IReadOnlyList<BulletData> BulletCatalog => bulletPool;
+    public IReadOnlyList<BulletGradeWeightData> BulletGradeWeights =>
+        gradeWeights;
+    public IReadOnlyList<ItemData> ItemCatalog => itemPool;
     public int CurrentRefreshCost => currentRefreshCost;
     public bool IsRefreshing => isRefreshing;
     public bool CanSellInventoryItems => standaloneShopMode

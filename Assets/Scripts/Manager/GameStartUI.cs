@@ -308,7 +308,6 @@ public sealed class GameStartUI : MonoBehaviour
         yield return AnimatePopup(
             stageResultContent.transform as RectTransform,
             resultPopupDuration);
-        yield return RevealStageResult();
         yield return WaitForGoldClaim();
 
         stageResultContent.SetActive(false);
@@ -1044,6 +1043,10 @@ public sealed class GameStartUI : MonoBehaviour
         bonusClaimed = false;
         UnityAction claimAction = ClaimBonusGold;
         gainGoldButton.onClick.AddListener(claimAction);
+
+        // Register the claim before the button becomes visible and
+        // interactable so a click during its popup animation is not lost.
+        yield return RevealStageResult();
 
         while (!bonusClaimed)
         {

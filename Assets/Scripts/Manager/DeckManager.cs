@@ -194,6 +194,32 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public bool TryEjectNextLoadedBullet(out BulletInstance bullet)
+    {
+        return TryEjectLoadedBullet(
+            loadedBullets.Count - 1,
+            out bullet);
+    }
+
+    public bool TryEjectLoadedBullet(
+        int loadedBulletIndex,
+        out BulletInstance bullet)
+    {
+        if (loadedBulletIndex < 0
+            || loadedBulletIndex >= loadedBullets.Count)
+        {
+            bullet = null;
+            return false;
+        }
+
+        bullet = loadedBullets[loadedBulletIndex];
+        loadedBullets.RemoveAt(loadedBulletIndex);
+        graveyard.Add(bullet);
+        FinalizeNextCycle();
+        StateChanged?.Invoke();
+        return true;
+    }
+
     public bool TrySwapLoadedBullets(int firstIndex, int secondIndex)
     {
         if (firstIndex < 0 || firstIndex >= loadedBullets.Count
@@ -212,12 +238,26 @@ public class DeckManager : MonoBehaviour
 
     public bool TryAddBullet(BulletData bulletData)
     {
+        return TryAddBullet(bulletData, 0);
+    }
+
+    public bool TryAddBullet(BulletData bulletData, int initialLevel)
+    {
         if (!CanAddBullet(bulletData))
         {
             return false;
         }
 
-        deck.Add(CreateBulletInstance(bulletData));
+        BulletInstance bullet = CreateBulletInstance(bulletData);
+        int targetLevel = Mathf.Clamp(
+            initialLevel,
+            0,
+            BulletData.MaximumUpgradeLevel);
+        while (bullet.Level < targetLevel && bullet.TryUpgrade())
+        {
+        }
+
+        deck.Add(bullet);
         nextCycleOrder.Clear();
         StateChanged?.Invoke();
         return true;

@@ -67,6 +67,11 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI cylinderBulletGradeText;
     [SerializeField] private TextMeshProUGUI cylinderBulletDescriptionText;
 
+    [Header("Bullet Type Description")]
+    [SerializeField] private RectTransform bulletTypeDescriptionPanel;
+    [SerializeField] private TextMeshProUGUI bulletTypeDescriptionNameText;
+    [SerializeField] private TextMeshProUGUI bulletTypeDescriptionBodyText;
+
     [Header("Debuff Description")]
     [SerializeField] private RectTransform debuffDescriptionPanel;
     [SerializeField] private Image debuffDescriptionIcon;
@@ -105,6 +110,8 @@ public class InventoryTooltipUI : MonoBehaviour
     private int previewedCylinderBulletIndex = -1;
     private Vector2 debuffDescriptionInitialPosition;
     private bool hasDebuffDescriptionInitialPosition;
+    private Vector2 bulletTypeDescriptionInitialPosition;
+    private bool hasBulletTypeDescriptionInitialPosition;
     private bool externalEventPreviewActive;
 
     public void ConfigureDedicatedShop(
@@ -158,6 +165,9 @@ public class InventoryTooltipUI : MonoBehaviour
         debuffDescriptionPanel = FindScopedRectTransform(
             runtimeCanvasRoot,
             "Panel | Debuff Desciption");
+        bulletTypeDescriptionPanel = FindScopedRectTransform(
+            runtimeCanvasRoot,
+            "Panel | Bullet Type Desciption");
         bulletManagementUI = runtimeCanvasRoot == null
             ? null
             : runtimeCanvasRoot.GetComponentInChildren<BulletManagementUI>(
@@ -185,6 +195,12 @@ public class InventoryTooltipUI : MonoBehaviour
         bulletDescriptionText = FindNamedChild<TextMeshProUGUI>(
             bulletTooltip,
             "Text | Bullet Description");
+        bulletTypeDescriptionNameText = FindNamedChild<TextMeshProUGUI>(
+            bulletTypeDescriptionPanel,
+            "Text | Bullet Name");
+        bulletTypeDescriptionBodyText = FindNamedChild<TextMeshProUGUI>(
+            bulletTypeDescriptionPanel,
+            "Text | Bullet Description");
 
         rootCanvas = canvasRect == null
             ? null
@@ -198,6 +214,8 @@ public class InventoryTooltipUI : MonoBehaviour
         DisableRaycasts(bulletTooltip);
         DisableRaycasts(cylinderBulletTooltip);
         DisableRaycasts(debuffDescriptionPanel);
+        DisableRaycasts(bulletTypeDescriptionPanel);
+        CaptureDescriptionInitialPositions();
 
         if (isActiveAndEnabled)
         {
@@ -301,14 +319,9 @@ public class InventoryTooltipUI : MonoBehaviour
         DisableRaycasts(bulletTooltip);
         DisableRaycasts(cylinderBulletTooltip);
         DisableRaycasts(debuffDescriptionPanel);
+        DisableRaycasts(bulletTypeDescriptionPanel);
 
-        if (debuffDescriptionPanel != null
-            && !hasDebuffDescriptionInitialPosition)
-        {
-            debuffDescriptionInitialPosition =
-                debuffDescriptionPanel.anchoredPosition;
-            hasDebuffDescriptionInitialPosition = true;
-        }
+        CaptureDescriptionInitialPositions();
 
         if (deckManager != null)
         {
@@ -364,9 +377,16 @@ public class InventoryTooltipUI : MonoBehaviour
             HideItemTooltip();
             HideBulletTooltip();
             HideCylinderBulletTooltip();
-            ShowDebuffDescription(
+            BulletInstance selectedBullet = bulletManagementUI.TooltipBullet;
+            ShowBulletHelpDescriptions(
+                selectedBullet == null
+                    ? BulletType.Normal
+                    : selectedBullet.BulletType,
+                selectedBullet == null
+                    ? string.Empty
+                    : selectedBullet.BulletTypeDescription,
                 TryGetDebuff(
-                    bulletManagementUI.SelectedBullet,
+                    selectedBullet,
                     out StatusEffectType selectedDebuff)
                     ? selectedDebuff
                     : (StatusEffectType?)null,
@@ -607,6 +627,13 @@ public class InventoryTooltipUI : MonoBehaviour
         bulletDescriptionText.text = bullet.GetDetailedDescription(
             CreateBulletTooltipContext());
         PositionInsideScreen(bulletTooltip, pointerPosition, pointerAnchor);
+        ShowBulletHelpDescriptions(
+            bullet.BulletType,
+            bullet.BulletTypeDescription,
+            TryGetDebuff(bullet, out StatusEffectType debuff)
+                ? debuff
+                : (StatusEffectType?)null,
+            bulletTooltip);
     }
 
     private void ShowBullet(
@@ -630,8 +657,9 @@ public class InventoryTooltipUI : MonoBehaviour
 
         if (bulletGradeText != null)
         {
-            bulletGradeText.text = bullet.Grade.ToString();
-            bulletGradeText.color = bullet.GradeNameColor;
+            bulletGradeText.text = bullet.BulletTypeDisplayName;
+            bulletGradeText.color = Color.white;
+            BulletTypeTextEffect.Apply(bulletGradeText, bullet.BulletType);
         }
 
         bulletDescriptionText.richText = true;
@@ -640,12 +668,13 @@ public class InventoryTooltipUI : MonoBehaviour
         ApplyIcon(bulletCylinderIcon, bullet.CylinderIcon);
         bulletTooltip.gameObject.SetActive(true);
         PositionInsideScreen(bulletTooltip, pointerPosition, pointerAnchor);
-        ShowDebuffDescription(
+        ShowBulletHelpDescriptions(
+            bullet.BulletType,
+            bullet.GetBulletTypeDescription(level),
             TryGetDebuff(bullet, level, out StatusEffectType debuff)
                 ? debuff
                 : (StatusEffectType?)null,
-            bulletTooltip,
-            false);
+            bulletTooltip);
         BulletInspected?.Invoke();
     }
 
@@ -673,8 +702,11 @@ public class InventoryTooltipUI : MonoBehaviour
 
         if (cylinderBulletGradeText != null)
         {
-            cylinderBulletGradeText.text = bullet.Grade.ToString();
-            cylinderBulletGradeText.color = bullet.GradeNameColor;
+            cylinderBulletGradeText.text = bullet.BulletTypeDisplayName;
+            cylinderBulletGradeText.color = Color.white;
+            BulletTypeTextEffect.Apply(
+                cylinderBulletGradeText,
+                bullet.BulletType);
         }
 
         cylinderBulletDescriptionText.richText = true;
@@ -695,12 +727,13 @@ public class InventoryTooltipUI : MonoBehaviour
             cylinderBulletTooltip,
             pointerPosition,
             pointerAnchor);
-        ShowDebuffDescription(
+        ShowBulletHelpDescriptions(
+            bullet.BulletType,
+            bullet.BulletTypeDescription,
             TryGetDebuff(bullet, out StatusEffectType debuff)
                 ? debuff
                 : (StatusEffectType?)null,
-            cylinderBulletTooltip,
-            false);
+            cylinderBulletTooltip);
         BulletInspected?.Invoke();
 
         if (loadedBulletIndex < 0)
@@ -948,19 +981,20 @@ public class InventoryTooltipUI : MonoBehaviour
         SetScreenPosition(targetTooltip, targetPivotPosition);
     }
 
-    private void ShowDebuffDescription(
+    private bool ShowDebuffDescription(
         StatusEffectType? debuff,
         RectTransform adjacentTooltip,
-        bool useInitialPosition)
+        bool useInitialPosition,
+        RectTransform chainOrigin = null)
     {
+        ResolveDebuffDescriptionReferences();
         if (!debuff.HasValue
             || debuffDescriptionPanel == null
-            || debuffDescriptionIcon == null
             || debuffDescriptionNameText == null
             || debuffDescriptionBodyText == null)
         {
             HideDebuffDescription();
-            return;
+            return false;
         }
 
         StatusEffectType type = debuff.Value;
@@ -971,6 +1005,7 @@ public class InventoryTooltipUI : MonoBehaviour
         debuffDescriptionBodyText.text = TooltipTextFormatter.Format(
             GetDebuffDescription(type));
         debuffDescriptionPanel.gameObject.SetActive(true);
+        debuffDescriptionPanel.SetAsLastSibling();
 
         if (useInitialPosition && hasDebuffDescriptionInitialPosition)
         {
@@ -979,7 +1014,201 @@ public class InventoryTooltipUI : MonoBehaviour
         }
         else
         {
-            PositionBesideTooltip(debuffDescriptionPanel, adjacentTooltip);
+            if (chainOrigin != null && chainOrigin != adjacentTooltip)
+            {
+                PositionOutsideTooltipChain(
+                    debuffDescriptionPanel,
+                    adjacentTooltip,
+                    chainOrigin);
+            }
+            else
+            {
+                PositionBesideTooltip(debuffDescriptionPanel, adjacentTooltip);
+            }
+        }
+
+        return true;
+    }
+
+    private void ShowBulletHelpDescriptions(
+        BulletType bulletType,
+        string typeDescription,
+        StatusEffectType? debuff,
+        RectTransform bulletTooltipPanel,
+        bool useInitialPosition = false)
+    {
+        bool typeShown = ShowBulletTypeDescription(
+            bulletType,
+            typeDescription,
+            bulletTooltipPanel,
+            useInitialPosition);
+        bool debuffShown = ShowDebuffDescription(
+            debuff,
+            typeShown ? bulletTypeDescriptionPanel : bulletTooltipPanel,
+            useInitialPosition,
+            typeShown ? bulletTooltipPanel : null);
+
+        if (ShouldShowGenericDebuffDescription(
+                bulletType,
+                debuffShown))
+        {
+            ShowGenericDebuffDescription(
+                typeDescription,
+                bulletTooltipPanel,
+                useInitialPosition);
+        }
+    }
+
+    internal static bool ShouldShowBulletTypeDescription(
+        BulletType bulletType)
+    {
+        return bulletType != BulletType.Normal
+            && bulletType != BulletType.Debuff;
+    }
+
+    internal static bool ShouldShowGenericDebuffDescription(
+        BulletType bulletType,
+        bool hasSpecificDebuff)
+    {
+        return bulletType == BulletType.Debuff && !hasSpecificDebuff;
+    }
+
+    private bool ShowBulletTypeDescription(
+        BulletType bulletType,
+        string description,
+        RectTransform adjacentTooltip,
+        bool useInitialPosition = false)
+    {
+        if (!ShouldShowBulletTypeDescription(bulletType))
+        {
+            HideBulletTypeDescription();
+            return false;
+        }
+
+        ResolveBulletTypeDescriptionReferences();
+        if (bulletTypeDescriptionPanel == null)
+        {
+            return false;
+        }
+
+        bulletTypeDescriptionPanel.gameObject.SetActive(true);
+        bulletTypeDescriptionPanel.SetAsLastSibling();
+
+        if (bulletTypeDescriptionNameText != null)
+        {
+            bulletTypeDescriptionNameText.text =
+                BulletData.GetBulletTypeDisplayName(bulletType);
+            bulletTypeDescriptionNameText.color = Color.white;
+            BulletTypeTextEffect.Apply(
+                bulletTypeDescriptionNameText,
+                bulletType);
+        }
+
+        if (bulletTypeDescriptionBodyText != null)
+        {
+            bulletTypeDescriptionBodyText.richText = true;
+            bulletTypeDescriptionBodyText.text = TooltipTextFormatter.Format(
+                description ?? string.Empty);
+        }
+
+        if (useInitialPosition && hasBulletTypeDescriptionInitialPosition)
+        {
+            bulletTypeDescriptionPanel.anchoredPosition =
+                bulletTypeDescriptionInitialPosition;
+        }
+        else
+        {
+            PositionBesideTooltip(
+                bulletTypeDescriptionPanel,
+                adjacentTooltip);
+        }
+
+        return true;
+    }
+
+    private void ResolveBulletTypeDescriptionReferences()
+    {
+        bulletTypeDescriptionPanel ??= FindRectTransform(
+            "Panel | Bullet Type Desciption");
+        bulletTypeDescriptionNameText ??= FindNamedChild<TextMeshProUGUI>(
+            bulletTypeDescriptionPanel,
+            "Text | Bullet Name");
+        bulletTypeDescriptionBodyText ??= FindNamedChild<TextMeshProUGUI>(
+            bulletTypeDescriptionPanel,
+            "Text | Bullet Description");
+    }
+
+    private void ResolveDebuffDescriptionReferences()
+    {
+        debuffDescriptionPanel ??= FindRectTransform(
+            "Panel | Debuff Desciption");
+        debuffDescriptionIcon ??= FindNamedChild<Image>(
+            debuffDescriptionPanel,
+            "Image | Debuff Icon");
+        debuffDescriptionNameText ??= FindNamedChild<TextMeshProUGUI>(
+            debuffDescriptionPanel,
+            "Text | Bullet Name");
+        debuffDescriptionBodyText ??= FindNamedChild<TextMeshProUGUI>(
+            debuffDescriptionPanel,
+            "Text | Bullet Description");
+    }
+
+    private void ShowGenericDebuffDescription(
+        string description,
+        RectTransform adjacentTooltip,
+        bool useInitialPosition)
+    {
+        ResolveDebuffDescriptionReferences();
+        if (debuffDescriptionPanel == null
+            || debuffDescriptionNameText == null
+            || debuffDescriptionBodyText == null)
+        {
+            HideDebuffDescription();
+            return;
+        }
+
+        ApplyIcon(debuffDescriptionIcon, null);
+        debuffDescriptionNameText.text =
+            BulletData.GetBulletTypeDisplayName(BulletType.Debuff);
+        debuffDescriptionNameText.color = Color.white;
+        BulletTypeTextEffect.Apply(
+            debuffDescriptionNameText,
+            BulletType.Debuff);
+        debuffDescriptionBodyText.richText = true;
+        debuffDescriptionBodyText.text = TooltipTextFormatter.Format(
+            description ?? string.Empty);
+        debuffDescriptionPanel.gameObject.SetActive(true);
+        debuffDescriptionPanel.SetAsLastSibling();
+
+        if (useInitialPosition && hasDebuffDescriptionInitialPosition)
+        {
+            debuffDescriptionPanel.anchoredPosition =
+                debuffDescriptionInitialPosition;
+        }
+        else
+        {
+            PositionBesideTooltip(
+                debuffDescriptionPanel,
+                adjacentTooltip);
+        }
+    }
+
+    private void CaptureDescriptionInitialPositions()
+    {
+        if (debuffDescriptionPanel != null
+            && !hasDebuffDescriptionInitialPosition)
+        {
+            debuffDescriptionInitialPosition =
+                debuffDescriptionPanel.anchoredPosition;
+            hasDebuffDescriptionInitialPosition = true;
+        }
+
+        if (bulletTypeDescriptionPanel != null
+            && !hasBulletTypeDescriptionInitialPosition)
+        {
+            bulletTypeDescriptionInitialPosition =
+                bulletTypeDescriptionPanel.anchoredPosition;
+            hasBulletTypeDescriptionInitialPosition = true;
         }
     }
 
@@ -1023,6 +1252,73 @@ public class InventoryTooltipUI : MonoBehaviour
         Vector2 desiredLowerLeft = new Vector2(
             desiredX,
             sourceUpperRight.y - targetSize.y);
+        desiredLowerLeft.x = Mathf.Clamp(
+            desiredLowerLeft.x,
+            screenRect.xMin + screenPadding,
+            screenRect.xMax - screenPadding - targetSize.x);
+        desiredLowerLeft.y = Mathf.Clamp(
+            desiredLowerLeft.y,
+            screenRect.yMin + screenPadding,
+            screenRect.yMax - screenPadding - targetSize.y);
+
+        SetScreenPosition(
+            target,
+            desiredLowerLeft + new Vector2(
+                targetSize.x * target.pivot.x,
+                targetSize.y * target.pivot.y));
+    }
+
+    private void PositionOutsideTooltipChain(
+        RectTransform target,
+        RectTransform adjacentTooltip,
+        RectTransform chainOrigin)
+    {
+        if (target == null
+            || adjacentTooltip == null
+            || chainOrigin == null
+            || canvasRect == null)
+        {
+            return;
+        }
+
+        Canvas.ForceUpdateCanvases();
+        Camera canvasCamera = GetCanvasCamera();
+        adjacentTooltip.GetWorldCorners(tooltipCorners);
+        Vector2 adjacentLowerLeft = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[0]);
+        Vector2 adjacentUpperRight = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[2]);
+
+        chainOrigin.GetWorldCorners(tooltipCorners);
+        Vector2 originLowerLeft = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[0]);
+        Vector2 originUpperRight = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[2]);
+
+        target.GetWorldCorners(tooltipCorners);
+        Vector2 targetLowerLeft = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[0]);
+        Vector2 targetUpperRight = RectTransformUtility.WorldToScreenPoint(
+            canvasCamera,
+            tooltipCorners[2]);
+        Vector2 targetSize = targetUpperRight - targetLowerLeft;
+        Rect screenRect = rootCanvas == null
+            ? new Rect(0f, 0f, Screen.width, Screen.height)
+            : rootCanvas.pixelRect;
+
+        float adjacentCenterX = (adjacentLowerLeft.x + adjacentUpperRight.x) * 0.5f;
+        float originCenterX = (originLowerLeft.x + originUpperRight.x) * 0.5f;
+        float desiredX = adjacentCenterX >= originCenterX
+            ? adjacentUpperRight.x + pointerGap
+            : adjacentLowerLeft.x - pointerGap - targetSize.x;
+        Vector2 desiredLowerLeft = new Vector2(
+            desiredX,
+            adjacentUpperRight.y - targetSize.y);
         desiredLowerLeft.x = Mathf.Clamp(
             desiredLowerLeft.x,
             screenRect.xMin + screenPadding,
@@ -1392,6 +1688,7 @@ public class InventoryTooltipUI : MonoBehaviour
         HideBulletTooltip();
         HideCylinderBulletTooltip();
         HideDebuffDescription();
+        HideBulletTypeDescription();
     }
 
     private void HideItemTooltip()
@@ -1408,6 +1705,8 @@ public class InventoryTooltipUI : MonoBehaviour
         {
             bulletTooltip.gameObject.SetActive(false);
         }
+
+        HideBulletTypeDescription();
     }
 
     private void HideCylinderBulletTooltip()
@@ -1417,6 +1716,8 @@ public class InventoryTooltipUI : MonoBehaviour
         {
             cylinderBulletTooltip.gameObject.SetActive(false);
         }
+
+        HideBulletTypeDescription();
 
         playerShoot?.ClearLoadedBulletDamagePreview();
         previewedCylinderBullet = null;
@@ -1429,6 +1730,15 @@ public class InventoryTooltipUI : MonoBehaviour
             && debuffDescriptionPanel.gameObject.activeSelf)
         {
             debuffDescriptionPanel.gameObject.SetActive(false);
+        }
+    }
+
+    private void HideBulletTypeDescription()
+    {
+        if (bulletTypeDescriptionPanel != null
+            && bulletTypeDescriptionPanel.gameObject.activeSelf)
+        {
+            bulletTypeDescriptionPanel.gameObject.SetActive(false);
         }
     }
 
@@ -1459,6 +1769,8 @@ public class InventoryTooltipUI : MonoBehaviour
             "Panel | Cylinder Bullet Tooltip");
         debuffDescriptionPanel ??= FindRectTransform(
             "Panel | Debuff Desciption");
+        bulletTypeDescriptionPanel ??= FindRectTransform(
+            "Panel | Bullet Type Desciption");
         bulletStatusLayout ??= FindRectTransform("Layout | Bullet Status");
         nextChip ??= FindRectTransform("Next Chip", "Panel | MainGame");
 
@@ -1518,6 +1830,12 @@ public class InventoryTooltipUI : MonoBehaviour
             "Text | Bullet Grade");
         cylinderBulletDescriptionText ??= FindNamedChild<TextMeshProUGUI>(
             cylinderBulletTooltip,
+            "Text | Bullet Description");
+        bulletTypeDescriptionNameText ??= FindNamedChild<TextMeshProUGUI>(
+            bulletTypeDescriptionPanel,
+            "Text | Bullet Name");
+        bulletTypeDescriptionBodyText ??= FindNamedChild<TextMeshProUGUI>(
+            bulletTypeDescriptionPanel,
             "Text | Bullet Description");
         debuffDescriptionIcon ??= FindNamedChild<Image>(
             debuffDescriptionPanel,

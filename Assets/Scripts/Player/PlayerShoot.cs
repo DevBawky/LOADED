@@ -11,6 +11,7 @@ public partial class PlayerShoot : MonoBehaviour
     public event Action<BulletInstance> BulletFired;
     public event Action<int> DamageDealt;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
+    public event Action<BulletInstance> LoadedBulletEjected;
     public event Action LoadedBulletDamagePreviewShown;
 
     private readonly struct DamageReservation
@@ -45,12 +46,17 @@ public partial class PlayerShoot : MonoBehaviour
             int damage,
             int healthBeforeDamage,
             int targetMaxHealth,
-            Vector3 worldPosition)
+            Vector3 worldPosition,
+            CombatFeedbackController.DefeatPresentationCue presentationCue =
+                default,
+            bool presentationScheduled = false)
         {
             Damage = Mathf.Max(0, damage);
             HealthBeforeDamage = Mathf.Max(0, healthBeforeDamage);
             TargetMaxHealth = Mathf.Max(0, targetMaxHealth);
             WorldPosition = worldPosition;
+            PresentationCue = presentationCue;
+            PresentationScheduled = presentationScheduled;
             WasDefeated = true;
         }
 
@@ -59,6 +65,11 @@ public partial class PlayerShoot : MonoBehaviour
         public int HealthBeforeDamage { get; }
         public int TargetMaxHealth { get; }
         public Vector3 WorldPosition { get; }
+        public CombatFeedbackController.DefeatPresentationCue PresentationCue
+        {
+            get;
+        }
+        public bool PresentationScheduled { get; }
     }
 
     private sealed class DamagePreviewEnemyState
@@ -87,6 +98,7 @@ public partial class PlayerShoot : MonoBehaviour
         public int RemainingHealth { get; set; }
         public int TileIndex { get; set; } = -1;
         public int[] StatusStacks { get; }
+        public bool WasHitThisTurn { get; set; }
         public List<EnemyHealthBarFeedback.DamagePreviewSegment> Segments
         {
             get;
@@ -218,7 +230,8 @@ public partial class PlayerShoot : MonoBehaviour
             transform,
             firePoint,
             boardManager,
-            waveManager);
+            waveManager,
+            relicManager);
         damagePreview = new DamagePreviewController(this);
         firingSequence = new FiringSequenceController(this);
 
@@ -243,6 +256,12 @@ public partial class PlayerShoot : MonoBehaviour
         {
             waveManager.BattleCompleted += HandleBattleCompleted;
         }
+
+        if (playerMove != null)
+        {
+            playerMove.PlayerMoved += HandlePlayerMoved;
+            playerMove.TurnCompleted += HandleTurnCompleted;
+        }
     }
 
     private void Start()
@@ -263,6 +282,12 @@ public partial class PlayerShoot : MonoBehaviour
         if (waveManager != null)
         {
             waveManager.BattleCompleted -= HandleBattleCompleted;
+        }
+
+        if (playerMove != null)
+        {
+            playerMove.PlayerMoved -= HandlePlayerMoved;
+            playerMove.TurnCompleted -= HandleTurnCompleted;
         }
         ClearLoadedBulletDamagePreview();
         isFiring = false;
@@ -317,31 +342,63 @@ public partial class PlayerShoot : MonoBehaviour
             return;
         }
 
-        pendingEffectDefeats[enemy] = new ManagedEffectDefeatResult(
-            damage,
-            healthBeforeDamage,
-            enemy.MaxHealth,
-            enemy.transform.position);
-
         int horizontalDirection = playerMove == null
             ? 0
             : enemy.transform.position.x >= playerMove.transform.position.x
                 ? 1
                 : -1;
-        combatFeedback?.RecordDefeat(
-            enemy.transform.position,
+        CombatFeedbackController.DefeatPresentationCue presentationCue =
+            combatFeedback == null
+                ? default
+                : combatFeedback.RecordDefeat(
+                    enemy.transform.position,
+                    horizontalDirection,
+                    damage,
+                    enemy.MaxHealth,
+                    false,
+                    waveManager != null
+                        && waveManager.ActiveEnemies.Count <= 1,
+                    GetCurrentCylinderBuild(),
+                    healthBeforeDamage);
+        CombatPresentation.EnemySnapshot snapshot = combatPresentation == null
+            ? default
+            : combatPresentation.CaptureEnemy(enemy);
+        combatPresentation?.PlayImpact(
+            snapshot,
             horizontalDirection,
+            currentConsumedBullet,
+            CombatImpactTier.Defeat,
+            presentationCue.FeedbackMultiplier > 0f
+                ? presentationCue.FeedbackMultiplier
+                : 1f,
+            combatFeedback == null
+                ? 0f
+                : combatFeedback.GetRemainingDefeatPresentationDelay(
+                    presentationCue),
+            presentationCue.WasFinalEnemy);
+        pendingEffectDefeats[enemy] = new ManagedEffectDefeatResult(
             damage,
+            healthBeforeDamage,
             enemy.MaxHealth,
-            false,
-            waveManager != null && waveManager.ActiveEnemies.Count <= 1,
-            GetCurrentCylinderBuild(),
-            healthBeforeDamage);
+            enemy.transform.position,
+            presentationCue,
+            true);
     }
 
     private void HandleBattleCompleted()
     {
-        combatFeedback?.ResetCombo();
+        combatFeedback?.ResetCombo(true);
+        firingSequence?.ResetTurnTargetHistory();
+    }
+
+    private void HandleTurnCompleted()
+    {
+        firingSequence?.ResetTurnTargetHistory();
+    }
+
+    private void HandlePlayerMoved(PlayerMovementContext context)
+    {
+        firingSequence?.RecordPlayerMovement(context);
     }
 
     private void Update()
@@ -397,7 +454,8 @@ public partial class PlayerShoot : MonoBehaviour
             relicManager ??= FindFirstObjectByType<RelicManager>(
                 FindObjectsInactive.Include);
             bool consumesTurn = relicManager == null
-                ? loadedBullet == null || !loadedBullet.DoesNotConsumeTurn
+                ? loadedBullet == null
+                    || !loadedBullet.DoesNotConsumeReloadTurn
                 : relicManager.ShouldReloadConsumeTurn(
                     loadedBullet,
                     wasCylinderEmpty);
@@ -451,6 +509,45 @@ public partial class PlayerShoot : MonoBehaviour
         ClearLoadedBulletDamagePreview();
         BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Shoot);
         StartCoroutine(firingSequence.Execute(horizontalDirection));
+    }
+
+    public bool TryEjectLoadedBullet(int loadedBulletIndex)
+    {
+        if (GamePauseController.IsPaused
+            || LoadingTransitionController.IsTransitioning
+            || isFiring
+            || cylinderUI != null && cylinderUI.IsDragging
+            || !TryBeginAction())
+        {
+            return false;
+        }
+
+        if (deckManager == null || playerMove == null)
+        {
+            Debug.LogError(
+                "Deck Manager and Player Move must be assigned in the Inspector.",
+                this);
+            return false;
+        }
+
+        if (!playerMove.CanStartAction
+            || loadedBulletIndex < 0
+            || loadedBulletIndex >= deckManager.LoadedBullets.Count)
+        {
+            return false;
+        }
+
+        ClearLoadedBulletDamagePreview();
+
+        if (!deckManager.TryEjectLoadedBullet(
+                loadedBulletIndex,
+                out BulletInstance ejectedBullet))
+        {
+            return false;
+        }
+
+        LoadedBulletEjected?.Invoke(ejectedBullet);
+        return true;
     }
 
     public bool ShowLoadedBulletDamagePreview(int loadedBulletIndex)
@@ -545,7 +642,8 @@ public partial class PlayerShoot : MonoBehaviour
         float damageMultiplier,
         int shotIndex,
         bool isLastLoadedShot,
-        bool applyRuntimeRelicModifiers = true)
+        bool applyRuntimeRelicModifiers = true,
+        float criticalDamageMultiplierBonus = 0f)
     {
         relicManager ??= FindFirstObjectByType<RelicManager>(
             FindObjectsInactive.Include);
@@ -559,7 +657,8 @@ public partial class PlayerShoot : MonoBehaviour
             playerHealth,
             relicManager,
             deckManager,
-            applyRuntimeRelicModifiers);
+            applyRuntimeRelicModifiers,
+            criticalDamageMultiplierBonus);
     }
 
     private static bool IsBoardWideShot(BulletInstance bullet)

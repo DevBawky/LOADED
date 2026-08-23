@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_wall_impact
   displayName: "\uB300\uC9C0 \uBD84\uC1C4"
-  description: "\uBA85\uC911\uD55C \uC801 \uB4A4 1\uCE78\uC5D0\n\uCD5C\uC885 \uB300\uBBF8\uC9C0\uC758
-    50% \uD53C\uD574 \uC804\uC774"
+  description: "명중한 적 뒤 1칸에\n최종 피해의 50% 피해 전이"
   cylinderIcon: {fileID: -7083666770999427850, guid: e170791347034894ea9607c2245a7052, type: 3}
   price: 6
   grade: 1
@@ -47,8 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uBA85\uC911\uD55C \uC801 \uB4A4 1/2\uCE78\uC5D0 \uAC01\uAC01\n\uCD5C\uC885
-      \uB300\uBBF8\uC9C0\uC758 60/30% \uD53C\uD574 \uC804\uC774"
+  - description: "명중한 적 뒤 1/2칸에 각각\n최종 피해의 60/30% 피해 전이"
     damage: 20
     maxRange: 4
     criticalChance: 18
@@ -70,8 +68,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "\uBA85\uC911\uD55C \uC801 \uB4A4 1/2/3\uCE78\uC5D0 \uAC01\uAC01\n\uCD5C\uC885
-      \uB300\uBBF8\uC9C0\uC758 100/75/50% \uD53C\uD574 \uC804\uC774"
+  - description: "명중한 적 뒤 1/2/3칸에 각각\n최종 피해의 100/75/50% 피해 전이"
     damage: 25
     maxRange: 5
     criticalChance: 22
@@ -93,8 +90,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "\uBA85\uC911\uD55C \uC801 \uB4A4 1/2/3\uCE78\uC5D0 \uAC01\uAC01\n\uCD5C\uC885
-      \uB300\uBBF8\uC9C0\uC758 150/100/50% \uD53C\uD574 \uC804\uC774"
+  - description: "명중한 적 뒤 1/2/3칸에 각각\n최종 피해의 150/100/50% 피해 전이"
     damage: 32
     maxRange: 5
     criticalChance: 28

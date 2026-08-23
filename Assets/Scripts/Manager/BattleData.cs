@@ -5,7 +5,8 @@ using UnityEngine;
 public enum BattleType
 {
     Normal = 0,
-    Boss = 1
+    Boss = 1,
+    Elite = 2
 }
 
 [CreateAssetMenu(fileName = "New Battle", menuName = "Loaded/Battle")]

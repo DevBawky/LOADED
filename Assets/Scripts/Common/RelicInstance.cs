@@ -176,6 +176,26 @@ public sealed class RelicInstance
                 Mathf.Max(0, acquisitionOrder));
     }
 
+    internal void LimitTrackedBullets(int maximumCount)
+    {
+        trackedBulletAcquisitionOrders ??= new List<int>();
+        int safeMaximum = Mathf.Max(0, maximumCount);
+
+        if (trackedBulletAcquisitionOrders.Count > safeMaximum)
+        {
+            trackedBulletAcquisitionOrders.RemoveRange(
+                safeMaximum,
+                trackedBulletAcquisitionOrders.Count - safeMaximum);
+        }
+    }
+
+    public bool HasTrackedBullet(int acquisitionOrder)
+    {
+        return trackedBulletAcquisitionOrders != null
+            && trackedBulletAcquisitionOrders.Contains(
+                Mathf.Max(0, acquisitionOrder));
+    }
+
     public void RestoreState(RunRelicSaveData state)
     {
         if (state == null)

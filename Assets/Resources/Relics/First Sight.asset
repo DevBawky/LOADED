@@ -14,8 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: first_sight
   displayName: "\uCD08\uD0C4 \uC870\uC900\uACBD"
-  description: "\uD55C \uC2E4\uB9B0\uB354\uC758 \uCCAB \uC0AC\uACA9\uC774 \uC8FC\uB294
-    \uCD5C\uC885 \uD53C\uD574\uAC00 2\uBC30\uAC00 \uB429\uB2C8\uB2E4."
+  description: "실린더 첫 사격 최종 피해 x1.3"
   icon: {fileID: 7992578565702372793, guid: f0a13cfddc45f244f8c3cba4c936929b, type: 3}
   lifetimeType: 0
   initialCharges: 1
@@ -23,7 +22,7 @@ MonoBehaviour:
   maxStack: 1
   effects:
   - effectType: 5
-    finalDamageMultiplier: 2
+    finalDamageMultiplier: 1.3
     movementDamageMultiplierPerStack: 1.1
     survivingHealth: 1
     movementSources: 3

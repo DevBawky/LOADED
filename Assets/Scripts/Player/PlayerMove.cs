@@ -17,6 +17,7 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private Animator playerAnimator;
     [SerializeField] private Transform pushVisualTransform;
     [SerializeField] private CombatFeedbackController combatFeedback;
+    [SerializeField] private RelicManager relicManager;
 
     [Header("Push")]
     [Range(0f, 1f)]
@@ -93,6 +94,8 @@ public class PlayerMove : MonoBehaviour
         statusEffects = GetComponent<StatusEffectController>();
         playerAnimator ??= GetComponent<Animator>();
         combatFeedback ??= GetComponent<CombatFeedbackController>();
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
     }
 
     public void SetWaveManager(WaveManager assignedWaveManager)
@@ -405,6 +408,56 @@ public class PlayerMove : MonoBehaviour
             playerTileIndex,
             enemyTileIndex,
             PlayerMovementSource.BulletPositionSwap);
+        PositionChanged?.Invoke();
+        isActing = wasActing;
+    }
+
+    public IEnumerator PushPlayerFromBullet(int direction, int distance)
+    {
+        if (direction == 0 || distance <= 0 || boardManager == null
+            || actorMotion == null || !boardManager.TryGetTileIndex(
+                transform.position,
+                out int startTileIndex))
+        {
+            yield break;
+        }
+
+        int moveDirection = direction > 0 ? 1 : -1;
+        int endTileIndex = startTileIndex;
+
+        for (int step = 0; step < distance; step++)
+        {
+            int candidateIndex = endTileIndex + moveDirection;
+
+            if (candidateIndex < 0 || candidateIndex >= boardManager.BoardCount
+                || waveManager != null
+                && (waveManager.IsTileOccupied(candidateIndex)
+                    || waveManager.IsTileReservedForSpawn(candidateIndex)))
+            {
+                break;
+            }
+
+            endTileIndex = candidateIndex;
+        }
+
+        if (endTileIndex == startTileIndex || !boardManager.TryGetTilePosition(
+                endTileIndex,
+                out Vector3 targetPosition))
+        {
+            yield break;
+        }
+
+        bool wasActing = isActing;
+        isActing = true;
+        targetPosition.y = transform.position.y;
+        targetPosition.z = transform.position.z;
+        yield return actorMotion.FlyTo(
+            targetPosition,
+            Mathf.Max(0f, pushFlightDuration));
+        NotifyPlayerMoved(
+            startTileIndex,
+            endTileIndex,
+            PlayerMovementSource.ForcedMove);
         PositionChanged?.Invoke();
         isActing = wasActing;
     }
@@ -756,6 +809,17 @@ public class PlayerMove : MonoBehaviour
         int collidedEnemyDamage = Mathf.Max(
             1,
             Mathf.CeilToInt(collidedEnemy.MaxHealth * damageRatio));
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        double kickMultiplier = relicManager == null
+            ? 1d
+            : relicManager.GetKickDamageMultiplier();
+        pushedEnemyDamage = MultiplyDamage(
+            pushedEnemyDamage,
+            kickMultiplier);
+        collidedEnemyDamage = MultiplyDamage(
+            collidedEnemyDamage,
+            kickMultiplier);
 
         pushedEnemy.ApplyCollisionDamage(pushedEnemyDamage);
         collidedEnemy.ApplyCollisionDamage(collidedEnemyDamage);
@@ -774,7 +838,14 @@ public class PlayerMove : MonoBehaviour
             endTileIndex,
             PlayerMovementSource.NormalMove);
         PositionChanged?.Invoke();
-        CompleteTurn();
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+
+        if (relicManager == null
+            || relicManager.ShouldMovementConsumeTurn())
+        {
+            CompleteTurn();
+        }
         isActing = false;
     }
 
@@ -850,6 +921,15 @@ public class PlayerMove : MonoBehaviour
             && !isShooting
             && !isActing
             && !isEnemyTurnResolving;
+    }
+
+    private static int MultiplyDamage(int damage, double multiplier)
+    {
+        double result = Math.Ceiling(
+            Mathf.Max(0, damage) * Math.Max(0d, multiplier));
+        return result >= int.MaxValue
+            ? int.MaxValue
+            : (int)Math.Max(0d, result);
     }
 
     private sealed class EnemyPushPlan

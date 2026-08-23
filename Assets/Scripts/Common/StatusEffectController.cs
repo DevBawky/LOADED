@@ -119,9 +119,6 @@ public class StatusEffectController : MonoBehaviour
         }
 
         statusIconParent = null;
-        Debug.LogError(
-            $"{nameof(StatusEffectController)} requires a child named 'Image | Status'.",
-            this);
     }
 
     public void ConfigureIconUI(
@@ -140,6 +137,11 @@ public class StatusEffectController : MonoBehaviour
         statusIconParent = assignedParent;
         debuffIconPrefab = assignedPrefab;
         RefreshAllIcons();
+    }
+
+    public void ConfigureIconParent(Transform assignedParent)
+    {
+        ConfigureIconUI(assignedParent, debuffIconPrefab);
     }
 
     public int GetStacks(StatusEffectType type)

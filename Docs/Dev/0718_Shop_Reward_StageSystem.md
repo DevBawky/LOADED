@@ -54,6 +54,10 @@ StageData[]
 
 `ShopManager`는 남은 등급을 가중치로 먼저 선택한 뒤 해당 등급의 후보 하나를 균등 선택하고, 선택한 탄환은 후보에서 제거해 한 상점 내 중복을 막는다. 260720 등급 개편으로 등급은 Normal, Rare, Ace, Legendary 네 단계이며 기존 Uncommon과 Rare는 Rare로 통합했다. 통합 전 두 등급의 확률 질량을 보존한 기본 상대 가중치는 Normal 100, Rare 85, Ace 10, Legendary 3이다.
 
+전용 상점 씬의 진행 HUD는 현재 전투 데이터 제목 대신 `상점. 마을`을 표시한다.
+상점 씬에 직렬화된 `StageProgressUI`가 없더라도 런타임 바인딩이 활성 제목 TMP에
+연결되어 같은 규칙을 적용한다.
+
 구매 흐름은 `유효성 검사 → TrySpendMoney → TryAddBullet → 구매 버튼 interactable 비활성화` 순서다. 덱 추가 실패 시 가격을 환불한다. 후속 아이템 시스템 요구를 반영해 구매한 버튼 GameObject는 숨기지 않고 화면에 유지한다.
 
 `CurrencyManager`는 골드 오버플로를 방지하고 값이 바뀔 때마다 `MoneyChanged` 이벤트와 `$ {Money}` UI를 갱신한다. `RewardManager`는 적 사망 이벤트에서 전투 완료 처리 전에 보상을 지급한다.

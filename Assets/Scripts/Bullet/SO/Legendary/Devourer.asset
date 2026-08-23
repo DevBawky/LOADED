@@ -14,9 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_devourer
   displayName: "\uD3EC\uC2DD\uC790"
-  description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C \uD3EC\uC2DD
-    1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9 \uCD5C\uC885\uB300\uBBF8\uC9C0
-    +10%"
+  description: "적 처치 시 영구 포식 +1\n포식당 최종 피해 +10%"
   cylinderIcon: {fileID: 7299877752034667788, guid: 94e5d446387ed6e41a9824ac2a861afe, type: 3}
   price: 20
   grade: 3
@@ -48,9 +46,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 50
   upgradeLevels:
-  - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
-      \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885\uB300\uBBF8\uC9C0 +15%"
+  - description: "적 처치 시 영구 포식 +1\n포식당 최종 피해 +15%"
     damage: 22
     maxRange: 4
     criticalChance: 35
@@ -70,9 +66,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
-      \uD3EC\uC2DD 1\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885\uB300\uBBF8\uC9C0 +20%\n\uAD00\uD1B5 1\uD68C (40%)"
+  - description: "적 처치 시 영구 포식 +1\n포식당 최종 피해 +20%\n관통 1회 (40%)"
     damage: 25
     maxRange: 5
     criticalChance: 40
@@ -93,10 +87,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 200
-  - description: "\uC801\uC744 \uCC98\uCE58\uD560 \uB54C\uB9C8\uB2E4 \uC601\uAD6C
-      \uD3EC\uC2DD 2\uC744 \uC5BB\uC2B5\uB2C8\uB2E4.\n\uD3EC\uC2DD \uD558\uB098\uB2F9
-      \uCD5C\uC885\uB300\uBBF8\uC9C0 +30%\n\uAD00\uD1B5 \uCD5C\uB300 2\uD68C (\uAC01
-      70%)"
+  - description: "적 처치 시 영구 포식 +2\n포식당 최종 피해 +30%\n관통 최대 2회 (각 70%)"
     damage: 30
     maxRange: 6
     criticalChance: 50

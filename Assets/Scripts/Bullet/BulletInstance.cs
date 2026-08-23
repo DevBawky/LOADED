@@ -147,6 +147,15 @@ public sealed class BulletInstance
         : data.GetDetailedDescription(Level);
     public Sprite CylinderIcon => data == null ? null : data.CylinderIcon;
     public BulletGrade Grade => data == null ? BulletGrade.Normal : data.Grade;
+    public BulletType BulletType => data == null
+        ? BulletType.Normal
+        : data.BulletType;
+    public string BulletTypeDisplayName => data == null
+        ? BulletData.GetBulletTypeDisplayName(BulletType.Normal)
+        : data.BulletTypeDisplayName;
+    public string BulletTypeDescription => data == null
+        ? string.Empty
+        : data.GetBulletTypeDescription(Level);
     public Color GradeNameColor => data == null
         ? Color.white
         : data.GradeNameColor;
@@ -183,6 +192,10 @@ public sealed class BulletInstance
         : data.GetLineWidthMultiplier(Level);
     public bool DoesNotConsumeTurn => data != null
         && data.GetDoesNotConsumeTurn(Level);
+    public bool DoesNotConsumeReloadTurn => data != null
+        && (data.BulletType == BulletType.Ghost
+            || data.GetDoesNotConsumeTurn(Level));
+    public int ShotCount => data == null ? 1 : data.GetShotCount(Level);
     public float RecoilStrength => data == null
         ? 0f
         : data.GetRecoilStrength(Level);
@@ -273,7 +286,7 @@ public sealed class BulletInstance
                         damageMultiplier *= jackpotMultiplier;
                         stateLines.Add(
                             $"마지막 약실 조건 충족 "
-                            + $"(대미지 x{jackpotMultiplier:0.##})");
+                            + $"(피해 x{jackpotMultiplier:0.##})");
                     }
 
                     break;
@@ -286,7 +299,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"보유 골드: {context.CurrentGold} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.Coagulation:
@@ -301,7 +314,7 @@ public sealed class BulletInstance
                     criticalChanceBonus += bonus;
                     stateLines.Add(
                         $"잃은 체력: {missingPercent:0.##}% "
-                        + $"(크리티컬 +{bonus:0.##}%p)");
+                        + $"(치명타 +{bonus:0.##}%p)");
                     break;
                 }
                 case BulletEffectType.Heart:
@@ -312,7 +325,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"최대 체력: {context.MaxHealth} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.Loader:
@@ -329,7 +342,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"빈 약실: {emptyChambers} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.Resonance:
@@ -346,7 +359,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"다른 공명탄: {otherCount} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.Crescendo:
@@ -375,7 +388,7 @@ public sealed class BulletInstance
 
                     stateLines.Add(
                         $"보유 탄환: {ownedBulletCount} "
-                        + $"(기본 대미지 {effectiveBaseDamage})");
+                        + $"(기본 피해 {effectiveBaseDamage})");
                     break;
                 }
                 case BulletEffectType.Focus:
@@ -384,7 +397,7 @@ public sealed class BulletInstance
                     criticalChanceBonus += bonus;
                     stateLines.Add(
                         $"집중 스택: {AbilityStacks} "
-                        + $"(크리티컬 +{bonus:0.##}%p)");
+                        + $"(치명타 +{bonus:0.##}%p)");
                     break;
                 }
                 case BulletEffectType.Charge:
@@ -401,7 +414,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"충전 스택: {stacks}/{effect.StackCount} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.Accumulator:
@@ -410,7 +423,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"축전 스택: {AbilityStacks} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.ShellCollector:
@@ -426,7 +439,7 @@ public sealed class BulletInstance
                 }
                 case BulletEffectType.Distributor:
                     stateLines.Add(
-                        $"저장된 대미지 보너스: "
+                        $"저장된 피해 보너스: "
                         + $"+{StoredDamageBonus * 100f:0.##}%");
                     break;
                 case BulletEffectType.Devourer:
@@ -439,7 +452,7 @@ public sealed class BulletInstance
                         : "유산";
                     stateLines.Add(
                         $"{label} 스택: {PermanentStacks} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.Collection:
@@ -449,7 +462,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"보유 탄환 종류: {count} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.MixedGrade:
@@ -460,7 +473,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"실린더의 다른 등급 탄환: {count} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.Masterpiece:
@@ -473,7 +486,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"에이스 이상 탄환: {count} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.MassProduced:
@@ -486,7 +499,7 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"노멀·레어 탄환: {count} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
                     break;
                 }
                 case BulletEffectType.Monopoly:
@@ -496,7 +509,37 @@ public sealed class BulletInstance
                     damageMultiplier *= 1f + bonus;
                     stateLines.Add(
                         $"최다 보유 등급 탄환: {count} "
-                        + $"(대미지 +{bonus * 100f:0.##}%)");
+                        + $"(피해 +{bonus * 100f:0.##}%)");
+                    break;
+                }
+                case BulletEffectType.Seismometer:
+                {
+                    float bonus = AbilityStacks * effect.Amount / 100f;
+                    damageMultiplier *= 1f + bonus;
+                    stateLines.Add(
+                        $"이동 스택: {AbilityStacks} "
+                        + $"(피해 +{bonus * 100f:0.##}%)");
+                    break;
+                }
+                case BulletEffectType.Ritual:
+                    stateLines.Add(
+                        $"집중 스택: {AbilityStacks} "
+                        + $"(치명타 배율 +{AbilityStacks * effect.Amount:0.##})");
+                    break;
+                case BulletEffectType.Tracking:
+                    stateLines.Add($"추적 횟수: {AbilityStacks}");
+                    break;
+                case BulletEffectType.HighRoller:
+                {
+                    float multiplier =
+                        BulletEffectUtility.GetMissingHealthDamageMultiplier(
+                            context.CurrentHealth,
+                            context.MaxHealth,
+                            effect.Amount);
+                    damageMultiplier *= multiplier;
+                    stateLines.Add(
+                        $"잔여 체력: {context.CurrentHealth}/{context.MaxHealth} "
+                        + $"(피해 +{(multiplier - 1f) * 100f:0.##}%)");
                     break;
                 }
             }
@@ -505,14 +548,14 @@ public sealed class BulletInstance
         if (TemporaryDamageBonus > 0f)
         {
             stateLines.Add(
-                $"분배받은 대미지 보너스: "
+                $"분배받은 피해 보너스: "
                 + $"+{TemporaryDamageBonus * 100f:0.##}%");
         }
 
         if (TemporaryCriticalChanceBonus > 0f)
         {
             stateLines.Add(
-                $"임시 크리티컬 보너스: "
+                $"임시 치명타 보너스: "
                 + $"+{TemporaryCriticalChanceBonus:0.##}%p");
         }
 
@@ -524,6 +567,13 @@ public sealed class BulletInstance
 
     public string GetStatusDisplayText(BulletTooltipContext context)
     {
+        // Clone borrows the previous shot's runtime state for execution only.
+        // It does not own or present that state as a stack of its own.
+        if (HasEffect(BulletEffectType.ClonePreviousShot))
+        {
+            return string.Empty;
+        }
+
         if (TryGetEffectUnitCount(context, out int effectUnitCount)
             && effectUnitCount > 0)
         {
@@ -614,6 +664,9 @@ public sealed class BulletInstance
                     return true;
                 case BulletEffectType.Focus:
                 case BulletEffectType.Accumulator:
+                case BulletEffectType.Seismometer:
+                case BulletEffectType.Ritual:
+                case BulletEffectType.Tracking:
                     unitCount = AbilityStacks;
                     return true;
                 case BulletEffectType.Charge:
@@ -914,6 +967,11 @@ public sealed class BulletInstance
     public void SetAbilityStacks(int amount)
     {
         abilityStacks = Mathf.Max(0, amount);
+    }
+
+    internal void ResetAbilityStacks()
+    {
+        abilityStacks = 0;
     }
 
     public void BeginCylinderShotTracking()

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uC218\uD608"
-  description: "\uC801 \uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +1 (50%)"
+  description: "적 처치 시 최대 체력 +1 (50%)"
   cylinderIcon: {fileID: -213895607114171709, guid: a6deae905e16fff478ead0ecb5eb5a1f, type: 3}
   price: 10
   grade: 2
@@ -48,7 +48,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uC801 \uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +1 (80%)"
+  - description: "적 처치 시 최대 체력 +1 (80%)"
     damage: 17
     maxRange: 3
     criticalChance: 33
@@ -70,8 +70,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "\uC801 \uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +1\n\uAD00\uD1B5
-      \uCD5C\uB300 2\uD68C (30%)"
+  - description: "적 처치 시 최대 체력 +1\n관통 최대 2회 (30%)"
     damage: 22
     maxRange: 4
     criticalChance: 41
@@ -95,9 +94,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uC801 \uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +2\n\uC5F0\uC18D
-      \uAD00\uD1B5 (30%)\n\uC7AC\uC7A5\uC804 \uC2DC \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
-      \uC54A\uC2B5\uB2C8\uB2E4."
+  - description: "적 처치 시 최대 체력 +2\n연속 관통 (30%)\n재장전 시 턴 소모 없음"
     damage: 30
     maxRange: 4
     criticalChance: 50

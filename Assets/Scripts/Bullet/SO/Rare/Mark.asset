@@ -14,10 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uD45C\uC2DD\uD0C4"
-  description: "\uD45C\uC2DD +3"
+  description: "표식 +3"
   cylinderIcon: {fileID: 1595270075398747777, guid: 8c1eef77076d12243ba0b1858c78e94a, type: 3}
   price: 6
   grade: 1
+  bulletType: 6
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
@@ -46,7 +47,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uD45C\uC2DD +5"
+  - description: "표식 +5"
     damage: 8
     maxRange: 3
     criticalChance: 26
@@ -66,7 +67,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "\uD45C\uC2DD +5\n\uAD00\uD1B5 1\uD68C (30%)"
+  - description: "표식 +5\n관통 1회 (30%)"
     damage: 10
     maxRange: 4
     criticalChance: 34
@@ -87,7 +88,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "\uD45C\uC2DD +5\n\uC5F0\uC18D \uAD00\uD1B5 (50%)"
+  - description: "표식 +5\n연속 관통 (50%)"
     damage: 15
     maxRange: 5
     criticalChance: 41

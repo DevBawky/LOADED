@@ -101,10 +101,12 @@
 ```text
 HP_Bar
 └─ HP_Value
-   └─ HP_DamagePreview_1
+   ├─ HP_DamagePreview_1
+   └─ Text | HP
 ```
 
 `HP_DamagePreview_1`은 `HP_Value`의 자식이며 다음 레이아웃을 사용한다.
+예상 피해 오버레이는 항상 첫 번째 자식으로 유지해 체력 수치 `Text | HP`보다 먼저 렌더링한다.
 
 - `anchorMin = (0, 0)`
 - `anchorMax = (1, 1)`

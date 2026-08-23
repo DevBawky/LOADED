@@ -235,7 +235,8 @@ public sealed class ShopSceneController : MonoBehaviour
                      FindObjectsInactive.Include,
                      FindObjectsSortMode.None))
         {
-            progressUI.SetExternalStageTitle("마을. 상점");
+            progressUI.SetExternalStageTitle(
+                StageProgressUI.ShopStageTitle);
         }
 
         int cumulativeTurns = Mathf.Max(

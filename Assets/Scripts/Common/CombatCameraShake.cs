@@ -16,7 +16,7 @@ public enum CombatImpactTier
 
 public static class CombatImpactTierUtility
 {
-    public const float DevastatingDamageRatio = 0.6f;
+    public const float DevastatingDamageRatio = 0.75f;
 
     public static CombatImpactTier Resolve(
         bool isCritical,

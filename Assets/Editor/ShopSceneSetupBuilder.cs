@@ -230,6 +230,10 @@ public static class ShopSceneSetupBuilder
             || transform != null && string.Equals(
                 transform.name,
                 "Panel | Debuff Desciption",
+                StringComparison.Ordinal)
+            || transform != null && string.Equals(
+                transform.name,
+                "Panel | Bullet Type Desciption",
                 StringComparison.Ordinal);
     }
 

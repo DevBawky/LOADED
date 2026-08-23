@@ -15,6 +15,12 @@ UI reads authoritative state, renders it, and forwards user intent. It must not 
 
 Do not split a large UI class solely by widget count. Extract layout calculation, immutable content, formatting, animation/presentation, or input adaptation when that responsibility changes independently and can receive explicit state.
 
+Prefer plain C# formatters and presenters that receive explicit display state.
+Keep serialized view references and lifecycle wiring in the existing Unity
+facade, and keep authoritative manager mutation outside the presenter. UI and
+preview code must call shared domain rules rather than recreating eligibility,
+damage, reward, or progression logic.
+
 ## Change workflow
 
 Search exact hierarchy names, resource paths, animation states/events, sound IDs, and builder scripts before modifying a view. Prefer serialized references; preserve established bootstrap fallbacks. Match every event subscription with unsubscription and avoid anonymous handlers that cannot be removed.

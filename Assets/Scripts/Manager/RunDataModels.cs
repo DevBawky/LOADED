@@ -164,6 +164,8 @@ public sealed class RunSaveData
     public int nextPushAvailableTurn;
     public RunStatusEffectSaveData playerStatusEffects =
         new RunStatusEffectSaveData();
+    public RunStatusEffectSaveData pendingNextBattlePlayerStatusEffects =
+        new RunStatusEffectSaveData();
     public int currentWaveIndex;
     public int remainingSpawnTurns;
     public bool isWaitingForNextWave;
@@ -192,6 +194,14 @@ public sealed class RunSaveData
     public string eventOutcomeText;
     public List<int> eventChoiceSelectionCounts = new List<int>();
     public List<int> eventChoiceFailureCounts = new List<int>();
+    public int eventInteractionStage;
+    public int eventPendingChoiceIndex = -1;
+    public List<string> eventOfferAssetNames = new List<string>();
+    public string eventQuizCorrectAssetName;
+    public string eventResultText;
+    public List<string> eventReelSymbolKeys = new List<string>();
+    public int eventFollowUpDestination;
+    public int eventFollowUpBattleIndex = -1;
     public List<string> completedEventIds = new List<string>();
     public bool treasureVisitActive;
     public bool treasureChestOpened;

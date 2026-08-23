@@ -84,7 +84,7 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "이번 사격에서 파괴된 탄환이 없으면 발사 종료 후 골드 +2\n이번 발사가 턴을 소모하지 않습니다"
+  - description: "이번 사격에서 파괴된 탄환이 없으면 발사 종료 후 골드 +2\n발사 시 턴 소모 없음"
     damage: 20
     maxRange: 5
     criticalChance: 25

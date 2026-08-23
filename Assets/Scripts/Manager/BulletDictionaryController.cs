@@ -458,8 +458,9 @@ public sealed class BulletDictionaryController : MonoBehaviour
 
         if (gradeText != null)
         {
-            gradeText.text = selectedBullet.Grade.ToString();
-            gradeText.color = selectedBullet.GradeNameColor;
+            gradeText.text = selectedBullet.BulletTypeDisplayName;
+            gradeText.color = Color.white;
+            BulletTypeTextEffect.Apply(gradeText, selectedBullet.BulletType);
         }
 
         if (bulletIcon != null)
@@ -470,6 +471,7 @@ public sealed class BulletDictionaryController : MonoBehaviour
 
         if (bulletNameText != null)
         {
+            bulletNameText.color = selectedBullet.GradeNameColor;
             bulletNameText.text = selectedBullet.GetRichDisplayName(selectedLevel);
         }
 
@@ -557,6 +559,8 @@ public sealed class BulletButtonVisualState : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler
 {
+    public event Action<bool> HoverChanged;
+
     private Image indicator;
     private Color hoverColor = Color.white;
     private Color selectedColor = new(1f, 0.5f, 0f, 1f);
@@ -593,18 +597,26 @@ public sealed class BulletButtonVisualState : MonoBehaviour,
     {
         isHovered = true;
         RefreshIndicator();
+        HoverChanged?.Invoke(true);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         isHovered = false;
         RefreshIndicator();
+        HoverChanged?.Invoke(false);
     }
 
     private void OnDisable()
     {
+        bool wasHovered = isHovered;
         isHovered = false;
         RefreshIndicator();
+
+        if (wasHovered)
+        {
+            HoverChanged?.Invoke(false);
+        }
     }
 
     private void RefreshIndicator()

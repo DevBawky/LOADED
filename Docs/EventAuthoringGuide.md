@@ -16,13 +16,13 @@
 
 ## 2. 이벤트 풀 등록
 
-Event 씬은 `EventSceneManagers` 프리팹에 직렬화된 Event Pool을 우선 사용한다. 새 이벤트를 만들거나 삭제한 뒤에는 다음 메뉴를 실행해야 한다.
+Event 씬은 `EventSceneManagers` 프리팹에 직렬화된 Event Pool과 `Resources/Events`의 에셋을 합쳐 사용한다. `Resources/Events` 런타임 탐색은 누락을 막는 안전망이지만, 신규 이벤트 구현의 완료 조건은 저장 위치와 관계없이 직렬화 풀까지 갱신하는 것이다. 새 이벤트를 만들거나 이동·삭제한 뒤에는 다음 메뉴를 실행한다.
 
 ```text
 Tools > LOADED > Refresh Event Definition Pool
 ```
 
-이 메뉴는 프로젝트 전체에서 모든 `EventDefinition`을 검색하므로 에셋이 반드시 `Resources` 폴더에 있을 필요는 없다.
+이 메뉴는 프로젝트 전체에서 모든 `EventDefinition`을 검색하므로 에셋이 반드시 `Resources` 폴더에 있을 필요는 없다. 실행 후 `EventSceneManagers` 프리팹의 Event Pool에 모든 이벤트가 null과 중복 없이 한 번씩 들어갔는지 확인한다.
 
 `Tools > LOADED > Build Dedicated Event Scene`은 Event 씬을 처음 구성하거나 전체 구성을 다시 만들 때 사용하는 메뉴다. 수동으로 수정한 Anchor와 레이아웃이 있다면 단순 이벤트 추가에는 이 메뉴를 사용하지 말고 `Refresh Event Definition Pool`만 사용한다.
 
@@ -152,7 +152,7 @@ Unavailable Reason: 20 골드가 필요합니다.
 
 `Remove Chosen Bullet`과 `Upgrade Chosen Bullet`에서는 `Bullet` 칸을 비워 둔다. 선택지를 누르면 탄환 관리 패널이 열리고 플레이어가 대상 탄환을 직접 고른다.
 
-`Add Bullet`과 `Add Item`은 각각 `Bullet`, `Item` 참조가 반드시 필요하다. 보상 선택지에 탄환이나 아이템이 설정되어 있으면 버튼을 호버할 때 해당 보상 툴팁이 표시된다.
+`Add Item`에는 `Item` 참조가 필요하다. `Add Bullet`의 `Bullet`을 비우면 상점과 같은 등급 가중치로 무작위 탄환을 지급한다. 선택지 문구가 특정 탄환 이름을 명시하지 않는 보상은 이 방식을 사용하고, 특정 이름을 명시한 경우에만 `Bullet` 참조를 연결한다. 고정 보상은 버튼 호버 시 해당 보상 툴팁이 표시된다.
 
 체력, 골드, 덱과 인벤토리 변경 사항은 선택 즉시 Event UI에 반영되고 런 세이브에도 저장된다.
 
@@ -315,7 +315,16 @@ Selection Limit Reason: 상인은 더 이상 거래하지 않습니다.
 
 첫 선택의 `Previous Selections` 값은 `0`이다. 효과 구간은 최소·최대 값을 모두 포함한다.
 
-## 12. 테스트 방법
+## 12. 다중 선택, 중간 선택지, 후속 장소
+
+- `Bullet Selection Count`, `Item Selection Count`, `Relic Selection Count`는 필요한 대상을 모두 고른 뒤 한 번의 확인으로 효과를 적용한다. 탄환은 `Require Distinct Bullet Types`, `Require Same Bullet Grade`, 등급·ID 제한을 함께 설정할 수 있다.
+- `Special Action = Random Bullet Offer`는 비용과 몰수를 먼저 한 번만 적용하고, 최대 3개의 무작위 탄환 중 하나를 고르는 중간 화면을 연다. 제안 목록은 런 세이브에 저장되어 재접속해도 다시 추첨되지 않는다.
+- `Special Action = Slot Machine`은 3개의 릴 결과를 이벤트 설명 아래에 표시한다. 탄환은 등급 테두리 없이 `Cylinder Icon`만, 아이템은 `Icon`을 사용한다. 두 릴 일치는 비용의 3배 골드, 세 릴 일치는 그림 보상과 잭팟탄(+3)을 지급한다.
+- `Special Action = Bullet Quiz`는 보유 탄환 하나의 등급 테두리를 단서로 최대 3개의 답을 제시한다.
+- `Add Pending Status Effect`는 즉시 적용하지 않고 다음 전투 시작 시 플레이어에게 한 번 적용한다.
+- Event Definition의 `Normal Battle Chance Percent`, `Elite Battle Chance Percent`, `Shop Chance Percent`는 이벤트 종료 후 곧바로 해당 장소로 이어질 확률이다. 합계에서 남는 확률은 NodeMap 귀환이며, 합계가 100을 넘지 않도록 작성한다.
+
+## 13. 테스트 방법
 
 Event 씬은 현재 런 세이브와 활성 Event 노드가 있어야 정상적으로 초기화된다. Event 씬을 에디터에서 직접 실행하기보다 다음 순서로 테스트한다.
 
@@ -329,7 +338,7 @@ Event 씬은 현재 런 세이브와 활성 Event 노드가 있어야 정상적�
 8. 반복 도중 종료하고 이어하기 했을 때 선택·실패 횟수가 유지되는지 확인한다.
 9. 이벤트 완료 후 NodeMap으로 돌아가고 해당 노드가 완료 처리되는지 확인한다.
 
-## 13. 자주 발생하는 문제
+## 14. 자주 발생하는 문제
 
 ### 새 이벤트가 등장하지 않음
 
@@ -362,13 +371,15 @@ Event 씬은 현재 런 세이브와 활성 Event 노드가 있어야 정상적�
 - `Continue After Success` 또는 `Continue After Failure`가 켜진 선택지만 존재하면 이벤트가 계속 유지된다.
 - 효과가 없고 Continue 옵션이 꺼진 `[떠난다]` 선택지를 추가한다.
 
-## 14. 최종 체크리스트
+## 15. 최종 체크리스트
 
 - [ ] 고유한 `Event Id`를 입력했다.
 - [ ] Display Name, Artwork, Dialogue를 설정했다.
 - [ ] Choices가 3개 이하이고 종료 선택지가 존재한다.
 - [ ] 비용은 `Attempt Effects` 또는 성공 `Effects` 중 의도한 위치에 넣었다.
-- [ ] `Add Bullet`과 `Add Item`의 데이터 참조를 연결했다.
+- [ ] 특정 탄환 보상만 `Add Bullet`의 데이터 참조를 연결했고, 일반 탄환 보상은 비워 두었다.
+- [ ] 다중 선택 개수와 등급·중복 조건을 설정했다.
+- [ ] 후속 장소 확률 합계가 100% 이하인지 확인했다.
 - [ ] 탄환 제거·강화 효과의 Bullet 칸은 비워 두었다.
 - [ ] 반복 이벤트의 성공·실패 후 Continue 설정을 확인했다.
 - [ ] 최대 반복 횟수 또는 종료 선택지를 마련했다.

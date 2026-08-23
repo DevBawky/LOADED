@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57ee2ab9487741fa84ee7612fa65163e, type: 3}
+  m_Name: Veteran Melee Attack
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyActionData
+  displayName: "\uAC15\uD55C \uBCA0\uAE30"
+  actionType: 3
+  movementDistance: 0
+  attackData: {fileID: 11400000, guid: 0fc2440c7034b7d4f9a8f06eb2308655, type: 2}
+  icon: {fileID: 1095335737386660123, guid: 6c13a294c61226a428b2573a1b252ae0, type: 3}
+  description: "\uBCA0\uD14C\uB791 \uCE7C\uC7A1\uC774\uAC00 \uAC15\uD558\uAC8C \uBCA0\uC5B4
+    \uD53C\uD574 15\uB97C \uC90D\uB2C8\uB2E4."
