@@ -10,29 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
-  m_Name: Event_BloodDevil
+  m_Name: Event_QuietCamp
   m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
-  eventId: blood-drinking-devil
-  displayName: "\uD761\uD608 \uC545\uB9C8"
-  artwork: {fileID: -2054845974603929556, guid: b148679d04a624a43b98255ceaf4dbf7, type: 3}
-  dialogue: "\uC545\uB9C8\uB294 \uBE48 \uC794 \uC138 \uAC1C\uB97C \uB298\uC5B4\uB193\uACE0
-    \uC785\uC220\uC744 \uD565\uB294\uB2E4.\n\n\u201C\uB124 \uD53C \uBC18 \uC794\uC774\uBA74,
-    \uB0B4 \uD0C4\uD658 \uC911 \uD558\uB098\uB97C \uACE0\uB974\uAC8C \uD574 \uC8FC\uC9C0.\u201D"
+  eventId: quiet-camp
+  displayName: "\uACE0\uC694\uD55C \uC57C\uC601\uC9C0"
+  artwork: {fileID: 1254057383571454197, guid: c0b74c7882e6d714b9e969321900d05f, type: 3}
+  dialogue: "\uBC14\uB78C\uC744 \uD53C\uD560 \uC218 \uC788\uB294 \uC791\uC740 \uC57C\uC601\uC9C0\uAC00
+    \uBCF4\uC778\uB2E4. \uC544\uC9C1 \uC628\uAE30\uAC00 \uB0A8\uC740 \uBAA8\uB2E5\uBD88
+    \uACC1\uC5D0\uC11C \uC7A0\uC2DC \uC228\uC744 \uB3CC\uB9B4 \uC218 \uC788\uC744
+    \uAC83 \uAC19\uB2E4."
   choices:
-  - buttonText: "[\uD53C\uB97C \uB0B4\uC900\uB2E4] \uD604\uC7AC HP\uC758 50%\uB97C
-      \uC783\uACE0 \uBB34\uC791\uC704 \uD0C4\uD658 3\uAC1C \uC911 \uD558\uB098\uB97C
-      \uACE0\uB978\uB2E4."
-    outcomeText: "\uC794\uC774 \uCC28\uC624\uB974\uC790 \uC545\uB9C8\uAC00 \uD0C4\uD658
-      \uC138 \uBC1C\uC744 \uD0C1\uC790 \uC704\uC5D0 \uAD74\uB838\uB2E4."
-    requirements:
-    - type: 4
-      amount: 0
-      bulletGrade: 0
-      bulletId: 
-      unavailableReason: "\uD0C4\uD658 \uBCF4\uC720 \uACF5\uAC04\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4."
-    attemptEffects:
-    - type: 9
-      amount: 50
+  - buttonText: "[\uD734\uC2DD\uD55C\uB2E4] \uCCB4\uB825\uC744 15 \uD68C\uBCF5\uD55C\uB2E4."
+    outcomeText: "\uC9E7\uC740 \uD734\uC2DD\uC774\uC5C8\uC9C0\uB9CC \uBAB8\uC740
+      \uD55C\uACB0 \uAC00\uBCBC\uC6CC\uC84C\uB2E4."
+    requirements: []
+    attemptEffects: []
+    effects:
+    - type: 2
+      amount: 15
       amountPerPreviousSelection: 0
       useSelectionRange: 0
       minimumPreviousSelections: 0
@@ -44,7 +39,6 @@ MonoBehaviour:
       bulletLevel: 0
       item: {fileID: 0}
       statusEffectType: 0
-    effects: []
     bulletSelectionCount: 1
     requireDistinctBulletTypes: 0
     requireSameBulletGrade: 0
@@ -53,7 +47,7 @@ MonoBehaviour:
     requiredBulletId: 
     itemSelectionCount: 1
     relicSelectionCount: 1
-    specialAction: 1
+    specialAction: 0
     randomBulletOfferCount: 3
     offerGradeMode: 0
     fixedOfferGrade: 0
@@ -69,10 +63,9 @@ MonoBehaviour:
     maximumSelections: 0
     selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
       \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-  - buttonText: "[\uAC70\uC808\uD55C\uB2E4] \uBAA9\uB35C\uBBF8\uB97C \uAC00\uB9AC\uACE0
-      \uC790\uB9AC\uB97C \uB72C\uB2E4."
-    outcomeText: "\uC545\uB9C8\uB294 \uB2E4\uC74C \uC190\uB2D8\uC744 \uAE30\uB2E4\uB9AC\uBA70
-      \uBE48 \uC794\uC744 \uB2E6\uC558\uB2E4."
+  - buttonText: "[\uC9C0\uB098\uCE5C\uB2E4] \uAC08 \uAE38\uC744 \uC7AC\uCD09\uD55C\uB2E4."
+    outcomeText: "\uB2F9\uC2E0\uC740 \uBAA8\uB2E5\uBD88\uC744 \uB4A4\uB85C\uD558\uACE0
+      \uB2E4\uC2DC \uAE38\uC5D0 \uC62C\uB790\uB2E4."
     requirements: []
     attemptEffects: []
     effects: []
@@ -100,9 +93,14 @@ MonoBehaviour:
     maximumSelections: 0
     selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
       \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-  baseWeight: 9
-  oncePerRun: 1
-  weightRules: []
-  normalBattleChancePercent: 12
-  eliteBattleChancePercent: 4
+  baseWeight: 12
+  oncePerRun: 0
+  weightRules:
+  - statistic: 5
+    comparison: 1
+    threshold: 40
+    operation: 0
+    value: 18
+  normalBattleChancePercent: 0
+  eliteBattleChancePercent: 0
   shopChancePercent: 0

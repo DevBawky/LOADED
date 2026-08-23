@@ -10,23 +10,30 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a8ce717779104ea09d3e272592b3a421, type: 3}
-  m_Name: Event_FountainOfWisdom
+  m_Name: Event_BloodAltar
   m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
-  eventId: fountain-of-wisdom
-  displayName: "\uC9C0\uD61C\uC758 \uC0D8"
-  artwork: {fileID: -2628478830104865294, guid: 5d0ad7e8d1dbb0d46b78dac5f3b081d5, type: 3}
-  dialogue: "\uCD1D\uC131\uACFC \uBA3C\uC9C0 \uC0AC\uC774\uC5D0\uC11C \uB9D1\uC740
-    \uBB3C\uC18C\uB9AC\uAC00 \uB4E4\uB9B0\uB2E4. \uC0D8 \uBC14\uB2E5\uC5D0\uB294
-    \uC624\uB798\uB41C \uD0C4\uD53C\uAC00 \uAC00\uB77C\uC549\uC544 \uC788\uB2E4."
+  eventId: blood-altar
+  displayName: "\uD53C\uB85C \uBB3C\uB4E0 \uC81C\uB2E8"
+  artwork: {fileID: -4616678658249282044, guid: 844bc008e0972b645b5919e3797138e4, type: 3}
+  dialogue: "\uBC14\uC704 \uC0AC\uC774\uC5D0 \uC138\uC6CC\uC9C4 \uB0A1\uC740 \uC81C\uB2E8\uC774
+    \uD76C\uBBF8\uD558\uAC8C \uB9E5\uB3D9\uD55C\uB2E4. \uC81C\uB2E8\uC758 \uD648\uC5D0\uB294
+    \uC624\uB798\uC804\uC5D0 \uB9D0\uB77C\uBD99\uC740 \uD53C\uC640 \uD0C4\uD53C\uAC00
+    \uB4A4\uC11E\uC5EC \uC788\uB2E4."
   choices:
-  - buttonText: "[\uBB3C\uC744 \uB9C8\uC2E0\uB2E4] HP\uB97C 25 \uD68C\uBCF5\uD55C\uB2E4."
-    outcomeText: "\uCC28\uAC00\uC6B4 \uBB3C\uC774 \uC0C1\uCC98\uC758 \uC5F4\uC744
-      \uC53B\uC5B4 \uB0C8\uB2E4."
-    requirements: []
+  - buttonText: "[\uD53C\uB97C \uBC14\uCE5C\uB2E4] \uCCB4\uB825\uC744 10 \uC783\uACE0
+      \uD0C4\uD658 \uD558\uB098\uB97C \uAC15\uD654\uD55C\uB2E4."
+    outcomeText: "\uD53C\uAC00 \uD648\uC744 \uB530\uB77C \uD750\uB974\uC790 \uC120\uD0DD\uD55C
+      \uD0C4\uD658\uC5D0\uC11C \uBD88\uAE38\uD55C \uBE5B\uC774 \uBC88\uB729\uC600\uB2E4."
+    requirements:
+    - type: 3
+      amount: 0
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "\uAC15\uD654 \uAC00\uB2A5\uD55C \uD0C4\uD658\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
     attemptEffects: []
     effects:
-    - type: 2
-      amount: 25
+    - type: 3
+      amount: 10
       amountPerPreviousSelection: 0
       useSelectionRange: 0
       minimumPreviousSelections: 0
@@ -38,42 +45,6 @@ MonoBehaviour:
       bulletLevel: 0
       item: {fileID: 0}
       statusEffectType: 0
-    bulletSelectionCount: 1
-    requireDistinctBulletTypes: 0
-    requireSameBulletGrade: 0
-    restrictBulletGrade: 0
-    requiredBulletGrade: 0
-    requiredBulletId: 
-    itemSelectionCount: 1
-    relicSelectionCount: 1
-    specialAction: 0
-    randomBulletOfferCount: 3
-    offerGradeMode: 0
-    fixedOfferGrade: 0
-    offerOneGradeHigherChancePercent: 50
-    offeredBulletLevel: 0
-    useSuccessChance: 0
-    baseSuccessChancePercent: 50
-    successChanceIncreaseOnFailurePercent: 10
-    failureOutcomeText: 
-    failureEffects: []
-    continueAfterSuccess: 0
-    continueAfterFailure: 1
-    maximumSelections: 0
-    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
-      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-  - buttonText: "[\uD0C4\uD658\uC744 \uC53B\uB294\uB2E4] \uC6D0\uD558\uB294 \uD0C4\uD658
-      1\uAC1C\uB97C \uBB34\uB8CC \uAC15\uD654\uD55C\uB2E4."
-    outcomeText: "\uBB3C\uC5D0 \uB2F4\uADFC \uD0C4\uD658\uC758 \uD760\uC9D1\uC774
-      \uC0AC\uB77C\uC84C\uB2E4."
-    requirements:
-    - type: 3
-      amount: 0
-      bulletGrade: 0
-      bulletId: 
-      unavailableReason: "\uAC15\uD654 \uAC00\uB2A5\uD55C \uD0C4\uD658\uC774 \uC5C6\uC2B5\uB2C8\uB2E4."
-    attemptEffects: []
-    effects:
     - type: 6
       amount: 0
       amountPerPreviousSelection: 0
@@ -111,9 +82,72 @@ MonoBehaviour:
     maximumSelections: 0
     selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
       \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-  - buttonText: "[\uB5A0\uB09C\uB2E4] \uB9D1\uC740 \uBB3C\uC5D0 \uB4F1\uC744 \uB3CC\uB9B0\uB2E4."
-    outcomeText: "\uC0D8\uBB3C\uC740 \uC544\uBB34 \uC77C\uB3C4 \uC5C6\uC5C8\uB2E4\uB294
-      \uB4EF \uD758\uB800\uB2E4."
+  - buttonText: "[\uB3D9\uC804\uC744 \uBC14\uCE5C\uB2E4] 20 \uACE8\uB4DC\uB97C \uC783\uACE0
+      \uCCB4\uB825\uC744 10 \uD68C\uBCF5\uD55C\uB2E4."
+    outcomeText: "\uB3D9\uC804\uC774 \uC81C\uB2E8 \uC544\uB798\uB85C \uC0AC\uB77C\uC9C0\uACE0
+      \uBAB8\uC758 \uC0C1\uCC98\uAC00 \uC870\uAE08\uC529 \uC544\uBB3C\uAE30 \uC2DC\uC791\uD588\uB2E4."
+    requirements:
+    - type: 1
+      amount: 20
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "20 \uACE8\uB4DC\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
+    attemptEffects: []
+    effects:
+    - type: 1
+      amount: 20
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    - type: 2
+      amount: 10
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uB5A0\uB09C\uB2E4] \uC81C\uB2E8\uC744 \uAC74\uB4DC\uB9AC\uC9C0
+      \uC54A\uB294\uB2E4."
+    outcomeText: "\uB2F9\uC2E0\uC740 \uC2DC\uC120\uC744 \uAC70\uB450\uACE0 \uC870\uC6A9\uD788
+      \uC790\uB9AC\uB97C \uB5A0\uB0AC\uB2E4."
     requirements: []
     attemptEffects: []
     effects: []
@@ -141,9 +175,19 @@ MonoBehaviour:
     maximumSelections: 0
     selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
       \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-  baseWeight: 9
+  baseWeight: 7
   oncePerRun: 1
-  weightRules: []
-  normalBattleChancePercent: 5
-  eliteBattleChancePercent: 1
-  shopChancePercent: 2
+  weightRules:
+  - statistic: 0
+    comparison: 3
+    threshold: 1
+    operation: 0
+    value: 12
+  - statistic: 5
+    comparison: 1
+    threshold: 25
+    operation: 1
+    value: 0.15
+  normalBattleChancePercent: 0
+  eliteBattleChancePercent: 0
+  shopChancePercent: 0

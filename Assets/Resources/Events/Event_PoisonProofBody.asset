@@ -13,52 +13,199 @@ MonoBehaviour:
   m_Name: Event_PoisonProofBody
   m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
   eventId: poison-proof-body
-  displayName: 만독불침지체
-  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
-  dialogue: 뱀 사냥꾼이 검은 액체가 든 잔을 내민다. “독에서 살아남는 법은, 살아남을 만큼 마시는 거야.”
+  displayName: "\uB9CC\uB3C5\uBD88\uCE68\uC9C0\uCCB4"
+  artwork: {fileID: -6822846273699640300, guid: 1cb4090d4b4299b439083bb54902cb78, type: 3}
+  dialogue: "\uBC40 \uC0AC\uB0E5\uAFBC\uC774 \uAC80\uC740 \uC561\uCCB4\uAC00 \uB4E0
+    \uC794\uC744 \uB0B4\uBBFC\uB2E4. \u201C\uB3C5\uC5D0\uC11C \uC0B4\uC544\uB0A8\uB294
+    \uBC95\uC740, \uC0B4\uC544\uB0A8\uC744 \uB9CC\uD07C \uB9C8\uC2DC\uB294 \uAC70\uC57C.\u201D"
   choices:
-  - buttonText: "[독을 들이킨다] 다음 전투 시작 시 독+5. 뱀 독, 베놈, 맹독을 얻는다."
-    outcomeText: 목구멍이 타들어 갔다. 사냥꾼은 만족스럽게 독 묶음을 건넸다.
+  - buttonText: "[\uB3C5\uC744 \uB4E4\uC774\uD0A8\uB2E4] \uB2E4\uC74C \uC804\uD22C
+      \uC2DC\uC791 \uC2DC \uB3C5+5. \uBC40 \uB3C5, \uBCA0\uB188, \uB9F9\uB3C5\uC744
+      \uC5BB\uB294\uB2E4."
+    outcomeText: "\uBAA9\uAD6C\uBA4D\uC774 \uD0C0\uB4E4\uC5B4 \uAC14\uB2E4. \uC0AC\uB0E5\uAFBC\uC740
+      \uB9CC\uC871\uC2A4\uB7FD\uAC8C \uB3C5 \uBB36\uC74C\uC744 \uAC74\uB138\uB2E4."
     requirements:
     - type: 4
       amount: 0
-      unavailableReason: 탄환 보유 공간이 부족합니다.
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "\uD0C4\uD658 \uBCF4\uC720 \uACF5\uAC04\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4."
     - type: 5
       amount: 0
-      unavailableReason: 아이템 보유 공간이 부족합니다.
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "\uC544\uC774\uD15C \uBCF4\uC720 \uACF5\uAC04\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4."
     attemptEffects: []
     effects:
     - type: 10
       amount: 5
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
       statusEffectType: 1
     - type: 7
       amount: 0
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
       item: {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
+      statusEffectType: 0
     - type: 4
       amount: 0
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
       bullet: {fileID: 11400000, guid: 310b3e790ca558641b654f60fc863234, type: 2}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
     - type: 4
       amount: 0
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
       bullet: {fileID: 11400000, guid: c201000000000000000000000000000b, type: 2}
-  - buttonText: "[혀끝만 적신다] 다음 전투 시작 시 독+2. 뱀 독을 얻는다."
-    outcomeText: 한 방울만으로도 혀가 저렸다. 사냥꾼은 작은 병을 건넸다.
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uD600\uB05D\uB9CC \uC801\uC2E0\uB2E4] \uB2E4\uC74C \uC804\uD22C
+      \uC2DC\uC791 \uC2DC \uB3C5+2. \uBC40 \uB3C5\uC744 \uC5BB\uB294\uB2E4."
+    outcomeText: "\uD55C \uBC29\uC6B8\uB9CC\uC73C\uB85C\uB3C4 \uD600\uAC00 \uC800\uB838\uB2E4.
+      \uC0AC\uB0E5\uAFBC\uC740 \uC791\uC740 \uBCD1\uC744 \uAC74\uB138\uB2E4."
     requirements:
     - type: 5
       amount: 0
-      unavailableReason: 아이템 보유 공간이 부족합니다.
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "\uC544\uC774\uD15C \uBCF4\uC720 \uACF5\uAC04\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4."
     attemptEffects: []
     effects:
     - type: 10
       amount: 2
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
       statusEffectType: 1
     - type: 7
       amount: 0
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
       item: {fileID: 11400000, guid: 06b12299604f4f73aaa0f11b6291751c, type: 2}
-  - buttonText: "[거절한다] 잔을 밀어내고 뱀 사냥꾼을 지나친다."
-    outcomeText: 사냥꾼은 어깨를 으쓱하고 남은 독을 마셨다.
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uAC70\uC808\uD55C\uB2E4] \uC794\uC744 \uBC00\uC5B4\uB0B4\uACE0
+      \uBC40 \uC0AC\uB0E5\uAFBC\uC744 \uC9C0\uB098\uCE5C\uB2E4."
+    outcomeText: "\uC0AC\uB0E5\uAFBC\uC740 \uC5B4\uAE68\uB97C \uC73C\uC4F1\uD558\uACE0
+      \uB0A8\uC740 \uB3C5\uC744 \uB9C8\uC168\uB2E4."
     requirements: []
     attemptEffects: []
     effects: []
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
   baseWeight: 7
   oncePerRun: 1
   weightRules: []

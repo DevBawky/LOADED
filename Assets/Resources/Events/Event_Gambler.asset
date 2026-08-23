@@ -13,29 +13,91 @@ MonoBehaviour:
   m_Name: Event_Gambler
   m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
   eventId: back-alley-gambler
-  displayName: 도박사
-  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
-  dialogue: "도박사가 기름때 낀 슬롯머신의 레버를 두드린다. 탄환과 잡동사니 그림이 릴 위에서 번들거린다."
+  displayName: "\uB3C4\uBC15\uC0AC"
+  artwork: {fileID: -6749003387572557394, guid: 78b089f71270c8245872d9b3b2a0446f, type: 3}
+  dialogue: "\uB3C4\uBC15\uC0AC\uAC00 \uAE30\uB984\uB54C \uB080 \uC2AC\uB86F\uBA38\uC2E0\uC758
+    \uB808\uBC84\uB97C \uB450\uB4DC\uB9B0\uB2E4. \uD0C4\uD658\uACFC \uC7A1\uB3D9\uC0AC\uB2C8
+    \uADF8\uB9BC\uC774 \uB9B4 \uC704\uC5D0\uC11C \uBC88\uB4E4\uAC70\uB9B0\uB2E4."
   choices:
-  - buttonText: "[릴을 돌린다] 10 골드를 지불한다. 현재 {attempt}번째 판."
-    outcomeText: 릴이 요란하게 회전했다.
+  - buttonText: "[\uB9B4\uC744 \uB3CC\uB9B0\uB2E4] 10 \uACE8\uB4DC\uB97C \uC9C0\uBD88\uD55C\uB2E4.
+      \uD604\uC7AC {attempt}\uBC88\uC9F8 \uD310."
+    outcomeText: "\uB9B4\uC774 \uC694\uB780\uD558\uAC8C \uD68C\uC804\uD588\uB2E4."
     requirements:
     - type: 1
       amount: 10
-      unavailableReason: 10 골드가 필요합니다.
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "10 \uACE8\uB4DC\uAC00 \uD544\uC694\uD569\uB2C8\uB2E4."
     attemptEffects:
     - type: 1
       amount: 10
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
     effects: []
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
     specialAction: 2
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
     continueAfterSuccess: 1
+    continueAfterFailure: 1
     maximumSelections: 3
-    selectionLimitReason: 슬롯머신이 과열되어 더는 움직이지 않습니다.
-  - buttonText: "[판을 접는다] 도박사의 손이 빨라지기 전에 떠난다."
-    outcomeText: 도박사는 다음 판이 진짜였을 거라며 웃었다.
+    selectionLimitReason: "\uC2AC\uB86F\uBA38\uC2E0\uC774 \uACFC\uC5F4\uB418\uC5B4
+      \uB354\uB294 \uC6C0\uC9C1\uC774\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uD310\uC744 \uC811\uB294\uB2E4] \uB3C4\uBC15\uC0AC\uC758 \uC190\uC774
+      \uBE68\uB77C\uC9C0\uAE30 \uC804\uC5D0 \uB5A0\uB09C\uB2E4."
+    outcomeText: "\uB3C4\uBC15\uC0AC\uB294 \uB2E4\uC74C \uD310\uC774 \uC9C4\uC9DC\uC600\uC744
+      \uAC70\uB77C\uBA70 \uC6C3\uC5C8\uB2E4."
     requirements: []
     attemptEffects: []
     effects: []
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
   baseWeight: 10
   oncePerRun: 1
   weightRules: []

@@ -13,36 +13,148 @@ MonoBehaviour:
   m_Name: Event_KindTycoon
   m_EditorClassIdentifier: Assembly-CSharp::EventDefinition
   eventId: suspiciously-kind-tycoon
-  displayName: 친절한 갑부
-  artwork: {fileID: 21300000, guid: 59891d5fa2b6b1b468500267c9e11b00, type: 3}
-  dialogue: "갑부는 호위도 없이 금빛 마차에서 내렸다.\n\n“오늘은 기분이 좋군. 셋 중 하나는 자네 것이야.”"
+  displayName: "\uCE5C\uC808\uD55C \uAC11\uBD80"
+  artwork: {fileID: 8158998899374911186, guid: fcbaff8f5a6adc2428305ed4807d9096, type: 3}
+  dialogue: "\uAC11\uBD80\uB294 \uD638\uC704\uB3C4 \uC5C6\uC774 \uAE08\uBE5B \uB9C8\uCC28\uC5D0\uC11C
+    \uB0B4\uB838\uB2E4.\n\n\u201C\uC624\uB298\uC740 \uAE30\uBD84\uC774 \uC88B\uAD70.
+    \uC14B \uC911 \uD558\uB098\uB294 \uC790\uB124 \uAC83\uC774\uC57C.\u201D"
   choices:
-  - buttonText: "[건강에 투자한다] 최대 HP를 10% 늘리고, 늘어난 양만큼 회복한다."
-    outcomeText: 갑부의 의사가 수상할 만큼 값비싼 약을 놓고 갔다.
+  - buttonText: "[\uAC74\uAC15\uC5D0 \uD22C\uC790\uD55C\uB2E4] \uCD5C\uB300 HP\uB97C
+      10% \uB298\uB9AC\uACE0, \uB298\uC5B4\uB09C \uC591\uB9CC\uD07C \uD68C\uBCF5\uD55C\uB2E4."
+    outcomeText: "\uAC11\uBD80\uC758 \uC758\uC0AC\uAC00 \uC218\uC0C1\uD560 \uB9CC\uD07C
+      \uAC12\uBE44\uC2FC \uC57D\uC744 \uB193\uACE0 \uAC14\uB2E4."
     requirements: []
     attemptEffects: []
     effects:
     - type: 8
       amount: 10
-  - buttonText: "[금빛 탄환을 고른다] 황금탄(+2)을 얻는다."
-    outcomeText: 묵직한 황금탄이 손바닥 위에서 빛났다.
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uAE08\uBE5B \uD0C4\uD658\uC744 \uACE0\uB978\uB2E4] \uD669\uAE08\uD0C4(+2)\uC744
+      \uC5BB\uB294\uB2E4."
+    outcomeText: "\uBB35\uC9C1\uD55C \uD669\uAE08\uD0C4\uC774 \uC190\uBC14\uB2E5
+      \uC704\uC5D0\uC11C \uBE5B\uB0AC\uB2E4."
     requirements:
     - type: 4
       amount: 0
-      unavailableReason: 탄환 보유 공간이 부족합니다.
+      bulletGrade: 0
+      bulletId: 
+      unavailableReason: "\uD0C4\uD658 \uBCF4\uC720 \uACF5\uAC04\uC774 \uBD80\uC871\uD569\uB2C8\uB2E4."
     attemptEffects: []
     effects:
     - type: 4
       amount: 0
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
       bullet: {fileID: 11400000, guid: 5cc1ffa2caa707043af2a6876d4cd83d, type: 2}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
       bulletLevel: 2
-  - buttonText: "[현금을 고른다] 20 골드를 받는다."
-    outcomeText: 갑부는 셈도 하지 않고 금화 한 줌을 건넸다.
+      item: {fileID: 0}
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
+  - buttonText: "[\uD604\uAE08\uC744 \uACE0\uB978\uB2E4] 20 \uACE8\uB4DC\uB97C \uBC1B\uB294\uB2E4."
+    outcomeText: "\uAC11\uBD80\uB294 \uC148\uB3C4 \uD558\uC9C0 \uC54A\uACE0 \uAE08\uD654
+      \uD55C \uC90C\uC744 \uAC74\uB138\uB2E4."
     requirements: []
     attemptEffects: []
     effects:
     - type: 0
       amount: 20
+      amountPerPreviousSelection: 0
+      useSelectionRange: 0
+      minimumPreviousSelections: 0
+      maximumPreviousSelections: -1
+      bullet: {fileID: 0}
+      randomBulletGradeMode: 0
+      fixedBulletGrade: 0
+      oneGradeHigherChancePercent: 50
+      bulletLevel: 0
+      item: {fileID: 0}
+      statusEffectType: 0
+    bulletSelectionCount: 1
+    requireDistinctBulletTypes: 0
+    requireSameBulletGrade: 0
+    restrictBulletGrade: 0
+    requiredBulletGrade: 0
+    requiredBulletId: 
+    itemSelectionCount: 1
+    relicSelectionCount: 1
+    specialAction: 0
+    randomBulletOfferCount: 3
+    offerGradeMode: 0
+    fixedOfferGrade: 0
+    offerOneGradeHigherChancePercent: 50
+    offeredBulletLevel: 0
+    useSuccessChance: 0
+    baseSuccessChancePercent: 50
+    successChanceIncreaseOnFailurePercent: 10
+    failureOutcomeText: 
+    failureEffects: []
+    continueAfterSuccess: 0
+    continueAfterFailure: 1
+    maximumSelections: 0
+    selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
+      \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
   baseWeight: 7
   oncePerRun: 1
   weightRules: []
