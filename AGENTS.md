@@ -119,8 +119,12 @@ skill. Domain skills supplement rather than replace this repository-wide file.
     feedback. Keep presentation separate from rule decisions.
 - `Assets/Scripts/Event/`
   - `EventDefinition` is authored event content; `EventSceneController`
-    evaluates choices and applies effects. Follow `Docs/EventAuthoringGuide.md`
-    when adding or changing events.
+    coordinates scene interaction, applies effects, saves checkpoints, and
+    routes follow-up destinations.
+  - `EventChoiceAvailabilityEvaluator` owns deterministic choice eligibility;
+    `EventChoiceTextFormatter` owns choice-label highlighting. UI and execution
+    paths must reuse `EventRuntimeRules` for repeat/effect calculations.
+  - Follow `Docs/EventAuthoringGuide.md` when adding or changing events.
 - `Assets/Scripts/Sound/`
   - `SoundManager` is the persistent audio playback and volume owner.
   - `SoundtrackDirector` selects scene music. UI feedback installers and
@@ -260,6 +264,35 @@ serialization-compatible refactor, but that collaborator must own cohesive
 state/behavior and the `MonoBehaviour` part must remain a small delegating
 facade. Prefer a standalone plain C# type when private Unity serialization
 compatibility does not require nesting.
+
+### Maintainability and extension workflow
+
+Design changes around ownership and observable behavior rather than shorter
+files:
+
+- Name one authoritative owner for each mutable state before adding a feature.
+  Other systems may query that owner or send intent, but must not cache a
+  competing mutable copy.
+- Separate queries, mutations, and presentation when they have different
+  reasons to change. Preview and UI paths must reuse the same deterministic
+  rules as execution instead of reimplementing them.
+- Keep Unity facades responsible for lifecycle, serialized references, event
+  wiring, and orchestration. Move deterministic formatting, calculations, and
+  state transitions to plain C# collaborators with explicit inputs.
+- Before extracting behavior, add characterization tests for public outcomes
+  and sensitive ordering such as RNG consumption, effect resolution, save
+  checkpoints, event emission, and turn completion.
+- When an effect or behavior `switch` grows, extract a cohesive effect family
+  only when it creates a real test seam or independent change boundary. The
+  authoritative manager still validates and commits state changes.
+- Represent resumable multi-step flows with explicit runtime states and legal
+  transitions. Map them onto existing save primitives without changing the
+  serialized schema unless a migration is explicitly planned.
+
+A maintainability refactor is complete when ownership is unambiguous, new
+behavior can be added without duplicating rules across execution and UI,
+critical ordering is protected by tests, public/serialized contracts are
+preserved, and disabling presentation cannot change gameplay outcomes.
 
 ## Serialized asset safety
 

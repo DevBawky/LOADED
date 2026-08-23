@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -81,6 +80,9 @@ public sealed class EventSceneController : MonoBehaviour
     private IReadOnlyList<RelicInstance> pendingSelectedRelics =
         Array.Empty<RelicInstance>();
     private InventoryTooltipUI eventTooltipUI;
+    private EventChoiceTextFormatter choiceTextFormatter;
+    private EventChoiceButtonPresenter choiceButtonPresenter;
+    private EventResultPresenter resultPresenter;
     private bool initialized;
     private bool leaving;
     private Coroutine initializationRoutine;
@@ -316,7 +318,6 @@ public sealed class EventSceneController : MonoBehaviour
     private void ConfigureSharedPresentation()
     {
         RefreshHealthPresentation();
-        EnsureResultText();
         SetResultText(runData.eventResultText);
 
         if (artworkImage != null)
@@ -373,423 +374,85 @@ public sealed class EventSceneController : MonoBehaviour
         int choiceCount = Mathf.Min(
             3,
             currentEvent.choices == null ? 0 : currentEvent.choices.Length);
-        for (int index = 0; index < choiceButtons.Length; index++)
+        EventChoiceData[] visibleChoices = new EventChoiceData[choiceCount];
+        EventChoiceButtonState[] states =
+            new EventChoiceButtonState[choiceCount];
+        for (int index = 0; index < choiceCount; index++)
         {
-            Button button = choiceButtons[index];
-            if (button == null)
-            {
-                continue;
-            }
-
-            button.onClick.RemoveAllListeners();
-            bool visible = index < choiceCount
-                && currentEvent.choices[index] != null;
-            button.gameObject.SetActive(visible);
-            if (!visible)
-            {
-                continue;
-            }
-
             EventChoiceData choice = currentEvent.choices[index];
-            bool available = IsChoiceAvailable(choice, out string reason);
-            button.interactable = available;
-            TMP_Text label = index < choiceTexts.Length
-                ? choiceTexts[index]
-                : button.GetComponentInChildren<TMP_Text>(true);
-            if (label != null)
+            if (choice == null)
             {
-                label.richText = true;
-                label.text = FormatChoiceText(
-                    choice,
-                    available,
-                    reason);
+                states[index] = new EventChoiceButtonState(
+                    string.Empty,
+                    false,
+                    true);
+                continue;
             }
 
-            ConfigureChoiceRewardPreview(button, choice);
-            button.onClick.AddListener(() => SelectChoice(choice));
-            SoundManager.BindUiButtonSfx(button);
+            visibleChoices[index] = choice;
+            bool available = IsChoiceAvailable(choice, out string reason);
+            states[index] = new EventChoiceButtonState(
+                FormatChoiceText(choice, available, reason),
+                available,
+                true);
         }
+
+        EnsurePresenters();
+        choiceButtonPresenter.PresentChoices(
+            states,
+            index => SelectChoice(visibleChoices[index]),
+            (button, index) => ConfigureChoiceRewardPreview(
+                button,
+                visibleChoices[index]));
     }
 
     private bool IsChoiceAvailable(
         EventChoiceData choice,
         out string unavailableReason)
     {
-        unavailableReason = string.Empty;
-        if (choice == null)
-        {
-            return false;
-        }
-
         int choiceIndex = GetChoiceIndex(choice);
-        int previousSelections = GetChoiceProgress(
+        int previousSelections = EventRuntimeRules.GetChoiceProgress(
             runData.eventChoiceSelectionCounts,
             choiceIndex);
-        if (choice.maximumSelections > 0
-            && previousSelections >= choice.maximumSelections)
-        {
-            unavailableReason = string.IsNullOrWhiteSpace(
-                choice.selectionLimitReason)
-                    ? "더 이상 이 선택지를 고를 수 없습니다."
-                    : choice.selectionLimitReason;
-            return false;
-        }
-
-        IEnumerable<EventChoiceRequirement> requirements =
-            choice.requirements ?? Array.Empty<EventChoiceRequirement>();
-        foreach (EventChoiceRequirement requirement in requirements)
-        {
-            if (requirement == null)
-            {
-                continue;
-            }
-
-            bool valid = requirement.type switch
-            {
-                EventChoiceRequirementType.None => true,
-                EventChoiceRequirementType.MoneyAtLeast =>
-                    currencyManager.CurrentMoney >= requirement.amount,
-                EventChoiceRequirementType.RemovableBulletExists =>
-                    deckManager.CanRemoveOwnedBullet,
-                EventChoiceRequirementType.UpgradableBulletExists =>
-                    HasUpgradableBullet(),
-                EventChoiceRequirementType.BulletSpaceExists =>
-                    deckManager.OwnedBulletCount
-                        < DeckManager.MaximumOwnedBulletCount,
-                EventChoiceRequirementType.ItemSpaceExists =>
-                    !playerInventory.IsFull,
-                EventChoiceRequirementType.OwnedBulletCountAtLeast =>
-                    deckManager.OwnedBulletCount >= requirement.amount,
-                EventChoiceRequirementType.BulletGradeCountAtLeast =>
-                    CountOwnedBullets(bullet => bullet.Grade
-                        == requirement.bulletGrade) >= requirement.amount,
-                EventChoiceRequirementType.BulletIdExists =>
-                    CountOwnedBullets(bullet => bullet.Data != null
-                        && bullet.Data.BulletId == requirement.bulletId) >=
-                    Mathf.Max(1, requirement.amount),
-                EventChoiceRequirementType.ItemExists =>
-                    CountOwnedItems() >= Mathf.Max(1, requirement.amount),
-                EventChoiceRequirementType.RelicCountAtLeast =>
-                    relicManager.OwnedRelics.Count >= requirement.amount,
-                _ => true
-            };
-
-            if (!valid)
-            {
-                unavailableReason = requirement.unavailableReason;
-                return false;
-            }
-        }
-
-        if (!IsTargetSelectionAvailable(choice, out unavailableReason))
-        {
-            return false;
-        }
-
-        if (choice.specialAction == EventSpecialAction.RandomBulletOffer
-            && deckManager.OwnedBulletCount
-                >= DeckManager.MaximumOwnedBulletCount)
-        {
-            unavailableReason = "탄환 보유 공간이 부족합니다.";
-            return false;
-        }
-
-        if (choice.specialAction == EventSpecialAction.SlotMachine
-            && !HasSlotRewardCandidate())
-        {
-            unavailableReason = "잭팟 탄환을 받을 공간이 필요합니다.";
-            return false;
-        }
-
-        if (choice.specialAction == EventSpecialAction.BulletQuiz
-            && (deckManager.OwnedBulletCount == 0
-                || dataResolver.BulletCatalog.Count < 3))
-        {
-            unavailableReason = "퀴즈를 만들 탄환 정보가 부족합니다.";
-            return false;
-        }
-
-        return AreEffectsAvailable(choice, out unavailableReason);
-    }
-
-    private bool HasSlotRewardCandidate()
-    {
-        int bulletSpaces = DeckManager.MaximumOwnedBulletCount
-            - deckManager.OwnedBulletCount;
-        return bulletSpaces >= 2 && dataResolver.BulletCatalog.Any(
-                bullet => bullet != null
-                    && bullet.BulletId != "bullet_jackpot")
-            || bulletSpaces >= 1 && !playerInventory.IsFull
-                && dataResolver.ItemCatalog.Any(item => item != null);
-    }
-
-    private bool AreEffectsAvailable(
-        EventChoiceData choice,
-        out string unavailableReason)
-    {
-        int choiceIndex = GetChoiceIndex(choice);
-        if (choiceIndex < 0)
-        {
-            unavailableReason = "유효하지 않은 이벤트 선택지입니다.";
-            return false;
-        }
-
-        int previousSelections = GetChoiceProgress(
-            runData.eventChoiceSelectionCounts,
-            choiceIndex);
-        IEnumerable<EventEffect> attemptEffects = GetActiveEffects(
-            choice.attemptEffects,
-            previousSelections);
-        IEnumerable<EventEffect> successEffects = GetActiveEffects(
-            choice.effects,
-            previousSelections);
-
-        if (!ValidateEffectSet(
-                attemptEffects.Concat(successEffects),
+        EventChoiceAvailabilityResult result =
+            EventChoiceAvailabilityEvaluator.Evaluate(
+                choice,
+                choiceIndex,
                 previousSelections,
-                out unavailableReason))
-        {
-            return false;
-        }
-
-        if (!choice.useSuccessChance)
-        {
-            return true;
-        }
-
-        IEnumerable<EventEffect> failureEffects = GetActiveEffects(
-            choice.failureEffects,
-            previousSelections);
-        return ValidateEffectSet(
-            GetActiveEffects(choice.attemptEffects, previousSelections)
-                .Concat(failureEffects),
-            previousSelections,
-            out unavailableReason);
+                CreateChoiceAvailabilityContext());
+        unavailableReason = result.UnavailableReason;
+        return result.IsAvailable;
     }
 
-    private bool ValidateEffectSet(
-        IEnumerable<EventEffect> effects,
-        int previousSelections,
-        out string unavailableReason)
-    {
-        unavailableReason = string.Empty;
-        long moneyCost = 0L;
-        int bulletsToAdd = 0;
-        int itemsToAdd = 0;
-
-        foreach (EventEffect effect in effects)
-        {
-            if (effect == null)
-            {
-                continue;
-            }
-
-            switch (effect.type)
-            {
-                case EventEffectType.LoseMoney:
-                    moneyCost += GetEffectAmount(
-                        effect,
-                        previousSelections);
-                    break;
-                case EventEffectType.AddBullet:
-                    bulletsToAdd++;
-                    break;
-                case EventEffectType.AddItem:
-                    if (effect.item == null)
-                    {
-                        unavailableReason =
-                            "획득할 아이템이 설정되지 않았습니다.";
-                        return false;
-                    }
-
-                    itemsToAdd++;
-                    break;
-                case EventEffectType.RemoveChosenBullet:
-                    if (!deckManager.CanRemoveOwnedBullet)
-                    {
-                        unavailableReason =
-                            "제거할 수 있는 탄환이 없습니다.";
-                        return false;
-                    }
-
-                    break;
-                case EventEffectType.UpgradeChosenBullet:
-                    if (!HasUpgradableBullet())
-                    {
-                        unavailableReason =
-                            "강화할 수 있는 탄환이 없습니다.";
-                        return false;
-                    }
-
-                    break;
-                case EventEffectType.RemoveChosenItem:
-                    if (CountOwnedItems() <= 0)
-                    {
-                        unavailableReason = "몰수할 아이템이 없습니다.";
-                        return false;
-                    }
-
-                    break;
-                case EventEffectType.RemoveChosenRelic:
-                    if (relicManager.OwnedRelics.Count <= 0)
-                    {
-                        unavailableReason = "넘길 유물이 없습니다.";
-                        return false;
-                    }
-
-                    break;
-            }
-        }
-
-        if (moneyCost > currencyManager.CurrentMoney)
-        {
-            unavailableReason = "골드가 부족합니다.";
-            return false;
-        }
-
-        if ((long)deckManager.OwnedBulletCount + bulletsToAdd
-            > DeckManager.MaximumOwnedBulletCount)
-        {
-            unavailableReason = "탄환 보유 공간이 부족합니다.";
-            return false;
-        }
-
-        int emptyItemSlots = 0;
-        for (int slotIndex = 0;
-             slotIndex < playerInventory.SlotCount;
-             slotIndex++)
-        {
-            if (playerInventory.GetItem(slotIndex) == null)
-            {
-                emptyItemSlots++;
-            }
-        }
-
-        if (itemsToAdd > emptyItemSlots)
-        {
-            unavailableReason = "아이템 보유 공간이 부족합니다.";
-            return false;
-        }
-
-        return true;
-    }
-
-    private bool HasUpgradableBullet()
+    private EventChoiceAvailabilityContext CreateChoiceAvailabilityContext()
     {
         deckManager.GetOwnedBullets(bulletBuffer);
-        return bulletBuffer.Any(bullet => bullet != null && bullet.CanUpgrade);
-    }
-
-    private bool IsTargetSelectionAvailable(
-        EventChoiceData choice,
-        out string unavailableReason)
-    {
-        unavailableReason = string.Empty;
-        IEnumerable<EventEffect> allEffects =
-            (choice.attemptEffects ?? Array.Empty<EventEffect>())
-            .Concat(choice.effects ?? Array.Empty<EventEffect>())
-            .Concat(choice.failureEffects ?? Array.Empty<EventEffect>());
-        bool removesBullet = allEffects.Any(effect => effect != null
-            && effect.type == EventEffectType.RemoveChosenBullet);
-        bool upgradesBullet = allEffects.Any(effect => effect != null
-            && effect.type == EventEffectType.UpgradeChosenBullet);
-        int bulletCount = Mathf.Max(1, choice.bulletSelectionCount);
-        if (removesBullet || upgradesBullet)
-        {
-            if (removesBullet && deckManager.OwnedBulletCount - bulletCount
-                < DeckManager.MinimumOwnedBulletCount)
-            {
-                unavailableReason = "선택 후에도 탄환을 1개 이상 보유해야 합니다.";
-                return false;
-            }
-
-            deckManager.GetOwnedBullets(bulletBuffer);
-            List<BulletInstance> candidates = bulletBuffer.Where(bullet =>
-                    IsBulletEligibleForChoice(
-                        bullet,
-                        choice,
-                        upgradesBullet))
-                .ToList();
-            bool hasGroup = choice.requireSameBulletGrade
-                ? candidates.GroupBy(bullet => bullet.Grade).Any(group =>
-                    CountSelectableBulletTypes(
-                        group,
-                        choice.requireDistinctBulletTypes) >= bulletCount)
-                : CountSelectableBulletTypes(
-                    candidates,
-                    choice.requireDistinctBulletTypes) >= bulletCount;
-            if (!hasGroup)
-            {
-                unavailableReason =
-                    $"조건에 맞는 탄환 {bulletCount}개가 필요합니다.";
-                return false;
-            }
-        }
-
-        if (allEffects.Any(effect => effect != null
-                && effect.type == EventEffectType.RemoveChosenItem)
-            && CountOwnedItems() < Mathf.Max(1, choice.itemSelectionCount))
-        {
-            unavailableReason = "몰수할 아이템이 부족합니다.";
-            return false;
-        }
-
-        if (allEffects.Any(effect => effect != null
-                && effect.type == EventEffectType.RemoveChosenRelic)
-            && relicManager.OwnedRelics.Count
-                < Mathf.Max(1, choice.relicSelectionCount))
-        {
-            unavailableReason = "넘길 유물이 부족합니다.";
-            return false;
-        }
-
-        return true;
-    }
-
-    private static int CountSelectableBulletTypes(
-        IEnumerable<BulletInstance> bullets,
-        bool distinctTypes)
-    {
-        return distinctTypes
-            ? bullets.Where(bullet => bullet?.Data != null)
-                .Select(bullet => bullet.Data)
-                .Distinct()
-                .Count()
-            : bullets.Count();
-    }
-
-    private static bool IsBulletEligibleForChoice(
-        BulletInstance bullet,
-        EventChoiceData choice,
-        bool requireUpgrade)
-    {
-        return bullet?.Data != null
-            && (!requireUpgrade || bullet.CanUpgrade)
-            && (!choice.restrictBulletGrade
-                || bullet.Grade == choice.requiredBulletGrade)
-            && (string.IsNullOrWhiteSpace(choice.requiredBulletId)
-                || bullet.Data.BulletId == choice.requiredBulletId);
-    }
-
-    private int CountOwnedBullets(Func<BulletInstance, bool> predicate)
-    {
-        deckManager.GetOwnedBullets(bulletBuffer);
-        return bulletBuffer.Count(bullet => bullet != null
-            && (predicate == null || predicate(bullet)));
-    }
-
-    private int CountOwnedItems()
-    {
-        int count = 0;
+        int ownedItemCount = 0;
+        int emptyItemSlotCount = 0;
         for (int index = 0; index < playerInventory.SlotCount; index++)
         {
-            if (playerInventory.GetItem(index) != null)
+            if (playerInventory.GetItem(index) == null)
             {
-                count++;
+                emptyItemSlotCount++;
+            }
+            else
+            {
+                ownedItemCount++;
             }
         }
 
-        return count;
+        return new EventChoiceAvailabilityContext(
+            currencyManager.CurrentMoney,
+            deckManager.CanRemoveOwnedBullet,
+            deckManager.OwnedBulletCount,
+            bulletBuffer,
+            ownedItemCount,
+            emptyItemSlotCount,
+            relicManager.OwnedRelics.Count,
+            dataResolver.BulletCatalog.Count,
+            dataResolver.BulletCatalog.Any(bullet => bullet != null
+                && bullet.BulletId != "bullet_jackpot"),
+            dataResolver.ItemCatalog.Any(item => item != null));
     }
 
     private void SelectChoice(EventChoiceData choice)
@@ -812,14 +475,16 @@ public sealed class EventSceneController : MonoBehaviour
             return;
         }
 
-        int previousSelections = GetChoiceProgress(
+        int previousSelections = EventRuntimeRules.GetChoiceProgress(
             runData.eventChoiceSelectionCounts,
             GetChoiceIndex(choice));
-        EventEffect targetedEffect = GetActiveEffects(
+        EventEffect targetedEffect = EventRuntimeRules.GetActiveEffects(
                 choice.attemptEffects,
                 previousSelections)
-            .Concat(GetActiveEffects(choice.effects, previousSelections))
-            .Concat(GetActiveEffects(
+            .Concat(EventRuntimeRules.GetActiveEffects(
+                choice.effects,
+                previousSelections))
+            .Concat(EventRuntimeRules.GetActiveEffects(
                 choice.failureEffects,
                 previousSelections))
             .FirstOrDefault(effect => effect != null
@@ -893,7 +558,8 @@ public sealed class EventSceneController : MonoBehaviour
                 deckManager,
                 mode,
                 Mathf.Max(1, choice.bulletSelectionCount),
-                bullet => IsBulletEligibleForChoice(
+                bullet => EventChoiceAvailabilityEvaluator
+                    .IsBulletEligibleForChoice(
                     bullet,
                     choice,
                     mode == EventBulletSelectionMode.Upgrade),
@@ -990,10 +656,10 @@ public sealed class EventSceneController : MonoBehaviour
             return;
         }
 
-        int previousSelections = GetChoiceProgress(
+        int previousSelections = EventRuntimeRules.GetChoiceProgress(
             runData.eventChoiceSelectionCounts,
             choiceIndex);
-        int previousFailures = GetChoiceProgress(
+        int previousFailures = EventRuntimeRules.GetChoiceProgress(
             runData.eventChoiceFailureCounts,
             choiceIndex);
 
@@ -1015,20 +681,26 @@ public sealed class EventSceneController : MonoBehaviour
         }
 
         ApplyEffects(
-            GetActiveEffects(choice.attemptEffects, previousSelections),
+            EventRuntimeRules.GetActiveEffects(
+                choice.attemptEffects,
+                previousSelections),
             chosenBullets,
             chosenItemSlots,
             chosenRelics,
             previousSelections);
 
-        float successChance = GetSuccessChance(choice, previousFailures);
+        float successChance = EventRuntimeRules.GetSuccessChance(
+            choice,
+            previousFailures);
         bool succeeded = !choice.useSuccessChance
             || UnityEngine.Random.value * 100f < successChance;
         EventEffect[] branchEffects = succeeded
             ? choice.effects
             : choice.failureEffects;
         ApplyEffects(
-            GetActiveEffects(branchEffects, previousSelections),
+            EventRuntimeRules.GetActiveEffects(
+                branchEffects,
+                previousSelections),
             chosenBullets,
             chosenItemSlots,
             chosenRelics,
@@ -1082,7 +754,9 @@ public sealed class EventSceneController : MonoBehaviour
                 continue;
             }
 
-            int amount = GetEffectAmount(effect, previousSelections);
+            int amount = EventRuntimeRules.GetEffectAmount(
+                effect,
+                previousSelections);
 
             switch (effect.type)
             {
@@ -1296,13 +970,17 @@ public sealed class EventSceneController : MonoBehaviour
         }
 
         ApplyEffects(
-            GetActiveEffects(choice.attemptEffects, previousSelections),
+            EventRuntimeRules.GetActiveEffects(
+                choice.attemptEffects,
+                previousSelections),
             chosenBullets,
             chosenItemSlots,
             chosenRelics,
             previousSelections);
         ApplyEffects(
-            GetActiveEffects(choice.effects, previousSelections)
+            EventRuntimeRules.GetActiveEffects(
+                choice.effects,
+                previousSelections)
                 .Where(effect => effect.type != EventEffectType.AddBullet),
             chosenBullets,
             chosenItemSlots,
@@ -1459,7 +1137,9 @@ public sealed class EventSceneController : MonoBehaviour
         int previousSelections)
     {
         ApplyEffects(
-            GetActiveEffects(choice.attemptEffects, previousSelections),
+            EventRuntimeRules.GetActiveEffects(
+                choice.attemptEffects,
+                previousSelections),
             Array.Empty<BulletInstance>(),
             Array.Empty<int>(),
             Array.Empty<RelicInstance>(),
@@ -1502,11 +1182,13 @@ public sealed class EventSceneController : MonoBehaviour
         }
         else if (pair)
         {
-            int cost = GetActiveEffects(
+            int cost = EventRuntimeRules.GetActiveEffects(
                     choice.attemptEffects,
                     previousSelections)
                 .Where(effect => effect.type == EventEffectType.LoseMoney)
-                .Sum(effect => GetEffectAmount(effect, previousSelections));
+                .Sum(effect => EventRuntimeRules.GetEffectAmount(
+                    effect,
+                    previousSelections));
             currencyManager.AddMoney(cost * 3);
             outcome = $"두 릴이 맞았다. {cost * 3} 골드를 받았다.";
         }
@@ -1659,37 +1341,8 @@ public sealed class EventSceneController : MonoBehaviour
         IReadOnlyList<string> labels,
         Action<int> onSelected)
     {
-        int visibleCount = Mathf.Min(3, labels?.Count ?? 0);
-        for (int index = 0; index < choiceButtons.Length; index++)
-        {
-            Button button = choiceButtons[index];
-            if (button == null)
-            {
-                continue;
-            }
-
-            button.onClick.RemoveAllListeners();
-            ClearChoiceRewardPreview(button);
-            bool visible = index < visibleCount;
-            button.gameObject.SetActive(visible);
-            button.interactable = visible;
-            if (!visible)
-            {
-                continue;
-            }
-
-            int selectedIndex = index;
-            TMP_Text label = index < choiceTexts.Length
-                ? choiceTexts[index]
-                : button.GetComponentInChildren<TMP_Text>(true);
-            if (label != null)
-            {
-                label.text = labels[index];
-            }
-
-            button.onClick.AddListener(() => onSelected(selectedIndex));
-            SoundManager.BindUiButtonSfx(button);
-        }
+        EnsurePresenters();
+        choiceButtonPresenter.ShowDynamicChoices(labels, onSelected);
     }
 
     private void ShowExternalSelectionControls(
@@ -1697,41 +1350,11 @@ public sealed class EventSceneController : MonoBehaviour
         Func<bool> confirmAction,
         Action cancelAction)
     {
-        for (int index = 0; index < choiceButtons.Length; index++)
-        {
-            Button button = choiceButtons[index];
-            if (button == null)
-            {
-                continue;
-            }
-
-            button.onClick.RemoveAllListeners();
-            ClearChoiceRewardPreview(button);
-            button.gameObject.SetActive(index < 2);
-            button.interactable = index < 2;
-            if (index == 0)
-            {
-                TMP_Text label = choiceTexts.Length > index
-                    ? choiceTexts[index]
-                    : button.GetComponentInChildren<TMP_Text>(true);
-                if (label != null)
-                {
-                    label.text = confirmLabel;
-                }
-                button.onClick.AddListener(() => confirmAction?.Invoke());
-            }
-            else if (index == 1)
-            {
-                TMP_Text label = choiceTexts.Length > index
-                    ? choiceTexts[index]
-                    : button.GetComponentInChildren<TMP_Text>(true);
-                if (label != null)
-                {
-                    label.text = "취소";
-                }
-                button.onClick.AddListener(() => cancelAction?.Invoke());
-            }
-        }
+        EnsurePresenters();
+        choiceButtonPresenter.ShowExternalSelectionControls(
+            confirmLabel,
+            confirmAction,
+            cancelAction);
     }
 
     private void HandleInventorySelectionChanged(int selected, int required)
@@ -1746,10 +1369,21 @@ public sealed class EventSceneController : MonoBehaviour
 
     private void SetExternalConfirmLabel(string value)
     {
-        if (choiceTexts.Length > 0 && choiceTexts[0] != null)
-        {
-            choiceTexts[0].text = value;
-        }
+        EnsurePresenters();
+        choiceButtonPresenter.SetPrimaryLabel(value);
+    }
+
+    private void EnsurePresenters()
+    {
+        choiceButtonPresenter ??= new EventChoiceButtonPresenter(
+            choiceButtons,
+            choiceTexts,
+            ClearChoiceRewardPreview,
+            SoundManager.BindUiButtonSfx);
+        resultPresenter ??= new EventResultPresenter(
+            dialogueText,
+            resultText,
+            reelResultImages);
     }
 
     private void ClearPendingInteractionState()
@@ -1760,118 +1394,15 @@ public sealed class EventSceneController : MonoBehaviour
         runData.eventQuizCorrectAssetName = string.Empty;
     }
 
-    private void EnsureResultText()
-    {
-        if (resultText != null || dialogueText == null)
-        {
-            return;
-        }
-
-        GameObject resultObject = Instantiate(
-            dialogueText.gameObject,
-            dialogueText.transform.parent);
-        resultObject.name = "Text | Event Result";
-        resultText = resultObject.GetComponent<TMP_Text>();
-        RectTransform resultRect = resultObject.transform as RectTransform;
-        if (resultRect != null)
-        {
-            resultRect.anchorMin = new Vector2(0.055f, 0.39f);
-            resultRect.anchorMax = new Vector2(0.945f, 0.49f);
-            resultRect.offsetMin = Vector2.zero;
-            resultRect.offsetMax = Vector2.zero;
-        }
-        resultText.alignment = TextAlignmentOptions.Center;
-        resultText.fontSize = Mathf.Max(16f, dialogueText.fontSize - 2f);
-        resultText.raycastTarget = false;
-    }
-
     private void SetResultText(string value)
     {
-        EnsureResultText();
-        SetReelResultImages(runData?.eventReelSymbolKeys);
-        bool reelsVisible = reelResultImages != null
-            && reelResultImages.Length == 3
-            && runData?.eventReelSymbolKeys?.Count == 3;
-        bool visible = !reelsVisible && resultText != null
-            && !string.IsNullOrWhiteSpace(value);
-        if (resultText != null)
-        {
-            resultText.gameObject.SetActive(visible);
-            resultText.text = visible ? value : string.Empty;
-        }
-
-        RectTransform dialogueRect = dialogueText == null
-            ? null
-            : dialogueText.transform as RectTransform;
-        if (dialogueRect != null)
-        {
-            Vector2 anchorMin = dialogueRect.anchorMin;
-            anchorMin.y = visible || reelsVisible ? 0.50f : 0.39f;
-            dialogueRect.anchorMin = anchorMin;
-        }
-    }
-
-    private void SetReelResultImages(IReadOnlyList<string> symbols)
-    {
-        EnsureReelResultImages();
-        bool visible = symbols != null && symbols.Count == 3;
-        for (int index = 0; index < reelResultImages.Length; index++)
-        {
-            Image image = reelResultImages[index];
-            if (image == null)
-            {
-                continue;
-            }
-
-            image.gameObject.SetActive(visible);
-            image.sprite = visible ? GetSlotSymbolSprite(symbols[index]) : null;
-            image.enabled = visible && image.sprite != null;
-        }
-    }
-
-    private void EnsureReelResultImages()
-    {
-        if (reelResultImages != null && reelResultImages.Length == 3
-            || dialogueText == null)
-        {
-            return;
-        }
-
-        GameObject layoutObject = new GameObject(
-            "Layout | Event Reel Result",
-            typeof(RectTransform));
-        layoutObject.layer = dialogueText.gameObject.layer;
-        RectTransform layout = layoutObject.GetComponent<RectTransform>();
-        layout.SetParent(dialogueText.transform.parent, false);
-        layout.anchorMin = new Vector2(0.20f, 0.39f);
-        layout.anchorMax = new Vector2(0.80f, 0.49f);
-        layout.offsetMin = Vector2.zero;
-        layout.offsetMax = Vector2.zero;
-
-        reelResultImages = new Image[3];
-        for (int index = 0; index < reelResultImages.Length; index++)
-        {
-            GameObject imageObject = new GameObject(
-                $"Image | Reel {index + 1}",
-                typeof(RectTransform),
-                typeof(CanvasRenderer),
-                typeof(Image));
-            imageObject.layer = layoutObject.layer;
-            RectTransform imageRect = imageObject.GetComponent<RectTransform>();
-            imageRect.SetParent(layout, false);
-            float minimum = index / 3f;
-            float maximum = (index + 1) / 3f;
-            imageRect.anchorMin = new Vector2(minimum, 0f);
-            imageRect.anchorMax = new Vector2(maximum, 1f);
-            imageRect.offsetMin = new Vector2(8f, 0f);
-            imageRect.offsetMax = new Vector2(-8f, 0f);
-            Image image = imageObject.GetComponent<Image>();
-            image.preserveAspect = true;
-            image.raycastTarget = false;
-            image.color = Color.white;
-            image.gameObject.SetActive(false);
-            reelResultImages[index] = image;
-        }
+        EnsurePresenters();
+        resultPresenter.Present(
+            value,
+            runData?.eventReelSymbolKeys,
+            GetSlotSymbolSprite);
+        resultText = resultPresenter.ResultText;
+        reelResultImages = resultPresenter.ReelResultImages;
     }
 
     private Sprite GetSlotSymbolSprite(string symbol)
@@ -1906,33 +1437,10 @@ public sealed class EventSceneController : MonoBehaviour
                 : outcome;
         }
 
-        for (int index = 0; index < choiceButtons.Length; index++)
-        {
-            Button button = choiceButtons[index];
-            if (button == null)
-            {
-                continue;
-            }
-
-            button.onClick.RemoveAllListeners();
-            ClearChoiceRewardPreview(button);
-            button.gameObject.SetActive(index == 0);
-            if (index != 0)
-            {
-                continue;
-            }
-
-            button.interactable = true;
-            TMP_Text label = index < choiceTexts.Length
-                ? choiceTexts[index]
-                : button.GetComponentInChildren<TMP_Text>(true);
-            if (label != null)
-            {
-                label.text = GetFollowUpLabel();
-            }
-
-            button.onClick.AddListener(ContinueFromEvent);
-        }
+        EnsurePresenters();
+        choiceButtonPresenter.ShowSingleAction(
+            GetFollowUpLabel(),
+            ContinueFromEvent);
     }
 
     private string GetFollowUpLabel()
@@ -2206,63 +1714,6 @@ public sealed class EventSceneController : MonoBehaviour
         return Array.IndexOf(currentEvent.choices, choice);
     }
 
-    private static int GetChoiceProgress(
-        IReadOnlyList<int> progress,
-        int choiceIndex)
-    {
-        return progress == null || choiceIndex < 0
-            || choiceIndex >= progress.Count
-                ? 0
-                : Mathf.Max(0, progress[choiceIndex]);
-    }
-
-    private static IEnumerable<EventEffect> GetActiveEffects(
-        EventEffect[] effects,
-        int previousSelections)
-    {
-        return (effects ?? Array.Empty<EventEffect>()).Where(effect =>
-            effect != null
-            && (!effect.useSelectionRange
-                || previousSelections >= effect.minimumPreviousSelections
-                && (effect.maximumPreviousSelections < 0
-                    || previousSelections
-                        <= effect.maximumPreviousSelections)));
-    }
-
-    private static int GetEffectAmount(
-        EventEffect effect,
-        int previousSelections)
-    {
-        if (effect == null)
-        {
-            return 0;
-        }
-
-        long amount = Math.Max(0, effect.amount)
-            + (long)Math.Max(0, effect.amountPerPreviousSelection)
-                * Math.Max(0, previousSelections);
-        return (int)Math.Min(int.MaxValue, amount);
-    }
-
-    private float GetSuccessChance(
-        EventChoiceData choice,
-        int failureCount)
-    {
-        if (choice == null || !choice.useSuccessChance)
-        {
-            return 100f;
-        }
-
-        return Mathf.Clamp(
-            choice.baseSuccessChancePercent
-                + Mathf.Max(0, failureCount)
-                * Mathf.Max(
-                    0f,
-                    choice.successChanceIncreaseOnFailurePercent),
-            0f,
-            100f);
-    }
-
     private string ExpandChoiceTokens(
         string source,
         EventChoiceData choice)
@@ -2273,13 +1724,13 @@ public sealed class EventSceneController : MonoBehaviour
         }
 
         int choiceIndex = GetChoiceIndex(choice);
-        int selections = GetChoiceProgress(
+        int selections = EventRuntimeRules.GetChoiceProgress(
             runData.eventChoiceSelectionCounts,
             choiceIndex);
-        int failures = GetChoiceProgress(
+        int failures = EventRuntimeRules.GetChoiceProgress(
             runData.eventChoiceFailureCounts,
             choiceIndex);
-        float chance = GetSuccessChance(choice, failures);
+        float chance = EventRuntimeRules.GetSuccessChance(choice, failures);
         return source
             .Replace("{attempt}", (selections + 1).ToString())
             .Replace("{selections}", selections.ToString())
@@ -2331,124 +1782,19 @@ public sealed class EventSceneController : MonoBehaviour
         string source = ExpandChoiceTokens(
             choice?.buttonText ?? string.Empty,
             choice);
-        Match actionMatch = Regex.Match(source, @"^\s*(\[[^\]]+\])");
-        string action = actionMatch.Success ? actionMatch.Groups[1].Value : string.Empty;
-        string body = actionMatch.Success
-            ? source.Substring(actionMatch.Length).TrimStart()
-            : source;
-
-        string formatted = string.IsNullOrEmpty(action)
-            ? HighlightChoiceBody(body, choice)
-            : $"{Colorize(action, actionNameColor)} {HighlightChoiceBody(body, choice)}";
-
-        if (!available && !string.IsNullOrWhiteSpace(unavailableReason))
-        {
-            formatted += "\n<size=70%>"
-                + Colorize(unavailableReason, unavailableReasonColor)
-                + "</size>";
-        }
-
-        return formatted;
-    }
-
-    private string HighlightChoiceBody(
-        string body,
-        EventChoiceData choice)
-    {
-        if (string.IsNullOrEmpty(body))
-        {
-            return string.Empty;
-        }
-
-        Dictionary<string, Color> namedRewards =
-            new Dictionary<string, Color>(StringComparer.OrdinalIgnoreCase);
-        foreach (EventEffect effect in choice?.effects
-                     ?? Array.Empty<EventEffect>())
-        {
-            if (effect?.bullet != null)
-            {
-                AddHighlightName(
-                    namedRewards,
-                    effect.bullet.GetDisplayName(0),
-                    rewardNameColor);
-                AddHighlightName(
-                    namedRewards,
-                    effect.bullet.name,
-                    rewardNameColor);
-            }
-
-            if (effect?.item != null)
-            {
-                AddHighlightName(
-                    namedRewards,
-                    string.IsNullOrWhiteSpace(effect.item.DisplayName)
-                        ? effect.item.name
-                        : effect.item.DisplayName,
-                    rewardNameColor);
-                AddHighlightName(
-                    namedRewards,
-                    effect.item.name,
-                    rewardNameColor);
-            }
-        }
-
-        List<string> patterns = namedRewards.Keys
-            .OrderByDescending(value => value.Length)
-            .Select(Regex.Escape)
-            .ToList();
-        patterns.Add(@"\d+\s*(?:골드|원)");
-        patterns.Add(@"강화|제거|무료|비용|골드|탄환|아이템");
-        Regex highlightPattern = new Regex(
-            string.Join("|", patterns),
-            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-        return highlightPattern.Replace(body, match =>
-        {
-            if (namedRewards.TryGetValue(match.Value, out Color rewardColor))
-            {
-                return Colorize(match.Value, rewardColor);
-            }
-
-            if (match.Value.Contains("강화"))
-            {
-                return Colorize(match.Value, upgradeKeywordColor);
-            }
-
-            if (match.Value.Contains("제거"))
-            {
-                return Colorize(match.Value, removeKeywordColor);
-            }
-
-            if (match.Value.Contains("무료"))
-            {
-                return Colorize(match.Value, freeKeywordColor);
-            }
-
-            if (Regex.IsMatch(match.Value, @"\d")
-                || match.Value.Contains("비용")
-                || match.Value.Contains("골드"))
-            {
-                return Colorize(match.Value, costKeywordColor);
-            }
-
-            return Colorize(match.Value, rewardNameColor);
-        });
-    }
-
-    private static void AddHighlightName(
-        IDictionary<string, Color> names,
-        string value,
-        Color color)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            names[value.Trim()] = color;
-        }
-    }
-
-    private static string Colorize(string value, Color color)
-    {
-        return $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{value}</color>";
+        choiceTextFormatter ??= new EventChoiceTextFormatter(
+            actionNameColor,
+            upgradeKeywordColor,
+            removeKeywordColor,
+            freeKeywordColor,
+            costKeywordColor,
+            rewardNameColor,
+            unavailableReasonColor);
+        return choiceTextFormatter.Format(
+            source,
+            choice,
+            available,
+            unavailableReason);
     }
 
     private void ConfigureChoiceRewardPreview(
@@ -2461,10 +1807,10 @@ public sealed class EventSceneController : MonoBehaviour
         }
 
         ClearChoiceRewardPreview(button);
-        int previousSelections = GetChoiceProgress(
+        int previousSelections = EventRuntimeRules.GetChoiceProgress(
             runData.eventChoiceSelectionCounts,
             GetChoiceIndex(choice));
-        EventEffect reward = GetActiveEffects(
+        EventEffect reward = EventRuntimeRules.GetActiveEffects(
                 choice?.effects,
                 previousSelections)
             .FirstOrDefault(effect => effect != null

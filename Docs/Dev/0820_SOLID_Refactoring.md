@@ -27,6 +27,7 @@
 | `NodeMapSystem` | 맵 화면 상태와 노드 선택 조정 | `NodeMapGenerator`, `NodeMapSaveSystem`, `NodeMapModels` |
 | `GameStatistics` | 현재 런 통계 집계 | `RunDataModels`, `RunSaveSystem` |
 | `EventDefinition` | authored event content | `EventRunContext`, `EventSelector` |
+| `EventSceneController` | 이벤트 씬 생명주기, 상호작용, 효과·저장·이동 조정 | `EventChoiceAvailabilityEvaluator`, `EventChoiceAvailabilityContext`, `EventChoiceTextFormatter`, `EventChoiceButtonPresenter`, `EventResultPresenter`, `EventRuntimeRules` |
 | `RelicData` | authored relic content | `RelicInstance` |
 | `FirstRunGuideController` | 튜토리얼 진행과 UI 조정 | immutable `FirstRunGuideContent` |
 | `PlayerCylinderUI` | 실린더 표시, 드래그, 애니메이션 | `CylinderBulletEffectPolicy` |
@@ -43,6 +44,19 @@
 C# `CombatImpactSignaturePresenter`가 소유하고, facade가 캡처한 적 스냅샷과
 표현 등급만 전달한다. 이 협력 객체는 게임 판정, 시간 배율, 저장 상태를
 소유하지 않는다.
+
+`EventSceneController`는 매니저가 소유한 현재 자원과 선택 대상 상태를
+`EventChoiceAvailabilityContext`로 캡처한다. 선택지 요구 조건, 대상 수와
+조합, 성공·실패 효과의 비용 및 보상 공간 판정은 plain C#
+`EventChoiceAvailabilityEvaluator`가 담당한다. 반복 횟수에 따른 효과 범위,
+효과량, 성공 확률 계산은 `EventRuntimeRules`가 공유하며, 컨트롤러는 효과
+적용, 세이브 체크포인트와 씬 전환 순서를 계속 조정한다. 선택지 행동명,
+키워드, 보상명과 비활성 사유의 rich text 조합은 plain C#
+`EventChoiceTextFormatter`가 담당하고 직렬화된 색상은 컨트롤러가 전달한다.
+선택지 버튼의 표시·비활성화·리스너 교체는 `EventChoiceButtonPresenter`가,
+결과 텍스트와 슬롯 릴의 생성·상호 배타 표시는 `EventResultPresenter`가
+담당한다. 두 프레젠터는 표시 상태만 투영하며 선택 결과, 보상, 저장 상태는
+변경하지 않는다.
 
 ## 추가 분할하지 않은 대형 클래스
 

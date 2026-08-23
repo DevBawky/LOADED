@@ -284,6 +284,63 @@ public sealed class EventDefinition : ScriptableObject
 
 internal static class EventRuntimeRules
 {
+    public static int GetChoiceProgress(
+        IReadOnlyList<int> progress,
+        int choiceIndex)
+    {
+        return progress == null || choiceIndex < 0
+            || choiceIndex >= progress.Count
+                ? 0
+                : Mathf.Max(0, progress[choiceIndex]);
+    }
+
+    public static IEnumerable<EventEffect> GetActiveEffects(
+        EventEffect[] effects,
+        int previousSelections)
+    {
+        return (effects ?? Array.Empty<EventEffect>()).Where(effect =>
+            effect != null
+            && (!effect.useSelectionRange
+                || previousSelections >= effect.minimumPreviousSelections
+                && (effect.maximumPreviousSelections < 0
+                    || previousSelections
+                        <= effect.maximumPreviousSelections)));
+    }
+
+    public static int GetEffectAmount(
+        EventEffect effect,
+        int previousSelections)
+    {
+        if (effect == null)
+        {
+            return 0;
+        }
+
+        long amount = Math.Max(0, effect.amount)
+            + (long)Math.Max(0, effect.amountPerPreviousSelection)
+                * Math.Max(0, previousSelections);
+        return (int)Math.Min(int.MaxValue, amount);
+    }
+
+    public static float GetSuccessChance(
+        EventChoiceData choice,
+        int failureCount)
+    {
+        if (choice == null || !choice.useSuccessChance)
+        {
+            return 100f;
+        }
+
+        return Mathf.Clamp(
+            choice.baseSuccessChancePercent
+                + Mathf.Max(0, failureCount)
+                * Mathf.Max(
+                    0f,
+                    choice.successChanceIncreaseOnFailurePercent),
+            0f,
+            100f);
+    }
+
     public static void GenerateBulletOffers(
         IReadOnlyList<BulletData> catalog,
         IReadOnlyList<BulletGradeWeightData> gradeWeights,

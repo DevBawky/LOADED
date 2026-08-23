@@ -25,6 +25,19 @@ description: Change LOADED game-flow states, scene navigation, loading transitio
 - Keep node reachability, completed/selected state, stage/battle indices, and saved map consistent.
 - Event choice requirements and effects must share the same run context and update persistence after a successful choice.
 
+## Resumable interaction states
+
+Model multi-step event, shop, treasure, and transition interactions as explicit
+runtime states with legal transitions instead of scattering magic stage values
+and related fields across UI methods. Keep the scene controller as the
+orchestrator, keep presentation state non-authoritative, and save only after a
+coherent transition has committed.
+
+When compatibility requires existing integer or primitive save fields, map
+those values to meaningful runtime states without renaming or retyping the DTO.
+Test restoration at every resumable state and confirm that re-rendering a state
+does not consume RNG or reapply costs and rewards.
+
 When an `EventDefinition` asset is added, moved, or removed, pool registration is part of the same task. Follow `Docs/EventAuthoringGuide.md` and run `Tools > LOADED > Refresh Event Definition Pool`; do not stop after creating the asset. Verify `Assets/Prefabs/UI/Event/EventSceneManagers.prefab` contains every authored event exactly once, with no null reference or duplicate `StableId`. Runtime discovery under `Resources/Events` is a safety net, not a substitute for completing the serialized pool. Rebuild the dedicated scene only when its generated structure actually changed.
 
 ## Verify
