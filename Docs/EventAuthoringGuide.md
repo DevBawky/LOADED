@@ -85,7 +85,7 @@ Tools > LOADED > Refresh Event Definition Pool
 | `Money` | 현재 보유 골드 |
 | `Owned Bullets` | 현재 보유 탄환 수 |
 | `Current Health Percent` | 현재 체력 비율, 0~100 |
-| `Cumulative Battle Turns` | 지금까지 전투에서 누적된 턴 수 |
+| `Cumulative Battle Count` | 지금까지 전투에서 완료된 DUEL CLOCK COUNT 수 |
 
 `Comparison`으로 조건을 설정하고 `Operation`으로 가중치를 변경한다.
 

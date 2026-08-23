@@ -11,7 +11,7 @@ public enum EventRunStatistic
     Money,
     OwnedBullets,
     CurrentHealthPercent,
-    CumulativeBattleTurns
+    CumulativeBattleCount
 }
 
 public enum EventComparison

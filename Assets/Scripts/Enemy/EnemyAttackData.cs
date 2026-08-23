@@ -24,17 +24,17 @@ public class EnemyAttackData : ScriptableObject
     [Tooltip("공격이 적용할 밀치기 거리입니다. 현재 적 공격 처리에서는 별도의 밀치기 연동이 필요합니다.")]
     [SerializeField] private int knockbackDistance;
     [Min(0)]
-    [Tooltip("명중한 대상에게 적용할 기절 턴 수입니다.")]
+    [Tooltip("명중한 대상에게 적용할 기절 COUNT 수입니다.")]
     [SerializeField] private int stunDurationTurns;
     [Min(0)]
-    [Tooltip("명중한 대상에게 적용할 표식 지속 턴 수입니다.")]
+    [Tooltip("명중한 대상에게 적용할 표식 지속 COUNT 수입니다.")]
     [SerializeField] private int markDurationTurns;
     [Min(0)]
     [FormerlySerializedAs("poisonDurationTurns")]
-    [Tooltip("명중 시 적용할 중독 스택입니다. 매 턴 현재 스택만큼 피해를 주고 1스택 감소합니다.")]
+    [Tooltip("명중 시 적용할 중독 스택입니다. COUNT마다 현재 스택만큼 피해를 주고 1스택 감소합니다.")]
     [SerializeField] private int poisonStackCount;
     [Min(0)]
-    [Tooltip("명중한 대상에게 적용할 약화 지속 턴 수입니다.")]
+    [Tooltip("명중한 대상에게 적용할 약화 지속 COUNT 수입니다.")]
     [SerializeField] private int weaknessDurationTurns;
     [Tooltip("공격이 명중한 위치에 생성할 이펙트 프리팹입니다.")]
     [SerializeField] private GameObject attackEffectPrefab;

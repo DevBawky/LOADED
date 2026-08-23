@@ -129,7 +129,7 @@ public class EnemyDataEditor : Editor
 
             case EnemyBehaviorType.Gunner:
                 EditorGUILayout.HelpBox(
-                    "공격 타일을 먼저 등록한 뒤, 설정된 사거리 안까지 접근합니다. 사선이 확보되면 공격을 준비하고 다음 턴에 사격합니다.",
+                    "공격 타일을 먼저 등록한 뒤, 설정된 사거리 안까지 접근합니다. 사선이 확보되면 공격을 준비하고 다음 COUNT에 사격합니다.",
                     MessageType.Info);
                 EditorGUILayout.PropertyField(firingRange);
                 EditorGUILayout.PropertyField(recoveryTurns);

@@ -165,13 +165,13 @@ Canvas _ Game Start
 | 항목 | 계산 방식 |
 | --- | --- |
 | 총 대미지 | `PlayerShoot.DamageDealt`로 보고된 적용 피해의 합계 |
-| 최고 누적 대미지 | 한 턴 안에서 누적된 적용 피해 중 가장 높은 값 |
+| 최고 누적 대미지 | 한 COUNT 안에서 누적된 적용 피해 중 가장 높은 값 |
 | 최고 한 방 대미지 | 한 번의 `DamageDealt` 이벤트로 보고된 가장 높은 피해 |
 | 입은 피해 | 전투 중 플레이어 체력이 감소한 양의 합계 |
 | 회복량 | 전투 중 플레이어 체력이 증가한 양의 합계 |
-| 소모 턴 | 전투 종료 TurnCount에서 전투 시작 TurnCount를 뺀 값 |
+| 완료 COUNT | 전투 종료 시점의 완료된 적 행동 COUNT에서 전투 시작 값을 뺀 값 |
 | 총 발사 수 | `PlayerShoot.BulletFired` 이벤트 발생 횟수 |
-| 턴 당 평균 대미지 | 총 대미지 / 소모 턴 |
+| COUNT 당 평균 대미지 | 총 대미지 / 완료 COUNT |
 | 평균 발 당 대미지 | 총 대미지 / 총 발사 수 |
 
 나눗셈 기준값이 0이면 평균값은 `0.0`으로 표시한다. 평균값은 소수점 첫째 자리까지 표시한다.
@@ -186,7 +186,7 @@ TMP Rich Text의 `<color>` 태그를 사용해 라벨은 기본색으로 두고 
 | --- | --- |
 | `Damage Value Color` | 총 피해, 최고 피해, 평균 피해 |
 | `Damage Taken Value Color` | 입은 피해 |
-| `Summary Value Color` | 회복량, 소모 턴, 총 발사 수 |
+| `Summary Value Color` | 회복량, 완료 COUNT, 총 발사 수 |
 
 ## 탄환 아이콘 정책
 
@@ -232,7 +232,7 @@ TMP Rich Text의 `<color>` 태그를 사용해 라벨은 기본색으로 두고 
 2. 두 패널 루트에는 클릭을 받을 Button이 있어야 한다.
 3. `Gameplay Canvas`는 Game Start Canvas와 별개의 Canvas여야 한다.
 4. Cinemachine Camera와 Player Tracking Target을 연결한다.
-5. `PlayerShoot`, `PlayerMove`, `PlayerHealth`는 런타임 자동 탐색이 가능하지만 명시적 연결을 권장한다.
+5. `PlayerShoot`, `PlayerMove`, `PlayerHealth`, `WaveManager`는 런타임 자동 탐색이 가능하지만 명시적 연결을 권장한다.
 6. Stage Report 본문 TMP는 Rich Text를 활성화한다.
 
 ## Play Mode 확인 목록

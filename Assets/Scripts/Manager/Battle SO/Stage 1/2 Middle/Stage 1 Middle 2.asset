@@ -42,3 +42,23 @@ MonoBehaviour:
       count: 3
     - enemyData: {fileID: 11400000, guid: b065e4a62aeb4e645ac3bb45f643dca6, type: 2}
       count: 1
+  combatPacingMode: 1
+  duelClockNaturalProgressPerSecond: 20
+  duelClockPaidActionProgress: 70
+  duelClockEnemyWaveCount: 3
+  duelClockEnemyPool:
+  - {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
+  - {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
+  - {fileID: 11400000, guid: 0fae8caa9273d534480b5ca8a210cc45, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: b065e4a62aeb4e645ac3bb45f643dca6, type: 2}

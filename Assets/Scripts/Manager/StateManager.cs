@@ -65,7 +65,7 @@ public class StateManager : MonoBehaviour
     private RunSaveData pendingRestoredRun;
     private bool suppressExitSave;
     private RunStartMode currentRunStartMode = RunStartMode.None;
-    private int turnCountBeforeCurrentBattle;
+    private int countBeforeCurrentBattle;
 
     public event Action StateChanged;
 
@@ -74,6 +74,9 @@ public class StateManager : MonoBehaviour
     public GameFlowState CurrentState => currentState;
     public RunStartMode CurrentRunStartMode => currentRunStartMode;
     public bool IsFreshRun => currentRunStartMode != RunStartMode.Continue;
+    public int CumulativeBattleCount => CalculateCumulativeBattleCount(
+        countBeforeCurrentBattle,
+        waveManager == null ? 0 : waveManager.CurrentEnemyTurnCycle);
     public StageData CurrentStage =>
         stages != null
         && currentStageIndex >= 0
@@ -268,8 +271,10 @@ public class StateManager : MonoBehaviour
             || playerMove == null
             || isBattle && (waveManager.IsBattleCompleted
                 || waveManager.IsBattleCompletionPending
+                || !IsCombatSettledForExit
                 || (waveManager.ActiveEnemies.Count == 0
-                    && !waveManager.IsWaitingForNextWave)))
+                    && !waveManager.IsWaitingForNextWave
+                    && !waveManager.HasRemainingEnemiesToSpawn)))
         {
             return false;
         }
@@ -315,8 +320,9 @@ public class StateManager : MonoBehaviour
             playerTileIndex = playerTileIndex,
             playerFacingRight = playerMove.transform.localScale.x >= 0f,
             playerTurnCount = playerMove.TurnCount,
-            cumulativeBattleTurnCount = turnCountBeforeCurrentBattle
-                + playerMove.TurnCount,
+            // The legacy JSON field name is preserved for version 3 save
+            // compatibility. It now stores completed Duel Clock counts.
+            cumulativeBattleTurnCount = CumulativeBattleCount,
             nextPushAvailableTurn = playerMove.NextPushAvailableTurn,
             playerStatusEffects = playerHealth.CaptureStatusRunState(),
             combatReport = gameStartUI == null
@@ -386,12 +392,12 @@ public class StateManager : MonoBehaviour
 
         currentStageIndex = saveData.stageIndex;
         currentBattleIndex = saveData.battleIndex;
-        turnCountBeforeCurrentBattle = saveData.startSelectedBattleFresh
+        countBeforeCurrentBattle = saveData.startSelectedBattleFresh
             ? Mathf.Max(0, saveData.cumulativeBattleTurnCount)
             : Mathf.Max(
                 0,
                 saveData.cumulativeBattleTurnCount
-                    - saveData.playerTurnCount);
+                    - saveData.currentEnemyTurnCycle);
         playerHealth.RestoreRunHealth(
             saveData.currentHealth,
             saveData.maxHealth);
@@ -575,10 +581,7 @@ public class StateManager : MonoBehaviour
             return false;
         }
 
-        if (!waveManager.RestoreBattle(
-                battle.Waves,
-                battle.SpawnTerm,
-                saveData))
+        if (!waveManager.RestoreBattle(battle, saveData))
         {
             return false;
         }
@@ -833,9 +836,7 @@ public class StateManager : MonoBehaviour
         }
         else
         {
-            beganBattle = waveManager.BeginBattle(
-                battle.Waves,
-                battle.SpawnTerm);
+            beganBattle = waveManager.BeginBattle(battle);
         }
 
         if (!beganBattle)
@@ -1198,6 +1199,15 @@ public class StateManager : MonoBehaviour
         }
 
         return false;
+    }
+
+    internal static int CalculateCumulativeBattleCount(
+        int completedBeforeBattle,
+        int completedInBattle)
+    {
+        long total = (long)Mathf.Max(0, completedBeforeBattle)
+            + Mathf.Max(0, completedInBattle);
+        return total >= int.MaxValue ? int.MaxValue : (int)total;
     }
 
     private void MovePlayerToBoardCenter(int boardCount)

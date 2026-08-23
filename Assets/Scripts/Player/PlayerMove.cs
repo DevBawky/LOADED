@@ -60,6 +60,7 @@ public class PlayerMove : MonoBehaviour
     private bool isActing;
     private bool isEnemyTurnResolving;
     private bool isInputLocked;
+    private bool isDuelClockActive;
     private bool isPushVisualDisplaced;
     private Vector3 pushVisualRestLocalPosition;
     private Vector3 pushVisualRestWorldPosition;
@@ -78,6 +79,7 @@ public class PlayerMove : MonoBehaviour
     public bool IsActing => isActing;
     public bool IsEnemyTurnResolving => isEnemyTurnResolving;
     public bool IsInputLocked => isInputLocked;
+    public bool IsStunned => statusEffects != null && statusEffects.IsStunned;
     public bool CanStartAction => CanPerformAction();
     public int RemainingPushCooldownTurns => Mathf.Max(
         0,
@@ -147,6 +149,11 @@ public class PlayerMove : MonoBehaviour
     public void SetInputLocked(bool inputLocked)
     {
         isInputLocked = inputLocked;
+    }
+
+    internal void SetDuelClockActive(bool active)
+    {
+        isDuelClockActive = active;
     }
 
     private void OnDisable()
@@ -880,7 +887,7 @@ public class PlayerMove : MonoBehaviour
     {
         int previousPushCooldown = RemainingPushCooldownTurns;
 
-        if (statusEffects != null)
+        if (!isDuelClockActive && statusEffects != null)
         {
             statusEffects.ProcessTurnEnd();
         }
@@ -901,7 +908,7 @@ public class PlayerMove : MonoBehaviour
 
     public bool TrySkipStunnedTurn()
     {
-        if (GamePauseController.IsPaused || isInputLocked
+        if (isDuelClockActive || GamePauseController.IsPaused || isInputLocked
             || isShooting || isActing
             || isEnemyTurnResolving || statusEffects == null
             || !statusEffects.ConsumeStunTurn())
@@ -913,6 +920,23 @@ public class PlayerMove : MonoBehaviour
         return true;
     }
 
+    public bool TryConsumeDuelClockStunBeat()
+    {
+        return ProcessDuelClockStatusBeat();
+    }
+
+    internal bool ProcessDuelClockStatusBeat()
+    {
+        if (!isDuelClockActive || statusEffects == null)
+        {
+            return false;
+        }
+
+        bool consumedStun = statusEffects.ConsumeStunTurn();
+        statusEffects.ProcessTurnEnd();
+        return consumedStun;
+    }
+
     private bool CanPerformAction()
     {
         return !GamePauseController.IsPaused
@@ -920,7 +944,8 @@ public class PlayerMove : MonoBehaviour
             && !isInputLocked
             && !isShooting
             && !isActing
-            && !isEnemyTurnResolving;
+            && !isEnemyTurnResolving
+            && (!isDuelClockActive || !IsStunned);
     }
 
     private static int MultiplyDamage(int damage, double multiplier)

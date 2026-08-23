@@ -275,7 +275,7 @@ public class BulletEffectData
     [Range(0f, 100f)]
     [SerializeField] private float activationChance = 100f;
     [Min(1)]
-    [Tooltip("Poison, Stun, Mark, and Weakness stack count. Poison deals damage equal to its current stacks each turn, then loses 1 stack. Ignored by other effects.")]
+    [Tooltip("Poison, Stun, Mark, and Weakness stack count. Poison deals damage equal to its current stacks each COUNT, then loses 1 stack. Ignored by other effects.")]
     [SerializeField] private int stackCount = 1;
     [Min(1)]
     [Tooltip("Maximum travel tiles for Knockback, or transfer tiles for WallImpact (clamped to 1-3).")]
@@ -518,7 +518,7 @@ public class BulletData : ScriptableObject
     {
         return bulletType switch
         {
-            BulletType.Ghost => "장전 시 턴 소모 없음",
+            BulletType.Ghost => "장전 시 DUEL CLOCK 충전 없음",
             BulletType.Sniper =>
                 "관통 확률에 따라 뒤쪽 적 추가 공격",
             BulletType.Storm =>

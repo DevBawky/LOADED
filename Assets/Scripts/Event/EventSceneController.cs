@@ -310,9 +310,7 @@ public sealed class EventSceneController : MonoBehaviour
             currencyManager.CurrentMoney,
             deckManager.OwnedBulletCount,
             runData.currentHealth * 100f / maxHealth,
-            Mathf.Max(
-                runData.cumulativeBattleTurnCount,
-                runData.playerTurnCount));
+            Mathf.Max(0, runData.cumulativeBattleTurnCount));
     }
 
     private void ConfigureSharedPresentation()
@@ -349,14 +347,14 @@ public sealed class EventSceneController : MonoBehaviour
             progressUI.SetExternalStageTitle("마을. 이벤트");
         }
 
-        int cumulativeTurns = Mathf.Max(
-            runData.cumulativeBattleTurnCount,
-            runData.playerTurnCount);
+        int cumulativeCount = Mathf.Max(
+            0,
+            runData.cumulativeBattleTurnCount);
         foreach (TurnCountText turnText in FindObjectsByType<TurnCountText>(
                      FindObjectsInactive.Include,
                      FindObjectsSortMode.None))
         {
-            turnText.SetExternalTurnCount(cumulativeTurns);
+            turnText.SetExternalCount(cumulativeCount);
         }
     }
 

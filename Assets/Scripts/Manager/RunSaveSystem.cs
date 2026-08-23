@@ -58,8 +58,8 @@ public static class RunSaveSystem
         saveData.flowState = (int)GameFlowState.Battle;
         saveData.startSelectedBattleFresh = true;
         saveData.cumulativeBattleTurnCount = Mathf.Max(
-            saveData.cumulativeBattleTurnCount,
-            saveData.playerTurnCount);
+            0,
+            saveData.cumulativeBattleTurnCount);
         saveData.playerTurnCount = 0;
         saveData.nextPushAvailableTurn = 0;
         saveData.currentWaveIndex = 0;
@@ -67,6 +67,7 @@ public static class RunSaveSystem
         saveData.isWaitingForNextWave = false;
         saveData.isBattleCompletionPending = false;
         saveData.currentEnemyTurnCycle = 0;
+        ResetCombatPacingForFreshBattle(saveData);
         saveData.playerStatusEffects =
             saveData.pendingNextBattlePlayerStatusEffects
             ?? new RunStatusEffectSaveData();
@@ -96,6 +97,7 @@ public static class RunSaveSystem
         try
         {
             saveData.version = CurrentVersion;
+            NormalizeDuelClockSaveData(saveData);
             string json = JsonUtility.ToJson(saveData, true);
 
 #if UNITY_WEBGL && !UNITY_EDITOR
@@ -228,7 +230,7 @@ public static class RunSaveSystem
             && saveData.bullets.Count > 0;
     }
 
-    private static void NormalizeSaveData(RunSaveData saveData)
+    internal static void NormalizeSaveData(RunSaveData saveData)
     {
         if (saveData == null)
         {
@@ -241,8 +243,14 @@ public static class RunSaveSystem
         saveData.relics ??= new List<RunRelicSaveData>();
         saveData.playerTurnCount = Mathf.Max(0, saveData.playerTurnCount);
         saveData.cumulativeBattleTurnCount = Mathf.Max(
-            saveData.playerTurnCount,
+            0,
             saveData.cumulativeBattleTurnCount);
+        saveData.duelClockRemainingEnemyAssetNames ??=
+            new List<string>();
+        saveData.duelClockPendingEnemySpawns = Mathf.Max(
+            0,
+            saveData.duelClockPendingEnemySpawns);
+        NormalizeDuelClockSaveData(saveData);
         saveData.playerStatusEffects ??= new RunStatusEffectSaveData();
         saveData.pendingNextBattlePlayerStatusEffects ??=
             new RunStatusEffectSaveData();
@@ -288,6 +296,68 @@ public static class RunSaveSystem
         }
         saveData.completedEventIds ??= new List<string>();
         saveData.treasureOfferRelicIds ??= new List<string>();
+    }
+
+    internal static void ResetCombatPacingForFreshBattle(
+        RunSaveData saveData)
+    {
+        if (saveData == null)
+        {
+            return;
+        }
+
+        saveData.combatPacingMode = (int)CombatPacingMode.Legacy;
+        saveData.duelClockProgress = 0d;
+        saveData.duelClockCumulativeBeats = 0;
+        saveData.duelClockSpawnPoolInitialized = false;
+        saveData.duelClockRemainingEnemyAssetNames ??=
+            new List<string>();
+        saveData.duelClockRemainingEnemyAssetNames.Clear();
+        saveData.duelClockPendingEnemySpawns = 0;
+    }
+
+    private static void NormalizeDuelClockSaveData(RunSaveData saveData)
+    {
+        if (saveData.combatPacingMode != (int)CombatPacingMode.DuelClock)
+        {
+            ResetCombatPacingForFreshBattle(saveData);
+            return;
+        }
+
+        saveData.duelClockRemainingEnemyAssetNames ??=
+            new List<string>();
+
+        if (!saveData.duelClockSpawnPoolInitialized)
+        {
+            saveData.duelClockRemainingEnemyAssetNames.Clear();
+            saveData.duelClockPendingEnemySpawns = 0;
+        }
+        else
+        {
+            saveData.duelClockPendingEnemySpawns = Mathf.Clamp(
+                saveData.duelClockPendingEnemySpawns,
+                0,
+                saveData.duelClockRemainingEnemyAssetNames.Count);
+        }
+
+        try
+        {
+            DuelClockSnapshot normalized = DuelClockState.Restore(
+                saveData.duelClockProgress,
+                saveData.duelClockCumulativeBeats).Snapshot;
+            saveData.duelClockProgress = normalized.Progress;
+            saveData.duelClockCumulativeBeats = normalized.CumulativeBeats;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            saveData.duelClockProgress = 0d;
+            saveData.duelClockCumulativeBeats = 0;
+        }
+        catch (OverflowException)
+        {
+            saveData.duelClockProgress = 0d;
+            saveData.duelClockCumulativeBeats = 0;
+        }
     }
 }
 

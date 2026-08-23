@@ -13,7 +13,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private const int MaxFullscreenImpacts = 4;
     private const string FeedbackPanelName = "Panel | Feedback";
     private const string ComboTextName = "Text | Combo";
-    private const string ComboTurnRootName = "Image | Combo Timer BG";
+    private const string ComboCountRootName = "Image | Combo Timer BG";
     private const string CurrentDamageTextName = "Text | Current Damage";
     private const float BaseKillTier = 0.12f;
     private static readonly int FullscreenCentersId =
@@ -102,9 +102,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     [Header("Combo")]
     [Min(1)]
-    [SerializeField] private int comboTurnLimit = 8;
+    [FormerlySerializedAs("comboTurnLimit")]
+    [SerializeField] private int comboCountLimit = 8;
     [Min(0.01f)]
-    [SerializeField] private float turnDrainDuration = 0.2f;
+    [FormerlySerializedAs("turnDrainDuration")]
+    [SerializeField] private float countDrainDuration = 0.2f;
     [SerializeField] private Color comboLowColor = Color.white;
     [FormerlySerializedAs("comboHighColor")]
     [SerializeField] private Color comboMidColor =
@@ -233,10 +235,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private float minimumHitIntensity = 0.18f;
     private TMP_Text comboText;
     private TMP_Text currentDamageText;
-    private Transform comboTurnRoot;
-    private readonly List<Image> comboTurnValues = new List<Image>();
+    private Transform comboCountRoot;
+    private readonly List<Image> comboCountValues = new List<Image>();
     private CanvasGroup comboCanvasGroup;
-    private CanvasGroup comboTurnCanvasGroup;
+    private CanvasGroup comboCountCanvasGroup;
     private CanvasGroup damageCanvasGroup;
     private RectTransform comboRect;
     private RectTransform damageRect;
@@ -247,7 +249,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private Color damageBaseColor = Color.white;
 
     private int comboCount;
-    private int comboTurnsRemaining;
+    private int comboCountsRemaining;
     private int firingSequenceDefeatCount;
     private float firingSequenceBaseIntensity;
     private int cylinderDamage;
@@ -258,10 +260,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private float damagePunchRemaining;
     private float overkillFlashRemaining;
     private bool cylinderActive;
-    private bool comboResetSinceLastTurn;
+    private bool comboResetDuringCurrentCount;
     private bool uiBound;
     private PlayerMove playerMove;
-    private Coroutine turnDrainCoroutine;
+    private WaveManager waveManager;
+    private Coroutine countDrainCoroutine;
 
     private Volume cameraVolume;
     private ChromaticAberration chromaticAberration;
@@ -336,8 +339,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
         }
 
         saveData.comboCount = comboCount;
-        saveData.comboTurnsRemaining = comboTurnsRemaining;
-        saveData.comboResetSinceLastTurn = comboResetSinceLastTurn;
+        // Legacy JSON field names remain unchanged for version 3 save
+        // compatibility. Their values now represent Duel Clock counts.
+        saveData.comboTurnsRemaining = comboCountsRemaining;
+        saveData.comboResetSinceLastTurn = comboResetDuringCurrentCount;
         saveData.cylinderDamage = cylinderDamage;
         saveData.firingSequenceDefeatCount = firingSequenceDefeatCount;
         saveData.cylinderActive = cylinderActive;
@@ -350,13 +355,13 @@ public sealed class CombatFeedbackController : MonoBehaviour
             return;
         }
 
-        StopTurnDrainAnimation();
+        StopCountDrainAnimation();
         comboCount = Mathf.Max(0, saveData.comboCount);
-        comboTurnsRemaining = Mathf.Clamp(
+        comboCountsRemaining = Mathf.Clamp(
             saveData.comboTurnsRemaining,
             0,
-            GetComboTurnLimit());
-        comboResetSinceLastTurn = saveData.comboResetSinceLastTurn;
+            GetComboCountLimit());
+        comboResetDuringCurrentCount = saveData.comboResetSinceLastTurn;
         cylinderDamage = Mathf.Max(0, saveData.cylinderDamage);
         displayedCylinderDamage = cylinderDamage;
         firingSequenceDefeatCount = Mathf.Max(
@@ -371,16 +376,16 @@ public sealed class CombatFeedbackController : MonoBehaviour
         BindUi();
         UpdateComboText();
         UpdateDamageText(false);
-        RefreshComboTurnValues();
+        RefreshComboCountValues();
 
         if (comboCanvasGroup != null)
         {
             comboCanvasGroup.alpha = comboCount > 0 ? 1f : 0f;
         }
 
-        if (comboTurnCanvasGroup != null)
+        if (comboCountCanvasGroup != null)
         {
-            comboTurnCanvasGroup.alpha = comboCount > 0 ? 1f : 0f;
+            comboCountCanvasGroup.alpha = comboCount > 0 ? 1f : 0f;
         }
 
         if (damageCanvasGroup != null)
@@ -396,6 +401,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     {
         currencyManager = FindFirstObjectByType<CurrencyManager>();
         playerMove = GetComponent<PlayerMove>();
+        waveManager = FindFirstObjectByType<WaveManager>();
         BindUi();
         BindVolume();
     }
@@ -406,10 +412,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
         EnemyController.PlayerStatusDefeated -= HandlePlayerStatusDefeated;
         EnemyController.PlayerStatusDefeated += HandlePlayerStatusDefeated;
 
-        if (playerMove != null)
+        waveManager ??= FindFirstObjectByType<WaveManager>();
+
+        if (waveManager != null)
         {
-            playerMove.TurnCompleted -= HandlePlayerTurnCompleted;
-            playerMove.TurnCompleted += HandlePlayerTurnCompleted;
+            waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
+            waveManager.EnemyTurnCycleCompleted += HandleCountCompleted;
         }
     }
 
@@ -442,12 +450,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
     {
         EnemyController.PlayerStatusDefeated -= HandlePlayerStatusDefeated;
 
-        if (playerMove != null)
+        if (waveManager != null)
         {
-            playerMove.TurnCompleted -= HandlePlayerTurnCompleted;
+            waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
         }
 
-        StopTurnDrainAnimation();
+        StopCountDrainAnimation();
         ResetFiringSequenceFeedback();
         CancelSlowMotionAndRestore();
         RestoreVolume();
@@ -504,9 +512,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         comboCount = 0;
         ResetFiringSequenceFeedback();
-        comboTurnsRemaining = 0;
-        comboResetSinceLastTurn = false;
-        StopTurnDrainAnimation();
+        comboCountsRemaining = 0;
+        comboResetDuringCurrentCount = false;
+        StopCountDrainAnimation();
         cylinderDamage = 0;
         displayedCylinderDamage = 0f;
         damageHoldRemaining = 0f;
@@ -518,16 +526,16 @@ public sealed class CombatFeedbackController : MonoBehaviour
         UpdateComboText();
         UpdateDamageText(false);
 
-        RefreshComboTurnValues();
+        RefreshComboCountValues();
 
         if (comboCanvasGroup != null)
         {
             comboCanvasGroup.alpha = 0f;
         }
 
-        if (comboTurnCanvasGroup != null)
+        if (comboCountCanvasGroup != null)
         {
-            comboTurnCanvasGroup.alpha = 0f;
+            comboCountCanvasGroup.alpha = 0f;
         }
 
         if (damageCanvasGroup != null)
@@ -742,10 +750,12 @@ public sealed class CombatFeedbackController : MonoBehaviour
             comboCount,
             firingSequenceDefeatCount,
             overkillPercent);
-        comboTurnsRemaining = GetComboTurnLimit();
-        comboResetSinceLastTurn = true;
-        StopTurnDrainAnimation();
-        RefreshComboTurnValues();
+        waveManager ??= FindFirstObjectByType<WaveManager>();
+        comboCountsRemaining = GetComboCountLimit();
+        comboResetDuringCurrentCount = waveManager != null
+            && waveManager.IsResolvingTurn;
+        StopCountDrainAnimation();
+        RefreshComboCountValues();
         UpdateComboText();
 
         if (comboCount > 1 && comboGoldPerKill > 0)
@@ -1150,30 +1160,34 @@ public sealed class CombatFeedbackController : MonoBehaviour
         spawnedComboTexts.Clear();
     }
 
-    private void HandlePlayerTurnCompleted()
+    private void HandleCountCompleted(int _)
     {
-        if (comboCount <= 0 || comboTurnsRemaining <= 0)
+        if (comboCount <= 0 || comboCountsRemaining <= 0)
         {
             return;
         }
 
-        if (comboResetSinceLastTurn)
+        int previousRemaining = comboCountsRemaining;
+        comboCountsRemaining = CalculateRemainingComboCounts(
+            comboCountsRemaining,
+            comboResetDuringCurrentCount);
+        comboResetDuringCurrentCount = false;
+
+        if (comboCountsRemaining == previousRemaining)
         {
-            comboResetSinceLastTurn = false;
-            RefreshComboTurnValues();
+            RefreshComboCountValues();
             return;
         }
 
-        comboTurnsRemaining = Mathf.Max(0, comboTurnsRemaining - 1);
         int drainedIndex = Mathf.Clamp(
-            comboTurnsRemaining,
+            comboCountsRemaining,
             0,
-            Mathf.Max(0, comboTurnValues.Count - 1));
-        StopTurnDrainAnimation();
+            Mathf.Max(0, comboCountValues.Count - 1));
+        StopCountDrainAnimation();
 
-        if (comboTurnValues.Count == 0)
+        if (comboCountValues.Count == 0)
         {
-            if (comboTurnsRemaining <= 0)
+            if (comboCountsRemaining <= 0)
             {
                 ExpireCombo();
             }
@@ -1181,16 +1195,28 @@ public sealed class CombatFeedbackController : MonoBehaviour
             return;
         }
 
-        turnDrainCoroutine = StartCoroutine(DrainComboTurn(
-            comboTurnValues[drainedIndex],
-            comboTurnsRemaining <= 0));
+        countDrainCoroutine = StartCoroutine(DrainComboCount(
+            comboCountValues[drainedIndex],
+            comboCountsRemaining <= 0));
     }
 
-    private IEnumerator DrainComboTurn(Image turnValue, bool expireAfterDrain)
+    internal static int CalculateRemainingComboCounts(
+        int remainingCounts,
+        bool defeatOccurredDuringCount)
     {
-        float duration = Mathf.Max(0.01f, turnDrainDuration);
+        int sanitizedRemaining = Mathf.Max(0, remainingCounts);
+        return defeatOccurredDuringCount
+            ? sanitizedRemaining
+            : Mathf.Max(0, sanitizedRemaining - 1);
+    }
+
+    private IEnumerator DrainComboCount(
+        Image countValue,
+        bool expireAfterDrain)
+    {
+        float duration = Mathf.Max(0.01f, countDrainDuration);
         float elapsed = 0f;
-        float startFill = turnValue == null ? 1f : turnValue.fillAmount;
+        float startFill = countValue == null ? 1f : countValue.fillAmount;
 
         while (elapsed < duration)
         {
@@ -1203,43 +1229,46 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
             elapsed += Time.unscaledDeltaTime;
 
-            if (turnValue != null)
+            if (countValue != null)
             {
                 float progress = Mathf.Clamp01(elapsed / duration);
-                turnValue.fillAmount = Mathf.Lerp(startFill, 0f, progress);
+                countValue.fillAmount = Mathf.Lerp(
+                    startFill,
+                    0f,
+                    progress);
             }
         }
 
-        if (turnValue != null)
+        if (countValue != null)
         {
-            turnValue.fillAmount = 0f;
+            countValue.fillAmount = 0f;
         }
 
-        turnDrainCoroutine = null;
+        countDrainCoroutine = null;
 
-        if (expireAfterDrain && comboTurnsRemaining <= 0)
+        if (expireAfterDrain && comboCountsRemaining <= 0)
         {
             ExpireCombo();
         }
     }
 
-    private void StopTurnDrainAnimation()
+    private void StopCountDrainAnimation()
     {
-        if (turnDrainCoroutine == null)
+        if (countDrainCoroutine == null)
         {
             return;
         }
 
-        StopCoroutine(turnDrainCoroutine);
-        turnDrainCoroutine = null;
+        StopCoroutine(countDrainCoroutine);
+        countDrainCoroutine = null;
     }
 
     private void ExpireCombo()
     {
         SoundManager.ResetComboPitch();
         comboCount = 0;
-        comboTurnsRemaining = 0;
-        comboResetSinceLastTurn = false;
+        comboCountsRemaining = 0;
+        comboResetDuringCurrentCount = false;
         cylinderDamage = 0;
         displayedCylinderDamage = 0f;
         damageHoldRemaining = 0f;
@@ -1247,7 +1276,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         comboPunchStrengthMultiplier = 1f;
         UpdateComboText();
         UpdateDamageText(false);
-        RefreshComboTurnValues();
+        RefreshComboCountValues();
     }
 
     private void UpdateDamage(float deltaTime)
@@ -1296,7 +1325,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             comboCanvasGroup.alpha,
             comboTargetAlpha,
             deltaTime * (comboTargetAlpha > 0f ? 12f : 5f));
-        comboTurnCanvasGroup.alpha = comboCanvasGroup.alpha;
+        comboCountCanvasGroup.alpha = comboCanvasGroup.alpha;
         damageCanvasGroup.alpha = Mathf.MoveTowards(
             damageCanvasGroup.alpha,
             damageTargetAlpha,
@@ -1451,21 +1480,21 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         comboText = FindDescendant(feedbackPanel, ComboTextName)
             ?.GetComponent<TMP_Text>();
-        comboTurnRoot = FindDescendant(feedbackPanel, ComboTurnRootName);
-        CollectComboTurnValues();
+        comboCountRoot = FindDescendant(feedbackPanel, ComboCountRootName);
+        CollectComboCountValues();
         currentDamageText = FindDescendant(feedbackPanel, CurrentDamageTextName)
             ?.GetComponent<TMP_Text>();
 
-        if (comboText == null || comboTurnRoot == null
-            || comboTurnValues.Count == 0
+        if (comboText == null || comboCountRoot == null
+            || comboCountValues.Count == 0
             || currentDamageText == null)
         {
             return;
         }
 
-        foreach (Image turnValue in comboTurnValues)
+        foreach (Image countValue in comboCountValues)
         {
-            turnValue.type = Image.Type.Filled;
+            countValue.type = Image.Type.Filled;
         }
 
         comboRect = comboText.rectTransform;
@@ -1476,60 +1505,65 @@ public sealed class CombatFeedbackController : MonoBehaviour
         damageBaseRotation = damageRect.localRotation;
         damageBaseColor = currentDamageText.color;
         comboCanvasGroup = GetOrAddCanvasGroup(comboText.gameObject);
-        comboTurnCanvasGroup = GetOrAddCanvasGroup(comboTurnRoot.gameObject);
+        comboCountCanvasGroup = GetOrAddCanvasGroup(comboCountRoot.gameObject);
         damageCanvasGroup = GetOrAddCanvasGroup(currentDamageText.gameObject);
         comboCanvasGroup.alpha = comboCount > 0 ? 1f : 0f;
-        comboTurnCanvasGroup.alpha = comboCanvasGroup.alpha;
+        comboCountCanvasGroup.alpha = comboCanvasGroup.alpha;
         damageCanvasGroup.alpha = cylinderActive ? 1f : 0f;
         uiBound = true;
         UpdateComboText();
         UpdateDamageText(false);
-        RefreshComboTurnValues();
+        RefreshComboCountValues();
     }
 
-    private void CollectComboTurnValues()
+    private void CollectComboCountValues()
     {
-        comboTurnValues.Clear();
+        comboCountValues.Clear();
 
-        if (comboTurnRoot == null)
+        if (comboCountRoot == null)
         {
             return;
         }
 
-        foreach (Transform turnSlot in comboTurnRoot)
+        foreach (Transform countSlot in comboCountRoot)
         {
-            foreach (Image image in turnSlot.GetComponentsInChildren<Image>(true))
+            foreach (Image image in countSlot.GetComponentsInChildren<Image>(true))
             {
-                if (image.name.Contains("Turn") && image.name.Contains("Value"))
+                bool isCountValue = image.name.Contains("Count")
+                    || image.name.Contains("Turn");
+                if (isCountValue && image.name.Contains("Value"))
                 {
-                    comboTurnValues.Add(image);
+                    comboCountValues.Add(image);
                     break;
                 }
             }
         }
     }
 
-    private int GetComboTurnLimit()
+    private int GetComboCountLimit()
     {
-        int configuredLimit = Mathf.Max(1, comboTurnLimit);
-        return comboTurnValues.Count == 0
+        int configuredLimit = Mathf.Max(1, comboCountLimit);
+        return comboCountValues.Count == 0
             ? configuredLimit
-            : Mathf.Min(configuredLimit, comboTurnValues.Count);
+            : Mathf.Min(configuredLimit, comboCountValues.Count);
     }
 
-    private void RefreshComboTurnValues()
+    private void RefreshComboCountValues()
     {
-        int visibleTurns = comboCount <= 0
+        int visibleCounts = comboCount <= 0
             ? 0
-            : Mathf.Clamp(comboTurnsRemaining, 0, comboTurnValues.Count);
+            : Mathf.Clamp(
+                comboCountsRemaining,
+                0,
+                comboCountValues.Count);
 
-        for (int index = 0; index < comboTurnValues.Count; index++)
+        for (int index = 0; index < comboCountValues.Count; index++)
         {
-            Image turnValue = comboTurnValues[index];
+            Image countValue = comboCountValues[index];
 
-            if (turnValue != null)
+            if (countValue != null)
             {
-                turnValue.fillAmount = index < visibleTurns ? 1f : 0f;
+                countValue.fillAmount = index < visibleCounts ? 1f : 0f;
             }
         }
     }
@@ -1586,7 +1620,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         UpdateComboText();
         UpdateDamageText(false);
-        RefreshComboTurnValues();
+        RefreshComboCountValues();
     }
 
     private void ResetUiTransforms()

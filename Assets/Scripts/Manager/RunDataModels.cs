@@ -162,6 +162,13 @@ public sealed class RunSaveData
     public int playerTurnCount;
     public int cumulativeBattleTurnCount;
     public int nextPushAvailableTurn;
+    public int combatPacingMode = (int)CombatPacingMode.Legacy;
+    public double duelClockProgress;
+    public long duelClockCumulativeBeats;
+    public bool duelClockSpawnPoolInitialized;
+    public List<string> duelClockRemainingEnemyAssetNames =
+        new List<string>();
+    public int duelClockPendingEnemySpawns;
     public RunStatusEffectSaveData playerStatusEffects =
         new RunStatusEffectSaveData();
     public RunStatusEffectSaveData pendingNextBattlePlayerStatusEffects =

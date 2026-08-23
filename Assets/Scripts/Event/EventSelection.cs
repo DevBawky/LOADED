@@ -12,7 +12,7 @@ public readonly struct EventRunContext
         int money,
         int ownedBullets,
         float currentHealthPercent,
-        int cumulativeBattleTurns)
+        int cumulativeBattleCount)
     {
         EliteClears = Mathf.Max(0, eliteClears);
         ShopVisits = Mathf.Max(0, shopVisits);
@@ -20,7 +20,7 @@ public readonly struct EventRunContext
         Money = Mathf.Max(0, money);
         OwnedBullets = Mathf.Max(0, ownedBullets);
         CurrentHealthPercent = Mathf.Clamp(currentHealthPercent, 0f, 100f);
-        CumulativeBattleTurns = Mathf.Max(0, cumulativeBattleTurns);
+        CumulativeBattleCount = Mathf.Max(0, cumulativeBattleCount);
     }
 
     public int EliteClears { get; }
@@ -29,7 +29,7 @@ public readonly struct EventRunContext
     public int Money { get; }
     public int OwnedBullets { get; }
     public float CurrentHealthPercent { get; }
-    public int CumulativeBattleTurns { get; }
+    public int CumulativeBattleCount { get; }
 
     public float GetValue(EventRunStatistic statistic)
     {
@@ -41,7 +41,7 @@ public readonly struct EventRunContext
             EventRunStatistic.Money => Money,
             EventRunStatistic.OwnedBullets => OwnedBullets,
             EventRunStatistic.CurrentHealthPercent => CurrentHealthPercent,
-            EventRunStatistic.CumulativeBattleTurns => CumulativeBattleTurns,
+            EventRunStatistic.CumulativeBattleCount => CumulativeBattleCount,
             _ => 0f
         };
     }

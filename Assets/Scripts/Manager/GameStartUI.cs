@@ -74,6 +74,7 @@ public sealed class GameStartUI : MonoBehaviour
     [SerializeField] private PlayerShoot playerShoot;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
+    [SerializeField] private WaveManager waveManager;
     [SerializeField] private CurrencyManager currencyManager;
     [SerializeField] private CombatFeedbackController combatFeedback;
 
@@ -98,12 +99,12 @@ public sealed class GameStartUI : MonoBehaviour
     private bool isCollectingReport;
     private int cumulativeDamage;
     private int highestCumulativeDamage;
-    private int currentTurnDamage;
+    private int currentCountDamage;
     private int highestSingleDamage;
     private int damageTaken;
     private int healingReceived;
     private int totalShots;
-    private int startingTurnCount;
+    private int startingCount;
     private int startingGold;
     private int stageEarnedGold;
     private int stageMaxCombo;
@@ -158,6 +159,7 @@ public sealed class GameStartUI : MonoBehaviour
         && playerShoot != null
         && playerMove != null
         && playerHealth != null
+        && waveManager != null
         && currencyManager != null
         && combatFeedback != null
         && IsGameplayCanvasSeparate();
@@ -440,6 +442,7 @@ public sealed class GameStartUI : MonoBehaviour
         playerShoot ??= FindSceneObject<PlayerShoot>();
         playerMove ??= FindSceneObject<PlayerMove>();
         playerHealth ??= FindSceneObject<PlayerHealth>();
+        waveManager ??= FindSceneObject<WaveManager>();
         currencyManager ??= FindSceneObject<CurrencyManager>();
         combatFeedback ??= playerShoot == null
             ? FindSceneObject<CombatFeedbackController>()
@@ -492,7 +495,7 @@ public sealed class GameStartUI : MonoBehaviour
     {
         cumulativeDamage = 0;
         highestCumulativeDamage = 0;
-        currentTurnDamage = 0;
+        currentCountDamage = 0;
         highestSingleDamage = 0;
         damageTaken = 0;
         healingReceived = 0;
@@ -501,7 +504,9 @@ public sealed class GameStartUI : MonoBehaviour
         stageMaxCombo = 0;
         stageMaxCylinderKills = 0;
         stageMaxOverkillPercent = 0f;
-        startingTurnCount = playerMove == null ? 0 : playerMove.TurnCount;
+        startingCount = waveManager == null
+            ? 0
+            : waveManager.CurrentEnemyTurnCycle;
         startingGold = currencyManager == null ? 0 : currencyManager.CurrentMoney;
         lastPlayerHealth = playerHealth == null ? 0 : playerHealth.CurrentHealth;
         isCollectingReport = true;
@@ -513,12 +518,14 @@ public sealed class GameStartUI : MonoBehaviour
         {
             cumulativeDamage = cumulativeDamage,
             highestCumulativeDamage = highestCumulativeDamage,
-            currentTurnDamage = currentTurnDamage,
+            // Legacy version 3 field names remain unchanged. These values
+            // now represent completed enemy COUNT boundaries.
+            currentTurnDamage = currentCountDamage,
             highestSingleDamage = highestSingleDamage,
             damageTaken = damageTaken,
             healingReceived = healingReceived,
             totalShots = totalShots,
-            startingTurnCount = startingTurnCount,
+            startingTurnCount = startingCount,
             startingGold = startingGold,
             stageMaxCombo = stageMaxCombo,
             stageMaxCylinderKills = stageMaxCylinderKills,
@@ -538,12 +545,12 @@ public sealed class GameStartUI : MonoBehaviour
         highestCumulativeDamage = Mathf.Max(
             0,
             state.highestCumulativeDamage);
-        currentTurnDamage = Mathf.Max(0, state.currentTurnDamage);
+        currentCountDamage = Mathf.Max(0, state.currentTurnDamage);
         highestSingleDamage = Mathf.Max(0, state.highestSingleDamage);
         damageTaken = Mathf.Max(0, state.damageTaken);
         healingReceived = Mathf.Max(0, state.healingReceived);
         totalShots = Mathf.Max(0, state.totalShots);
-        startingTurnCount = Mathf.Max(0, state.startingTurnCount);
+        startingCount = Mathf.Max(0, state.startingTurnCount);
         startingGold = Mathf.Max(0, state.startingGold);
         stageMaxCombo = Mathf.Max(0, state.stageMaxCombo);
         stageMaxCylinderKills = Mathf.Max(
@@ -558,7 +565,7 @@ public sealed class GameStartUI : MonoBehaviour
 
     private void EndReportCollection()
     {
-        CommitCurrentTurnDamage();
+        CommitCurrentCountDamage();
         currencyManager?.FlushPendingMoney();
         stageEarnedGold = currencyManager == null
             ? 0
@@ -584,9 +591,9 @@ public sealed class GameStartUI : MonoBehaviour
             playerHealth.HealthChanged += HandlePlayerHealthChanged;
         }
 
-        if (playerMove != null)
+        if (waveManager != null)
         {
-            playerMove.TurnCompleted += HandleTurnCompleted;
+            waveManager.EnemyTurnCycleCompleted += HandleCountCompleted;
         }
 
         if (combatFeedback != null)
@@ -616,9 +623,9 @@ public sealed class GameStartUI : MonoBehaviour
             playerHealth.HealthChanged -= HandlePlayerHealthChanged;
         }
 
-        if (playerMove != null)
+        if (waveManager != null)
         {
-            playerMove.TurnCompleted -= HandleTurnCompleted;
+            waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
         }
 
         if (combatFeedback != null)
@@ -648,18 +655,18 @@ public sealed class GameStartUI : MonoBehaviour
         }
 
         cumulativeDamage += damage;
-        currentTurnDamage += damage;
+        currentCountDamage += damage;
         highestSingleDamage = Mathf.Max(highestSingleDamage, damage);
     }
 
-    private void HandleTurnCompleted()
+    private void HandleCountCompleted(int _)
     {
         if (!isCollectingReport)
         {
             return;
         }
 
-        CommitCurrentTurnDamage();
+        CommitCurrentCountDamage();
     }
 
     private void HandleDefeatPerformanceRecorded(
@@ -681,12 +688,12 @@ public sealed class GameStartUI : MonoBehaviour
             overkillPercent);
     }
 
-    private void CommitCurrentTurnDamage()
+    private void CommitCurrentCountDamage()
     {
         highestCumulativeDamage = Mathf.Max(
             highestCumulativeDamage,
-            currentTurnDamage);
-        currentTurnDamage = 0;
+            currentCountDamage);
+        currentCountDamage = 0;
     }
 
     private void HandlePlayerHealthChanged(int currentHealth, int maximumHealth)
@@ -727,12 +734,14 @@ public sealed class GameStartUI : MonoBehaviour
             ? "STAGE REPORT"
             : battleData.ClearNoticeTitle;
 
-        int battleTurns = playerMove == null
+        int battleCounts = waveManager == null
             ? 0
-            : Mathf.Max(0, playerMove.TurnCount - startingTurnCount);
-        float averageDamagePerTurn = battleTurns <= 0
+            : Mathf.Max(
+                0,
+                waveManager.CurrentEnemyTurnCycle - startingCount);
+        float averageDamagePerCount = battleCounts <= 0
             ? 0f
-            : (float)cumulativeDamage / battleTurns;
+            : (float)cumulativeDamage / battleCounts;
         float averageDamagePerShot = totalShots <= 0
             ? 0f
             : (float)cumulativeDamage / totalShots;
@@ -750,12 +759,12 @@ public sealed class GameStartUI : MonoBehaviour
             .AppendLine(Colorize(damageTaken.ToString("N0"), damageTakenValueColor));
         report.Append("회복량: ")
             .AppendLine(Colorize(healingReceived.ToString("N0"), summaryValueColor));
-        report.Append("소모 턴: ")
-            .AppendLine(Colorize(battleTurns.ToString("N0"), summaryValueColor));
+        report.Append("완료 COUNT: ")
+            .AppendLine(Colorize(battleCounts.ToString("N0"), summaryValueColor));
         report.Append("총 발사 수: ")
             .AppendLine(Colorize(totalShots.ToString("N0"), summaryValueColor));
-        report.Append("턴 당 평균 대미지: ")
-            .AppendLine(Colorize(averageDamagePerTurn.ToString("N1"), damageValueColor));
+        report.Append("COUNT 당 평균 대미지: ")
+            .AppendLine(Colorize(averageDamagePerCount.ToString("N1"), damageValueColor));
         report.Append("평균 발 당 대미지: ")
             .AppendLine(Colorize(averageDamagePerShot.ToString("N1"), damageValueColor));
         report.Append("획득한 골드: ")

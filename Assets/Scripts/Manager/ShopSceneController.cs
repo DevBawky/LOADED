@@ -230,6 +230,7 @@ public sealed class ShopSceneController : MonoBehaviour
                 stateManager);
         }
 
+        StageProgressUI.EnsureSupportedSceneBinding();
         foreach (StageProgressUI progressUI in
                  FindObjectsByType<StageProgressUI>(
                      FindObjectsInactive.Include,
@@ -239,17 +240,17 @@ public sealed class ShopSceneController : MonoBehaviour
                 StageProgressUI.ShopStageTitle);
         }
 
-        int cumulativeTurns = Mathf.Max(
-            runData.cumulativeBattleTurnCount,
-            runData.playerTurnCount);
-        runData.cumulativeBattleTurnCount = cumulativeTurns;
+        int cumulativeCount = Mathf.Max(
+            0,
+            runData.cumulativeBattleTurnCount);
+        runData.cumulativeBattleTurnCount = cumulativeCount;
 
         foreach (TurnCountText turnText in
                  FindObjectsByType<TurnCountText>(
                      FindObjectsInactive.Include,
                      FindObjectsSortMode.None))
         {
-            turnText.SetExternalTurnCount(cumulativeTurns);
+            turnText.SetExternalCount(cumulativeCount);
         }
 
         initialized = true;

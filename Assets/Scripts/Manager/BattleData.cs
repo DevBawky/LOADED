@@ -9,6 +9,12 @@ public enum BattleType
     Elite = 2
 }
 
+public enum CombatPacingMode
+{
+    Legacy = 0,
+    DuelClock = 1
+}
+
 [CreateAssetMenu(fileName = "New Battle", menuName = "Loaded/Battle")]
 public class BattleData : ScriptableObject
 {
@@ -38,6 +44,22 @@ public class BattleData : ScriptableObject
     [SerializeField] private int spawnTerm = 2;
     [SerializeField] private EnemyWave[] waves = Array.Empty<EnemyWave>();
 
+    [Header("Combat Pacing")]
+    [SerializeField] private CombatPacingMode combatPacingMode =
+        CombatPacingMode.Legacy;
+    [Min(0f)]
+    [Tooltip("Natural Duel Clock charge per unscaled second. A value of 4 fills one 100-point cycle in 25 seconds.")]
+    [SerializeField] private float duelClockNaturalProgressPerSecond = 4f;
+    [Min(0f)]
+    [Tooltip("Duel Clock charge committed when one paid player action completes.")]
+    [SerializeField] private float duelClockPaidActionProgress = 45f;
+    [Min(1)]
+    [Tooltip("Completed Duel Clock beats between single-enemy reinforcements.")]
+    [SerializeField] private int duelClockEnemyWaveCount = 5;
+    [Tooltip("Finite enemy pool used by Duel Clock battles. Duplicate entries preserve authored enemy counts.")]
+    [SerializeField] private EnemyData[] duelClockEnemyPool =
+        Array.Empty<EnemyData>();
+
     public string BattleId => battleId;
     public string DisplayName => displayName;
     public string NoticeTitle => string.IsNullOrWhiteSpace(displayName)
@@ -56,4 +78,13 @@ public class BattleData : ScriptableObject
     public int SpawnTerm => Mathf.Max(0, spawnTerm);
     public IReadOnlyList<EnemyWave> Waves =>
         waves ?? (IReadOnlyList<EnemyWave>)Array.Empty<EnemyWave>();
+    public CombatPacingMode PacingMode => combatPacingMode;
+    public float DuelClockNaturalProgressPerSecond =>
+        Mathf.Max(0f, duelClockNaturalProgressPerSecond);
+    public float DuelClockPaidActionProgress =>
+        Mathf.Max(0f, duelClockPaidActionProgress);
+    public int DuelClockEnemyWaveCount =>
+        Mathf.Max(1, duelClockEnemyWaveCount);
+    public IReadOnlyList<EnemyData> DuelClockEnemyPool =>
+        duelClockEnemyPool ?? (IReadOnlyList<EnemyData>)Array.Empty<EnemyData>();
 }
