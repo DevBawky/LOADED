@@ -6,6 +6,13 @@ using UnityEngine;
 /// </summary>
 internal static class PlayerAttackDamageCalculator
 {
+    internal static bool ResolveCriticalForTarget(
+        bool rolledCritical,
+        bool targetIsExposed)
+    {
+        return rolledCritical || targetIsExposed;
+    }
+
     public static int Calculate(
         BulletInstance bullet,
         bool isCritical,

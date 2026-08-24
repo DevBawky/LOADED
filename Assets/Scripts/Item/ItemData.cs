@@ -17,6 +17,7 @@ public static class TooltipTextFormatter
     public const string StunColor = "#FFE066";
     public const string MarkColor = "#FF78C8";
     public const string WeaknessColor = "#B58CFF";
+    public const string ExposedColor = "#FF9F5A";
     public const string DebuffColor = "#FF7A90";
     public const string LifeStealColor = "#FF6B7A";
 
@@ -25,6 +26,7 @@ public static class TooltipTextFormatter
         + @"|(?<stun>기절)"
         + @"|(?<mark>표식)"
         + @"|(?<weakness>약화)"
+        + @"|(?<exposed>무방비)"
         + @"|(?<debuff>상태\s*이상|디버프)"
         + @"|(?<lifesteal>흡혈)"
         + @"|(?<damage>최종\s*대미지|대미지|피해)"
@@ -140,6 +142,10 @@ public static class TooltipTextFormatter
         else if (match.Groups["weakness"].Success)
         {
             color = WeaknessColor;
+        }
+        else if (match.Groups["exposed"].Success)
+        {
+            color = ExposedColor;
         }
         else if (match.Groups["debuff"].Success)
         {

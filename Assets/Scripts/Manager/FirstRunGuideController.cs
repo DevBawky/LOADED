@@ -21,7 +21,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         "loaded.guide.first_run_started.v1";
     private const string GuideContentVersionKey =
         "loaded.guide.content_version";
-    private const int CurrentGuideContentVersion = 3;
+    private const int CurrentGuideContentVersion = 4;
     internal const int GuideSortingOrder = 30000;
     internal const int GuideTooltipSortingOrder = GuideSortingOrder + 1;
     private const float StepAdvanceDelay = 0.45f;

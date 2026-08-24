@@ -17,6 +17,8 @@ public sealed class DuelClockController : MonoBehaviour
     private double paidActionProgress;
     private int enemyWaveCount = 5;
     private bool shootProgressCommitted;
+    private bool playerActionPending;
+    private bool paidActionProgressSuppressed;
     private bool subscribedToCombatEvents;
 
     public event Action StateChanged;
@@ -153,7 +155,8 @@ public sealed class DuelClockController : MonoBehaviour
 
     private void HandlePlayerTurnCompleted()
     {
-        bool shouldCommitPaidAction = !shootProgressCommitted;
+        bool shouldCommitPaidAction = !shootProgressCommitted
+            && !paidActionProgressSuppressed;
         ResetPlayerActionTracking();
 
         if (IsActive && shouldCommitPaidAction)
@@ -164,12 +167,23 @@ public sealed class DuelClockController : MonoBehaviour
 
     internal void HandlePlayerActionStarted(PlayerBehaviourAction action)
     {
-        shootProgressCommitted = false;
+        ResetPlayerActionTracking();
+        playerActionPending = true;
 
         if (IsActive && action == PlayerBehaviourAction.Shoot)
         {
             shootProgressCommitted = TryCommitProgress(paidActionProgress);
         }
+    }
+
+    internal void HandlePlayerDodgeSucceededDuringAction()
+    {
+        if (!IsActive || !playerActionPending || shootProgressCommitted)
+        {
+            return;
+        }
+
+        paidActionProgressSuppressed = true;
     }
 
     private void HandleEnemyDefeated(EnemyController enemy)
@@ -316,6 +330,8 @@ public sealed class DuelClockController : MonoBehaviour
         if (playerMove != null)
         {
             playerMove.BehaviourActionStarted += HandlePlayerActionStarted;
+            playerMove.DodgeSucceededDuringAction +=
+                HandlePlayerDodgeSucceededDuringAction;
             playerMove.TurnCompleted += HandlePlayerTurnCompleted;
         }
 
@@ -342,6 +358,8 @@ public sealed class DuelClockController : MonoBehaviour
         if (playerMove != null)
         {
             playerMove.BehaviourActionStarted -= HandlePlayerActionStarted;
+            playerMove.DodgeSucceededDuringAction -=
+                HandlePlayerDodgeSucceededDuringAction;
             playerMove.TurnCompleted -= HandlePlayerTurnCompleted;
         }
 
@@ -361,6 +379,8 @@ public sealed class DuelClockController : MonoBehaviour
     private void ResetPlayerActionTracking()
     {
         shootProgressCommitted = false;
+        playerActionPending = false;
+        paidActionProgressSuppressed = false;
     }
 
     private static DuelClockState RestoreStateOrDefault(

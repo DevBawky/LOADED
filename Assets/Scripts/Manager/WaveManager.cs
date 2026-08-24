@@ -960,6 +960,16 @@ public class WaveManager : MonoBehaviour
         yield return WaitForTurnTime(remainingTurnDelay);
 
         RemoveMissingEnemies();
+        bossBombManager?.ProcessEnemyTurnCycleEnd(currentEnemyTurnCycle);
+
+        while (bossBombManager != null
+               && bossBombManager.IsResolvingExplosions
+               && !isBattleCompleted && !playerHealth.IsDefeated)
+        {
+            yield return null;
+        }
+
+        RemoveMissingEnemies();
         EnemyTurnCycleCompleted?.Invoke(currentEnemyTurnCycle);
         AdvanceWaveCountdown();
         StateChanged?.Invoke();

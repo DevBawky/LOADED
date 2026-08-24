@@ -50,6 +50,7 @@ public sealed class RunStatusEffectSaveData
     public int stunStacks;
     public int weaknessStacks;
     public bool poisonCreditedToPlayer;
+    public bool isExposed;
 }
 
 [Serializable]

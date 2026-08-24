@@ -57,7 +57,9 @@ public class DebuffIconUI : MonoBehaviour,
 
         if (stackText != null)
         {
-            stackText.text = currentStacks.ToString();
+            stackText.text = effectType == StatusEffectType.Exposed
+                ? string.Empty
+                : currentStacks.ToString();
         }
     }
 
@@ -124,6 +126,9 @@ public class DebuffIconUI : MonoBehaviour,
             StatusEffectType.Weakness => Highlight(
                 "약화",
                 TooltipTextFormatter.WeaknessColor),
+            StatusEffectType.Exposed => Highlight(
+                "무방비",
+                TooltipTextFormatter.ExposedColor),
             _ => type.ToString()
         };
     }
@@ -164,6 +169,10 @@ public class DebuffIconUI : MonoBehaviour,
                 + $"현재 {stackText}: {countText} 동안 "
                 + $"{Highlight("공격력", TooltipTextFormatter.WeaknessColor)}이 "
                 + $"{Highlight("30% 감소", TooltipTextFormatter.DebuffColor)}합니다.",
+            StatusEffectType.Exposed =>
+                $"다음 {Highlight("피격", TooltipTextFormatter.DamageColor)}이 "
+                + $"{Highlight("크리티컬로 확정", TooltipTextFormatter.ExposedColor)}됩니다.\n\n"
+                + "한 번 피격되거나, 공격하지 않고 다른 행동을 하면 사라집니다.",
             _ => string.Empty
         };
     }

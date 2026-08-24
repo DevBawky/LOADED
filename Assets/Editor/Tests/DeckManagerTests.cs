@@ -190,6 +190,29 @@ public class DeckManagerTests
     }
 
     [Test]
+    public void CombatGuideExplainsDodgeAndExposedCritical()
+    {
+        FirstRunGuideContent.GuidePage[] pages =
+            FirstRunGuideContent.CombatSystemPages;
+
+        Assert.That(
+            System.Array.Exists(
+                pages,
+                page => page.Title.Contains("회피")
+                    && page.Description.Contains("무방비")
+                    && page.Description.Contains("크리티컬")),
+            Is.True);
+        Assert.That(
+            System.Array.Exists(
+                pages,
+                page => page.Title.Contains("디버프")
+                    && page.Description.Contains("무방비")
+                    && page.Description.Contains("비스택")
+                    && page.Description.Contains("다른 행동")),
+            Is.True);
+    }
+
+    [Test]
     public void UpdatedGuideRequiresOneTimeProgressReset()
     {
         Assert.That(
@@ -203,6 +226,9 @@ public class DeckManagerTests
             Is.True);
         Assert.That(
             FirstRunGuideController.RequiresGuideProgressReset(3),
+            Is.True);
+        Assert.That(
+            FirstRunGuideController.RequiresGuideProgressReset(4),
             Is.False);
     }
 
@@ -885,5 +911,73 @@ public sealed class CombatPresentationSignatureTests
         Assert.That(finalDevastating.UsesFinalExecutionSeal, Is.False);
         Assert.That(regularDefeat.UsesFinalExecutionSeal, Is.False);
         Assert.That(finalDefeat.UsesFinalExecutionSeal, Is.True);
+    }
+}
+
+public sealed class RunEntrySceneResolverTests
+{
+    [Test]
+    public void ContinueWithoutRunSnapshotResumesSelectedBattle()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.Continue,
+            false,
+            false,
+            true,
+            string.Empty);
+
+        Assert.That(sceneName, Is.EqualTo("Battle"));
+    }
+
+    [Test]
+    public void ContinueWithoutRunSnapshotAndSelectionReturnsToNodeMap()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.Continue,
+            false,
+            false,
+            false,
+            string.Empty);
+
+        Assert.That(sceneName, Is.EqualTo("NodeMap"));
+    }
+
+    [Test]
+    public void AwaitingSelectionKeepsValidRunOnNodeMap()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.Continue,
+            true,
+            true,
+            false,
+            "Battle");
+
+        Assert.That(sceneName, Is.EqualTo("NodeMap"));
+    }
+
+    [Test]
+    public void ValidRunResumesItsActiveNodeScene()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.Continue,
+            true,
+            false,
+            false,
+            "Treasure");
+
+        Assert.That(sceneName, Is.EqualTo("Treasure"));
+    }
+
+    [Test]
+    public void NewRunAlwaysStartsOnNodeMap()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.New,
+            false,
+            false,
+            true,
+            string.Empty);
+
+        Assert.That(sceneName, Is.EqualTo("NodeMap"));
     }
 }

@@ -108,6 +108,12 @@ internal static class FirstRunGuideContent
             "Image | Queue",
             TargetKind.TutorialEnemyAction),
         new GuidePage(
+            "회피와 무방비",
+            "적의 공격이 맞기 직전에 <color=#62D9FF><b>피격 범위 밖으로 이동</b></color>하면 회피합니다.\n회피에 실패한 적은 <color=#FF9F5A><b>무방비</b></color>가 되어 다음 피격이 크리티컬로 확정됩니다.\n무방비는 <color=#FFD05A><b>한 번 피격</b></color>되거나, 공격하지 않고 <color=#FF5757><b>다른 행동</b></color>을 하면 사라집니다.",
+            null,
+            "Image | Queue",
+            TargetKind.TutorialEnemyAction),
+        new GuidePage(
             "핵심 전략: 탄환 순서",
             "<color=#FFD05A><b>탄환 순서에 따라 피해량이 달라집니다.</b></color>\n실린더는 <color=#FFD05A><b>나중에 장전한 탄환부터</b></color> 발사하며, 탄환 효과도 앞뒤 순서와 연계됩니다.\n발사 전에 <color=#FF5757><b>마우스 드래그</b></color>로 순서를 바꾸고 <color=#FFD05A><b>예상 피해</b></color>를 비교하세요.",
             "Videos/Switch_Bullet_Queue.mp4",
@@ -126,7 +132,7 @@ internal static class FirstRunGuideContent
             "Image | Combo Timer BG"),
         new GuidePage(
             "디버프 종류",
-            "<color=#FF7D7D><b>표식: 받는 피해 50% 증가</b></color>\n<color=#78D987><b>독: COUNT 종료 시 스택만큼 피해, 이후 1 감소</b></color>\n<color=#75C7FF><b>기절: COUNT마다 행동 불가, 이후 1 감소</b></color>\n<color=#C69CFF><b>약화: 공격력 30% 감소</b></color>\n적에게 디버프가 있다면 아래와 같은 상태 아이콘이 표시됩니다.\n아이콘에 <color=#FF5757><b>마우스 커서를 올리면</b></color> 남은 스택을 확인할 수 있습니다.",
+            "<color=#FF7D7D><b>표식: 받는 피해 50% 증가</b></color>\n<color=#78D987><b>독: COUNT 종료 시 스택만큼 피해, 이후 1 감소</b></color>\n<color=#75C7FF><b>기절: COUNT마다 행동 불가, 이후 1 감소</b></color>\n<color=#C69CFF><b>약화: 공격력 30% 감소</b></color>\n<color=#FF9F5A><b>무방비: 회피 성공 시 공격한 적에게 적용되는 비스택 디버프. 다음 피격이 크리티컬로 확정되며, 첫 피격 또는 다른 행동 시 해제</b></color>\n적에게 디버프가 있다면 아래와 같은 상태 아이콘이 표시됩니다.\n아이콘에 <color=#FF5757><b>마우스 커서를 올리면</b></color> 효과를 확인할 수 있습니다.",
             null,
             null)
     };

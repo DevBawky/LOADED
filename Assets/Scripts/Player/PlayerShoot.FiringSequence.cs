@@ -755,6 +755,10 @@ public partial class PlayerShoot
                 || bulletData.CanTriggerCritical(
                     UnityEngine.Random.Range(0f, 100f),
                     criticalChanceBonus);
+            bool shotHasCriticalOutcome =
+                PlayerAttackDamageCalculator.ResolveCriticalForTarget(
+                    isCritical,
+                    HasExposedHitTarget());
             List<DamageReservation> shotReservations = hasViableTarget
                 ? ReserveProjectedHitDamage(
                     bulletData,
@@ -783,11 +787,11 @@ public partial class PlayerShoot
             }
     
             ShowBulletFeedback(bulletData);
-            if (isCritical && hasViableTarget)
+            if (shotHasCriticalOutcome && hasViableTarget)
             {
                 SoundManager.PlaySfx("SFX_Critical");
             }
-            SoundManager.PlaySfx(isCritical
+            SoundManager.PlaySfx(shotHasCriticalOutcome
                 ? "SFX_Player_Critical_Shoot"
                 : "SFX_Player_Shoot");
             combatFeedback?.RecordShotCameraShake();
@@ -797,7 +801,7 @@ public partial class PlayerShoot
             combatPresentation?.PlayShot(
                 firePoint,
                 bulletData,
-                isCritical,
+                shotHasCriticalOutcome,
                 horizontalDirection);
             yield return ApplyShotScopedEffects(bulletData, horizontalDirection);
             yield return ApplyHitResults(
@@ -815,9 +819,26 @@ public partial class PlayerShoot
                 bulletBlocker.HandlePlayerBulletImpact();
             }
             ReleaseProjectedDamage(shotReservations);
-            UpdateRitualFocus(isCritical && hasEnemyTarget);
-            HandleShotResult(bulletData, isCritical, generatesShells);
+            UpdateRitualFocus(shotHasCriticalOutcome && hasEnemyTarget);
+            HandleShotResult(
+                bulletData,
+                shotHasCriticalOutcome,
+                generatesShells);
             onCompleted?.Invoke(true);
+        }
+
+        private bool HasExposedHitTarget()
+        {
+            foreach (EnemyController enemy in hitBuffer)
+            {
+                if (enemy != null && enemy.CurrentHealth > 0
+                    && enemy.IsExposed)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     
         private void RecordSuccessfulShot(
@@ -1027,7 +1048,9 @@ public partial class PlayerShoot
                         CountActiveEnemies()));
                 int attackDamage = CalculateAttackDamage(
                     bullet,
-                    isCritical,
+                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
+                        isCritical,
+                        enemy.IsExposed),
                     damageMultiplier * targetDamageMultiplier,
                     activeShotIndex,
                     deckManager != null
@@ -1814,6 +1837,10 @@ public partial class PlayerShoot
                 int targetMaxHealth = enemy.MaxHealth;
                 bool hadDebuffBeforeHit = enemy.ActiveStatusTypeCount > 0;
                 bool defeatPresented = false;
+                bool targetIsCritical =
+                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
+                        isCritical,
+                        enemy.IsExposed);
                 float targetDamageMultiplier = GetTargetDamageMultiplier(
                     bulletData,
                     enemy,
@@ -1826,7 +1853,7 @@ public partial class PlayerShoot
                         CountActiveEnemies()));
                 int attackDamage = CalculateAttackDamage(
                     bulletData,
-                    isCritical,
+                    targetIsCritical,
                     damageMultiplier * targetDamageMultiplier,
                     activeShotIndex,
                     deckManager != null
@@ -1842,7 +1869,7 @@ public partial class PlayerShoot
                         0);
                 }
     
-                if (isCritical)
+                if (targetIsCritical)
                 {
                     yield return ApplyConditionalEvents(
                         bulletData,
@@ -1870,7 +1897,7 @@ public partial class PlayerShoot
                             horizontalDirection,
                             0,
                             targetMaxHealth,
-                            isCritical,
+                            targetIsCritical,
                             -1);
                     }
                     if (!preAttackEffectDefeatAlreadyRecorded
@@ -1893,10 +1920,15 @@ public partial class PlayerShoot
                     continue;
                 }
     
+                if (targetIsCritical && enemy.IsExposed)
+                {
+                    enemy.TryConsumeExposedForAttack();
+                }
+
                 int reportedDamage = enemy.PredictAttackDamage(attackDamage);
                 int appliedDamage = enemy.ApplyAttackDamage(
                     attackDamage,
-                    isCritical);
+                    targetIsCritical);
                 if (appliedDamage > 0)
                 {
                     enemiesHitThisTurn.Add(enemy.GetInstanceID());
@@ -1918,7 +1950,7 @@ public partial class PlayerShoot
                         horizontalDirection,
                         reportedDamage,
                         targetMaxHealth,
-                        isCritical,
+                        targetIsCritical,
                         healthBeforeHit);
                     PlayDefeatImpact(
                         enemySnapshot,
@@ -1933,7 +1965,7 @@ public partial class PlayerShoot
                         horizontalDirection,
                         bulletData,
                         CombatImpactTierUtility.Resolve(
-                            isCritical,
+                            targetIsCritical,
                             reportedDamage,
                             targetMaxHealth,
                             false));
@@ -1942,7 +1974,7 @@ public partial class PlayerShoot
                         horizontalDirection,
                         reportedDamage,
                         targetMaxHealth,
-                        isCritical,
+                        targetIsCritical,
                         GetCurrentCylinderBuild());
                 }
                 ManagedEffectDefeatResult managedEffectDefeat = default;
@@ -2047,7 +2079,7 @@ public partial class PlayerShoot
                                 defeatedByManagedEffect
                                     ? managedEffectDefeat.TargetMaxHealth
                                     : targetMaxHealth,
-                                isCritical,
+                                targetIsCritical,
                                 defeatedByManagedEffect
                                     ? managedEffectDefeat.HealthBeforeDamage
                                     : -1);

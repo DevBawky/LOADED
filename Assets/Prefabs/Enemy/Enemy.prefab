@@ -857,10 +857,12 @@ MonoBehaviour:
   poisonSprite: {fileID: 21300000, guid: 86232468d92097b408156a4014c572e1, type: 3}
   stunSprite: {fileID: 21300000, guid: 04244f927e52e344a879446e6c2cbdfa, type: 3}
   weaknessSprite: {fileID: 21300000, guid: d53a537fea9d1e348a6ae4348296310a, type: 3}
+  exposedSprite: {fileID: -8726798570721526752, guid: c4e124a8577ec8c4ebceee7ad1026db8, type: 3}
   markStacks: 0
   poisonStacks: 0
   stunStacks: 0
   weaknessStacks: 0
+  isExposed: 0
 --- !u!114 &700000000000000002
 MonoBehaviour:
   m_ObjectHideFlags: 0

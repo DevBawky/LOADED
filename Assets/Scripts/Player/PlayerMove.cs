@@ -75,6 +75,7 @@ public class PlayerMove : MonoBehaviour
     public event Action<PlayerMovementContext> PlayerMoved;
     public event Action<int> PushCooldownChanged;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
+    public event Action DodgeSucceededDuringAction;
     public event Action PushPerformed;
 
     public int TurnCount { get; private set; }
@@ -157,6 +158,24 @@ public class PlayerMove : MonoBehaviour
     internal void SetDuelClockActive(bool active)
     {
         isDuelClockActive = active;
+    }
+
+    internal bool TryNotifyDodgeSucceededDuringAction()
+    {
+        if (!CanReportDodgeForCurrentAction(isActing, isShooting))
+        {
+            return false;
+        }
+
+        DodgeSucceededDuringAction?.Invoke();
+        return true;
+    }
+
+    internal static bool CanReportDodgeForCurrentAction(
+        bool isActing,
+        bool isShooting)
+    {
+        return isActing && !isShooting;
     }
 
     private void OnDisable()

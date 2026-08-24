@@ -78,7 +78,8 @@ public partial class PlayerShoot : MonoBehaviour
         {
             Enemy = enemy;
             RemainingHealth = enemy == null ? 0 : enemy.CurrentHealth;
-            StatusStacks = new int[4];
+            StatusStacks = new int[
+                StatusEffectController.StackableStatusTypeCount];
             Segments = new List<
                 EnemyHealthBarFeedback.DamagePreviewSegment>();
 
@@ -90,8 +91,10 @@ public partial class PlayerShoot : MonoBehaviour
             for (int index = 0; index < StatusStacks.Length; index++)
             {
                 StatusStacks[index] = enemy.GetStatusStacks(
-                    (StatusEffectType)index);
+                    StatusEffectController.GetStackableStatusType(index));
             }
+
+            IsExposed = enemy.IsExposed;
         }
 
         public EnemyController Enemy { get; }
@@ -99,6 +102,7 @@ public partial class PlayerShoot : MonoBehaviour
         public int TileIndex { get; set; } = -1;
         public int[] StatusStacks { get; }
         public bool WasHitThisTurn { get; set; }
+        public bool IsExposed { get; set; }
         public List<EnemyHealthBarFeedback.DamagePreviewSegment> Segments
         {
             get;
@@ -118,7 +122,7 @@ public partial class PlayerShoot : MonoBehaviour
                     }
                 }
 
-                return count;
+                return count + (IsExposed ? 1 : 0);
             }
         }
 
@@ -131,6 +135,11 @@ public partial class PlayerShoot : MonoBehaviour
                 foreach (int stacks in StatusStacks)
                 {
                     total += stacks;
+                }
+
+                if (IsExposed && total < int.MaxValue)
+                {
+                    total++;
                 }
 
                 return total >= int.MaxValue ? int.MaxValue : (int)total;

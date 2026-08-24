@@ -20,6 +20,7 @@ public class EnemyDataEditor : Editor
     private SerializedProperty maxQueuedAttacks;
     private SerializedProperty queuedActionInterval;
     private SerializedProperty queueElementRevealDuration;
+    private SerializedProperty attackDodgeWindowDuration;
     private SerializedProperty firingRange;
     private SerializedProperty recoveryTurns;
     private SerializedProperty maxSupportCharges;
@@ -63,6 +64,7 @@ public class EnemyDataEditor : Editor
         maxQueuedAttacks = Find("maxQueuedAttacks");
         queuedActionInterval = Find("queuedActionInterval");
         queueElementRevealDuration = Find("queueElementRevealDuration");
+        attackDodgeWindowDuration = Find("attackDodgeWindowDuration");
         firingRange = Find("firingRange");
         recoveryTurns = Find("recoveryTurns");
         maxSupportCharges = Find("maxSupportCharges");
@@ -108,7 +110,8 @@ public class EnemyDataEditor : Editor
             maxHealth,
             maxQueuedAttacks,
             queuedActionInterval,
-            queueElementRevealDuration);
+            queueElementRevealDuration,
+            attackDodgeWindowDuration);
 
         EditorGUILayout.Space(6f);
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);

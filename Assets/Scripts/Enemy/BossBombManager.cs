@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -20,9 +21,11 @@ public class BossBombManager : MonoBehaviour
     private CombatFeedbackController combatFeedback;
     private bool bombsPaused;
     private bool isProcessingDetonations;
+    private int pendingExplosionResolutions;
 
     public IReadOnlyList<BossBomb> ActiveBombs => activeBombs;
     public BoardManager BoardManager => boardManager;
+    internal bool IsResolvingExplosions => pendingExplosionResolutions > 0;
 
     public void Initialize(
         WaveManager assignedWaveManager,
@@ -42,7 +45,6 @@ public class BossBombManager : MonoBehaviour
 
         if (waveManager != null)
         {
-            waveManager.EnemyTurnCycleCompleted += HandleEnemyTurnCycleCompleted;
             waveManager.BattleCompleted += ClearAll;
             waveManager.BattleFailed += ClearAll;
         }
@@ -232,15 +234,21 @@ public class BossBombManager : MonoBehaviour
     public void PauseForBossDefeat()
     {
         bombsPaused = true;
+        StopAllCoroutines();
         detonationQueue.Clear();
         queuedDetonations.Clear();
+        isProcessingDetonations = false;
+        pendingExplosionResolutions = 0;
     }
 
     public void ClearAll()
     {
         bombsPaused = true;
+        StopAllCoroutines();
         detonationQueue.Clear();
         queuedDetonations.Clear();
+        isProcessingDetonations = false;
+        pendingExplosionResolutions = 0;
 
         BossBomb[] snapshot = activeBombs.ToArray();
         activeBombs.Clear();
@@ -280,7 +288,7 @@ public class BossBombManager : MonoBehaviour
         }
     }
 
-    private void HandleEnemyTurnCycleCompleted(int completedTurnCycle)
+    internal void ProcessEnemyTurnCycleEnd(int completedTurnCycle)
     {
         if (bombsPaused)
         {
@@ -312,6 +320,8 @@ public class BossBombManager : MonoBehaviour
             EnemyData sourceData = bomb.SourceData;
             int centerTile = bomb.TileIndex;
             int radius = sourceData.BigBarrel.BombExplosionRadius;
+            EnemyPlayerDodgeWindowState dodgeState =
+                CapturePlayerDodgeWindow(centerTile, radius);
             SoundManager.PlaySfx("SFX_BigBarrel_Bomb");
             combatFeedback ??=
                 FindFirstObjectByType<CombatFeedbackController>();
@@ -321,13 +331,207 @@ public class BossBombManager : MonoBehaviour
                 centerTile,
                 radius);
             QueueChainBombs(centerTile, radius, bomb);
-            ApplyExplosionDamage(sourceData, centerTile, radius);
-            RemoveBomb(bomb);
+            pendingExplosionResolutions++;
+            StartCoroutine(ResolveExplosionAfterDodgeWindow(
+                bomb,
+                sourceData,
+                centerTile,
+                radius,
+                dodgeState));
         }
 
         detonationQueue.Clear();
         queuedDetonations.Clear();
         isProcessingDetonations = false;
+    }
+
+    private IEnumerator ResolveExplosionAfterDodgeWindow(
+        BossBomb bomb,
+        EnemyData sourceData,
+        int centerTile,
+        int radius,
+        EnemyPlayerDodgeWindowState dodgeState)
+    {
+        float elapsedTime = 0f;
+        EnemyPlayerDodgeResolution dodgeResolution = default;
+        float dodgeWindowDuration = sourceData == null
+            ? EnemyData.DefaultAttackDodgeWindowDuration
+            : sourceData.AttackDodgeWindowDuration;
+
+        while (elapsedTime < dodgeWindowDuration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+                TryConfirmPlayerDodge(
+                    dodgeState,
+                    IsPlayerThreatened(centerTile, radius),
+                    sourceData,
+                    ref dodgeResolution);
+            }
+        }
+
+        if (bombsPaused || bomb == null || sourceData == null
+            || !activeBombs.Contains(bomb))
+        {
+            pendingExplosionResolutions = Mathf.Max(
+                0,
+                pendingExplosionResolutions - 1);
+            yield break;
+        }
+
+        pendingExplosionResolutions = Mathf.Max(
+            0,
+            pendingExplosionResolutions - 1);
+        ResolvePlayerDodgeAtImpact(
+            dodgeState,
+            IsPlayerThreatened(centerTile, radius),
+            sourceData,
+            ref dodgeResolution);
+        ApplyExplosionDamage(
+            sourceData,
+            centerTile,
+            radius,
+            dodgeResolution.PlayerDodged);
+
+        if (!bombsPaused && bomb != null && activeBombs.Contains(bomb))
+        {
+            RemoveBomb(bomb);
+        }
+    }
+
+    private EnemyPlayerDodgeWindowState CapturePlayerDodgeWindow(
+        int centerTile,
+        int radius)
+    {
+        if (!IsPlayerThreatened(centerTile, radius)
+            || boardManager == null || playerMove == null
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex))
+        {
+            return default;
+        }
+
+        return new EnemyPlayerDodgeWindowState(
+            true,
+            playerTileIndex,
+            playerMove.transform.position);
+    }
+
+    private bool IsPlayerThreatened(int centerTile, int radius)
+    {
+        return boardManager != null && playerMove != null
+            && boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex)
+            && Mathf.Abs(playerTileIndex - centerTile) <= radius;
+    }
+
+    private bool TryConfirmPlayerDodge(
+        EnemyPlayerDodgeWindowState dodgeState,
+        bool playerIsThreatened,
+        EnemyData sourceData,
+        ref EnemyPlayerDodgeResolution resolution)
+    {
+        if (boardManager == null || playerMove == null)
+        {
+            return false;
+        }
+
+        if (!boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int currentPlayerTileIndex))
+        {
+            return false;
+        }
+
+        if (!resolution.TryConfirmBeforeImpact(
+                dodgeState,
+                playerIsThreatened,
+                currentPlayerTileIndex,
+                playerMove.transform.position,
+                out int movementDirection))
+        {
+            return false;
+        }
+
+        HandlePlayerDodgeConfirmed(
+            dodgeState,
+            movementDirection,
+            sourceData);
+        return true;
+    }
+
+    private void ResolvePlayerDodgeAtImpact(
+        EnemyPlayerDodgeWindowState dodgeState,
+        bool playerIsThreatened,
+        EnemyData sourceData,
+        ref EnemyPlayerDodgeResolution resolution)
+    {
+        int currentPlayerTileIndex = -1;
+        Vector3 currentPlayerPosition = playerMove == null
+            ? dodgeState.PlayerPosition
+            : playerMove.transform.position;
+
+        if (boardManager != null && playerMove != null)
+        {
+            boardManager.TryGetTileIndex(
+                currentPlayerPosition,
+                out currentPlayerTileIndex);
+        }
+
+        if (resolution.ResolveAtImpact(
+                dodgeState,
+                playerIsThreatened,
+                currentPlayerTileIndex,
+                currentPlayerPosition,
+                out int movementDirection))
+        {
+            HandlePlayerDodgeConfirmed(
+                dodgeState,
+                movementDirection,
+                sourceData);
+        }
+    }
+
+    private void HandlePlayerDodgeConfirmed(
+        EnemyPlayerDodgeWindowState dodgeState,
+        int movementDirection,
+        EnemyData sourceData)
+    {
+        if (playerMove == null)
+        {
+            return;
+        }
+
+        ApplyExposedToSourceEnemy(sourceData);
+        playerMove.TryNotifyDodgeSucceededDuringAction();
+        combatFeedback ??= playerMove.GetComponent<
+            CombatFeedbackController>();
+        combatFeedback?.RecordPlayerDodge(
+            dodgeState.PlayerPosition,
+            movementDirection);
+    }
+
+    private void ApplyExposedToSourceEnemy(EnemyData sourceData)
+    {
+        if (sourceData == null || waveManager == null)
+        {
+            return;
+        }
+
+        foreach (EnemyController enemy in waveManager.ActiveEnemies)
+        {
+            if (enemy != null && enemy.CurrentHealth > 0
+                && enemy.Data == sourceData)
+            {
+                enemy.ApplyExposedFromDodge();
+                return;
+            }
+        }
     }
 
     private void SpawnExplosionVfxOnAffectedTiles(
@@ -390,11 +594,12 @@ public class BossBombManager : MonoBehaviour
     private void ApplyExplosionDamage(
         EnemyData sourceData,
         int centerTile,
-        int radius)
+        int radius,
+        bool playerDodged)
     {
         BigBarrelSettings settings = sourceData.BigBarrel;
 
-        if (playerMove != null && playerHealth != null
+        if (!playerDodged && playerMove != null && playerHealth != null
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
                 out int playerTile)
@@ -445,7 +650,6 @@ public class BossBombManager : MonoBehaviour
     {
         if (waveManager != null)
         {
-            waveManager.EnemyTurnCycleCompleted -= HandleEnemyTurnCycleCompleted;
             waveManager.BattleCompleted -= ClearAll;
             waveManager.BattleFailed -= ClearAll;
         }

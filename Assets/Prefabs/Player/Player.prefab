@@ -333,6 +333,7 @@ MonoBehaviour:
   playerAnimator: {fileID: 4868757420946430006}
   pushVisualTransform: {fileID: 4964929205706624946}
   combatFeedback: {fileID: 0}
+  relicManager: {fileID: 0}
   pushCollisionDamageRatio: 0.2
   pushFlightDuration: 0.1
   pushCollisionImpactRatio: 0.5
@@ -403,6 +404,7 @@ MonoBehaviour:
   currencyManager: {fileID: 0}
   playerMove: {fileID: 8556440550991854019}
   playerHealth: {fileID: 6372297391433345502}
+  relicManager: {fileID: 0}
   boardManager: {fileID: 0}
   waveManager: {fileID: 0}
   firePoint: {fileID: 1546687425952665600}
@@ -429,30 +431,31 @@ MonoBehaviour:
   presentationEnabled: 1
   intensity: 1
   muzzleFlashMaterial: {fileID: 2100000, guid: f1c86dd4d205416f8f35278a9f533a85, type: 2}
-  screenPulseMaterial: {fileID: 2100000, guid: 38dfebce80944472a967f9f8f6d1dcb6, type: 2}
   muzzleFlashDuration: 0.11
   muzzleFlashSize: 0.01
   muzzleRayCount: 7
-  shotScreenFlashAlpha: 0.05
-  shotScreenPulseDuration: 0.1
-  shotScreenPulseIntensity: 0.1
   muzzleEmberCount: 9
   shotHitStopDuration: 0.012
   hitStopDuration: 0.035
   criticalHitStopDuration: 0.055
   devastatingHitStopDuration: 0.068
-  hitFlashDuration: 0.085
   hitSparkCount: 12
   criticalSparkCount: 9
   devastatingSparkCount: 14
   impactStreakCount: 4
-  devastatingScreenFlashAlpha: 0.1
+  normalSnapDuration: 0.09
+  criticalPrecisionDuration: 0.14
+  devastatingCompressionDuration: 0.18
+  devastatingSecondaryWaveDelay: 0.045
+  devastatingSecondaryWaveDuration: 0.2
   defeatHitStopDuration: 0.075
   defeatAfterimageDuration: 0.32
   defeatKnockbackDistance: 0.42
   defeatLiftHeight: 0.22
   defeatSparkCount: 24
-  defeatScreenFlashAlpha: 0.2
+  defeatSilhouetteHoldDuration: 0.055
+  defeatSilhouetteDuration: 0.26
+  finalDefeatDurationMultiplier: 1.45
   defeatDustColor: {r: 0.72, g: 0.35, b: 0.12, a: 1}
 --- !u!114 &700000000000000021
 MonoBehaviour:
@@ -466,14 +469,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7d8f5e19a3b4e0e9f1a2b3c4d5e6f70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CombatFeedbackController
-  comboTurnLimit: 8
-  turnDrainDuration: 0.2
+  comboCountLimit: 8
+  countDrainDuration: 0.2
   comboLowColor: {r: 1, g: 1, b: 1, a: 1}
   comboMidColor: {r: 1, g: 0.42, b: 0.12, a: 1}
   comboCriticalColor: {r: 1, g: 0.18, b: 0.08, a: 1}
   firingSequenceFeedbackStrengthPerKill: 0.2
+  defeatPresentationInterval: 0.18
   killComboTextPrefab: {fileID: 6304521783619051883, guid: e42db836b5444fe59470033ca0bc92a1, type: 3}
-  comboGoldPerKill: 5
+  comboGoldPerKill: 2
   killComboTextDuration: 2
   killComboTextDurationPerAdditionalKill: 0.12
   maximumKillComboTextDurationBonus: 2
@@ -482,6 +486,30 @@ MonoBehaviour:
   secondKillTextColor: {r: 0, g: 1, b: 0.100815535, a: 1}
   highComboTextColor: {r: 1, g: 0.058823526, b: 0.9856514, a: 1}
   kickReadyTextColor: {r: 0.5424528, g: 0.8952603, b: 1, a: 1}
+  bulletDestroyedTextColor: {r: 0.2, g: 0.22, b: 0.24, a: 1}
+  dodgeTextColor: {r: 0.45, g: 0.92, b: 1, a: 1}
+  dodgeTextDuration: 0.5
+  dodgeTextScale: 0.92
+  dodgeSustainedEffectDuration: 0.7
+  dodgeFullscreenDuration: 0.25
+  dodgeFullscreenIntensity: 0.8
+  dodgeSlowMotionScale: 0.1
+  dodgeInitialSlowMotionScale: 0.05
+  dodgeInitialSlowMotionDuration: 0.1
+  dodgeSlowMotionGlideDuration: 0.16
+  dodgeSlowMotionHold: 0.75
+  dodgeSlowMotionRecovery: 0.15
+  dodgeVolumeStrength: 0.82
+  dodgeVolumeDuration: 0.22
+  dodgeChromaticMultiplier: 1.15
+  dodgeBloomMultiplier: 0.55
+  dodgeVignetteMultiplier: 3
+  dodgeLensDistortionMultiplier: 1.35
+  dodgeContrastMultiplier: 3
+  dodgeAfterimageCount: 6
+  dodgeAfterimageInterval: 0.01
+  dodgeAfterimageDuration: 0.3
+  dodgeOriginGhostDuration: 0.6
   killSlowMotionScale: 0.1
   killSlowMotionHold: 0.18
   killSlowMotionRecovery: 0.18
@@ -503,8 +531,6 @@ MonoBehaviour:
   shotShakeMultiplier: 0.5
   explosionShakeMultiplier: 1.5
   killShakeMultiplier: 1
-  secondComboKillShakeMultiplier: 1.15
-  laterComboKillShakeMultiplier: 1.3
   volumePulseDuration: 0.8
   chromaticBoost: 1
   bloomBoost: 3
@@ -559,6 +585,8 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   playerAnimator: {fileID: 4868757420946430006}
+  relicManager: {fileID: 0}
+  luckyChamberEffectColor: {r: 0.25, g: 1, b: 0.42, a: 1}
   rotationStep: 60
   rotationDuration: 0.1
   reloadPunchScale: 1.18

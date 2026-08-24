@@ -15,6 +15,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private const string ComboTextName = "Text | Combo";
     private const string ComboCountRootName = "Image | Combo Timer BG";
     private const string CurrentDamageTextName = "Text | Current Damage";
+    private const string DodgeSfxId = "SFX_Evade";
     private const float BaseKillTier = 0.12f;
     private static readonly int FullscreenCentersId =
         Shader.PropertyToID("_KillImpactCenters");
@@ -145,6 +146,54 @@ public sealed class CombatFeedbackController : MonoBehaviour
         new Color(0.35f, 0.85f, 1f, 1f);
     [SerializeField] private Color bulletDestroyedTextColor =
         new Color(0.2f, 0.22f, 0.24f, 1f);
+
+    [Header("Player Dodge")]
+    [SerializeField] private Color dodgeTextColor =
+        new Color(0.45f, 0.92f, 1f, 1f);
+    [Min(0.05f)]
+    [SerializeField] private float dodgeTextDuration = 0.42f;
+    [Min(0.01f)]
+    [SerializeField] private float dodgeTextScale = 0.92f;
+    [Min(0.05f)]
+    [SerializeField] private float dodgeSustainedEffectDuration = 0.5f;
+    [Min(0.05f)]
+    [SerializeField] private float dodgeFullscreenDuration = 0.18f;
+    [Range(0f, 1f)]
+    [SerializeField] private float dodgeFullscreenIntensity = 0.46f;
+    [Range(0.05f, 1f)]
+    [SerializeField] private float dodgeSlowMotionScale = 0.18f;
+    [Range(0.01f, 1f)]
+    [SerializeField] private float dodgeInitialSlowMotionScale = 0.05f;
+    [Min(0f)]
+    [SerializeField] private float dodgeInitialSlowMotionDuration = 0.05f;
+    [Min(0.01f)]
+    [SerializeField] private float dodgeSlowMotionGlideDuration = 0.08f;
+    [Min(0f)]
+    [SerializeField] private float dodgeSlowMotionHold = 0.1f;
+    [Min(0.01f)]
+    [SerializeField] private float dodgeSlowMotionRecovery = 0.08f;
+    [Range(0f, 1f)]
+    [SerializeField] private float dodgeVolumeStrength = 0.82f;
+    [Min(0.05f)]
+    [SerializeField] private float dodgeVolumeDuration = 0.22f;
+    [Range(0f, 3f)]
+    [SerializeField] private float dodgeChromaticMultiplier = 1.15f;
+    [Range(0f, 3f)]
+    [SerializeField] private float dodgeBloomMultiplier = 0.55f;
+    [Range(0f, 3f)]
+    [SerializeField] private float dodgeVignetteMultiplier = 2.4f;
+    [Range(0f, 3f)]
+    [SerializeField] private float dodgeLensDistortionMultiplier = 1.35f;
+    [Range(0f, 3f)]
+    [SerializeField] private float dodgeContrastMultiplier = 0.45f;
+    [Range(1, 6)]
+    [SerializeField] private int dodgeAfterimageCount = 5;
+    [Min(0.01f)]
+    [SerializeField] private float dodgeAfterimageInterval = 0.07f;
+    [Min(0.05f)]
+    [SerializeField] private float dodgeAfterimageDuration = 0.32f;
+    [Min(0.05f)]
+    [SerializeField] private float dodgeOriginGhostDuration = 0.48f;
 
     [Header("Kill Motion")]
     [Range(0.05f, 1f)]
@@ -312,14 +361,22 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private float slowMotionTargetScale = 1f;
     private float slowMotionAttackDuration;
     private float slowMotionHoldDuration;
+    private bool slowMotionHasSecondaryPhase;
+    private float slowMotionSecondaryTargetScale = 1f;
+    private float slowMotionSecondaryTransitionDuration;
+    private float slowMotionSecondaryHoldDuration;
     private float slowMotionRecoveryDuration;
     private float slowMotionElapsed;
     private float defeatPresentationClock;
     private float nextDefeatPresentationTime;
+    private float lastDodgeFeedbackTime = float.NegativeInfinity;
     private int defeatPresentationGeneration;
     private CurrencyManager currencyManager;
     private readonly List<GameObject> spawnedComboTexts =
         new List<GameObject>();
+    private readonly List<GameObject> activeDodgeAfterimages =
+        new List<GameObject>();
+    private Coroutine dodgeTrailCoroutine;
 
     public event System.Action<int, int, float> DefeatPerformanceRecorded;
 
@@ -462,6 +519,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         ResetFullscreenImpact();
         ResetUiTransforms();
         ClearComboKillTexts();
+        ClearDodgeAfterimages();
         defeatPresentationGeneration++;
         nextDefeatPresentationTime = defeatPresentationClock;
     }
@@ -1008,6 +1066,73 @@ public sealed class CombatFeedbackController : MonoBehaviour
             killComboTextDuration);
     }
 
+    public void RecordPlayerDodge(
+        Vector3 dodgeOrigin,
+        int horizontalDirection)
+    {
+        const float duplicateGuardDuration = 0.05f;
+
+        if (Time.unscaledTime - lastDodgeFeedbackTime
+            < duplicateGuardDuration)
+        {
+            return;
+        }
+
+        lastDodgeFeedbackTime = Time.unscaledTime;
+        int direction = horizontalDirection == 0
+            ? 1
+            : horizontalDirection;
+        float sustainedEffectDuration = CalculateDodgePresentationDuration(
+            dodgeSustainedEffectDuration,
+            dodgeFullscreenDuration,
+            dodgeVolumeDuration);
+        SoundManager.PlaySfx(DodgeSfxId);
+        SpawnAnimatedCombatText(
+            "Text | Player Dodge",
+            "회피!",
+            dodgeTextColor,
+            dodgeOrigin,
+            dodgeTextScale,
+            dodgeTextDuration,
+            direction,
+            true);
+        StartDodgeAfterimages(
+            dodgeOrigin,
+            direction,
+            dodgeTextColor,
+            dodgeAfterimageCount,
+            dodgeAfterimageInterval,
+            dodgeAfterimageDuration,
+            dodgeOriginGhostDuration);
+        StartDodgeSlowMotion();
+        StartDodgeVolumePulse(sustainedEffectDuration);
+        QueueFullscreenImpact(
+            dodgeOrigin,
+            direction,
+            dodgeFullscreenIntensity,
+            sustainedEffectDuration,
+            CombatImpactTier.Critical,
+            dodgeTextColor,
+            false,
+            1f,
+            true);
+        CombatCameraShake.Play(
+            cameraShakeStrength * 0.32f,
+            cameraShakeDuration * 0.65f);
+    }
+
+    internal static float CalculateDodgePresentationDuration(
+        float sustainedDuration,
+        float fullscreenDuration,
+        float volumeDuration)
+    {
+        return Mathf.Max(
+            0.05f,
+            sustainedDuration,
+            fullscreenDuration,
+            volumeDuration);
+    }
+
     public void RecordBulletDestroyed(Vector3 worldPosition)
     {
         SpawnAnimatedCombatText(
@@ -1025,7 +1150,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
         Color color,
         Vector3 worldPosition,
         float scaleMultiplier,
-        float duration)
+        float duration,
+        int horizontalDirection = 0,
+        bool useDodgeMotion = false)
     {
         TextMeshPro text;
         GameObject textObject;
@@ -1068,24 +1195,112 @@ public sealed class CombatFeedbackController : MonoBehaviour
         Vector3 targetScale = prefabScale * Mathf.Max(0.01f, scaleMultiplier);
         textObject.transform.localScale = targetScale * 0.12f;
         spawnedComboTexts.Add(textObject);
-        StartCoroutine(AnimateKillComboText(
-            textObject,
-            text,
-            targetScale,
-            Mathf.Max(0.01f, duration)));
+
+        if (useDodgeMotion)
+        {
+            StartCoroutine(AnimateDodgeCombatText(
+                textObject,
+                text,
+                targetScale,
+                Mathf.Max(0.01f, duration),
+                horizontalDirection));
+        }
+        else
+        {
+            StartCoroutine(AnimateKillComboText(
+                textObject,
+                text,
+                targetScale,
+                Mathf.Max(0.01f, duration),
+                horizontalDirection));
+        }
+    }
+
+    private IEnumerator AnimateDodgeCombatText(
+        GameObject textObject,
+        TextMeshPro text,
+        Vector3 targetScale,
+        float duration,
+        int horizontalDirection)
+    {
+        Vector3 startPosition = textObject.transform.position;
+        Quaternion startRotation = textObject.transform.rotation;
+        Color startColor = text.color;
+        float direction = horizontalDirection == 0
+            ? 1f
+            : Mathf.Sign(horizontalDirection);
+        float elapsed = 0f;
+
+        while (elapsed < duration && textObject != null)
+        {
+            yield return null;
+
+            if (textObject == null || text == null)
+            {
+                yield break;
+            }
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float entrance = Mathf.Clamp01(progress / 0.16f);
+            float entranceEase = 1f - Mathf.Pow(1f - entrance, 4f);
+            float overshoot = Mathf.Sin(entrance * Mathf.PI) * 0.5f;
+            float release = Mathf.InverseLerp(0.42f, 1f, progress);
+            float releaseEase = Mathf.SmoothStep(0f, 1f, release);
+            Vector3 settledScale = targetScale
+                * (Mathf.Lerp(0.12f, 1f, entranceEase) + overshoot);
+            Vector3 releasedScale = new Vector3(
+                targetScale.x * 1.22f,
+                targetScale.y * 0.82f,
+                targetScale.z);
+            textObject.transform.localScale = Vector3.Lerp(
+                settledScale,
+                releasedScale,
+                releaseEase);
+            textObject.transform.rotation = startRotation
+                * Quaternion.Euler(
+                    0f,
+                    0f,
+                    -direction * Mathf.Sin(progress * Mathf.PI) * 7f
+                        * (1f - releaseEase));
+            textObject.transform.position = startPosition + new Vector3(
+                direction * Mathf.Lerp(0f, 0.38f, releaseEase),
+                Mathf.Lerp(0f, 0.28f, Mathf.SmoothStep(0f, 1f, progress)),
+                0f);
+            Color color = startColor;
+            color.a = 1f - releaseEase;
+            text.color = color;
+        }
+
+        spawnedComboTexts.Remove(textObject);
+
+        if (textObject != null)
+        {
+            Destroy(textObject);
+        }
     }
 
     private IEnumerator AnimateKillComboText(
         GameObject textObject,
         TextMeshPro text,
         Vector3 targetScale,
-        float duration)
+        float duration,
+        int horizontalDirection)
     {
         Vector3 startPosition = textObject.transform.position;
         Quaternion startRotation = textObject.transform.rotation;
         Color startColor = text.color;
-        float horizontalDrift = Random.Range(-0.12f, 0.12f);
-        float rotationDirection = Random.value < 0.5f ? -1f : 1f;
+        float horizontalDrift = horizontalDirection == 0
+            ? Random.Range(-0.12f, 0.12f)
+            : Mathf.Sign(horizontalDirection) * 0.18f;
+        float rotationDirection = horizontalDirection == 0
+            ? Random.value < 0.5f ? -1f : 1f
+            : -Mathf.Sign(horizontalDirection);
         float elapsed = 0f;
 
         while (elapsed < duration && textObject != null)
@@ -1158,6 +1373,294 @@ public sealed class CombatFeedbackController : MonoBehaviour
         }
 
         spawnedComboTexts.Clear();
+    }
+
+    private void StartDodgeAfterimages(
+        Vector3 dodgeOrigin,
+        int horizontalDirection,
+        Color accentColor,
+        int authoredCount,
+        float interval,
+        float duration,
+        float originGhostDuration)
+    {
+        if (GamePauseController.IsPaused || authoredCount <= 0
+            || duration <= 0f)
+        {
+            return;
+        }
+
+        SpriteRenderer[] sources =
+            GetComponentsInChildren<SpriteRenderer>(true);
+        int afterimageCount = CalculateDodgeAfterimageCount(
+            authoredCount,
+            CombatAccessibilitySettings.ParticleDensityMultiplier);
+
+        if (afterimageCount <= 0 || sources.Length == 0)
+        {
+            return;
+        }
+
+        if (dodgeTrailCoroutine != null)
+        {
+            StopCoroutine(dodgeTrailCoroutine);
+            dodgeTrailCoroutine = null;
+        }
+
+        Vector3 travel = ResolveDodgeTravel(
+            transform.position - dodgeOrigin,
+            horizontalDirection);
+        Vector3 originOffset = dodgeOrigin - transform.position;
+
+        foreach (SpriteRenderer source in sources)
+        {
+            if (!IsValidDodgeAfterimageSource(source))
+            {
+                continue;
+            }
+
+            SpawnDodgeAfterimage(
+                source,
+                originOffset,
+                travel,
+                accentColor,
+                0,
+                afterimageCount,
+                Mathf.Max(duration, originGhostDuration),
+                true);
+        }
+
+        dodgeTrailCoroutine = StartCoroutine(DodgeTrailRoutine(
+            sources,
+            dodgeOrigin,
+            horizontalDirection,
+            accentColor,
+            afterimageCount,
+            Mathf.Max(0.01f, interval),
+            duration));
+    }
+
+    private IEnumerator DodgeTrailRoutine(
+        SpriteRenderer[] sources,
+        Vector3 dodgeOrigin,
+        int horizontalDirection,
+        Color accentColor,
+        int afterimageCount,
+        float interval,
+        float duration)
+    {
+        for (int afterimageIndex = 0;
+             afterimageIndex < afterimageCount;
+             afterimageIndex++)
+        {
+            if (afterimageIndex > 0)
+            {
+                yield return WaitForDodgeTrailInterval(interval);
+            }
+
+            Vector3 travel = ResolveDodgeTravel(
+                transform.position - dodgeOrigin,
+                horizontalDirection);
+
+            foreach (SpriteRenderer source in sources)
+            {
+                if (!IsValidDodgeAfterimageSource(source))
+                {
+                    continue;
+                }
+
+                SpawnDodgeAfterimage(
+                    source,
+                    Vector3.zero,
+                    travel,
+                    accentColor,
+                    afterimageIndex,
+                    afterimageCount,
+                    duration,
+                    false);
+            }
+        }
+
+        dodgeTrailCoroutine = null;
+    }
+
+    private static IEnumerator WaitForDodgeTrailInterval(float duration)
+    {
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsed += Time.unscaledDeltaTime;
+            }
+        }
+    }
+
+    private static bool IsValidDodgeAfterimageSource(
+        SpriteRenderer source)
+    {
+        return source != null && source.enabled && source.sprite != null;
+    }
+
+    private static Vector3 ResolveDodgeTravel(
+        Vector3 travel,
+        int horizontalDirection)
+    {
+        if (travel.sqrMagnitude > 0.0001f)
+        {
+            return travel;
+        }
+
+        int direction = horizontalDirection == 0
+            ? 1
+            : horizontalDirection;
+        return Vector3.right * direction * 0.5f;
+    }
+
+    internal static int CalculateDodgeAfterimageCount(
+        int authoredCount,
+        float densityMultiplier)
+    {
+        if (authoredCount <= 0 || densityMultiplier <= 0f)
+        {
+            return 0;
+        }
+
+        return Mathf.Clamp(
+            Mathf.RoundToInt(authoredCount * densityMultiplier),
+            1,
+            authoredCount);
+    }
+
+    private void SpawnDodgeAfterimage(
+        SpriteRenderer source,
+        Vector3 positionOffset,
+        Vector3 travel,
+        Color accentColor,
+        int afterimageIndex,
+        int afterimageCount,
+        float duration,
+        bool isOriginGhost)
+    {
+        GameObject afterimage = new GameObject(
+            isOriginGhost
+                ? "Sprite | Dodge Origin Ghost"
+                : $"Sprite | Dodge Afterimage {afterimageIndex + 1}");
+        afterimage.transform.position = source.transform.position
+            + positionOffset;
+        afterimage.transform.rotation = source.transform.rotation;
+        afterimage.transform.localScale = source.transform.lossyScale;
+
+        SpriteRenderer renderer = afterimage.AddComponent<SpriteRenderer>();
+        renderer.sprite = source.sprite;
+        renderer.sharedMaterial = source.sharedMaterial;
+        renderer.flipX = source.flipX;
+        renderer.flipY = source.flipY;
+        renderer.drawMode = source.drawMode;
+        renderer.size = source.size;
+        renderer.maskInteraction = source.maskInteraction;
+        renderer.sortingLayerID = source.sortingLayerID;
+        renderer.sortingOrder = source.sortingOrder
+            - afterimageIndex - (isOriginGhost ? 1 : 2);
+
+        float normalizedIndex = afterimageCount <= 1
+            ? 0f
+            : afterimageIndex / (float)(afterimageCount - 1);
+        Color color = Color.Lerp(
+            source.color,
+            accentColor,
+            isOriginGhost ? 0.9f : 0.76f);
+        color.a = (isOriginGhost
+                ? 0.82f
+                : Mathf.Lerp(0.72f, 0.28f, normalizedIndex))
+            * CombatAccessibilitySettings.FlashMultiplier;
+        renderer.color = color;
+        activeDodgeAfterimages.Add(afterimage);
+        StartCoroutine(AnimateDodgeAfterimage(
+            afterimage,
+            renderer,
+            color,
+            isOriginGhost
+                ? Vector3.zero
+                : -travel.normalized
+                    * Mathf.Lerp(0.08f, 0.16f, normalizedIndex),
+            isOriginGhost
+                ? duration
+                : duration * Mathf.Lerp(1f, 0.72f, normalizedIndex),
+            isOriginGhost));
+    }
+
+    private IEnumerator AnimateDodgeAfterimage(
+        GameObject afterimage,
+        SpriteRenderer renderer,
+        Color startColor,
+        Vector3 drift,
+        float duration,
+        bool isOriginGhost)
+    {
+        Vector3 startPosition = afterimage.transform.position;
+        Vector3 startScale = afterimage.transform.localScale;
+        float elapsed = 0f;
+
+        while (elapsed < duration && afterimage != null
+               && renderer != null)
+        {
+            yield return null;
+
+            if (afterimage == null || renderer == null)
+            {
+                yield break;
+            }
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float release = Mathf.SmoothStep(0f, 1f, progress);
+            afterimage.transform.position = startPosition + drift * release;
+            afterimage.transform.localScale = Vector3.Lerp(
+                startScale,
+                new Vector3(
+                    startScale.x * (isOriginGhost ? 1.15f : 1.08f),
+                    startScale.y * (isOriginGhost ? 0.86f : 0.92f),
+                    startScale.z),
+                release);
+            Color color = startColor;
+            color.a = startColor.a * (1f - release);
+            renderer.color = color;
+        }
+
+        activeDodgeAfterimages.Remove(afterimage);
+
+        if (afterimage != null)
+        {
+            Destroy(afterimage);
+        }
+    }
+
+    private void ClearDodgeAfterimages()
+    {
+        if (dodgeTrailCoroutine != null)
+        {
+            StopCoroutine(dodgeTrailCoroutine);
+            dodgeTrailCoroutine = null;
+        }
+
+        foreach (GameObject afterimage in activeDodgeAfterimages)
+        {
+            if (afterimage != null)
+            {
+                Destroy(afterimage);
+            }
+        }
+
+        activeDodgeAfterimages.Clear();
     }
 
     private void HandleCountCompleted(int _)
@@ -1465,6 +1968,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         CancelSlowMotionAndRestore();
         ResetFullscreenImpact();
         ClearComboKillTexts();
+        ClearDodgeAfterimages();
         defeatPresentationGeneration++;
         nextDefeatPresentationTime = defeatPresentationClock;
     }
@@ -1689,7 +2193,38 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void StartVolumePulse(float intensity)
     {
-        if (GamePauseController.IsPaused)
+        StartVolumePulse(
+            intensity,
+            volumePulseDuration,
+            1f,
+            1f,
+            1f,
+            1f,
+            1f);
+    }
+
+    private void StartDodgeVolumePulse(float sustainedDuration)
+    {
+        StartVolumePulse(
+            dodgeVolumeStrength,
+            Mathf.Max(dodgeVolumeDuration, sustainedDuration),
+            dodgeChromaticMultiplier,
+            dodgeBloomMultiplier,
+            dodgeVignetteMultiplier,
+            dodgeLensDistortionMultiplier,
+            dodgeContrastMultiplier);
+    }
+
+    private void StartVolumePulse(
+        float intensity,
+        float duration,
+        float chromaticMultiplier,
+        float bloomMultiplier,
+        float vignetteMultiplier,
+        float lensDistortionMultiplier,
+        float contrastMultiplier)
+    {
+        if (GamePauseController.IsPaused || duration <= 0f)
         {
             return;
         }
@@ -1714,10 +2249,24 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         volumePulseCoroutine = StartCoroutine(VolumePulseRoutine(
             currentVolumePulseStrength,
-            intensity));
+            intensity,
+            duration,
+            Mathf.Max(0f, chromaticMultiplier),
+            Mathf.Max(0f, bloomMultiplier),
+            Mathf.Max(0f, vignetteMultiplier),
+            Mathf.Max(0f, lensDistortionMultiplier),
+            Mathf.Max(0f, contrastMultiplier)));
     }
 
-    private IEnumerator VolumePulseRoutine(float startStrength, float intensity)
+    private IEnumerator VolumePulseRoutine(
+        float startStrength,
+        float intensity,
+        float duration,
+        float chromaticMultiplier,
+        float bloomMultiplier,
+        float vignetteMultiplier,
+        float lensDistortionMultiplier,
+        float contrastMultiplier)
     {
         chromaticAberration.active = true;
         bloom.active = true;
@@ -1731,11 +2280,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         colorAdjustments.contrast.overrideState = true;
         float elapsed = 0f;
 
-        while (elapsed < volumePulseDuration)
+        while (elapsed < duration)
         {
             yield return null;
             elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / volumePulseDuration);
+            float progress = Mathf.Clamp01(elapsed / duration);
             const float attackPortion = 0.16f;
             float pulse;
 
@@ -1759,16 +2308,23 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
             currentVolumePulseStrength = pulse;
             chromaticAberration.intensity.value = Mathf.Clamp01(
-                chromaticBase + chromaticBoost * pulse);
-            bloom.intensity.value = bloomBase + bloomBoost * pulse;
+                chromaticBase
+                + chromaticBoost * chromaticMultiplier * pulse);
+            bloom.intensity.value = bloomBase
+                + bloomBoost * bloomMultiplier * pulse;
             vignette.intensity.value = Mathf.Clamp01(
-                vignetteBase + vignetteBoost * pulse);
+                vignetteBase
+                + vignetteBoost * vignetteMultiplier * pulse);
             lensDistortion.intensity.value = Mathf.Clamp(
-                lensBase + lensDistortionBoost * pulse,
+                lensBase
+                + lensDistortionBoost
+                * lensDistortionMultiplier
+                * pulse,
                 -1f,
                 1f);
             colorAdjustments.contrast.value = Mathf.Clamp(
-                contrastBase + contrastBoost * pulse,
+                contrastBase
+                + contrastBoost * contrastMultiplier * pulse,
                 -100f,
                 100f);
         }
@@ -1823,13 +2379,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
             return;
         }
 
-        float baseScale = Mathf.Lerp(0.72f, strongestScale, intensity);
-        float scale = Mathf.Clamp(
-            1f - (1f - baseScale)
-            * Mathf.Max(0f, strengthMultiplier)
-            * timeEffectMultiplier,
-            0.05f,
-            1f);
+        float scale = CalculateSlowMotionScale(
+            intensity,
+            strongestScale,
+            strengthMultiplier,
+            timeEffectMultiplier);
         EnsureTimeEffectOwnership();
         slowMotionStartScale = slowMotionActive
             ? slowMotionCurrentScale
@@ -1840,10 +2394,84 @@ public sealed class CombatFeedbackController : MonoBehaviour
             0.035f,
             recoveryDuration * 0.25f);
         slowMotionHoldDuration = Mathf.Max(0f, holdDuration);
+        slowMotionHasSecondaryPhase = false;
+        slowMotionSecondaryTargetScale = scale;
+        slowMotionSecondaryTransitionDuration = 0f;
+        slowMotionSecondaryHoldDuration = 0f;
         slowMotionRecoveryDuration = Mathf.Max(0.01f, recoveryDuration);
         slowMotionElapsed = 0f;
         slowMotionActive = true;
         EnsureTimeEffectRoutine();
+    }
+
+    private void StartDodgeSlowMotion()
+    {
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
+        float timeEffectMultiplier =
+            CombatAccessibilitySettings.TimeEffectMultiplier;
+        if (timeEffectMultiplier <= 0f)
+        {
+            return;
+        }
+
+        float snapScale = CalculateSlowMotionScale(
+            1f,
+            dodgeInitialSlowMotionScale,
+            1f,
+            timeEffectMultiplier);
+        float glideScale = CalculateSlowMotionScale(
+            1f,
+            dodgeSlowMotionScale,
+            1f,
+            timeEffectMultiplier);
+        EnsureTimeEffectOwnership();
+        slowMotionStartScale = slowMotionActive
+            ? slowMotionCurrentScale
+            : slowMotionBaseScale;
+        slowMotionCurrentScale = slowMotionStartScale;
+        slowMotionTargetScale = snapScale;
+        slowMotionAttackDuration = Mathf.Min(
+            0.02f,
+            dodgeInitialSlowMotionDuration * 0.25f);
+        slowMotionHoldDuration = Mathf.Max(
+            0f,
+            dodgeInitialSlowMotionDuration);
+        slowMotionHasSecondaryPhase = true;
+        slowMotionSecondaryTargetScale = glideScale;
+        slowMotionSecondaryTransitionDuration = Mathf.Max(
+            0.01f,
+            dodgeSlowMotionGlideDuration);
+        slowMotionSecondaryHoldDuration = Mathf.Max(
+            0f,
+            dodgeSlowMotionHold);
+        slowMotionRecoveryDuration = Mathf.Max(
+            0.01f,
+            dodgeSlowMotionRecovery);
+        slowMotionElapsed = 0f;
+        slowMotionActive = true;
+        EnsureTimeEffectRoutine();
+    }
+
+    internal static float CalculateSlowMotionScale(
+        float intensity,
+        float strongestScale,
+        float strengthMultiplier,
+        float timeEffectMultiplier)
+    {
+        float baseScale = Mathf.Lerp(
+            0.72f,
+            Mathf.Clamp(strongestScale, 0.01f, 1f),
+            Mathf.Clamp01(intensity));
+        return Mathf.Clamp(
+            1f - (1f - baseScale)
+            * Mathf.Max(0f, strengthMultiplier)
+            * Mathf.Max(0f, timeEffectMultiplier),
+            0.05f,
+            1f);
     }
 
     public void RequestHitStop(float duration)
@@ -1911,9 +2539,18 @@ public sealed class CombatFeedbackController : MonoBehaviour
             }
 
             slowMotionElapsed += deltaTime;
-            float holdEnd = slowMotionAttackDuration
+            float primaryHoldEnd = slowMotionAttackDuration
                 + slowMotionHoldDuration;
-            float recoveryEnd = holdEnd + slowMotionRecoveryDuration;
+            float secondaryTransitionEnd = primaryHoldEnd
+                + (slowMotionHasSecondaryPhase
+                    ? slowMotionSecondaryTransitionDuration
+                    : 0f);
+            float secondaryHoldEnd = secondaryTransitionEnd
+                + (slowMotionHasSecondaryPhase
+                    ? slowMotionSecondaryHoldDuration
+                    : 0f);
+            float recoveryEnd = secondaryHoldEnd
+                + slowMotionRecoveryDuration;
 
             if (slowMotionElapsed < slowMotionAttackDuration)
             {
@@ -1926,17 +2563,33 @@ public sealed class CombatFeedbackController : MonoBehaviour
                     slowMotionTargetScale,
                     Mathf.SmoothStep(0f, 1f, progress));
             }
-            else if (slowMotionElapsed < holdEnd)
+            else if (slowMotionElapsed < primaryHoldEnd)
             {
                 slowMotionCurrentScale = slowMotionTargetScale;
+            }
+            else if (slowMotionElapsed < secondaryTransitionEnd)
+            {
+                float progress = Mathf.Clamp01(
+                    (slowMotionElapsed - primaryHoldEnd)
+                    / slowMotionSecondaryTransitionDuration);
+                slowMotionCurrentScale = Mathf.Lerp(
+                    slowMotionTargetScale,
+                    slowMotionSecondaryTargetScale,
+                    Mathf.SmoothStep(0f, 1f, progress));
+            }
+            else if (slowMotionElapsed < secondaryHoldEnd)
+            {
+                slowMotionCurrentScale = slowMotionSecondaryTargetScale;
             }
             else if (slowMotionElapsed < recoveryEnd)
             {
                 float progress = Mathf.Clamp01(
-                    (slowMotionElapsed - holdEnd)
+                    (slowMotionElapsed - secondaryHoldEnd)
                     / slowMotionRecoveryDuration);
                 slowMotionCurrentScale = Mathf.Lerp(
-                    slowMotionTargetScale,
+                    slowMotionHasSecondaryPhase
+                        ? slowMotionSecondaryTargetScale
+                        : slowMotionTargetScale,
                     slowMotionBaseScale,
                     Mathf.SmoothStep(0f, 1f, progress));
             }
@@ -1964,6 +2617,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
         slowMotionActive = false;
         slowMotionElapsed = 0f;
         slowMotionCurrentScale = slowMotionBaseScale;
+        slowMotionHasSecondaryPhase = false;
+        slowMotionSecondaryTargetScale = slowMotionBaseScale;
+        slowMotionSecondaryTransitionDuration = 0f;
+        slowMotionSecondaryHoldDuration = 0f;
         ownsTimeScale = false;
     }
 
@@ -2234,6 +2891,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         CancelSlowMotionAndRestore();
         RestoreVolume();
         HideFullscreenImpact();
+        ClearDodgeAfterimages();
     }
 
 }

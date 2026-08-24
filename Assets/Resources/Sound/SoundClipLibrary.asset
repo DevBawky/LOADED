@@ -294,3 +294,10 @@ MonoBehaviour:
     volume: 1
     minPitch: 1
     maxPitch: 1
+  - id: SFX_Evade
+    category: 4
+    clip: {fileID: 8300000, guid: 16f0298757164e04080d37d7c99dc933, type: 3}
+    variants: []
+    volume: 1.5
+    minPitch: 0.9
+    maxPitch: 0.9

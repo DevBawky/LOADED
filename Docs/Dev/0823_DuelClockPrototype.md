@@ -156,6 +156,17 @@ Natural progress uses unscaled frame time, so hit stop and slow motion do not
 pause or slow the clock. Presentation never gates action completion or beat
 dispatch.
 
+When a player movement action successfully dodges an enemy attack or a boss
+bomb, that action's pending paid-action progress is suppressed. The movement
+still completes and publishes `TurnCompleted`, but `DuelClockController` does
+not commit `Duel Clock Paid Action Progress` for that one action. The
+suppression is reset at completion or when another action starts, so it cannot
+make a later action free. It also never refunds shooting progress that was
+already committed at firing-sequence start, remove natural progress, or undo a
+COUNT that already completed. `PlayerMove` publishes the gameplay dodge
+outcome before the optional feedback controller renders it, so missing or
+disabled presentation cannot change the clock rule.
+
 Stun does not pause natural time. While the player has stun stacks, Duel Clock
 mode blocks player actions. Each resolved clock beat consumes at most one stun
 stack through `ProcessDuelClockStatusBeat` without incrementing `TurnCount` or

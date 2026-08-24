@@ -578,6 +578,132 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
+    public void DodgeSuccessSuppressesCurrentMovementActionProgress()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(0f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+
+        controller.HandlePlayerActionStarted(
+            PlayerBehaviourAction.MoveRight);
+        System.Reflection.FieldInfo actingField = typeof(PlayerMove).GetField(
+            "isActing",
+            System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.NonPublic);
+        Assert.That(actingField, Is.Not.Null);
+        actingField.SetValue(playerMove, true);
+        bool reported = playerMove.TryNotifyDodgeSucceededDuringAction();
+        actingField.SetValue(playerMove, false);
+        playerMove.CompleteTurn();
+
+        Assert.That(reported, Is.True);
+        Assert.That(playerMove.TurnCount, Is.EqualTo(1));
+        Assert.That(controller.Progress, Is.Zero);
+        Assert.That(controller.CumulativeBeats, Is.Zero);
+    }
+
+    [Test]
+    public void DodgeSuppressionDoesNotCarryIntoTheNextAction()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(0f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+
+        controller.HandlePlayerActionStarted(
+            PlayerBehaviourAction.MoveLeft);
+        controller.HandlePlayerDodgeSucceededDuringAction();
+        playerMove.CompleteTurn();
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
+        playerMove.CompleteTurn();
+
+        Assert.That(playerMove.TurnCount, Is.EqualTo(2));
+        Assert.That(controller.Progress, Is.EqualTo(45d));
+        Assert.That(controller.CumulativeBeats, Is.Zero);
+    }
+
+    [Test]
+    public void DodgePreservesExistingNaturalProgress()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(4f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+        controller.TryAdvanceNaturalTime(1d);
+
+        controller.HandlePlayerActionStarted(
+            PlayerBehaviourAction.MoveRight);
+        controller.HandlePlayerDodgeSucceededDuringAction();
+        playerMove.CompleteTurn();
+
+        Assert.That(controller.Progress,
+            Is.EqualTo(7.6d).Within(0.0001d));
+        Assert.That(controller.CumulativeBeats, Is.Zero);
+    }
+
+    [Test]
+    public void DodgeDoesNotRefundCommittedShootProgress()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(0f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Shoot);
+        controller.HandlePlayerDodgeSucceededDuringAction();
+        playerMove.CompleteTurn();
+
+        Assert.That(controller.Progress, Is.EqualTo(45d));
+        Assert.That(controller.CumulativeBeats, Is.Zero);
+    }
+
+    [Test]
+    public void DodgeWithoutPendingActionDoesNotSuppressNextAction()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(0f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+
+        controller.HandlePlayerDodgeSucceededDuringAction();
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
+        playerMove.CompleteTurn();
+
+        Assert.That(controller.Progress, Is.EqualTo(45d));
+    }
+
+    [TestCase(true, false, true)]
+    [TestCase(false, false, false)]
+    [TestCase(true, true, false)]
+    public void PlayerReportsDodgeOnlyDuringNonShootAction(
+        bool isActing,
+        bool isShooting,
+        bool expected)
+    {
+        Assert.That(
+            PlayerMove.CanReportDodgeForCurrentAction(
+                isActing,
+                isShooting),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
     public void NaturalClockPolicyStopsForGamePauseOrGuidePanel()
     {
         Assert.That(DuelClockController.ShouldAdvanceNaturalClock(
@@ -751,15 +877,17 @@ public sealed class EnemyAttackActiveWindowTimingTests
     public void MissingEndEventUsesImmediateFallback()
     {
         AnimationClip clip = CreateOneSecondClip();
-        clip.events = new[]
-        {
-            new AnimationEvent
+        AnimationUtility.SetAnimationEvents(
+            clip,
+            new[]
             {
-                functionName =
-                    EnemyAttackAnimationEvents.BeginFunctionName,
-                time = 0.25f
-            }
-        };
+                new AnimationEvent
+                {
+                    functionName =
+                        EnemyAttackAnimationEvents.BeginFunctionName,
+                    time = 0.25f
+                }
+            });
 
         try
         {
@@ -777,21 +905,23 @@ public sealed class EnemyAttackActiveWindowTimingTests
     public void PairedEventsDefineInclusiveActiveWindow()
     {
         AnimationClip clip = CreateOneSecondClip();
-        clip.events = new[]
-        {
-            new AnimationEvent
+        AnimationUtility.SetAnimationEvents(
+            clip,
+            new[]
             {
-                functionName =
-                    EnemyAttackAnimationEvents.BeginFunctionName,
-                time = 0.25f
-            },
-            new AnimationEvent
-            {
-                functionName =
-                    EnemyAttackAnimationEvents.EndFunctionName,
-                time = 0.5f
-            }
-        };
+                new AnimationEvent
+                {
+                    functionName =
+                        EnemyAttackAnimationEvents.BeginFunctionName,
+                    time = 0.25f
+                },
+                new AnimationEvent
+                {
+                    functionName =
+                        EnemyAttackAnimationEvents.EndFunctionName,
+                    time = 0.5f
+                }
+            });
 
         try
         {
@@ -805,6 +935,58 @@ public sealed class EnemyAttackActiveWindowTimingTests
             Assert.That(timing.Contains(0.5f), Is.True);
             Assert.That(timing.Contains(0.51f), Is.False);
             Assert.That(timing.Overlaps(0.2f, 0.3f), Is.True);
+            Assert.That(timing.DodgeStartNormalizedTime, Is.Zero);
+            Assert.That(timing.IsInDodgeWindow(0.24f), Is.True);
+            Assert.That(timing.IsInDodgeWindow(0.25f), Is.False);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(clip);
+        }
+    }
+
+    [Test]
+    public void DodgeEventDefinesWindowBeforeActiveHitRange()
+    {
+        AnimationClip clip = CreateOneSecondClip();
+        AnimationUtility.SetAnimationEvents(
+            clip,
+            new[]
+            {
+                new AnimationEvent
+                {
+                    functionName =
+                        EnemyAttackAnimationEvents.DodgeFunctionName,
+                    time = 0.1f
+                },
+                new AnimationEvent
+                {
+                    functionName =
+                        EnemyAttackAnimationEvents.BeginFunctionName,
+                    time = 0.4f
+                },
+                new AnimationEvent
+                {
+                    functionName =
+                        EnemyAttackAnimationEvents.EndFunctionName,
+                    time = 0.6f
+                }
+            });
+
+        try
+        {
+            bool created = EnemyAttackActiveWindowTiming.TryCreate(
+                clip,
+                out EnemyAttackActiveWindowTiming timing);
+
+            Assert.That(created, Is.True);
+            Assert.That(timing.DodgeStartNormalizedTime, Is.EqualTo(0.1f));
+            Assert.That(timing.IsInDodgeWindow(0.09f), Is.False);
+            Assert.That(timing.IsInDodgeWindow(0.1f), Is.True);
+            Assert.That(timing.IsInDodgeWindow(0.39f), Is.True);
+            Assert.That(timing.IsInDodgeWindow(0.4f), Is.False);
+            Assert.That(timing.CrossesDodgeStart(0.05f, 0.15f), Is.True);
+            Assert.That(timing.CrossesActiveStart(0.35f, 0.45f), Is.True);
         }
         finally
         {
@@ -821,6 +1003,161 @@ public sealed class EnemyAttackActiveWindowTimingTests
             "m_LocalPosition.x",
             AnimationCurve.Linear(0f, 0f, 1f, 0f));
         return clip;
+    }
+}
+
+public sealed class EnemyPlayerDodgeWindowStateTests
+{
+    [Test]
+    public void EnemyDataUsesPointTwoSecondDodgeWindowByDefault()
+    {
+        EnemyData data = ScriptableObject.CreateInstance<EnemyData>();
+
+        try
+        {
+            Assert.That(
+                data.AttackDodgeWindowDuration,
+                Is.EqualTo(0.2f));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void ThreatenedPlayerLeavingRangeResolvesDodge()
+    {
+        EnemyPlayerDodgeWindowState state =
+            new EnemyPlayerDodgeWindowState(
+                true,
+                4,
+                new Vector3(4f, 0f, 0f));
+
+        bool dodged = state.TryResolveDodge(
+            false,
+            5,
+            new Vector3(5f, 0f, 0f),
+            out int movementDirection);
+
+        Assert.That(dodged, Is.True);
+        Assert.That(movementDirection, Is.EqualTo(1));
+    }
+
+    [TestCase(false, false, 5)]
+    [TestCase(true, true, 5)]
+    [TestCase(true, false, 4)]
+    public void MissingThreatOrRemainingInRangeDoesNotResolveDodge(
+        bool playerWasThreatened,
+        bool playerIsThreatened,
+        int currentTileIndex)
+    {
+        EnemyPlayerDodgeWindowState state =
+            new EnemyPlayerDodgeWindowState(
+                playerWasThreatened,
+                4,
+                new Vector3(4f, 0f, 0f));
+
+        Assert.That(state.TryResolveDodge(
+            playerIsThreatened,
+            currentTileIndex,
+            new Vector3(currentTileIndex, 0f, 0f),
+            out _), Is.False);
+    }
+
+    [Test]
+    public void LeavingDuringDodgeWindowImmediatelyLocksSuccess()
+    {
+        EnemyPlayerDodgeWindowState windowState =
+            new EnemyPlayerDodgeWindowState(
+                true,
+                4,
+                new Vector3(4f, 0f, 0f));
+        EnemyPlayerDodgeResolution resolution = default;
+
+        bool confirmed = resolution.TryConfirmBeforeImpact(
+            windowState,
+            false,
+            5,
+            new Vector3(5f, 0f, 0f),
+            out int movementDirection);
+
+        Assert.That(confirmed, Is.True);
+        Assert.That(resolution.IsResolved, Is.True);
+        Assert.That(resolution.PlayerDodged, Is.True);
+        Assert.That(movementDirection, Is.EqualTo(1));
+        Assert.That(
+            resolution.ResolveAtImpact(
+                windowState,
+                true,
+                4,
+                new Vector3(4f, 0f, 0f),
+                out _),
+            Is.False,
+            "A confirmed dodge must not be reversed at impact.");
+        Assert.That(resolution.PlayerDodged, Is.True);
+    }
+
+    [Test]
+    public void RemainingThreatenedResolvesAsHitAtImpact()
+    {
+        EnemyPlayerDodgeWindowState windowState =
+            new EnemyPlayerDodgeWindowState(
+                true,
+                4,
+                new Vector3(4f, 0f, 0f));
+        EnemyPlayerDodgeResolution resolution = default;
+
+        Assert.That(
+            resolution.TryConfirmBeforeImpact(
+                windowState,
+                true,
+                4,
+                new Vector3(4f, 0f, 0f),
+                out _),
+            Is.False);
+        Assert.That(resolution.IsResolved, Is.False);
+        Assert.That(
+            resolution.ResolveAtImpact(
+                windowState,
+                true,
+                4,
+                new Vector3(4f, 0f, 0f),
+                out _),
+            Is.False);
+        Assert.That(resolution.IsResolved, Is.True);
+        Assert.That(resolution.PlayerDodged, Is.False);
+    }
+
+    [Test]
+    public void DodgeCanConfirmOnALaterFrameBeforeImpact()
+    {
+        EnemyPlayerDodgeWindowState windowState =
+            new EnemyPlayerDodgeWindowState(
+                true,
+                4,
+                new Vector3(4f, 0f, 0f));
+        EnemyPlayerDodgeResolution resolution = default;
+
+        Assert.That(
+            resolution.TryConfirmBeforeImpact(
+                windowState,
+                true,
+                4,
+                new Vector3(4.4f, 0f, 0f),
+                out _),
+            Is.False);
+        Assert.That(resolution.IsResolved, Is.False);
+        Assert.That(
+            resolution.TryConfirmBeforeImpact(
+                windowState,
+                false,
+                5,
+                new Vector3(4.6f, 0f, 0f),
+                out int movementDirection),
+            Is.True);
+        Assert.That(movementDirection, Is.EqualTo(1));
+        Assert.That(resolution.PlayerDodged, Is.True);
     }
 }
 

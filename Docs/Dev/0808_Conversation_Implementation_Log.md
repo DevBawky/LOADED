@@ -370,3 +370,9 @@ dotnet build LOADED.slnx --no-restore
 - `Docs/Dev/0805_CombatFeedback_ComboGold_Kick_CameraShake.md`
 - `Docs/Dev/0808_Overkill_WebGL_UI_Runtime_Fixes.md`
 
+## Interrupted first-battle recovery
+
+- The node-map selection is the fallback checkpoint when a fresh run closes
+  before its first stable combat snapshot can be written.
+- Continue resumes that selected battle fresh instead of opening a node map
+  whose buttons are locked by the still-active node.

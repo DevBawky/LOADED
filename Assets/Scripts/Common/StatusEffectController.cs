@@ -7,7 +7,8 @@ public enum StatusEffectType
     Mark = 0,
     Poison = 1,
     Stun = 2,
-    Weakness = 3
+    Weakness = 3,
+    Exposed = 4
 }
 
 public interface IStatusEffectTarget
@@ -18,6 +19,20 @@ public interface IStatusEffectTarget
 
 public class StatusEffectController : MonoBehaviour
 {
+    internal const int StackableStatusTypeCount = 4;
+
+    internal static StatusEffectType GetStackableStatusType(int index)
+    {
+        return index switch
+        {
+            0 => StatusEffectType.Mark,
+            1 => StatusEffectType.Poison,
+            2 => StatusEffectType.Stun,
+            3 => StatusEffectType.Weakness,
+            _ => throw new ArgumentOutOfRangeException(nameof(index))
+        };
+    }
+
     [Header("UI")]
     [SerializeField] private Transform statusIconParent;
     [SerializeField] private GameObject debuffIconPrefab;
@@ -25,6 +40,7 @@ public class StatusEffectController : MonoBehaviour
     [SerializeField] private Sprite poisonSprite;
     [SerializeField] private Sprite stunSprite;
     [SerializeField] private Sprite weaknessSprite;
+    [SerializeField] private Sprite exposedSprite;
 
     [Header("Runtime State")]
     [Min(0)]
@@ -35,6 +51,7 @@ public class StatusEffectController : MonoBehaviour
     [SerializeField] private int stunStacks;
     [Min(0)]
     [SerializeField] private int weaknessStacks;
+    [SerializeField] private bool isExposed;
 
     private bool poisonCreditedToPlayer;
 
@@ -48,6 +65,7 @@ public class StatusEffectController : MonoBehaviour
     public int PoisonStacks => poisonStacks;
     public int StunStacks => stunStacks;
     public int WeaknessStacks => weaknessStacks;
+    public bool IsExposed => isExposed;
     public int TotalStatusStackCount
     {
         get
@@ -55,7 +73,8 @@ public class StatusEffectController : MonoBehaviour
             long total = (long)markStacks
                 + poisonStacks
                 + stunStacks
-                + weaknessStacks;
+                + weaknessStacks
+                + (isExposed ? 1 : 0);
             return total >= int.MaxValue ? int.MaxValue : (int)total;
         }
     }
@@ -71,7 +90,8 @@ public class StatusEffectController : MonoBehaviour
             poisonStacks = poisonStacks,
             stunStacks = stunStacks,
             weaknessStacks = weaknessStacks,
-            poisonCreditedToPlayer = poisonCreditedToPlayer
+            poisonCreditedToPlayer = poisonCreditedToPlayer,
+            isExposed = isExposed
         };
     }
 
@@ -82,6 +102,7 @@ public class StatusEffectController : MonoBehaviour
         poisonStacks = Mathf.Max(0, state.poisonStacks);
         stunStacks = Mathf.Max(0, state.stunStacks);
         weaknessStacks = Mathf.Max(0, state.weaknessStacks);
+        isExposed = state.isExposed;
         poisonCreditedToPlayer = poisonStacks > 0
             && state.poisonCreditedToPlayer;
         RefreshAllIcons();
@@ -156,6 +177,8 @@ public class StatusEffectController : MonoBehaviour
                 return stunStacks;
             case StatusEffectType.Weakness:
                 return weaknessStacks;
+            case StatusEffectType.Exposed:
+                return isExposed ? 1 : 0;
             default:
                 return 0;
         }
@@ -199,6 +222,11 @@ public class StatusEffectController : MonoBehaviour
         foreach (StatusEffectType type in Enum.GetValues(
                      typeof(StatusEffectType)))
         {
+            if (type == StatusEffectType.Exposed)
+            {
+                continue;
+            }
+
             int stacks = GetStacks(type);
 
             if (stacks <= 0)
@@ -219,7 +247,7 @@ public class StatusEffectController : MonoBehaviour
         int stacks,
         bool creditedToPlayer = false)
     {
-        if (stacks <= 0)
+        if (stacks <= 0 || type == StatusEffectType.Exposed)
         {
             return false;
         }
@@ -234,6 +262,33 @@ public class StatusEffectController : MonoBehaviour
         }
 
         return true;
+    }
+
+    internal bool ApplyExposed()
+    {
+        if (isExposed)
+        {
+            return false;
+        }
+
+        SetStacks(StatusEffectType.Exposed, 1);
+        return true;
+    }
+
+    internal bool ConsumeExposed()
+    {
+        if (!isExposed)
+        {
+            return false;
+        }
+
+        SetStacks(StatusEffectType.Exposed, 0);
+        return true;
+    }
+
+    internal bool ClearExposed()
+    {
+        return ConsumeExposed();
     }
 
     public int ModifyIncomingAttackDamage(int damage)
@@ -292,6 +347,7 @@ public class StatusEffectController : MonoBehaviour
         SetStacks(StatusEffectType.Poison, 0);
         SetStacks(StatusEffectType.Stun, 0);
         SetStacks(StatusEffectType.Weakness, 0);
+        SetStacks(StatusEffectType.Exposed, 0);
     }
 
     private void ApplyPoisonDamage()
@@ -350,6 +406,10 @@ public class StatusEffectController : MonoBehaviour
             case StatusEffectType.Weakness:
                 weaknessStacks = clampedStacks;
                 break;
+            case StatusEffectType.Exposed:
+                isExposed = clampedStacks > 0;
+                clampedStacks = isExposed ? 1 : 0;
+                break;
         }
 
         RefreshIcon(type, clampedStacks);
@@ -362,6 +422,7 @@ public class StatusEffectController : MonoBehaviour
         RefreshIcon(StatusEffectType.Poison, poisonStacks);
         RefreshIcon(StatusEffectType.Stun, stunStacks);
         RefreshIcon(StatusEffectType.Weakness, weaknessStacks);
+        RefreshIcon(StatusEffectType.Exposed, isExposed ? 1 : 0);
     }
 
     private void RefreshIcon(StatusEffectType type, int stacks)
@@ -442,6 +503,8 @@ public class StatusEffectController : MonoBehaviour
                 return stunSprite;
             case StatusEffectType.Weakness:
                 return weaknessSprite;
+            case StatusEffectType.Exposed:
+                return exposedSprite;
             default:
                 return null;
         }

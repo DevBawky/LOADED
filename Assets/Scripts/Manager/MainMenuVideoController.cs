@@ -233,17 +233,45 @@ public sealed class MainMenuVideoController : MonoBehaviour
 
     private static string ResolveRunEntryScene(RunStartMode startMode)
     {
-        if (startMode == RunStartMode.New
-            || NodeMapSaveSystem.IsAwaitingSelection
-            || !RunSaveSystem.HasValidSave)
+        bool hasValidRunSave = RunSaveSystem.HasValidSave;
+        bool hasSelectedBattle = !hasValidRunSave
+            && NodeMapSaveSystem.TryGetSelectedBattle(out _, out _);
+        string activeNodeScene = hasValidRunSave
+            && NodeMapSaveSystem.TryGetActiveNodeScene(out string activeScene)
+                ? activeScene
+                : string.Empty;
+
+        return ResolveRunEntryScene(
+            startMode,
+            hasValidRunSave,
+            NodeMapSaveSystem.IsAwaitingSelection,
+            hasSelectedBattle,
+            activeNodeScene);
+    }
+
+    internal static string ResolveRunEntryScene(
+        RunStartMode startMode,
+        bool hasValidRunSave,
+        bool isAwaitingNodeSelection,
+        bool hasSelectedBattle,
+        string activeNodeScene)
+    {
+        if (startMode == RunStartMode.New || isAwaitingNodeSelection)
         {
             return "NodeMap";
         }
 
-        return NodeMapSaveSystem.TryGetActiveNodeScene(
-            out string activeScene)
-                ? activeScene
-                : "Battle";
+        if (!hasValidRunSave)
+        {
+            // A fresh run has no combat snapshot until the first battle can
+            // capture stable runtime state. If the game closes before then,
+            // the selected map battle remains the recovery checkpoint.
+            return hasSelectedBattle ? "Battle" : "NodeMap";
+        }
+
+        return string.IsNullOrEmpty(activeNodeScene)
+            ? "Battle"
+            : activeNodeScene;
     }
 
     private void ShowLoadGamePanel()
