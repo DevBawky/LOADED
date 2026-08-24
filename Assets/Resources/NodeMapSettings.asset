@@ -39,15 +39,15 @@ MonoBehaviour:
     minimumCount: 1
     maximumCount: 3
   - nodeType: 3
-    weight: 20
-    minimumCount: 3
-    maximumCount: 8
+    weight: 0
+    minimumCount: 0
+    maximumCount: 0
   - nodeType: 5
     weight: 15
     minimumCount: 3
     maximumCount: 10
   - nodeType: 4
-    weight: 10
+    weight: 0
     minimumCount: 0
     maximumCount: 0
   startIcon: {fileID: -3764558647745528456, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}

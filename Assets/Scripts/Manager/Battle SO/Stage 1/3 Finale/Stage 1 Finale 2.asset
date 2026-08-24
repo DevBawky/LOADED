@@ -57,7 +57,7 @@ MonoBehaviour:
       count: 1
   combatPacingMode: 1
   duelClockNaturalProgressPerSecond: 18
-  duelClockPaidActionProgress: 60
+  duelClockPaidActionProgress: 50
   duelClockEnemyWaveCount: 3
   duelClockEnemyPool:
   - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}

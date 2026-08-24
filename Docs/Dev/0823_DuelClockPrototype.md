@@ -221,12 +221,13 @@ Battle completion or player defeat clears the remaining queue. Legacy
 `TurnCompleted` still dispatches one cycle directly; in Duel Clock mode only
 the controller's committed beats dispatch cycles.
 
-Every enemy defeat reduces the current Duel Clock progress by one third of the
-active battle's `Duel Clock Paid Action Progress` without changing completed
-COUNT. With the default value of 45, shooting immediately adds 45 and each
-defeat removes 15, so four defeats remove 60 in total. Reduction clamps at
-zero, does not cancel a COUNT that was already committed, and has no separate
-combat text. Defeats outside a firing sequence use the same fixed reduction.
+Every enemy defeat reduces the current Duel Clock progress by one quarter of
+the active battle's `Duel Clock Paid Action Progress` without changing
+completed COUNT. With the default value of 45, shooting immediately adds 45
+and each defeat removes 11.25, so four defeats exactly offset that shot's
+progress. Reduction clamps at zero, does not cancel a COUNT that was already
+committed, and has no separate combat text. Defeats outside a firing sequence
+use the same fixed reduction.
 
 Because Duel Clock allows player input while an enemy cycle is resolving,
 `WaveManager` also owns transient movement-tile reservations. Player movement,

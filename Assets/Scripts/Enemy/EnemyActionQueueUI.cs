@@ -130,6 +130,23 @@ public class EnemyActionQueueUI : MonoBehaviour
         }
     }
 
+    public IEnumerator RevealQueueAndIcon(Image icon, float duration)
+    {
+        if (icon != null)
+        {
+            CanvasGroup iconCanvasGroup = icon.GetComponent<CanvasGroup>();
+            if (iconCanvasGroup == null)
+            {
+                iconCanvasGroup = icon.gameObject.AddComponent<CanvasGroup>();
+            }
+
+            iconCanvasGroup.alpha = 0f;
+        }
+
+        yield return RevealQueue(duration);
+        yield return RevealIcon(icon, duration);
+    }
+
     public void SetPrepared(bool prepared)
     {
         isPrepared = prepared;

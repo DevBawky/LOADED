@@ -450,7 +450,7 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
-    public void EveryEnemyDefeatReducesOneThirdOfPaidActionProgress()
+    public void EveryEnemyDefeatReducesOneQuarterOfPaidActionProgress()
     {
         PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
         WaveManager waveManager = CreateComponent<WaveManager>("Wave");
@@ -469,16 +469,16 @@ public sealed class DuelClockControllerTests
         Assert.That(secondApplied, Is.True);
         Assert.That(thirdApplied, Is.True);
         Assert.That(controller.Progress,
-            Is.EqualTo(50d).Within(0.0001d));
+            Is.EqualTo(61.25d).Within(0.0001d));
         Assert.That(controller.CumulativeBeats, Is.Zero);
         Assert.That(DuelClockController.CalculateEnemyDefeatReduction(45d),
-            Is.EqualTo(15d));
+            Is.EqualTo(11.25d));
         Assert.That(DuelClockController.CalculateEnemyDefeatReduction(30d),
-            Is.EqualTo(10d));
+            Is.EqualTo(7.5d));
     }
 
     [Test]
-    public void FourDefeatsCanReduceMoreThanTheShootActionAdded()
+    public void FourDefeatsExactlyOffsetTheShootActionProgress()
     {
         PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
         WaveManager waveManager = CreateComponent<WaveManager>("Wave");
@@ -501,7 +501,7 @@ public sealed class DuelClockControllerTests
         controller.ApplyEnemyDefeat();
 
         Assert.That(controller.Progress,
-            Is.EqualTo(15d).Within(0.0001d));
+            Is.EqualTo(30d).Within(0.0001d));
         Assert.That(controller.CumulativeBeats, Is.Zero);
     }
 

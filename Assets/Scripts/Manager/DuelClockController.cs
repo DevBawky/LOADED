@@ -4,7 +4,7 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class DuelClockController : MonoBehaviour
 {
-    private const double EnemyDefeatReductionDivisor = 3d;
+    private const double EnemyDefeatReductionDivisor = 4d;
     private const int NaturalProgressBaselineEnemyCount = 3;
     private const double NaturalProgressRateStepPerEnemy = 0.3d;
 

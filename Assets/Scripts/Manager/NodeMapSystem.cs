@@ -62,14 +62,14 @@ public class NodeMapSettingsDefinition : ScriptableObject
         new NodeMapGenerationRule
         {
             nodeType = NodeMapNodeType.Shop,
-            weight = 10,
-            minimumCount = 1,
-            maximumCount = 2
+            weight = 0,
+            minimumCount = 0,
+            maximumCount = 0
         },
         new NodeMapGenerationRule
         {
             nodeType = NodeMapNodeType.Treasure,
-            weight = 10,
+            weight = 0,
             minimumCount = 0,
             maximumCount = 0
         },
@@ -179,7 +179,7 @@ public class NodeMapSettingsDefinition : ScriptableObject
         {
             unchecked
             {
-                const int GenerationAlgorithmRevision = 4;
+                const int GenerationAlgorithmRevision = 7;
                 int hash = 17;
                 hash = hash * 31 + GenerationAlgorithmRevision;
                 hash = hash * 31 + Columns;

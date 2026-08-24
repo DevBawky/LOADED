@@ -169,4 +169,4 @@ MonoBehaviour:
   weightRules: []
   normalBattleChancePercent: 10
   eliteBattleChancePercent: 2
-  shopChancePercent: 10
+  shopChancePercent: 0

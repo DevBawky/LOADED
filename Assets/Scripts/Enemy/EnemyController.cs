@@ -929,7 +929,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!isQueueCreated)
         {
-            CreateAttackQueue();
+            CreateAttackQueueWithAction(
+                EnemyActionType.MeleeAttack,
+                0);
             return;
         }
 
@@ -962,7 +964,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!isQueueCreated)
         {
-            CreateAttackQueue();
+            CreateAttackQueueWithAction(
+                EnemyActionType.RangedAttack,
+                0);
             return;
         }
 
@@ -998,7 +1002,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!isQueueCreated)
         {
-            CreateAttackQueue();
+            CreateAttackQueueWithAction(
+                EnemyActionType.RangedAttack,
+                0);
             return;
         }
 
@@ -1052,8 +1058,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             case BigBarrelStep.CreateBombQueue:
                 TryEnterBigBarrelPhaseTwo();
                 bigBarrelActionUsesPhaseTwo = isBigBarrelPhaseTwo;
-                bigBarrelStep = BigBarrelStep.RegisterBomb;
-                CreateAttackQueue();
+                CreateBigBarrelBombQueueWithFirstAction();
                 break;
 
             case BigBarrelStep.RegisterBomb:
@@ -1082,8 +1087,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 break;
 
             case BigBarrelStep.CreateShotgunQueue:
-                bigBarrelStep = BigBarrelStep.RegisterShotgun;
-                CreateAttackQueue();
+                CreateBigBarrelQueueWithAction(
+                    EnemyActionType.ShotgunAttack,
+                    BigBarrelStep.AdjustDistance,
+                    BigBarrelStep.Reload);
                 break;
 
             case BigBarrelStep.RegisterShotgun:
@@ -1146,6 +1153,25 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         StartCoroutine(RevealRegisteredAction(attackIcon));
     }
 
+    private void CreateBigBarrelBombQueueWithFirstAction()
+    {
+        if (!TryCreateAttackQueueWithAction(
+                EnemyActionType.ExplosiveThrow,
+                0,
+                out Image attackIcon))
+        {
+            bigBarrelStep = BigBarrelStep.CreateShotgunQueue;
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        bigBarrelStep = queuedAttackActions.Count
+                >= GetBigBarrelBombQueueSize()
+            ? BigBarrelStep.PrepareBomb
+            : BigBarrelStep.RegisterBomb;
+        StartCoroutine(RevealAttackQueueAndRegisteredAction(attackIcon));
+    }
+
     private int GetBigBarrelBombQueueSize()
     {
         return bigBarrelActionUsesPhaseTwo ? 3 : 2;
@@ -1171,6 +1197,25 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         bigBarrelStep = successStep;
         StartCoroutine(RevealRegisteredAction(attackIcon));
+    }
+
+    private void CreateBigBarrelQueueWithAction(
+        EnemyActionType actionType,
+        BigBarrelStep successStep,
+        BigBarrelStep failureStep)
+    {
+        if (!TryCreateAttackQueueWithAction(
+                actionType,
+                0,
+                out Image attackIcon))
+        {
+            bigBarrelStep = failureStep;
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        bigBarrelStep = successStep;
+        StartCoroutine(RevealAttackQueueAndRegisteredAction(attackIcon));
     }
 
     private void CaptureBigBarrelBombTargets()
@@ -1618,7 +1663,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!isQueueCreated)
         {
-            CreateAttackQueue();
+            CreateAttackQueueWithAction(
+                EnemyActionType.Support,
+                0);
             return;
         }
 
@@ -1676,11 +1723,41 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
-    private void CreateAttackQueue()
+    private void CreateAttackQueueWithAction(
+        EnemyActionType actionType,
+        int actionIndex)
+    {
+        if (!TryCreateAttackQueueWithAction(
+                actionType,
+                actionIndex,
+                out Image attackIcon))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        StartCoroutine(RevealAttackQueueAndRegisteredAction(attackIcon));
+    }
+
+    private bool TryCreateAttackQueueWithAction(
+        EnemyActionType actionType,
+        int actionIndex,
+        out Image attackIcon)
     {
         isQueueCreated = true;
         isAttackPrepared = false;
-        StartCoroutine(RevealAttackQueue());
+
+        if (TryAppendAction(
+                actionType,
+                actionIndex,
+                out attackIcon,
+                out _))
+        {
+            return true;
+        }
+
+        ClearAttackQueue();
+        return false;
     }
 
     private void RegisterAction(
@@ -1716,11 +1793,13 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         transform.localScale = localScale;
     }
 
-    private IEnumerator RevealAttackQueue()
+    private IEnumerator RevealAttackQueueAndRegisteredAction(
+        Image attackIcon)
     {
-        yield return actionQueueUI.RevealQueue(
+        yield return actionQueueUI.RevealQueueAndIcon(
+            attackIcon,
             enemyData.QueueElementRevealDuration);
-        CompleteAction(EnemyTurnActionType.CreateQueue);
+        CompleteAction(EnemyTurnActionType.RegisterAttack);
     }
 
     private IEnumerator RevealRegisteredAction(Image attackIcon)
