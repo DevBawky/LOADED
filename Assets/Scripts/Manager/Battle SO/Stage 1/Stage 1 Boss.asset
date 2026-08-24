@@ -26,8 +26,8 @@ MonoBehaviour:
     - enemyData: {fileID: 11400000, guid: 4a0180dedb3a47d78591cd6199218bd1, type: 2}
       count: 1
   combatPacingMode: 1
-  duelClockNaturalProgressPerSecond: 35
-  duelClockPaidActionProgress: 80
+  duelClockNaturalProgressPerSecond: 20
+  duelClockPaidActionProgress: 50
   duelClockEnemyWaveCount: 1
   duelClockEnemyPool:
   - {fileID: 11400000, guid: 4a0180dedb3a47d78591cd6199218bd1, type: 2}

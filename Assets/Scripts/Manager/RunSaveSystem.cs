@@ -247,9 +247,6 @@ public static class RunSaveSystem
             saveData.cumulativeBattleTurnCount);
         saveData.duelClockRemainingEnemyAssetNames ??=
             new List<string>();
-        saveData.duelClockPendingEnemySpawns = Mathf.Max(
-            0,
-            saveData.duelClockPendingEnemySpawns);
         NormalizeDuelClockSaveData(saveData);
         saveData.playerStatusEffects ??= new RunStatusEffectSaveData();
         saveData.pendingNextBattlePlayerStatusEffects ??=
@@ -326,18 +323,11 @@ public static class RunSaveSystem
 
         saveData.duelClockRemainingEnemyAssetNames ??=
             new List<string>();
+        saveData.duelClockPendingEnemySpawns = 0;
 
         if (!saveData.duelClockSpawnPoolInitialized)
         {
             saveData.duelClockRemainingEnemyAssetNames.Clear();
-            saveData.duelClockPendingEnemySpawns = 0;
-        }
-        else
-        {
-            saveData.duelClockPendingEnemySpawns = Mathf.Clamp(
-                saveData.duelClockPendingEnemySpawns,
-                0,
-                saveData.duelClockRemainingEnemyAssetNames.Count);
         }
 
         try

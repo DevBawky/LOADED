@@ -80,6 +80,14 @@ internal sealed class DuelClockState
         return result;
     }
 
+    public double Reduce(double removedProgress)
+    {
+        ValidateProgress(removedProgress, nameof(removedProgress));
+        double previousProgress = progress;
+        progress = Math.Max(0d, progress - removedProgress);
+        return previousProgress - progress;
+    }
+
     private DuelClockState(DuelClockSnapshot snapshot)
     {
         progress = snapshot.Progress;

@@ -66,16 +66,72 @@ public sealed class EventSelectorTests
     }
 
     [Test]
-    public void FollowUpSelection_UsesConfiguredDestinationBands()
+    public void EventNodeDestination_UsesConfiguredDestinationBands()
     {
-        Assert.That(EventRuntimeRules.SelectFollowUp(100f, 0f, 0f),
-            Is.EqualTo(EventFollowUpDestination.NormalBattle));
-        Assert.That(EventRuntimeRules.SelectFollowUp(0f, 100f, 0f),
-            Is.EqualTo(EventFollowUpDestination.EliteBattle));
-        Assert.That(EventRuntimeRules.SelectFollowUp(0f, 0f, 100f),
-            Is.EqualTo(EventFollowUpDestination.Shop));
-        Assert.That(EventRuntimeRules.SelectFollowUp(0f, 0f, 0f),
-            Is.EqualTo(EventFollowUpDestination.NodeMap));
+        EventDefinition definition = CreateEvent("route", true, 1f);
+
+        try
+        {
+            definition.normalBattleChancePercent = 100f;
+            Assert.That(EventRuntimeRules.SelectNodeDestination(definition),
+                Is.EqualTo(EventFollowUpDestination.NormalBattle));
+
+            definition.normalBattleChancePercent = 0f;
+            definition.eliteBattleChancePercent = 100f;
+            Assert.That(EventRuntimeRules.SelectNodeDestination(definition),
+                Is.EqualTo(EventFollowUpDestination.EliteBattle));
+
+            definition.eliteBattleChancePercent = 0f;
+            definition.shopChancePercent = 100f;
+            Assert.That(EventRuntimeRules.SelectNodeDestination(definition),
+                Is.EqualTo(EventFollowUpDestination.Shop));
+
+            definition.shopChancePercent = 0f;
+            Assert.That(EventRuntimeRules.SelectNodeDestination(definition),
+                Is.EqualTo(EventFollowUpDestination.NodeMap));
+        }
+        finally
+        {
+            Object.DestroyImmediate(definition);
+        }
+    }
+
+    [TestCase(EventFollowUpDestination.NodeMap, "Event")]
+    [TestCase(EventFollowUpDestination.NormalBattle, "Battle")]
+    [TestCase(EventFollowUpDestination.EliteBattle, "Battle")]
+    [TestCase(EventFollowUpDestination.Shop, "Shop")]
+    public void EventNodeDestination_MapsToEntryScene(
+        EventFollowUpDestination destination,
+        string expectedScene)
+    {
+        Assert.That(
+            EventRuntimeRules.GetNodeEntrySceneName(destination),
+            Is.EqualTo(expectedScene));
+    }
+
+    [Test]
+    public void ActiveEventNodeScene_ResumesChosenEntryWithoutRerolling()
+    {
+        RunSaveData substitutedShop = new RunSaveData
+        {
+            activeEventId = string.Empty,
+            eventFollowUpDestination =
+                (int)EventFollowUpDestination.Shop
+        };
+        RunSaveData selectedChoiceEvent = new RunSaveData
+        {
+            activeEventId = "selected-event",
+            eventFollowUpDestination =
+                (int)EventFollowUpDestination.NormalBattle
+        };
+
+        Assert.That(
+            NodeMapSaveSystem.ResolveActiveEventNodeScene(substitutedShop),
+            Is.EqualTo("Shop"));
+        Assert.That(
+            NodeMapSaveSystem.ResolveActiveEventNodeScene(
+                selectedChoiceEvent),
+            Is.EqualTo("Event"));
     }
 
     [Test]
@@ -98,6 +154,16 @@ public sealed class EventSelectorTests
         EventDefinition[] definitions =
             Resources.LoadAll<EventDefinition>("Events");
 
+        Assert.That(definitions, Is.Not.Empty);
+        foreach (EventDefinition definition in definitions)
+        {
+            Assert.That(definition, Is.Not.Null);
+            Assert.That(definition.normalBattleChancePercent
+                + definition.eliteBattleChancePercent
+                + definition.shopChancePercent, Is.LessThanOrEqualTo(100f),
+                definition.name);
+        }
+
         foreach (string expectedId in expectedIds)
         {
             EventDefinition definition = definitions.FirstOrDefault(
@@ -105,10 +171,6 @@ public sealed class EventSelectorTests
                     && candidate.StableId == expectedId);
             Assert.That(definition, Is.Not.Null, expectedId);
             Assert.That(definition.choices, Has.Length.InRange(1, 3),
-                expectedId);
-            Assert.That(definition.normalBattleChancePercent
-                + definition.eliteBattleChancePercent
-                + definition.shopChancePercent, Is.LessThanOrEqualTo(100f),
                 expectedId);
         }
 

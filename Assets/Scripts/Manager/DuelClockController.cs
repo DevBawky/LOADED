@@ -4,14 +4,20 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class DuelClockController : MonoBehaviour
 {
+    private const double EnemyDefeatReductionDivisor = 3d;
+    private const int NaturalProgressBaselineEnemyCount = 3;
+    private const double NaturalProgressRateStepPerEnemy = 0.3d;
+
     private PlayerMove playerMove;
+    private PlayerShoot playerShoot;
     private WaveManager waveManager;
     private DuelClockState state = new DuelClockState();
     private CombatPacingMode pacingMode = CombatPacingMode.Legacy;
     private double naturalProgressPerSecond;
     private double paidActionProgress;
     private int enemyWaveCount = 5;
-    private bool subscribedToPlayer;
+    private bool shootProgressCommitted;
+    private bool subscribedToCombatEvents;
 
     public event Action StateChanged;
     public event Action<long> BeatsCommitted;
@@ -30,10 +36,13 @@ public sealed class DuelClockController : MonoBehaviour
         PlayerMove assignedPlayerMove,
         WaveManager assignedWaveManager)
     {
-        UnsubscribeFromPlayer();
+        UnsubscribeFromCombatEvents();
         playerMove = assignedPlayerMove;
+        playerShoot = playerMove == null
+            ? null
+            : playerMove.GetComponent<PlayerShoot>();
         waveManager = assignedWaveManager;
-        SubscribeToPlayer();
+        SubscribeToCombatEvents();
     }
 
     internal void ConfigureFresh(
@@ -42,6 +51,7 @@ public sealed class DuelClockController : MonoBehaviour
     {
         ConfigureSettings(battleData, configuredMode);
         state = new DuelClockState();
+        ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(IsActive);
         StateChanged?.Invoke();
     }
@@ -57,6 +67,7 @@ public sealed class DuelClockController : MonoBehaviour
                 saveData.duelClockProgress,
                 saveData.duelClockCumulativeBeats)
             : new DuelClockState();
+        ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(IsActive);
         StateChanged?.Invoke();
     }
@@ -103,7 +114,12 @@ public sealed class DuelClockController : MonoBehaviour
             return false;
         }
 
-        return TryCommitProgress(naturalProgressPerSecond * elapsedSeconds);
+        double naturalProgressMultiplier =
+            CalculateNaturalProgressMultiplier(waveManager.LivingEnemyCount);
+        return TryCommitProgress(
+            naturalProgressPerSecond
+            * naturalProgressMultiplier
+            * elapsedSeconds);
     }
 
     internal void Deactivate()
@@ -113,19 +129,20 @@ public sealed class DuelClockController : MonoBehaviour
         paidActionProgress = 0d;
         enemyWaveCount = 5;
         state = new DuelClockState();
+        ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(false);
         StateChanged?.Invoke();
     }
 
     private void OnEnable()
     {
-        SubscribeToPlayer();
+        SubscribeToCombatEvents();
         playerMove?.SetDuelClockActive(IsActive);
     }
 
     private void OnDisable()
     {
-        UnsubscribeFromPlayer();
+        UnsubscribeFromCombatEvents();
         playerMove?.SetDuelClockActive(false);
     }
 
@@ -136,10 +153,63 @@ public sealed class DuelClockController : MonoBehaviour
 
     private void HandlePlayerTurnCompleted()
     {
-        if (IsActive)
+        bool shouldCommitPaidAction = !shootProgressCommitted;
+        ResetPlayerActionTracking();
+
+        if (IsActive && shouldCommitPaidAction)
         {
             TryCommitProgress(paidActionProgress);
         }
+    }
+
+    internal void HandlePlayerActionStarted(PlayerBehaviourAction action)
+    {
+        shootProgressCommitted = false;
+
+        if (IsActive && action == PlayerBehaviourAction.Shoot)
+        {
+            shootProgressCommitted = TryCommitProgress(paidActionProgress);
+        }
+    }
+
+    private void HandleEnemyDefeated(EnemyController enemy)
+    {
+        ApplyEnemyDefeat();
+    }
+
+    internal bool ApplyEnemyDefeat()
+    {
+        if (!IsActive)
+        {
+            return false;
+        }
+
+        return TryReduceProgress(
+            CalculateEnemyDefeatReduction(paidActionProgress));
+    }
+
+    internal static double CalculateEnemyDefeatReduction(
+        double configuredPaidActionProgress)
+    {
+        if (double.IsNaN(configuredPaidActionProgress)
+            || double.IsInfinity(configuredPaidActionProgress)
+            || configuredPaidActionProgress <= 0d)
+        {
+            return 0d;
+        }
+
+        return configuredPaidActionProgress
+            / EnemyDefeatReductionDivisor;
+    }
+
+    internal static double CalculateNaturalProgressMultiplier(
+        int livingEnemyCount)
+    {
+        int sanitizedEnemyCount = Math.Max(0, livingEnemyCount);
+        double multiplier = 1d
+            + (NaturalProgressBaselineEnemyCount - sanitizedEnemyCount)
+            * NaturalProgressRateStepPerEnemy;
+        return Math.Max(0d, multiplier);
     }
 
     private bool TryCommitProgress(double addedProgress)
@@ -166,6 +236,28 @@ public sealed class DuelClockController : MonoBehaviour
             BeatsCommitted?.Invoke(result.TriggeredBeatCount);
         }
 
+        return true;
+    }
+
+    private bool TryReduceProgress(double removedProgress)
+    {
+        double actualReduction;
+
+        try
+        {
+            actualReduction = state.Reduce(removedProgress);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+
+        if (actualReduction <= 0d)
+        {
+            return false;
+        }
+
+        StateChanged?.Invoke();
         return true;
     }
 
@@ -214,30 +306,61 @@ public sealed class DuelClockController : MonoBehaviour
             : 5;
     }
 
-    private void SubscribeToPlayer()
+    private void SubscribeToCombatEvents()
     {
-        if (subscribedToPlayer || playerMove == null || !isActiveAndEnabled)
-        {
-            return;
-        }
-
-        playerMove.TurnCompleted += HandlePlayerTurnCompleted;
-        subscribedToPlayer = true;
-    }
-
-    private void UnsubscribeFromPlayer()
-    {
-        if (!subscribedToPlayer)
+        if (subscribedToCombatEvents || !isActiveAndEnabled)
         {
             return;
         }
 
         if (playerMove != null)
         {
+            playerMove.BehaviourActionStarted += HandlePlayerActionStarted;
+            playerMove.TurnCompleted += HandlePlayerTurnCompleted;
+        }
+
+        if (playerShoot != null)
+        {
+            playerShoot.BehaviourActionStarted += HandlePlayerActionStarted;
+        }
+
+        if (waveManager != null)
+        {
+            waveManager.EnemyDefeated += HandleEnemyDefeated;
+        }
+
+        subscribedToCombatEvents = true;
+    }
+
+    private void UnsubscribeFromCombatEvents()
+    {
+        if (!subscribedToCombatEvents)
+        {
+            return;
+        }
+
+        if (playerMove != null)
+        {
+            playerMove.BehaviourActionStarted -= HandlePlayerActionStarted;
             playerMove.TurnCompleted -= HandlePlayerTurnCompleted;
         }
 
-        subscribedToPlayer = false;
+        if (playerShoot != null)
+        {
+            playerShoot.BehaviourActionStarted -= HandlePlayerActionStarted;
+        }
+
+        if (waveManager != null)
+        {
+            waveManager.EnemyDefeated -= HandleEnemyDefeated;
+        }
+
+        subscribedToCombatEvents = false;
+    }
+
+    private void ResetPlayerActionTracking()
+    {
+        shootProgressCommitted = false;
     }
 
     private static DuelClockState RestoreStateOrDefault(

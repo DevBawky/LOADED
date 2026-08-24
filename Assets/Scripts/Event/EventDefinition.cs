@@ -218,9 +218,12 @@ public sealed class EventDefinition : ScriptableObject
     [Tooltip("위에서 아래 순서로 가중치 연산을 적용합니다.")]
     public EventWeightRule[] weightRules = Array.Empty<EventWeightRule>();
 
-    [Header("Follow-up Encounter Chance")]
+    [Header("Event Node Destination Chance")]
+    [Tooltip("Event 노드 진입 시 일반 전투로 대체될 확률입니다.")]
     [Range(0f, 100f)] public float normalBattleChancePercent;
+    [Tooltip("Event 노드 진입 시 엘리트 전투로 대체될 확률입니다.")]
     [Range(0f, 100f)] public float eliteBattleChancePercent;
+    [Tooltip("Event 노드 진입 시 상점으로 대체될 확률입니다.")]
     [Range(0f, 100f)] public float shopChancePercent;
 
     public string StableId => string.IsNullOrWhiteSpace(eventId)
@@ -264,13 +267,14 @@ public sealed class EventDefinition : ScriptableObject
             0f,
             100f);
         shopChancePercent = Mathf.Clamp(shopChancePercent, 0f, 100f);
-        float followUpTotal = normalBattleChancePercent
+        float destinationTotal = normalBattleChancePercent
             + eliteBattleChancePercent
             + shopChancePercent;
-        if (followUpTotal > 100f)
+        if (destinationTotal > 100f)
         {
             Debug.LogWarning(
-                $"Event '{name}' follow-up chances total {followUpTotal:0.#}%.",
+                $"Event '{name}' node destination chances total "
+                + $"{destinationTotal:0.#}%.",
                 this);
         }
         if (choices != null && choices.Length > 3)
@@ -432,28 +436,45 @@ internal static class EventRuntimeRules
             || bullets.Select(bullet => bullet.Grade).Distinct().Count() == 1;
     }
 
-    public static EventFollowUpDestination SelectFollowUp(
-        float normalChancePercent,
-        float eliteChancePercent,
-        float shopChancePercent)
+    public static EventFollowUpDestination SelectNodeDestination(
+        EventDefinition definition)
     {
+        if (definition == null)
+        {
+            return EventFollowUpDestination.NodeMap;
+        }
+
         float roll = UnityEngine.Random.Range(0f, 100f);
-        float cursor = Mathf.Max(0f, normalChancePercent);
-        if (roll < cursor)
+        float cursor = Mathf.Max(
+            0f,
+            definition.normalBattleChancePercent);
+        if (cursor >= 100f || roll < cursor)
         {
             return EventFollowUpDestination.NormalBattle;
         }
 
-        cursor += Mathf.Max(0f, eliteChancePercent);
-        if (roll < cursor)
+        cursor += Mathf.Max(0f, definition.eliteBattleChancePercent);
+        if (cursor >= 100f || roll < cursor)
         {
             return EventFollowUpDestination.EliteBattle;
         }
 
-        cursor += Mathf.Max(0f, shopChancePercent);
-        return roll < cursor
+        cursor += Mathf.Max(0f, definition.shopChancePercent);
+        return cursor >= 100f || roll < cursor
             ? EventFollowUpDestination.Shop
             : EventFollowUpDestination.NodeMap;
+    }
+
+    public static string GetNodeEntrySceneName(
+        EventFollowUpDestination destination)
+    {
+        return destination switch
+        {
+            EventFollowUpDestination.NormalBattle => "Battle",
+            EventFollowUpDestination.EliteBattle => "Battle",
+            EventFollowUpDestination.Shop => "Shop",
+            _ => "Event"
+        };
     }
 
     private static BulletGrade? ResolveTargetGrade(

@@ -315,6 +315,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
 
     private NodeMapSettings settings;
     private RectTransform content;
+    private RectTransform nodeLayer;
     private ScrollRect scrollRect;
     private NodeMapRunData map;
     private Material runtimePathMaterial;
@@ -421,6 +422,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
         HideNodeDescription();
         pathViews.Clear();
         availableNodeIds.Clear();
+        nodeLayer = null;
         foreach (Transform child in content)
         {
             child.gameObject.SetActive(false);
@@ -491,6 +493,8 @@ public class NodeMapControllerDefinition : MonoBehaviour
                 }
             }
         }
+
+        nodeLayer = CreateNodeLayer();
 
         HashSet<int> available = GetAvailableNodeIds();
         availableNodeIds.UnionWith(available);
@@ -593,7 +597,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
 
         // A LineRenderer cannot be composited with Screen Space Overlay UI.
         // Screen Space Camera lets the paths sit between the map background
-        // and the nested canvases used by the node buttons.
+        // and the dedicated node canvas created above the path sorting order.
         if (rootCanvas != null)
         {
             rootCanvas.renderMode = RenderMode.ScreenSpaceCamera;
@@ -733,6 +737,40 @@ public class NodeMapControllerDefinition : MonoBehaviour
             line = line,
             points = points
         });
+    }
+
+    private RectTransform CreateNodeLayer()
+    {
+        GameObject layerObject = new GameObject(
+            "Layer | Node Icons",
+            typeof(RectTransform),
+            typeof(Canvas),
+            typeof(GraphicRaycaster));
+        layerObject.layer = 5;
+
+        RectTransform layerRect = layerObject.GetComponent<RectTransform>();
+        layerRect.SetParent(content, false);
+        layerRect.anchorMin = Vector2.zero;
+        layerRect.anchorMax = Vector2.one;
+        layerRect.anchoredPosition = Vector2.zero;
+        layerRect.sizeDelta = Vector2.zero;
+        layerRect.localScale = Vector3.one;
+
+        Canvas nodeCanvas = layerObject.GetComponent<Canvas>();
+        nodeCanvas.overrideSorting = true;
+        nodeCanvas.sortingOrder = pathSortingOrder + 1;
+
+        Canvas rootCanvas = GetComponent<Canvas>();
+        if (rootCanvas == null)
+        {
+            rootCanvas = GetComponentInParent<Canvas>();
+        }
+        if (rootCanvas != null)
+        {
+            nodeCanvas.sortingLayerID = rootCanvas.sortingLayerID;
+        }
+
+        return layerRect;
     }
 
     private void SetHoveredNode(int nodeId, bool hovered)
@@ -942,7 +980,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
             typeof(Button), typeof(NodeMapNodeHover));
         nodeObject.layer = 5;
         RectTransform rect = nodeObject.GetComponent<RectTransform>();
-        rect.SetParent(content, false);
+        rect.SetParent(nodeLayer != null ? nodeLayer : content, false);
         rect.anchorMin = new Vector2(0f, 0.5f);
         rect.anchorMax = new Vector2(0f, 0.5f);
         rect.pivot = new Vector2(0.5f, 0.5f);
@@ -1108,16 +1146,29 @@ public class NodeMapControllerDefinition : MonoBehaviour
 
         map.activeNodeId = selected.id;
         map.awaitingNodeSelection = false;
-        NodeMapSaveSystem.Save(map);
+        map.selectedBattleIndex = -1;
         string sceneName = GetSceneName(selected.type);
+        int battleIndex = -1;
 
         if (selected.type == NodeMapNodeType.NormalBattle
             || selected.type == NodeMapNodeType.EliteBattle
             || selected.type == NodeMapNodeType.Boss)
         {
-            int battleIndex = ResolveStageBattleIndex(selected);
+            battleIndex = ResolveStageBattleIndex(selected);
+        }
+        else if (selected.type == NodeMapNodeType.Event)
+        {
+            sceneName = PrepareEventNodeEntry(selected, out battleIndex);
+        }
+
+        if (battleIndex >= 0)
+        {
             map.selectedBattleIndex = battleIndex;
-            NodeMapSaveSystem.Save(map);
+        }
+        NodeMapSaveSystem.Save(map);
+
+        if (battleIndex >= 0)
+        {
             if (RunSaveSystem.PrepareForSelectedBattle(
                     map.stageIndex, battleIndex))
             {
@@ -1129,6 +1180,102 @@ public class NodeMapControllerDefinition : MonoBehaviour
         {
             SceneManager.LoadScene(sceneName);
         }
+    }
+
+    private string PrepareEventNodeEntry(
+        NodeMapNodeData node,
+        out int battleIndex)
+    {
+        battleIndex = -1;
+        if (!RunSaveSystem.TryLoad(out RunSaveData runData))
+        {
+            return "Event";
+        }
+
+        EventDefinition selectedEvent = EventSelector.Select(
+            Resources.LoadAll<EventDefinition>("Events"),
+            EventRunContext.FromRunSave(runData),
+            runData.completedEventIds);
+        if (selectedEvent == null)
+        {
+            return "Event";
+        }
+
+        EventFollowUpDestination destination =
+            EventRuntimeRules.SelectNodeDestination(selectedEvent);
+        if (destination == EventFollowUpDestination.NormalBattle
+            || destination == EventFollowUpDestination.EliteBattle)
+        {
+            battleIndex = ResolveEventBattleIndex(destination);
+            if (battleIndex < 0)
+            {
+                destination = EventFollowUpDestination.NodeMap;
+            }
+        }
+
+        PrepareEventNodeRunState(
+            runData,
+            selectedEvent,
+            destination,
+            battleIndex);
+        if (!RunSaveSystem.Save(runData))
+        {
+            battleIndex = -1;
+            return "Event";
+        }
+
+        return EventRuntimeRules.GetNodeEntrySceneName(destination);
+    }
+
+    private static void PrepareEventNodeRunState(
+        RunSaveData runData,
+        EventDefinition selectedEvent,
+        EventFollowUpDestination destination,
+        int battleIndex)
+    {
+        runData.activeEventId = destination
+                == EventFollowUpDestination.NodeMap
+            ? selectedEvent.StableId
+            : string.Empty;
+        runData.eventChoiceResolved = false;
+        runData.eventOutcomeText = string.Empty;
+        runData.eventResultText = string.Empty;
+        runData.eventInteractionStage = 0;
+        runData.eventPendingChoiceIndex = -1;
+        runData.eventQuizCorrectAssetName = string.Empty;
+        runData.eventChoiceSelectionCounts.Clear();
+        runData.eventChoiceFailureCounts.Clear();
+        runData.eventOfferAssetNames.Clear();
+        runData.eventReelSymbolKeys.Clear();
+        runData.eventFollowUpDestination = (int)destination;
+        runData.eventFollowUpBattleIndex = battleIndex;
+    }
+
+    private int ResolveEventBattleIndex(
+        EventFollowUpDestination destination)
+    {
+        if (settings.Stage == null)
+        {
+            return -1;
+        }
+
+        BattleType requestedType = destination
+                == EventFollowUpDestination.EliteBattle
+            ? BattleType.Elite
+            : BattleType.Normal;
+        List<int> candidates = new List<int>();
+        for (int index = 0; index < settings.Stage.Battles.Count; index++)
+        {
+            BattleData battle = settings.Stage.Battles[index];
+            if (battle != null && battle.BattleType == requestedType)
+            {
+                candidates.Add(index);
+            }
+        }
+
+        return candidates.Count == 0
+            ? -1
+            : candidates[UnityEngine.Random.Range(0, candidates.Count)];
     }
 
     private int ResolveStageBattleIndex(NodeMapNodeData node)
@@ -1150,6 +1297,26 @@ public class NodeMapControllerDefinition : MonoBehaviour
             _ => null
         };
 
+        int stageBattleIndex = FindStageBattleIndex(selected);
+        if (stageBattleIndex >= 0)
+        {
+            return stageBattleIndex;
+        }
+
+        Debug.LogWarning(
+            $"Battle '{selected?.name}' is not in stage "
+            + $"'{settings.Stage?.name}'. Using the first battle.",
+            this);
+        return 0;
+    }
+
+    private int FindStageBattleIndex(BattleData selected)
+    {
+        if (selected == null || settings.Stage == null)
+        {
+            return -1;
+        }
+
         for (int index = 0; index < settings.Stage.Battles.Count; index++)
         {
             if (settings.Stage.Battles[index] == selected)
@@ -1158,8 +1325,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
             }
         }
 
-        Debug.LogWarning($"Battle '{selected?.name}' is not in stage '{settings.Stage.name}'. Using the first battle.", this);
-        return 0;
+        return -1;
     }
 
     private static string GetSceneName(NodeMapNodeType type)

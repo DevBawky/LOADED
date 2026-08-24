@@ -1356,10 +1356,22 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private IEnumerator FireBigBarrelShotgun()
     {
-        EnemyActionData action = PopFirstQueuedAction();
+        EnemyActionData action = DequeueFirstQueuedAction();
         CaptureBigBarrelShotgunTargets();
         bool hasHitPlayer = false;
+        bool actionTileRemoved = false;
         HashSet<EnemyController> hitEnemies = new HashSet<EnemyController>();
+
+        void RemoveActionTile()
+        {
+            if (actionTileRemoved)
+            {
+                return;
+            }
+
+            actionTileRemoved = true;
+            RemoveFirstActionTile();
+        }
 
         void EvaluateShotgunHits()
         {
@@ -1391,11 +1403,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                         enemyData.BigBarrel.ShotgunDamage);
                 }
             }
+
+            RemoveActionTile();
         }
 
         yield return PlayAvatarAnimation(
             BigBarrelShotgunAnimationStateHash,
             EvaluateShotgunHits);
+        RemoveActionTile();
 
         if (action != null && action.AttackData != null)
         {
@@ -1471,10 +1486,28 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return null;
         }
 
+        EnemyActionData action = DequeueFirstQueuedAction();
+        RemoveFirstActionTile();
+        return action;
+    }
+
+    private EnemyActionData DequeueFirstQueuedAction()
+    {
+        if (queuedAttackActions.Count == 0)
+        {
+            return null;
+        }
+
         EnemyActionData action = queuedAttackActions[0];
         queuedAttackActions.RemoveAt(0);
-        actionQueueUI.RemoveFirstIcon();
         return action;
+    }
+
+    private void RemoveFirstActionTile()
+    {
+        actionQueueUI.RemoveFirstIcon();
+        actionQueueUI.HideQueue();
+        RefreshGunnerReloadedAnimation();
     }
 
     private void FinishBigBarrelAttack(BigBarrelStep nextStep)
@@ -1779,11 +1812,24 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     {
         while (queuedAttackActions.Count > 0)
         {
-            EnemyActionData attackAction = queuedAttackActions[0];
-            queuedAttackActions.RemoveAt(0);
-            yield return ExecuteQueuedAttack(attackAction);
-            actionQueueUI.RemoveFirstIcon();
-            RefreshGunnerReloadedAnimation();
+            EnemyActionData attackAction = DequeueFirstQueuedAction();
+            bool actionTileRemoved = false;
+
+            void RemoveActionTile()
+            {
+                if (actionTileRemoved)
+                {
+                    return;
+                }
+
+                actionTileRemoved = true;
+                RemoveFirstActionTile();
+            }
+
+            yield return ExecuteQueuedAttack(
+                attackAction,
+                RemoveActionTile);
+            RemoveActionTile();
 
             if (queuedAttackActions.Count > 0)
             {
@@ -1810,18 +1856,22 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             : EnemyTurnActionType.Fire);
     }
 
-    private IEnumerator ExecuteQueuedAttack(EnemyActionData attackAction)
+    private IEnumerator ExecuteQueuedAttack(
+        EnemyActionData attackAction,
+        Action onAttackPerformed)
     {
         if (enemyData.BehaviorType == EnemyBehaviorType.Porter
             && attackAction != null
             && attackAction.ActionType == EnemyActionType.Support)
         {
             ExecutePreparedSupport();
+            onAttackPerformed?.Invoke();
             yield break;
         }
 
         if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
         {
+            onAttackPerformed?.Invoke();
             yield break;
         }
 
@@ -1832,17 +1882,26 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
-            yield return ExecuteThrowerAttack(attackData);
+            yield return ExecuteThrowerAttack(
+                attackData,
+                onAttackPerformed);
             yield break;
         }
 
         bool attackResolved = false;
+        bool attackPerformed = false;
 
         void EvaluateAttackHit()
         {
             if (!attackResolved)
             {
                 attackResolved = TryApplyDirectAttack(attackData);
+            }
+
+            if (!attackPerformed)
+            {
+                attackPerformed = true;
+                onAttackPerformed?.Invoke();
             }
         }
 
@@ -2032,15 +2091,19 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
     }
 
-    private IEnumerator ExecuteThrowerAttack(EnemyAttackData attackData)
+    private IEnumerator ExecuteThrowerAttack(
+        EnemyAttackData attackData,
+        Action onAttackPerformed)
     {
         if (preparedTargetTileIndex < 0)
         {
+            onAttackPerformed?.Invoke();
             AttackExecuted?.Invoke(this, attackData);
             yield break;
         }
 
         PlayThrowerAttackAnimation();
+        onAttackPerformed?.Invoke();
         yield return PlayThrownProjectile(preparedTargetPosition);
         SoundManager.PlaySfx("SFX_Thrower_Bomb");
 

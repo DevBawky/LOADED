@@ -174,6 +174,18 @@ public class EnemyActionQueueUI : MonoBehaviour
         RefreshQueueWidth();
     }
 
+    public void HideQueue()
+    {
+        displayRevision++;
+
+        if (queueImage != null)
+        {
+            queueImage.gameObject.SetActive(false);
+        }
+
+        RefreshEmphasis();
+    }
+
     public void ResetDisplay()
     {
         displayRevision++;

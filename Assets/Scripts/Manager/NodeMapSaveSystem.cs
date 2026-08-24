@@ -175,13 +175,32 @@ public static class NodeMapSaveSystem
         {
             NodeMapNodeType.Shop => "Shop",
             NodeMapNodeType.Treasure => "Treasure",
-            NodeMapNodeType.Event => "Event",
+            NodeMapNodeType.Event => GetActiveEventNodeScene(),
             NodeMapNodeType.NormalBattle => "Battle",
             NodeMapNodeType.EliteBattle => "Battle",
             NodeMapNodeType.Boss => "Battle",
             _ => string.Empty
         };
         return !string.IsNullOrEmpty(sceneName);
+    }
+
+    private static string GetActiveEventNodeScene()
+    {
+        return RunSaveSystem.TryLoad(out RunSaveData runData)
+            ? ResolveActiveEventNodeScene(runData)
+            : "Event";
+    }
+
+    internal static string ResolveActiveEventNodeScene(RunSaveData runData)
+    {
+        if (runData == null
+            || !string.IsNullOrWhiteSpace(runData.activeEventId))
+        {
+            return "Event";
+        }
+
+        return EventRuntimeRules.GetNodeEntrySceneName(
+            (EventFollowUpDestination)runData.eventFollowUpDestination);
     }
 
     public static void DeleteSave()

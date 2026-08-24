@@ -24,7 +24,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f26678f0173a474ab0e60009063e56eb, type: 2}
   - {fileID: 11400000, guid: 77dd19b6338e6dc44b51344f42bfb560, type: 2}
   - {fileID: 11400000, guid: 658961ba54988274f86b4014a7aa0a0f, type: 2}
-  earlyBattleEndPercent: 10
+  earlyBattleEndPercent: 5
   middleBattleEndPercent: 60
   eliteBattles:
   - {fileID: 11400000, guid: e1788ae2a5c244f29e09e4f2d58a349d, type: 2}

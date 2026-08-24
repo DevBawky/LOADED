@@ -23,7 +23,7 @@ duplicate entries for authored counts.
 - `DuelClockSnapshot` and `DuelClockAdvanceResult` are immutable values used by
   execution and preview paths.
 - `WaveManager` remains the only owner of enemy-turn resolution, spawn-pool
-  consumption, capacity deferral, and battle completion. Legacy turns and
+  consumption, capacity enforcement, and battle completion. Legacy turns and
   Duel Clock beats enter the same sequential resolver.
 - `DuelClockEnemySpawnPool` owns the scene-local remaining enemy references.
   It never mutates the authored `BattleData` list.
@@ -53,7 +53,8 @@ keeps the legacy `cumulativeBattleTurnCount` JSON field name for compatibility.
 | Paid action progress | `45` |
 | Enemy wave Beat count | `5` |
 | Free action progress | `0` (fixed rule) |
-| Empty-board natural rate | `1.0x` (same fixed rate) |
+| Three-enemy natural rate | `1.0x` |
+| Natural rate step | `0.3x` per enemy below/above three |
 | Clock cycle length | `100` |
 
 The cycle length is a rule constant in `DuelClockState`, not duplicated in
@@ -139,10 +140,13 @@ count without another defeat expires the combo.
 
 ## Runtime progression and pause contract
 
-`PlayerMove.TurnCompleted` represents a finalized paid action and is committed
-exactly once by the active controller. Actions that do not publish that event
-remain free, and the shared free-action preview always evaluates
-`state.Preview(0)` with no authored override. Natural progress runs while the
+`PlayerMove.TurnCompleted` represents a finalized paid action and is normally
+committed exactly once by the active controller. Shooting is the exception:
+its paid-action progress is committed as soon as a valid firing sequence
+starts, and its later `TurnCompleted` event does not commit the cost again.
+Non-shoot actions that do not publish `TurnCompleted` remain free, and the
+shared free-action preview always evaluates `state.Preview(0)` with no
+authored override. Natural progress runs while the
 active Duel Clock controller, player, and wave references are valid and the
 battle is not complete. `GamePauseController` and an open first-run guide card
 pause it. Loading transitions, input locks, player shooting or motion, enemy
@@ -166,8 +170,13 @@ that beat completes, so enemy effects are not decremented a second time by the
 central beat resolver. Legacy mode keeps processing player effects at ordinary
 turn completion.
 
-The natural rate does not inspect the active enemy count. An empty Duel Clock
-board therefore advances at the same authored rate as a board with enemies.
+The natural rate uses three living enemies as its `1.0x` baseline. Each enemy
+below three adds 30 percentage points, while each enemy above three subtracts
+30 percentage points. The resulting rates are `1.9x`, `1.6x`, `1.3x`, `1.0x`,
+`0.7x`, and `0.4x` for zero through five living enemies respectively. The
+controller queries `WaveManager` when advancing natural time, so defeats and
+reinforcements affect the next frame without adding saved or duplicated enemy
+count state.
 
 ## Enemy-cycle ordering
 
@@ -186,15 +195,21 @@ presentation state do not delay the resolver. Each beat:
 2. snapshots and resolves the current enemies in existing order;
 3. publishes `EnemyTurnCycleCompleted` exactly once;
 4. requests one enemy on each authored spawn interval;
-5. spawns it immediately when a tile is free, or keeps the request pending
-   until capacity becomes available.
+5. spawns it only when the current battle's capacity and a tile are available.
 
-`WaveManager.MaximumActiveEnemyCount` fixes encounter capacity at six living
-enemies. Spawn-tile selection and the final spawn commit both enforce that
-limit. A reinforcement requested while six enemies are alive remains pending
-without consuming the authored pool or RNG, then fills the first available
-slot after an enemy is defeated. Active-battle saves containing more than six
-living enemies are rejected instead of restoring an invalid encounter state.
+`WaveManager.MaximumActiveEnemyCount` is calculated for each battle by rounding
+`BattleData.BoardCount * 0.35` to the nearest integer, with a minimum of one.
+This yields capacities of two, four, and five enemies for board counts seven,
+eleven, and thirteen respectively. Spawn-tile selection and the final spawn
+commit both enforce the current battle's result. A scheduled reinforcement is
+skipped while that capacity is full or no spawn tile is available. Skipped
+reinforcements do not accumulate, consume the authored pool or RNG, and
+defeating an enemy does not immediately refill the opened slot. The next
+authored reinforcement interval gets a fresh opportunity instead. Active-
+battle saves containing more living enemies than the restored battle's
+calculated capacity are rejected. The legacy
+`duelClockPendingEnemySpawns` save field remains in version 3 JSON for
+compatibility but normalizes to zero and is no longer restored.
 
 One random enemy is spawned immediately at fresh battle start. Empty boards
 continue accumulating natural clock progress. Battle clear occurs only after
@@ -205,6 +220,13 @@ already being resolved.
 Battle completion or player defeat clears the remaining queue. Legacy
 `TurnCompleted` still dispatches one cycle directly; in Duel Clock mode only
 the controller's committed beats dispatch cycles.
+
+Every enemy defeat reduces the current Duel Clock progress by one third of the
+active battle's `Duel Clock Paid Action Progress` without changing completed
+COUNT. With the default value of 45, shooting immediately adds 45 and each
+defeat removes 15, so four defeats remove 60 in total. Reduction clamps at
+zero, does not cancel a COUNT that was already committed, and has no separate
+combat text. Defeats outside a firing sequence use the same fixed reduction.
 
 Because Duel Clock allows player input while an enemy cycle is resolving,
 `WaveManager` also owns transient movement-tile reservations. Player movement,
@@ -245,7 +267,7 @@ Run save version `3`, desktop filename, and WebGL key
 - cumulative completed beats as a long;
 - a spawn-pool initialization flag;
 - remaining enemy asset names with duplicate entries preserved;
-- the number of capacity-deferred spawn requests.
+- the deprecated capacity-deferred spawn-request field, normalized to zero.
 
 Missing fields normalize to Legacy mode. Invalid modes fall back to Legacy;
 negative, non-finite, or overflowing Duel Clock values reset to a safe zero

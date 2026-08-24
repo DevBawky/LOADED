@@ -95,6 +95,20 @@ public sealed class DuelClockStateTests
     }
 
     [Test]
+    public void ReductionClampsAtZeroWithoutChangingCumulativeBeats()
+    {
+        DuelClockState state = DuelClockState.Restore(80d, 3);
+
+        double firstReduction = state.Reduce(30d);
+        double secondReduction = state.Reduce(100d);
+
+        Assert.That(firstReduction, Is.EqualTo(30d));
+        Assert.That(secondReduction, Is.EqualTo(50d));
+        Assert.That(state.Snapshot.Progress, Is.Zero);
+        Assert.That(state.Snapshot.CumulativeBeats, Is.EqualTo(3));
+    }
+
+    [Test]
     public void RestoreNormalizesProgressBeyondOneCycle()
     {
         DuelClockState state = DuelClockState.Restore(250d, 7);
@@ -115,6 +129,8 @@ public sealed class DuelClockStateTests
             () => state.Preview(invalidProgress));
         Assert.Throws<ArgumentOutOfRangeException>(
             () => state.Commit(invalidProgress));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => state.Reduce(invalidProgress));
         Assert.Throws<ArgumentOutOfRangeException>(
             () => DuelClockState.Restore(invalidProgress, 0));
     }
@@ -179,23 +195,35 @@ public sealed class BattleDataCombatPacingTests
 
 public sealed class WaveManagerActiveEnemyLimitTests
 {
-    [Test]
-    public void ActiveEnemyLimitIsSix()
+    [TestCase(7, 2)]
+    [TestCase(11, 4)]
+    [TestCase(13, 5)]
+    [TestCase(9, 3)]
+    [TestCase(10, 4)]
+    [TestCase(1, 1)]
+    public void ActiveEnemyLimitRoundsThirtyFivePercentOfBoardCount(
+        int boardCount,
+        int expectedMaximumEnemyCount)
     {
-        Assert.That(WaveManager.MaximumActiveEnemyCount, Is.EqualTo(6));
+        Assert.That(
+            WaveManager.CalculateMaximumActiveEnemyCount(boardCount),
+            Is.EqualTo(expectedMaximumEnemyCount));
     }
 
-    [TestCase(-1, 6)]
-    [TestCase(0, 6)]
-    [TestCase(5, 1)]
-    [TestCase(6, 0)]
-    [TestCase(9, 0)]
+    [TestCase(-1, 2, 2)]
+    [TestCase(0, 2, 2)]
+    [TestCase(1, 2, 1)]
+    [TestCase(2, 2, 0)]
+    [TestCase(9, 2, 0)]
     public void AvailableSlotsNeverExceedConfiguredLimit(
         int livingEnemyCount,
+        int configuredMaximumEnemyCount,
         int expectedSlots)
     {
         Assert.That(
-            WaveManager.CalculateAvailableEnemySlots(livingEnemyCount),
+            WaveManager.CalculateAvailableEnemySlots(
+                livingEnemyCount,
+                configuredMaximumEnemyCount),
             Is.EqualTo(expectedSlots));
     }
 }
@@ -316,7 +344,7 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
-    public void EmptyBoardUsesFullNaturalClockSpeed()
+    public void EmptyBoardUsesOneHundredNinetyPercentNaturalClockSpeed()
     {
         PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
         WaveManager waveManager = CreateComponent<WaveManager>("Wave");
@@ -330,7 +358,23 @@ public sealed class DuelClockControllerTests
 
         Assert.That(waveManager.ActiveEnemies, Is.Empty);
         Assert.That(advanced, Is.True);
-        Assert.That(controller.Progress, Is.EqualTo(4d));
+        Assert.That(controller.Progress, Is.EqualTo(7.6d).Within(0.0001d));
+    }
+
+    [TestCase(0, 1.9d)]
+    [TestCase(1, 1.6d)]
+    [TestCase(2, 1.3d)]
+    [TestCase(3, 1d)]
+    [TestCase(4, 0.7d)]
+    [TestCase(5, 0.4d)]
+    public void NaturalProgressMultiplierChangesThirtyPercentPerEnemy(
+        int livingEnemyCount,
+        double expectedMultiplier)
+    {
+        Assert.That(
+            DuelClockController.CalculateNaturalProgressMultiplier(
+                livingEnemyCount),
+            Is.EqualTo(expectedMultiplier).Within(0.0001d));
     }
 
     [Test]
@@ -397,9 +441,140 @@ public sealed class DuelClockControllerTests
         DuelClockAdvanceResult preview = controller.PreviewFreeAction();
 
         Assert.That(preview.AddedProgress, Is.Zero);
-        Assert.That(preview.Before.Progress, Is.EqualTo(4d));
-        Assert.That(preview.After.Progress, Is.EqualTo(4d));
-        Assert.That(controller.Progress, Is.EqualTo(4d));
+        Assert.That(preview.Before.Progress,
+            Is.EqualTo(7.6d).Within(0.0001d));
+        Assert.That(preview.After.Progress,
+            Is.EqualTo(7.6d).Within(0.0001d));
+        Assert.That(controller.Progress,
+            Is.EqualTo(7.6d).Within(0.0001d));
+    }
+
+    [Test]
+    public void EveryEnemyDefeatReducesOneThirdOfPaidActionProgress()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(4f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+        controller.TryAdvanceNaturalTime(12.5d);
+
+        bool firstApplied = controller.ApplyEnemyDefeat();
+        bool secondApplied = controller.ApplyEnemyDefeat();
+        bool thirdApplied = controller.ApplyEnemyDefeat();
+
+        Assert.That(firstApplied, Is.True);
+        Assert.That(secondApplied, Is.True);
+        Assert.That(thirdApplied, Is.True);
+        Assert.That(controller.Progress,
+            Is.EqualTo(50d).Within(0.0001d));
+        Assert.That(controller.CumulativeBeats, Is.Zero);
+        Assert.That(DuelClockController.CalculateEnemyDefeatReduction(45d),
+            Is.EqualTo(15d));
+        Assert.That(DuelClockController.CalculateEnemyDefeatReduction(30d),
+            Is.EqualTo(10d));
+    }
+
+    [Test]
+    public void FourDefeatsCanReduceMoreThanTheShootActionAdded()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(0f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureRestored(
+            battle,
+            CombatPacingMode.DuelClock,
+            new RunSaveData
+            {
+                duelClockProgress = 30d
+            });
+
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Shoot);
+        controller.ApplyEnemyDefeat();
+        controller.ApplyEnemyDefeat();
+        controller.ApplyEnemyDefeat();
+        controller.ApplyEnemyDefeat();
+
+        Assert.That(controller.Progress,
+            Is.EqualTo(15d).Within(0.0001d));
+        Assert.That(controller.CumulativeBeats, Is.Zero);
+    }
+
+    [Test]
+    public void ShootCommitsPaidActionProgressImmediatelyAndOnlyOnce()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(0f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Shoot);
+
+        Assert.That(controller.Progress, Is.EqualTo(45d));
+
+        playerMove.CompleteTurn();
+
+        Assert.That(playerMove.TurnCount, Is.EqualTo(1));
+        Assert.That(controller.Progress, Is.EqualTo(45d));
+        Assert.That(controller.CumulativeBeats, Is.Zero);
+    }
+
+    [Test]
+    public void ShootDispatchesCrossedBeatBeforeTurnCompletion()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(0f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureRestored(
+            battle,
+            CombatPacingMode.DuelClock,
+            new RunSaveData
+            {
+                duelClockProgress = 80d
+            });
+        long committedBeats = 0;
+        controller.BeatsCommitted += beatCount =>
+            committedBeats += beatCount;
+
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Shoot);
+
+        Assert.That(controller.Progress, Is.EqualTo(25d));
+        Assert.That(controller.CumulativeBeats, Is.EqualTo(1));
+        Assert.That(committedBeats, Is.EqualTo(1));
+        Assert.That(playerMove.TurnCount, Is.Zero);
+    }
+
+    [Test]
+    public void NonShootPaidActionStillCommitsOnTurnCompletion()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(0f, 45f);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
+
+        Assert.That(controller.Progress, Is.Zero);
+
+        playerMove.CompleteTurn();
+
+        Assert.That(playerMove.TurnCount, Is.EqualTo(1));
+        Assert.That(controller.Progress, Is.EqualTo(45d));
+        Assert.That(controller.CumulativeBeats, Is.Zero);
     }
 
     [Test]
@@ -452,7 +627,8 @@ public sealed class DuelClockControllerTests
         Assert.That(advancedWhileShooting, Is.True);
         Assert.That(advancedWhileEnemyResolving, Is.True);
         Assert.That(advancedWhileActing, Is.True);
-        Assert.That(controller.Progress, Is.EqualTo(16d));
+        Assert.That(controller.Progress,
+            Is.EqualTo(30.4d).Within(0.0001d));
     }
 
     [Test]
@@ -476,7 +652,8 @@ public sealed class DuelClockControllerTests
 
         Assert.That(playerMove.CanStartAction, Is.False);
         Assert.That(advanced, Is.True);
-        Assert.That(controller.Progress, Is.EqualTo(4d));
+        Assert.That(controller.Progress,
+            Is.EqualTo(7.6d).Within(0.0001d));
     }
 
     [Test]
@@ -932,9 +1109,9 @@ public sealed class WaveManagerPacingDispatchTests
 
         playerMove.SetShooting(true);
         bool naturalBeatCommitted =
-            controller.TryAdvanceNaturalTime(25d);
+            controller.TryAdvanceNaturalTime(15.625d);
         bool naturalTimeAdvancedDuringResolver =
-            controller.TryAdvanceNaturalTime(25d);
+            controller.TryAdvanceNaturalTime(15.625d);
 
         Assert.That(naturalBeatCommitted, Is.True);
         Assert.That(naturalTimeAdvancedDuringResolver, Is.True);
@@ -1190,7 +1367,7 @@ public sealed class DuelClockSaveDataTests
     }
 
     [Test]
-    public void DuelClockEnemyPoolFieldsRoundTripThroughJson()
+    public void DeprecatedPendingEnemySpawnsNormalizeToZero()
     {
         RunSaveData source = new RunSaveData
         {
@@ -1206,7 +1383,7 @@ public sealed class DuelClockSaveDataTests
         RunSaveSystem.NormalizeSaveData(restored);
 
         Assert.That(restored.duelClockSpawnPoolInitialized, Is.True);
-        Assert.That(restored.duelClockPendingEnemySpawns, Is.EqualTo(1));
+        Assert.That(restored.duelClockPendingEnemySpawns, Is.Zero);
         Assert.That(restored.duelClockRemainingEnemyAssetNames,
             Is.EqualTo(new[] { "Melee", "Gunner" }));
     }

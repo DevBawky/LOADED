@@ -31,6 +31,25 @@ public readonly struct EventRunContext
     public float CurrentHealthPercent { get; }
     public int CumulativeBattleCount { get; }
 
+    public static EventRunContext FromRunSave(RunSaveData runData)
+    {
+        if (runData == null)
+        {
+            return default;
+        }
+
+        int maximumHealth = Mathf.Max(1, runData.maxHealth);
+        return new EventRunContext(
+            NodeMapSaveSystem.GetCompletedNodeCount(
+                NodeMapNodeType.EliteBattle),
+            NodeMapSaveSystem.GetCompletedNodeCount(NodeMapNodeType.Shop),
+            NodeMapSaveSystem.GetCompletedNodeCount(NodeMapNodeType.Event),
+            runData.money,
+            runData.bullets?.Count ?? 0,
+            runData.currentHealth * 100f / maximumHealth,
+            runData.cumulativeBattleTurnCount);
+    }
+
     public float GetValue(EventRunStatistic statistic)
     {
         return statistic switch

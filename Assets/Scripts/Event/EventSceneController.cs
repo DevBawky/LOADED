@@ -13,8 +13,6 @@ using UnityEngine.UI;
 public sealed class EventSceneController : MonoBehaviour
 {
     private const string NodeMapSceneName = "NodeMap";
-    private const string BattleSceneName = "Battle";
-    private const string ShopSceneName = "Shop";
 
     [Header("Event Pool")]
     [Tooltip("비어 있으면 Resources/Events의 모든 EventDefinition을 사용합니다.")]
@@ -301,16 +299,7 @@ public sealed class EventSceneController : MonoBehaviour
 
     private EventRunContext CreateRunContext()
     {
-        int maxHealth = Mathf.Max(1, runData.maxHealth);
-        return new EventRunContext(
-            NodeMapSaveSystem.GetCompletedNodeCount(
-                NodeMapNodeType.EliteBattle),
-            NodeMapSaveSystem.GetCompletedNodeCount(NodeMapNodeType.Shop),
-            NodeMapSaveSystem.GetCompletedNodeCount(NodeMapNodeType.Event),
-            currencyManager.CurrentMoney,
-            deckManager.OwnedBulletCount,
-            runData.currentHealth * 100f / maxHealth,
-            Mathf.Max(0, runData.cumulativeBattleTurnCount));
+        return EventRunContext.FromRunSave(runData);
     }
 
     private void ConfigureSharedPresentation()
@@ -1281,58 +1270,16 @@ public sealed class EventSceneController : MonoBehaviour
             runData.completedEventIds.Add(currentEvent.StableId);
         }
 
-        SelectAndStoreFollowUp();
+        StoreNodeMapFollowUp();
         SaveEventState();
         ShowOutcome(runData.eventOutcomeText);
     }
 
-    private void SelectAndStoreFollowUp()
+    private void StoreNodeMapFollowUp()
     {
-        EventFollowUpDestination destination =
-            EventRuntimeRules.SelectFollowUp(
-                currentEvent.normalBattleChancePercent,
-                currentEvent.eliteBattleChancePercent,
-                currentEvent.shopChancePercent);
-        int battleIndex = -1;
-        if (destination == EventFollowUpDestination.NormalBattle
-            || destination == EventFollowUpDestination.EliteBattle)
-        {
-            BattleType requestedType = destination
-                == EventFollowUpDestination.EliteBattle
-                    ? BattleType.Elite
-                    : BattleType.Normal;
-            battleIndex = SelectFollowUpBattleIndex(requestedType);
-            if (battleIndex < 0)
-            {
-                destination = EventFollowUpDestination.NodeMap;
-            }
-        }
-
-        runData.eventFollowUpDestination = (int)destination;
-        runData.eventFollowUpBattleIndex = battleIndex;
-    }
-
-    private int SelectFollowUpBattleIndex(BattleType requestedType)
-    {
-        StageData stage = stateManager == null ? null : stateManager.CurrentStage;
-        if (stage == null)
-        {
-            return -1;
-        }
-
-        List<int> candidates = new List<int>();
-        for (int index = 0; index < stage.Battles.Count; index++)
-        {
-            BattleData battle = stage.Battles[index];
-            if (battle != null && battle.BattleType == requestedType)
-            {
-                candidates.Add(index);
-            }
-        }
-
-        return candidates.Count == 0
-            ? -1
-            : candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        runData.eventFollowUpDestination =
+            (int)EventFollowUpDestination.NodeMap;
+        runData.eventFollowUpBattleIndex = -1;
     }
 
     private void ConfigureDynamicChoices(
@@ -1443,16 +1390,7 @@ public sealed class EventSceneController : MonoBehaviour
 
     private string GetFollowUpLabel()
     {
-        EventFollowUpDestination destination = runData == null
-            ? EventFollowUpDestination.NodeMap
-            : (EventFollowUpDestination)runData.eventFollowUpDestination;
-        return destination switch
-        {
-            EventFollowUpDestination.NormalBattle => "일반 전투로",
-            EventFollowUpDestination.EliteBattle => "엘리트 전투로",
-            EventFollowUpDestination.Shop => "상점으로",
-            _ => continueLabel
-        };
+        return continueLabel;
     }
 
     private void ContinueFromEvent()
@@ -1462,65 +1400,10 @@ public sealed class EventSceneController : MonoBehaviour
             return;
         }
 
-        EventFollowUpDestination destination =
-            (EventFollowUpDestination)runData.eventFollowUpDestination;
-        switch (destination)
-        {
-            case EventFollowUpDestination.NormalBattle:
-            case EventFollowUpDestination.EliteBattle:
-                ContinueToFollowUpBattle();
-                break;
-            case EventFollowUpDestination.Shop:
-                ContinueToFollowUpShop();
-                break;
-            default:
-                ReturnToNodeMap();
-                break;
-        }
-    }
-
-    private void ContinueToFollowUpBattle()
-    {
-        int battleIndex = runData.eventFollowUpBattleIndex;
-        if (battleIndex < 0
-            || !NodeMapSaveSystem.SetSelectedBattleIndex(battleIndex))
-        {
-            ReturnToNodeMap();
-            return;
-        }
-
-        leaving = true;
-        SaveEventState();
-        ClearCompletedEventState();
-        RunSaveSystem.Save(runData);
-        if (!RunSaveSystem.PrepareForSelectedBattle(
-                runData.stageIndex,
-                battleIndex))
-        {
-            leaving = false;
-            ReturnToNodeMap();
-            return;
-        }
-
-        RunSaveSystem.RequestStart(RunStartMode.Continue);
-        if (!LoadingTransitionController.LoadScene(BattleSceneName))
-        {
-            SceneManager.LoadScene(BattleSceneName);
-        }
-    }
-
-    private void ContinueToFollowUpShop()
-    {
-        leaving = true;
-        SaveEventState();
-        ClearCompletedEventState();
-        runData.flowState = (int)GameFlowState.Shop;
-        runData.shopVisitActive = false;
-        RunSaveSystem.Save(runData);
-        if (!LoadingTransitionController.LoadScene(ShopSceneName))
-        {
-            SceneManager.LoadScene(ShopSceneName);
-        }
+        // Entry substitution is consumed before the Event scene loads. Once a
+        // choice event is active, completion always commits its node and loads
+        // NodeMap, including saves created by the former follow-up flow.
+        ReturnToNodeMap();
     }
 
     public void ReturnToNodeMap()

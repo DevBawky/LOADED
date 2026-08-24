@@ -208,14 +208,16 @@ public sealed class WaveManagerEnemyProgressTests
     }
 
     [Test]
-    public void DuelClockQueuesOneUnrequestedEnemyAtEachInterval()
+    public void DuelClockSpawnsOnlyAtIntervalBelowActiveEnemyLimit()
     {
-        Assert.That(WaveManager.ShouldQueueDuelClockEnemySpawn(
-            4, 5, 3, 0), Is.False);
-        Assert.That(WaveManager.ShouldQueueDuelClockEnemySpawn(
-            5, 5, 3, 0), Is.True);
-        Assert.That(WaveManager.ShouldQueueDuelClockEnemySpawn(
-            10, 5, 1, 1), Is.False);
+        Assert.That(WaveManager.ShouldSpawnDuelClockEnemy(
+            4, 5, 3, 3, 4), Is.False);
+        Assert.That(WaveManager.ShouldSpawnDuelClockEnemy(
+            5, 5, 3, 3, 4), Is.True);
+        Assert.That(WaveManager.ShouldSpawnDuelClockEnemy(
+            5, 5, 3, 4, 4), Is.False);
+        Assert.That(WaveManager.ShouldSpawnDuelClockEnemy(
+            10, 5, 0, 1, 2), Is.False);
     }
 
     private static EnemyWave CreateWave(params int[] counts)
