@@ -9,14 +9,15 @@ time, enemy-turn cycles, stun, active-battle save restoration, and a compact
 Battle HUD. Time-based single-enemy reinforcement scheduling is connected.
 
 Every current `BattleData` uses Duel Clock. The all-battle authoring command
-flattens each asset's legacy waves into one finite enemy pool while preserving
-duplicate entries for authored counts.
+flattens each asset's legacy waves into a weighted enemy-type pool and a total
+spawn count. It also preserves the old duplicate list as hidden migration data
+for active version 3 saves created before the weighted selector existed.
 
 ## Ownership
 
 - `BattleData` owns authored pacing mode, natural and paid-action progress,
-  spawn interval, and the finite enemy pool. Free actions are a fixed
-  zero-progress rule rather than authored data.
+  spawn interval, total spawn count, and weighted enemy entries. Free actions
+  are a fixed zero-progress rule rather than authored data.
 - The scene-local `DuelClockController` owns one `DuelClockState`, natural
   progression gates, paid-action commits, preview queries, and save capture.
 - `DuelClockState` owns deterministic progress and cumulative beat arithmetic.
@@ -25,8 +26,9 @@ duplicate entries for authored counts.
 - `WaveManager` remains the only owner of enemy-turn resolution, spawn-pool
   consumption, capacity enforcement, and battle completion. Legacy turns and
   Duel Clock beats enter the same sequential resolver.
-- `DuelClockEnemySpawnPool` owns the scene-local remaining enemy references.
-  It never mutates the authored `BattleData` list.
+- `DuelClockEnemySpawnPool` owns the scene-local remaining count, per-type
+  spawn and missed-selection counts, and the last selected enemy. It never
+  mutates authored `BattleData` entries.
 - `PlayerMove` owns player action gating and exposes the dedicated Duel Clock
   stun consumption that does not publish another `TurnCompleted` event.
 - `RunSaveSystem` owns normalization of the additive clock fields while
@@ -78,8 +80,32 @@ enemy and resets the counter.
 Run `Tools > LOADED > Author Duel Clock All Battles`, or use the command-line
 execute method `DuelClockPilotAuthoring.ApplyFromCommandLine`. The idempotent
 command discovers every `BattleData` below `Assets/Scripts/Manager/Battle SO`,
-enables Duel Clock, and rebuilds `Duel Clock Enemy Pool` from every legacy wave
-entry. Duplicate list entries preserve the old authored counts.
+enables Duel Clock, and updates the hidden legacy migration pool from every
+legacy wave entry. When weighted entries are still empty, duplicate entries
+of one enemy become one weighted entry whose base weight is the old duplicate
+count. The command sets the total spawn count to the flattened count and
+initializes minimum count to `0`, missed-selection weight increase to `0.25`,
+and previous-spawn multiplier to `0.35`. Existing weighted entries and their total
+spawn count are preserved so rerunning the command does not erase encounter
+tuning.
+
+## Weighted enemy selection
+
+Each `Duel Clock Enemy Spawn Entry` authors an enemy type, base weight,
+minimum spawn count, missed-selection weight increase, and previous-spawn
+weight multiplier. Effective weight starts as
+`base * (1 + missed count * missed increase)`, then applies the previous-spawn
+multiplier when it was the last selected type. Selecting an entry resets its
+missed count to zero and increments every other entry's count. If a zero
+previous-spawn multiplier would leave no selectable type, selection retries
+without that multiplier so a single-type pool cannot deadlock.
+
+When the remaining spawn slots equal the sum of unmet minimum counts, only
+entries that have not met their minimum remain eligible. A configuration is
+invalid when entries are null or duplicated, a base weight is non-positive,
+or minimum counts exceed the total spawn count. Random selection does not
+consume the spawn budget until `WaveManager` has successfully created and
+initialized the enemy.
 
 ## Duel Clock HUD
 
@@ -214,9 +240,10 @@ This yields capacities of two, four, and five enemies for board counts seven,
 eleven, and thirteen respectively. Spawn-tile selection and the final spawn
 commit both enforce the current battle's result. A scheduled reinforcement is
 skipped while that capacity is full or no spawn tile is available. Skipped
-reinforcements do not accumulate, consume the authored pool or RNG, and
-defeating an enemy does not immediately refill the opened slot. The next
-authored reinforcement interval gets a fresh opportunity instead. Active-
+reinforcements do not accumulate, consume the authored pool or RNG. When a
+defeat leaves no living enemy while the pool still has a remaining spawn, one
+enemy is spawned immediately if a tile is available; this prevents an empty
+stage from waiting for the next authored interval. Active-
 battle saves containing more living enemies than the restored battle's
 calculated capacity are rejected. The legacy
 `duelClockPendingEnemySpawns` save field remains in version 3 JSON for
@@ -279,7 +306,17 @@ Run save version `3`, desktop filename, and WebGL key
 - cumulative completed beats as a long;
 - a spawn-pool initialization flag;
 - remaining enemy asset names with duplicate entries preserved;
+- a weighted-selector initialization flag and remaining spawn count;
+- per-entry spawned and missed-selection counts;
+- the last selected enemy asset name for the repeat penalty;
 - the deprecated capacity-deferred spawn-request field, normalized to zero.
+
+The old initialization flag and duplicate remaining-name list stay in version
+3 JSON for migration. On first restore after this change, `WaveManager` infers
+per-entry spawned counts from the preserved authored legacy pool and then
+captures the weighted state on the next checkpoint. Desktop and WebGL continue
+through the same `RunSaveSystem` normalization and `RunSession` JSON clone
+paths; the save version, filename, and PlayerPrefs key are unchanged.
 
 Missing fields normalize to Legacy mode. Invalid modes fall back to Legacy;
 negative, non-finite, or overflowing Duel Clock values reset to a safe zero

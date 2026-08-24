@@ -220,6 +220,19 @@ public sealed class WaveManagerEnemyProgressTests
             10, 5, 0, 1, 2), Is.False);
     }
 
+    [Test]
+    public void EmptyDuelClockBattleImmediatelyRequestsRemainingEnemy()
+    {
+        Assert.That(WaveManager.ShouldImmediatelySpawnDuelClockEnemy(
+            2, 0, 3), Is.True);
+        Assert.That(WaveManager.ShouldImmediatelySpawnDuelClockEnemy(
+            0, 0, 3), Is.False);
+        Assert.That(WaveManager.ShouldImmediatelySpawnDuelClockEnemy(
+            2, 1, 3), Is.False);
+        Assert.That(WaveManager.ShouldImmediatelySpawnDuelClockEnemy(
+            2, 0, 0), Is.False);
+    }
+
     private static EnemyWave CreateWave(params int[] counts)
     {
         EnemyWaveEntry[] entries = new EnemyWaveEntry[counts.Length];
@@ -262,49 +275,178 @@ public sealed class DuelClockEnemySpawnPoolTests
     }
 
     [Test]
-    public void FreshPoolPreservesDuplicateAuthoredEntries()
+    public void MinimumCountIsForcedBeforeSpawnBudgetExpires()
+    {
+        EnemyData first = CreateEnemy("First");
+        EnemyData second = CreateEnemy("Second");
+        DuelClockEnemySpawnPool pool = new DuelClockEnemySpawnPool();
+        DuelClockEnemySpawnEntry[] entries =
+        {
+            CreateEntry(first, 100f),
+            CreateEntry(second, 1f, 1)
+        };
+
+        Assert.That(pool.ConfigureFresh(entries, 3), Is.True);
+        Assert.That(pool.TrySelect(0f, out int firstIndex,
+            out EnemyData firstSelected), Is.True);
+        Assert.That(firstSelected, Is.SameAs(first));
+        Assert.That(pool.TryCommitSpawn(firstIndex, firstSelected), Is.True);
+        Assert.That(pool.TrySelect(0f, out int secondIndex,
+            out EnemyData secondSelected), Is.True);
+        Assert.That(secondSelected, Is.SameAs(first));
+        Assert.That(pool.TryCommitSpawn(secondIndex, secondSelected), Is.True);
+
+        Assert.That(pool.TrySelect(0f, out _, out EnemyData forced), Is.True);
+        Assert.That(forced, Is.SameAs(second));
+        Assert.That(pool.InitialCount, Is.EqualTo(3));
+        Assert.That(pool.RemainingCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void PreviousSpawnPenaltyChangesTheNextWeightedSelection()
+    {
+        EnemyData first = CreateEnemy("First");
+        EnemyData second = CreateEnemy("Second");
+        DuelClockEnemySpawnPool pool = new DuelClockEnemySpawnPool();
+        DuelClockEnemySpawnEntry[] entries =
+        {
+            CreateEntry(first, 10f, 0, 0.1f),
+            CreateEntry(second, 10f)
+        };
+
+        Assert.That(pool.ConfigureFresh(entries, 3), Is.True);
+        Assert.That(pool.TrySelect(0.2f, out int selectedIndex,
+            out EnemyData selected), Is.True);
+        Assert.That(selected, Is.SameAs(first));
+        Assert.That(pool.TryCommitSpawn(selectedIndex, selected), Is.True);
+
+        Assert.That(pool.TrySelect(0.2f, out _, out EnemyData next), Is.True);
+        Assert.That(next, Is.SameAs(second));
+    }
+
+    [Test]
+    public void WeightedStateRoundTripsWithoutChangingNextSelection()
+    {
+        EnemyData first = CreateEnemy("First");
+        EnemyData second = CreateEnemy("Second");
+        DuelClockEnemySpawnEntry[] entries =
+        {
+            CreateEntry(first, 10f, 1, 0.1f),
+            CreateEntry(second, 10f)
+        };
+        DuelClockEnemySpawnPool source = new DuelClockEnemySpawnPool();
+        Assert.That(source.ConfigureFresh(entries, 4), Is.True);
+        Assert.That(source.TrySelect(0.2f, out int selectedIndex,
+            out EnemyData selected), Is.True);
+        Assert.That(source.TryCommitSpawn(selectedIndex, selected), Is.True);
+        List<int> capturedCounts = new List<int>();
+        List<int> capturedMissedCounts = new List<int>();
+        source.Capture(
+            capturedCounts,
+            capturedMissedCounts,
+            out int remainingCount,
+            out string lastSpawnedEnemyName);
+        DuelClockEnemySpawnPool restored = new DuelClockEnemySpawnPool();
+
+        bool restoredSuccessfully = restored.Restore(
+            entries,
+            4,
+            remainingCount,
+            capturedCounts,
+            capturedMissedCounts,
+            lastSpawnedEnemyName,
+            assetName => assetName == first.name ? first : second);
+
+        Assert.That(restoredSuccessfully, Is.True);
+        Assert.That(restored.InitialCount, Is.EqualTo(4));
+        Assert.That(restored.RemainingCount, Is.EqualTo(3));
+        Assert.That(source.TrySelect(0.2f, out _, out EnemyData sourceNext),
+            Is.True);
+        Assert.That(restored.TrySelect(0.2f, out _,
+            out EnemyData restoredNext), Is.True);
+        Assert.That(restoredNext, Is.SameAs(sourceNext));
+    }
+
+    [Test]
+    public void MinimumCountsCannotExceedTotalSpawnCount()
     {
         EnemyData first = CreateEnemy("First");
         EnemyData second = CreateEnemy("Second");
         DuelClockEnemySpawnPool pool = new DuelClockEnemySpawnPool();
 
         bool configured = pool.ConfigureFresh(
-            new[] { first, first, second });
-        bool read = pool.TryGet(1, out EnemyData selected);
-        bool consumed = pool.TryConsumeAt(1, first);
+            new[]
+            {
+                CreateEntry(first, 1f, 2),
+                CreateEntry(second, 1f, 2)
+            },
+            3);
 
-        Assert.That(configured, Is.True);
-        Assert.That(read, Is.True);
-        Assert.That(selected, Is.SameAs(first));
-        Assert.That(consumed, Is.True);
-        Assert.That(pool.InitialCount, Is.EqualTo(3));
+        Assert.That(configured, Is.False);
+        Assert.That(pool.InitialCount, Is.Zero);
+        Assert.That(pool.RemainingCount, Is.Zero);
+    }
+
+    [Test]
+    public void MissedEnemyGainsVariationWeightUntilSelected()
+    {
+        EnemyData first = CreateEnemy("First");
+        EnemyData second = CreateEnemy("Second");
+        DuelClockEnemySpawnPool pool = new DuelClockEnemySpawnPool();
+        DuelClockEnemySpawnEntry[] entries =
+        {
+            CreateEntry(first, 1f, 0, 1f, 0.25f),
+            CreateEntry(second, 1f, 0, 1f, 0.25f)
+        };
+
+        Assert.That(pool.ConfigureFresh(entries, 3), Is.True);
+        Assert.That(pool.TrySelect(0f, out int selectedIndex,
+            out EnemyData selected), Is.True);
+        Assert.That(pool.TryCommitSpawn(selectedIndex, selected), Is.True);
+
+        Assert.That(pool.TrySelect(0.45f, out _, out EnemyData varied),
+            Is.True);
+        Assert.That(varied, Is.SameAs(second));
+    }
+
+    [Test]
+    public void LegacyStateWithoutKnownLastEnemyCanRestore()
+    {
+        EnemyData first = CreateEnemy("First");
+        EnemyData second = CreateEnemy("Second");
+        DuelClockEnemySpawnPool pool = new DuelClockEnemySpawnPool();
+
+        bool restored = pool.Restore(
+            new[]
+            {
+                CreateEntry(first, 1f),
+                CreateEntry(second, 1f)
+            },
+            4,
+            2,
+            new[] { 1, 1 },
+            new[] { 0, 0 },
+            string.Empty,
+            _ => null);
+
+        Assert.That(restored, Is.True);
         Assert.That(pool.RemainingCount, Is.EqualTo(2));
     }
 
     [Test]
-    public void RemainingPoolRoundTripsInExactOrder()
+    public void SingleEnemyPoolFallsBackWhenRepeatWeightIsZero()
     {
-        EnemyData first = CreateEnemy("First");
-        EnemyData second = CreateEnemy("Second");
-        DuelClockEnemySpawnPool source = new DuelClockEnemySpawnPool();
-        source.ConfigureFresh(new[] { first, second, first });
-        source.TryConsumeAt(1, second);
-        List<string> capturedNames = new List<string>();
-        source.Capture(capturedNames);
-        DuelClockEnemySpawnPool restored = new DuelClockEnemySpawnPool();
+        EnemyData enemy = CreateEnemy("Only");
+        DuelClockEnemySpawnPool pool = new DuelClockEnemySpawnPool();
+        Assert.That(pool.ConfigureFresh(
+            new[] { CreateEntry(enemy, 1f, 0, 0f) }, 2), Is.True);
+        Assert.That(pool.TrySelect(0.5f, out int selectedIndex,
+            out EnemyData selected), Is.True);
+        Assert.That(pool.TryCommitSpawn(selectedIndex, selected), Is.True);
 
-        bool restoredSuccessfully = restored.Restore(
-            new[] { first, second, first },
-            capturedNames,
-            assetName => assetName == first.name ? first : second);
-
-        Assert.That(restoredSuccessfully, Is.True);
-        Assert.That(restored.InitialCount, Is.EqualTo(3));
-        Assert.That(restored.RemainingCount, Is.EqualTo(2));
-        Assert.That(restored.TryGet(0, out EnemyData restoredFirst), Is.True);
-        Assert.That(restored.TryGet(1, out EnemyData restoredSecond), Is.True);
-        Assert.That(restoredFirst, Is.SameAs(first));
-        Assert.That(restoredSecond, Is.SameAs(first));
+        Assert.That(pool.TrySelect(0.5f, out _, out EnemyData repeated),
+            Is.True);
+        Assert.That(repeated, Is.SameAs(enemy));
     }
 
     private EnemyData CreateEnemy(string enemyName)
@@ -313,6 +455,76 @@ public sealed class DuelClockEnemySpawnPoolTests
         enemy.name = enemyName;
         createdEnemies.Add(enemy);
         return enemy;
+    }
+
+    private static DuelClockEnemySpawnEntry CreateEntry(
+        EnemyData enemy,
+        float weight,
+        int minimumSpawnCount = 0,
+        float previousSpawnWeightMultiplier = 0.35f,
+        float missedSpawnWeightIncrease = 0.25f)
+    {
+        return new DuelClockEnemySpawnEntry(
+            enemy,
+            weight,
+            minimumSpawnCount,
+            previousSpawnWeightMultiplier,
+            missedSpawnWeightIncrease);
+    }
+}
+
+public sealed class DuelClockEnemySpawnSaveTests
+{
+    [Test]
+    public void WeightedSpawnStateSurvivesJsonRoundTripAndNormalization()
+    {
+        RunSaveData source = new RunSaveData
+        {
+            combatPacingMode = (int)CombatPacingMode.DuelClock,
+            duelClockWeightedSpawnStateInitialized = true,
+            duelClockRemainingEnemySpawnCount = 3,
+            duelClockEnemySpawnCounts = new List<int> { 2, 1 },
+            duelClockEnemyMissedSpawnCounts = new List<int> { 0, 2 },
+            duelClockLastSpawnedEnemyAssetName = "Enemy B"
+        };
+
+        RunSaveData restored = JsonUtility.FromJson<RunSaveData>(
+            JsonUtility.ToJson(source));
+        RunSaveSystem.NormalizeSaveData(restored);
+
+        Assert.That(
+            restored.duelClockWeightedSpawnStateInitialized,
+            Is.True);
+        Assert.That(restored.duelClockRemainingEnemySpawnCount,
+            Is.EqualTo(3));
+        Assert.That(restored.duelClockEnemySpawnCounts,
+            Is.EqualTo(new[] { 2, 1 }));
+        Assert.That(restored.duelClockEnemyMissedSpawnCounts,
+            Is.EqualTo(new[] { 0, 2 }));
+        Assert.That(restored.duelClockLastSpawnedEnemyAssetName,
+            Is.EqualTo("Enemy B"));
+    }
+
+    [Test]
+    public void InvalidWeightedSpawnFieldsAreNormalizedSafely()
+    {
+        RunSaveData saveData = new RunSaveData
+        {
+            combatPacingMode = (int)CombatPacingMode.DuelClock,
+            duelClockRemainingEnemySpawnCount = -4,
+            duelClockEnemySpawnCounts = null,
+            duelClockEnemyMissedSpawnCounts = new List<int> { -2 },
+            duelClockLastSpawnedEnemyAssetName = null
+        };
+
+        RunSaveSystem.NormalizeSaveData(saveData);
+
+        Assert.That(saveData.duelClockRemainingEnemySpawnCount, Is.Zero);
+        Assert.That(saveData.duelClockEnemySpawnCounts, Is.Empty);
+        Assert.That(saveData.duelClockEnemyMissedSpawnCounts,
+            Is.EqualTo(new[] { 0 }));
+        Assert.That(saveData.duelClockLastSpawnedEnemyAssetName,
+            Is.EqualTo(string.Empty));
     }
 }
 

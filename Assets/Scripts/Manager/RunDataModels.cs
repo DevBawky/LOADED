@@ -169,6 +169,11 @@ public sealed class RunSaveData
     public bool duelClockSpawnPoolInitialized;
     public List<string> duelClockRemainingEnemyAssetNames =
         new List<string>();
+    public bool duelClockWeightedSpawnStateInitialized;
+    public int duelClockRemainingEnemySpawnCount;
+    public List<int> duelClockEnemySpawnCounts = new List<int>();
+    public List<int> duelClockEnemyMissedSpawnCounts = new List<int>();
+    public string duelClockLastSpawnedEnemyAssetName = string.Empty;
     public int duelClockPendingEnemySpawns;
     public RunStatusEffectSaveData playerStatusEffects =
         new RunStatusEffectSaveData();

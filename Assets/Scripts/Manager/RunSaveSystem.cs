@@ -310,6 +310,13 @@ public static class RunSaveSystem
         saveData.duelClockRemainingEnemyAssetNames ??=
             new List<string>();
         saveData.duelClockRemainingEnemyAssetNames.Clear();
+        saveData.duelClockWeightedSpawnStateInitialized = false;
+        saveData.duelClockRemainingEnemySpawnCount = 0;
+        saveData.duelClockEnemySpawnCounts ??= new List<int>();
+        saveData.duelClockEnemySpawnCounts.Clear();
+        saveData.duelClockEnemyMissedSpawnCounts ??= new List<int>();
+        saveData.duelClockEnemyMissedSpawnCounts.Clear();
+        saveData.duelClockLastSpawnedEnemyAssetName = string.Empty;
         saveData.duelClockPendingEnemySpawns = 0;
     }
 
@@ -323,6 +330,30 @@ public static class RunSaveSystem
 
         saveData.duelClockRemainingEnemyAssetNames ??=
             new List<string>();
+        saveData.duelClockEnemySpawnCounts ??= new List<int>();
+        saveData.duelClockEnemyMissedSpawnCounts ??= new List<int>();
+        saveData.duelClockRemainingEnemySpawnCount = Mathf.Max(
+            0,
+            saveData.duelClockRemainingEnemySpawnCount);
+        saveData.duelClockLastSpawnedEnemyAssetName ??= string.Empty;
+
+        for (int index = 0;
+             index < saveData.duelClockEnemySpawnCounts.Count;
+             index++)
+        {
+            saveData.duelClockEnemySpawnCounts[index] = Mathf.Max(
+                0,
+                saveData.duelClockEnemySpawnCounts[index]);
+        }
+
+        for (int index = 0;
+             index < saveData.duelClockEnemyMissedSpawnCounts.Count;
+             index++)
+        {
+            saveData.duelClockEnemyMissedSpawnCounts[index] = Mathf.Max(
+                0,
+                saveData.duelClockEnemyMissedSpawnCounts[index]);
+        }
         saveData.duelClockPendingEnemySpawns = 0;
 
         if (!saveData.duelClockSpawnPoolInitialized)

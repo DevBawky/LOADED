@@ -72,10 +72,15 @@ public static class DuelClockPilotAuthoring
         serializedBattle.Update();
         SerializedProperty pacingMode = serializedBattle.FindProperty(
             "combatPacingMode");
+        SerializedProperty enemySpawnCount = serializedBattle.FindProperty(
+            "duelClockEnemySpawnCount");
+        SerializedProperty enemySpawnEntries = serializedBattle.FindProperty(
+            "duelClockEnemySpawnEntries");
         SerializedProperty enemyPool = serializedBattle.FindProperty(
             "duelClockEnemyPool");
 
-        if (pacingMode == null || enemyPool == null)
+        if (pacingMode == null || enemySpawnCount == null
+            || enemySpawnEntries == null || enemyPool == null)
         {
             throw new InvalidOperationException(
                 $"BattleData '{battle.name}' is missing Duel Clock settings.");
@@ -97,6 +102,34 @@ public static class DuelClockPilotAuthoring
                 $"BattleData '{battle.name}' has no valid authored enemies.");
         }
 
+        if (enemySpawnEntries.arraySize == 0)
+        {
+            List<WeightedEnemyEntry> weightedEnemies = GroupEnemies(
+                flattenedEnemies);
+            enemySpawnCount.intValue = flattenedEnemies.Count;
+            enemySpawnEntries.arraySize = weightedEnemies.Count;
+
+            for (int index = 0; index < weightedEnemies.Count; index++)
+            {
+                SerializedProperty entry =
+                    enemySpawnEntries.GetArrayElementAtIndex(index);
+                WeightedEnemyEntry expected = weightedEnemies[index];
+                entry.FindPropertyRelative("enemyData").objectReferenceValue =
+                    expected.Enemy;
+                entry.FindPropertyRelative("weight").floatValue =
+                    expected.Weight;
+                entry.FindPropertyRelative("minimumSpawnCount").intValue = 0;
+                entry.FindPropertyRelative(
+                    "missedSpawnWeightIncrease").floatValue = 0.25f;
+                entry.FindPropertyRelative(
+                    "previousSpawnWeightMultiplier").floatValue = 0.35f;
+            }
+
+            changed = true;
+        }
+
+        // Retain the old concrete pool so version-3 saves made before the
+        // weighted selector can still infer their already-spawned counts.
         if (!PoolMatches(enemyPool, flattenedEnemies))
         {
             enemyPool.arraySize = flattenedEnemies.Count;
@@ -148,6 +181,33 @@ public static class DuelClockPilotAuthoring
         return flattenedEnemies;
     }
 
+    private static List<WeightedEnemyEntry> GroupEnemies(
+        IReadOnlyList<EnemyData> flattenedEnemies)
+    {
+        List<WeightedEnemyEntry> groupedEnemies =
+            new List<WeightedEnemyEntry>();
+
+        foreach (EnemyData enemy in flattenedEnemies)
+        {
+            int existingIndex = groupedEnemies.FindIndex(
+                entry => entry.Enemy == enemy);
+
+            if (existingIndex >= 0)
+            {
+                WeightedEnemyEntry existing = groupedEnemies[existingIndex];
+                groupedEnemies[existingIndex] = new WeightedEnemyEntry(
+                    enemy,
+                    existing.Weight + 1f);
+            }
+            else
+            {
+                groupedEnemies.Add(new WeightedEnemyEntry(enemy, 1f));
+            }
+        }
+
+        return groupedEnemies;
+    }
+
     private static bool PoolMatches(
         SerializedProperty enemyPool,
         IReadOnlyList<EnemyData> expectedEnemies)
@@ -167,6 +227,18 @@ public static class DuelClockPilotAuthoring
         }
 
         return true;
+    }
+
+    private readonly struct WeightedEnemyEntry
+    {
+        public WeightedEnemyEntry(EnemyData enemy, float weight)
+        {
+            Enemy = enemy;
+            Weight = weight;
+        }
+
+        public EnemyData Enemy { get; }
+        public float Weight { get; }
     }
 }
 #endif

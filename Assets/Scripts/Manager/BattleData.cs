@@ -15,6 +15,57 @@ public enum CombatPacingMode
     DuelClock = 1
 }
 
+[Serializable]
+public sealed class DuelClockEnemySpawnEntry
+{
+    [SerializeField] private EnemyData enemyData;
+    [Min(0.01f)]
+    [SerializeField] private float weight = 1f;
+    [Min(0)]
+    [SerializeField] private int minimumSpawnCount;
+    [Min(0f)]
+    [Tooltip("Fraction of base weight added for each spawn where this enemy was not selected. 0.25 adds 25% per miss.")]
+    [SerializeField] private float missedSpawnWeightIncrease = 0.25f;
+    [Range(0f, 1f)]
+    [SerializeField] private float previousSpawnWeightMultiplier = 0.35f;
+
+    public DuelClockEnemySpawnEntry()
+    {
+    }
+
+    internal DuelClockEnemySpawnEntry(
+        EnemyData configuredEnemy,
+        float configuredWeight,
+        int configuredMinimumSpawnCount = 0,
+        float configuredPreviousSpawnWeightMultiplier = 0.35f,
+        float configuredMissedSpawnWeightIncrease = 0.25f)
+    {
+        enemyData = configuredEnemy;
+        weight = configuredWeight;
+        minimumSpawnCount = configuredMinimumSpawnCount;
+        missedSpawnWeightIncrease = configuredMissedSpawnWeightIncrease;
+        previousSpawnWeightMultiplier =
+            configuredPreviousSpawnWeightMultiplier;
+    }
+
+    public EnemyData EnemyData => enemyData;
+    public float Weight => IsFinite(weight) ? Mathf.Max(0f, weight) : 0f;
+    public int MinimumSpawnCount => Mathf.Max(0, minimumSpawnCount);
+    public float MissedSpawnWeightIncrease =>
+        IsFinite(missedSpawnWeightIncrease)
+            ? Mathf.Max(0f, missedSpawnWeightIncrease)
+            : 0f;
+    public float PreviousSpawnWeightMultiplier =>
+        IsFinite(previousSpawnWeightMultiplier)
+            ? Mathf.Clamp01(previousSpawnWeightMultiplier)
+            : 0f;
+
+    private static bool IsFinite(float value)
+    {
+        return !float.IsNaN(value) && !float.IsInfinity(value);
+    }
+}
+
 [CreateAssetMenu(fileName = "New Battle", menuName = "Loaded/Battle")]
 public class BattleData : ScriptableObject
 {
@@ -56,7 +107,14 @@ public class BattleData : ScriptableObject
     [Min(1)]
     [Tooltip("Completed Duel Clock beats between single-enemy reinforcements.")]
     [SerializeField] private int duelClockEnemyWaveCount = 5;
-    [Tooltip("Finite enemy pool used by Duel Clock battles. Duplicate entries preserve authored enemy counts.")]
+    [Min(1)]
+    [Tooltip("Total enemies spawned during this Duel Clock battle.")]
+    [SerializeField] private int duelClockEnemySpawnCount = 1;
+    [Tooltip("Weighted enemy types available to this Duel Clock battle.")]
+    [SerializeField] private DuelClockEnemySpawnEntry[]
+        duelClockEnemySpawnEntries =
+            Array.Empty<DuelClockEnemySpawnEntry>();
+    [HideInInspector]
     [SerializeField] private EnemyData[] duelClockEnemyPool =
         Array.Empty<EnemyData>();
 
@@ -85,6 +143,13 @@ public class BattleData : ScriptableObject
         Mathf.Max(0f, duelClockPaidActionProgress);
     public int DuelClockEnemyWaveCount =>
         Mathf.Max(1, duelClockEnemyWaveCount);
+    public int DuelClockEnemySpawnCount =>
+        Mathf.Max(1, duelClockEnemySpawnCount);
+    public IReadOnlyList<DuelClockEnemySpawnEntry>
+        DuelClockEnemySpawnEntries =>
+            duelClockEnemySpawnEntries
+            ?? (IReadOnlyList<DuelClockEnemySpawnEntry>)Array.Empty<
+                DuelClockEnemySpawnEntry>();
     public IReadOnlyList<EnemyData> DuelClockEnemyPool =>
         duelClockEnemyPool ?? (IReadOnlyList<EnemyData>)Array.Empty<EnemyData>();
 }
