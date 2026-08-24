@@ -91,7 +91,6 @@ MonoBehaviour:
   _flickering: {x: 5.5, y: 10}
   _jolt: {x: -0.01, y: 0.07}
   _fps: 16
-  _audioChannel: {fileID: 0}
   _clips:
   - _data:
     - {fileID: 0}
@@ -267,7 +266,6 @@ MonoBehaviour:
   - {fileID: 2800000, guid: a3714648300b3b44485f260b524e1c44, type: 3}
   - {fileID: 2800000, guid: 53d0a40090903854a9938b5dbb5b3f91, type: 3}
   - {fileID: 2800000, guid: 1ca4b48f9aafafe42bd9b04e1c387b3e, type: 3}
-  _audio: []
 --- !u!114 &734958237459823745
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -305,7 +303,6 @@ MonoBehaviour:
   _flickering: {x: 5.5, y: 10}
   _jolt: {x: -0.01, y: 0.07}
   _fps: 16
-  _audioChannel: {fileID: 0}
   _clips:
   - _data:
     - {fileID: 0}
@@ -481,7 +478,3 @@ MonoBehaviour:
   - {fileID: 2800000, guid: a3714648300b3b44485f260b524e1c44, type: 3}
   - {fileID: 2800000, guid: 53d0a40090903854a9938b5dbb5b3f91, type: 3}
   - {fileID: 2800000, guid: 1ca4b48f9aafafe42bd9b04e1c387b3e, type: 3}
-  _audio:
-  - _audio: {fileID: 8300000, guid: 0cd16cc3ec9c6764a92c2b2bd029573c, type: 3}
-  - _audio: {fileID: 8300000, guid: c99a484cd6b915f4087a45277c1d42ac, type: 3}
-  - _audio: {fileID: 8300000, guid: bf48bc9e7e3ea1c4b94a886bb19bb56d, type: 3}

@@ -9,6 +9,64 @@ using UnityEngine.SceneManagement;
 public sealed class SceneIntegrityTests
 {
     [Test]
+    public void StageOneBattleList_ContainsOnlyValidAuthoredBattles()
+    {
+        StageData stage = AssetDatabase.LoadAssetAtPath<StageData>(
+            "Assets/Scripts/Manager/Stage SO/Stage 1.asset");
+
+        Assert.That(stage, Is.Not.Null);
+        Assert.That(stage.Battles, Is.Not.Empty);
+
+        int lastBattleIndex = stage.Battles.Count - 1;
+        for (int index = 0; index < stage.Battles.Count; index++)
+        {
+            BattleData battle = stage.Battles[index];
+
+            Assert.That(
+                battle,
+                Is.Not.Null,
+                $"Stage 1 battle index {index} has a missing asset reference.");
+            Assert.That(
+                battle.TilePrefab,
+                Is.Not.Null,
+                $"Stage 1 battle '{battle.name}' is missing a tile prefab.");
+            Assert.That(
+                battle.Waves,
+                Is.Not.Empty,
+                $"Stage 1 battle '{battle.name}' has no authored waves.");
+            Assert.That(
+                battle.IsBoss,
+                Is.EqualTo(index == lastBattleIndex),
+                $"Stage 1 battle '{battle.name}' has the wrong boss flag.");
+        }
+    }
+
+    [Test]
+    public void NodeMapSettings_ReferencesBattlesInConfiguredStage()
+    {
+        NodeMapSettings settings = AssetDatabase.LoadAssetAtPath<
+            NodeMapSettings>("Assets/Resources/NodeMapSettings.asset");
+
+        Assert.That(settings, Is.Not.Null);
+        Assert.That(settings.Stage, Is.Not.Null);
+
+        HashSet<BattleData> stageBattles = new HashSet<BattleData>(
+            settings.Stage.Battles);
+        AssertBattlePool(settings.EarlyNormalBattles, stageBattles, "early");
+        AssertBattlePool(settings.MiddleNormalBattles, stageBattles, "middle");
+        AssertBattlePool(settings.LateNormalBattles, stageBattles, "late");
+        AssertBattlePool(settings.EliteBattles, stageBattles, "elite");
+        Assert.That(
+            settings.BossBattle,
+            Is.Not.Null,
+            "NodeMapSettings boss battle is missing.");
+        Assert.That(
+            stageBattles.Contains(settings.BossBattle),
+            Is.True,
+            "NodeMapSettings boss battle is not in its configured stage.");
+    }
+
+    [Test]
     public void ShopStageBindingUsesTownLabel()
     {
         SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
@@ -110,5 +168,30 @@ public sealed class SceneIntegrityTests
         }
 
         Assert.That(failures, Is.Empty, string.Join("\n", failures));
+    }
+
+    private static void AssertBattlePool(
+        IReadOnlyList<BattleData> battles,
+        HashSet<BattleData> stageBattles,
+        string poolName)
+    {
+        Assert.That(
+            battles,
+            Is.Not.Empty,
+            $"NodeMapSettings {poolName} battle pool is empty.");
+
+        for (int index = 0; index < battles.Count; index++)
+        {
+            BattleData battle = battles[index];
+
+            Assert.That(
+                battle,
+                Is.Not.Null,
+                $"NodeMapSettings {poolName} battle index {index} is missing.");
+            Assert.That(
+                stageBattles.Contains(battle),
+                Is.True,
+                $"NodeMapSettings {poolName} battle '{battle.name}' is not in its configured stage.");
+        }
     }
 }
