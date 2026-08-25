@@ -1,0 +1,16 @@
+{
+  "name": "www.nulltale.oldmoviefx",
+  "displayName": "OldMovieFx",
+  "version": "1.3.2",
+  "unity": "2022.1",
+  "description": "OldMovie effect for Unity Urp",
+  "author": {
+    "name": "NullTale",
+    "email": "nulltale@gmail.com",
+    "url": "https://x.com/NullTale"
+  },
+  "dependencies": {
+    "com.unity.render-pipelines.universal": "14.0.6"
+  },
+  "hideInEditor": false
+}
