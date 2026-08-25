@@ -129,8 +129,6 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private bool videoShouldPlay;
     private bool completionCardOpen;
     private bool isMandatoryGuideSession;
-    private bool tutorialRunResolved;
-    private bool isFirstTutorialRun;
     private string activeTargetName;
     private TargetKind activeTargetKind;
     private RectTransform activeTarget;
@@ -399,7 +397,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         itemUsed = false;
         tutorialStunItemGranted = false;
         mode = GuideMode.Combat;
-        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        isMandatoryGuideSession = IsFirstGuideSession(CombatGuideKey);
         combatSystemPageIndex = 0;
         combatStepIndex = 0;
         combatReviewStepIndex = -1;
@@ -429,7 +427,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         nodeMapGuideStarted = true;
         mode = GuideMode.NodeMap;
-        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        isMandatoryGuideSession = IsFirstGuideSession(NodeMapGuideKey);
         nodeMapPageIndex = 0;
         ShowNodeMapPage();
     }
@@ -451,7 +449,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         itemUsed = false;
         mode = GuideMode.Item;
-        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        isMandatoryGuideSession = IsFirstGuideSession(ItemGuideKey);
         SetActiveTarget("Layout | Inventory", TargetKind.Named);
         ShowCard(
             "ITEM GUIDE",
@@ -475,7 +473,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         shopGuideStarted = true;
         mode = GuideMode.Shop;
-        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        isMandatoryGuideSession = IsFirstGuideSession(ShopGuideKey);
         shopPageIndex = 0;
         ShowShopPage();
     }
@@ -492,7 +490,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         eventGuideStarted = true;
         mode = GuideMode.Event;
-        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        isMandatoryGuideSession = IsFirstGuideSession(EventGuideKey);
         eventPageIndex = 0;
         ShowEventPage();
     }
@@ -509,7 +507,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         treasureGuideStarted = true;
         mode = GuideMode.Treasure;
-        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        isMandatoryGuideSession = IsFirstGuideSession(TreasureGuideKey);
         treasurePageIndex = 0;
         ShowTreasurePage();
     }
@@ -2108,6 +2106,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
         return PlayerPrefs.GetInt(key, 0) != 0;
     }
 
+    private static bool IsFirstGuideSession(string guideKey)
+    {
+        return !IsCompleted(guideKey);
+    }
+
     private static bool IsGuideDisabled()
     {
         return PlayerPrefs.GetInt(GuideDisabledKey, 0) != 0;
@@ -2131,34 +2134,6 @@ public sealed class FirstRunGuideController : MonoBehaviour
             GuideContentVersionKey,
             CurrentGuideContentVersion);
         PlayerPrefs.Save();
-    }
-
-    private bool IsFirstTutorialPlaythrough()
-    {
-        if (tutorialRunResolved)
-        {
-            return isFirstTutorialRun;
-        }
-
-        tutorialRunResolved = true;
-        bool hasPreviousTutorialRun = PlayerPrefs.GetInt(
-                FirstTutorialRunStartedKey,
-                0) != 0
-            || IsCompleted(CombatGuideKey)
-            || IsCompleted(ItemGuideKey)
-            || IsCompleted(ShopGuideKey)
-            || IsCompleted(NodeMapGuideKey)
-            || IsCompleted(EventGuideKey)
-            || IsCompleted(TreasureGuideKey);
-        isFirstTutorialRun = !hasPreviousTutorialRun;
-
-        if (isFirstTutorialRun)
-        {
-            PlayerPrefs.SetInt(FirstTutorialRunStartedKey, 1);
-            PlayerPrefs.Save();
-        }
-
-        return isFirstTutorialRun;
     }
 
     private static void SaveCompleted(string key)
