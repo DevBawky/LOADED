@@ -74,6 +74,7 @@ internal static class EnemyActionTooltipView
     private static GameObject actionDamageRangeBackground;
     private static TextMeshProUGUI actionDamageRangeText;
     private static Canvas rootCanvas;
+    private static Canvas tooltipCanvas;
     private static object owner;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -98,6 +99,7 @@ internal static class EnemyActionTooltipView
         }
 
         owner = requestedOwner;
+        SetGuideOverlaySorting(false);
         EnemyAttackData attackData = actionData.AttackData;
         actionNameText.text = actionData.DisplayName;
         actionDescriptionText.text = actionData.TooltipDescription;
@@ -143,6 +145,9 @@ internal static class EnemyActionTooltipView
         actionNameText.text = displayName;
         actionDescriptionText.text = description;
         actionDamageRangeBackground.SetActive(false);
+        SetGuideOverlaySorting(
+            FirstRunGuideController.IsGuideElement(
+                requestedOwner.transform));
         tooltip.SetAsLastSibling();
         tooltip.gameObject.SetActive(true);
         PositionInsideScreen(pointerPosition);
@@ -170,6 +175,10 @@ internal static class EnemyActionTooltipView
 
         if (tooltip != null)
         {
+            // Keep the guide overlay context while hidden. Resetting it on
+            // pointer exit can expose the tooltip below the guide during
+            // rapid icon transitions. The next Show call configures sorting
+            // for its actual owner before making the tooltip visible.
             tooltip.gameObject.SetActive(false);
         }
     }
@@ -185,6 +194,7 @@ internal static class EnemyActionTooltipView
 
         if (tooltip != null)
         {
+            SetGuideOverlaySorting(false);
             tooltip.gameObject.SetActive(false);
         }
     }
@@ -282,6 +292,33 @@ internal static class EnemyActionTooltipView
             && actionDamageRangeText != null;
     }
 
+    private static void SetGuideOverlaySorting(bool enabled)
+    {
+        if (tooltip == null || rootCanvas == null)
+        {
+            return;
+        }
+
+        tooltipCanvas ??= tooltip.GetComponent<Canvas>();
+        if (enabled && tooltipCanvas == null)
+        {
+            tooltipCanvas = tooltip.gameObject.AddComponent<Canvas>();
+        }
+
+        if (tooltipCanvas == null)
+        {
+            return;
+        }
+
+        tooltipCanvas.overrideSorting = enabled;
+        if (enabled)
+        {
+            tooltipCanvas.sortingLayerID = rootCanvas.sortingLayerID;
+            tooltipCanvas.sortingOrder =
+                FirstRunGuideController.GuideTooltipSortingOrder;
+        }
+    }
+
     private static void PositionInsideScreen(Vector2 pointerPosition)
     {
         if (tooltip == null || rootCanvas == null)
@@ -353,6 +390,7 @@ internal static class EnemyActionTooltipView
         actionDamageRangeBackground = null;
         actionDamageRangeText = null;
         rootCanvas = null;
+        tooltipCanvas = null;
         owner = null;
     }
 }

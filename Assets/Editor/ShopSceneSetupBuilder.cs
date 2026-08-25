@@ -20,6 +20,7 @@ public static class ShopSceneSetupBuilder
     private const string ShopScenePath = "Assets/Scenes/Shop.unity";
     private const string SourceCanvasPath = "Assets/Prefabs/UI/Canvas.prefab";
     private const string SharedFolder = "Assets/Prefabs/UI/Shared";
+    private const string TooltipFolder = SharedFolder + "/Tooltips";
     private const string ShopFolder = "Assets/Prefabs/UI/Shop";
     private const string ShopPanelPath = ShopFolder + "/Panel_Shop.prefab";
     private const string FloatingPanelPath = SharedFolder + "/Panel_Floating.prefab";
@@ -28,6 +29,62 @@ public static class ShopSceneSetupBuilder
     private const string GameOverPanelPath = SharedFolder + "/Panel_GameOver.prefab";
     private const string ShopCanvasPath = ShopFolder + "/ShopCanvas.prefab";
     private const string ShopManagersPath = ShopFolder + "/ShopSceneManagers.prefab";
+    private const string TreasureCanvasPath =
+        "Assets/Prefabs/UI/Treasure/TreasureCanvas.prefab";
+    private const string EventCanvasPath =
+        "Assets/Prefabs/UI/Event/EventCanvas.prefab";
+    private const string UpgradeTooltipName = "Panel | Upgrade Tooltip";
+    private const string BulletManageLayoutName = "Layout | Bullet Manage";
+
+    private readonly struct TooltipPrefabDefinition
+    {
+        public TooltipPrefabDefinition(
+            string objectName,
+            string fileName,
+            bool belongsToCanvasRoot)
+        {
+            ObjectName = objectName;
+            AssetPath = TooltipFolder + "/" + fileName + ".prefab";
+            BelongsToCanvasRoot = belongsToCanvasRoot;
+        }
+
+        public string ObjectName { get; }
+        public string AssetPath { get; }
+        public bool BelongsToCanvasRoot { get; }
+    }
+
+    private static readonly TooltipPrefabDefinition[] TooltipPrefabs =
+    {
+        new TooltipPrefabDefinition(
+            "Panel | Item Tooltip", "Panel_ItemTooltip", true),
+        new TooltipPrefabDefinition(
+            "Panel | Bullet Tooltip", "Panel_BulletTooltip", true),
+        new TooltipPrefabDefinition(
+            "Panel | Cylinder Bullet Tooltip",
+            "Panel_CylinderBulletTooltip",
+            true),
+        new TooltipPrefabDefinition(
+            "Panel | Action Tooltip", "Panel_ActionTooltip", true),
+        new TooltipPrefabDefinition(
+            "Panel | Relic Tooltip", "Panel_RelicTooltip", true),
+        new TooltipPrefabDefinition(
+            "Panel | Debuff Desciption",
+            "Panel_DebuffDescription",
+            true),
+        new TooltipPrefabDefinition(
+            "Panel | Bullet Type Desciption",
+            "Panel_BulletTypeDescription",
+            true),
+        new TooltipPrefabDefinition(
+            UpgradeTooltipName, "Panel_UpgradeTooltip", false)
+    };
+
+    private static readonly string[] DedicatedCanvasPaths =
+    {
+        ShopCanvasPath,
+        TreasureCanvasPath,
+        EventCanvasPath
+    };
 
     [MenuItem("Tools/LOADED/Build Dedicated Shop Scene")]
     public static void Build()
@@ -45,6 +102,7 @@ public static class ShopSceneSetupBuilder
         }
 
         EnsureFolder("Assets/Prefabs/UI", "Shared");
+        EnsureFolder(SharedFolder, "Tooltips");
         EnsureFolder("Assets/Prefabs/UI", "Shop");
 
         Scene battleScene = EditorSceneManager.OpenScene(
@@ -58,11 +116,13 @@ public static class ShopSceneSetupBuilder
                 "Battle scene does not contain the Canvas prefab instance.");
         }
 
+        EnsureTooltipPrefabAssets(sourceCanvas);
+        BuildTooltipsPrefab();
         BuildPanelPrefab(sourceCanvas, "Panel | Shop", ShopPanelPath);
+        SyncShopUpgradeTooltip();
         BuildPanelPrefab(sourceCanvas, "Panel | Floating", FloatingPanelPath);
         BuildPanelPrefab(sourceCanvas, "Panel | Paused", PausedPanelPath);
         BuildPanelPrefab(sourceCanvas, "Panel | GameOver", GameOverPanelPath);
-        BuildTooltipsPrefab(sourceCanvas);
         BuildShopCanvas(sourceCanvas);
         BuildShopManagers(battleScene);
         BuildShopScene();
@@ -72,26 +132,103 @@ public static class ShopSceneSetupBuilder
         Debug.Log("Dedicated Shop scene and shared UI prefabs were built successfully.");
     }
 
-    private static void BuildTooltipsPrefab(GameObject sourceCanvas)
+    [MenuItem("Tools/LOADED/Build Shared Tooltip Prefabs")]
+    public static void BuildSharedTooltipPrefabs()
     {
-        List<Transform> tooltipRoots = new List<Transform>();
-
-        for (int index = 0;
-             index < sourceCanvas.transform.childCount;
-             index++)
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
         {
-            Transform child = sourceCanvas.transform.GetChild(index);
+            throw new InvalidOperationException(
+                "Exit Play Mode before building shared tooltip prefabs.");
+        }
 
-            if (IsTooltipSupportPanel(child))
+        EnsureFolder("Assets/Prefabs/UI", "Shared");
+        EnsureFolder(SharedFolder, "Tooltips");
+        GameObject sourceCanvas = PrefabUtility.LoadPrefabContents(
+            SourceCanvasPath);
+
+        try
+        {
+            EnsureTooltipPrefabAssets(sourceCanvas);
+            BuildTooltipsPrefab();
+            ReplaceCanvasTooltipPrefabs(sourceCanvas);
+            SyncCanvasUpgradeTooltips(sourceCanvas.transform);
+            RewireTooltipReferences(sourceCanvas);
+            PrefabUtility.SaveAsPrefabAsset(sourceCanvas, SourceCanvasPath);
+            SyncShopUpgradeTooltip();
+
+            foreach (string canvasPath in DedicatedCanvasPaths)
             {
-                tooltipRoots.Add(child);
+                if (AssetDatabase.LoadAssetAtPath<GameObject>(canvasPath)
+                    != null)
+                {
+                    SyncDedicatedCanvasTooltips(canvasPath);
+                }
+            }
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(sourceCanvas);
+        }
+
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log(
+            "Shared tooltip prefabs were built and linked to every gameplay canvas.");
+    }
+
+    private static void EnsureTooltipPrefabAssets(GameObject sourceCanvas)
+    {
+        foreach (TooltipPrefabDefinition definition in TooltipPrefabs)
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(definition.AssetPath)
+                != null)
+            {
+                continue;
+            }
+
+            Transform sourceTooltip = FindDescendant(
+                sourceCanvas.transform,
+                definition.ObjectName);
+
+            if (sourceTooltip == null)
+            {
+                throw new InvalidOperationException(
+                    $"Battle Canvas is missing '{definition.ObjectName}'.");
+            }
+
+            GameObject clone = Object.Instantiate(sourceTooltip.gameObject);
+            clone.name = definition.ObjectName;
+            clone.transform.SetParent(null, false);
+
+            if (PrefabUtility.IsPartOfPrefabInstance(clone))
+            {
+                PrefabUtility.UnpackPrefabInstance(
+                    clone,
+                    PrefabUnpackMode.Completely,
+                    InteractionMode.AutomatedAction);
+            }
+
+            clone.SetActive(false);
+            PrefabUtility.SaveAsPrefabAsset(clone, definition.AssetPath);
+            Object.DestroyImmediate(clone);
+        }
+    }
+
+    private static void BuildTooltipsPrefab()
+    {
+        int canvasTooltipCount = 0;
+
+        foreach (TooltipPrefabDefinition definition in TooltipPrefabs)
+        {
+            if (definition.BelongsToCanvasRoot)
+            {
+                canvasTooltipCount++;
             }
         }
 
-        if (tooltipRoots.Count == 0)
+        if (canvasTooltipCount == 0)
         {
-            throw new InvalidOperationException(
-                "Canvas does not contain any root tooltip panels.");
+            throw new InvalidOperationException("No Canvas tooltips are defined.");
         }
 
         GameObject root = new GameObject(
@@ -105,16 +242,323 @@ public static class ShopSceneSetupBuilder
         rootRect.sizeDelta = Vector2.zero;
         rootRect.localScale = Vector3.one;
 
-        foreach (Transform sourceTooltip in tooltipRoots)
+        foreach (TooltipPrefabDefinition definition in TooltipPrefabs)
         {
-            GameObject clone = Object.Instantiate(sourceTooltip.gameObject);
-            clone.name = sourceTooltip.name;
-            clone.transform.SetParent(root.transform, false);
-            clone.SetActive(false);
+            if (!definition.BelongsToCanvasRoot)
+            {
+                continue;
+            }
+
+            GameObject tooltipPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                definition.AssetPath);
+            GameObject instance = PrefabUtility.InstantiatePrefab(
+                tooltipPrefab) as GameObject;
+            instance.name = definition.ObjectName;
+            instance.transform.SetParent(root.transform, false);
+            instance.SetActive(false);
         }
 
         PrefabUtility.SaveAsPrefabAsset(root, TooltipsPanelPath);
         Object.DestroyImmediate(root);
+    }
+
+    private static void SyncShopUpgradeTooltip()
+    {
+        GameObject shopPanel = PrefabUtility.LoadPrefabContents(ShopPanelPath);
+
+        try
+        {
+            Transform targetLayout = FindDescendant(
+                shopPanel.transform,
+                BulletManageLayoutName);
+            ReplaceUpgradeTooltip(targetLayout);
+            PrefabUtility.SaveAsPrefabAsset(shopPanel, ShopPanelPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(shopPanel);
+        }
+    }
+
+    private static void SyncDedicatedCanvasTooltips(string canvasPath)
+    {
+        GameObject canvas = PrefabUtility.LoadPrefabContents(canvasPath);
+
+        try
+        {
+            ReplaceCanvasTooltipPrefabs(canvas);
+
+            if (!string.Equals(canvasPath, ShopCanvasPath,
+                    StringComparison.Ordinal))
+            {
+                SyncCanvasUpgradeTooltips(canvas.transform);
+            }
+
+            RewireTooltipReferences(canvas);
+            PrefabUtility.SaveAsPrefabAsset(canvas, canvasPath);
+        }
+        finally
+        {
+            PrefabUtility.UnloadPrefabContents(canvas);
+        }
+    }
+
+    private static void ReplaceCanvasTooltipPrefabs(GameObject canvas)
+    {
+        RemoveNamedDescendants(canvas.transform, "Panel | Tooltips");
+
+        foreach (TooltipPrefabDefinition definition in TooltipPrefabs)
+        {
+            if (definition.BelongsToCanvasRoot)
+            {
+                RemoveNamedDescendants(
+                    canvas.transform,
+                    definition.ObjectName);
+            }
+        }
+
+        GameObject tooltipPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            TooltipsPanelPath);
+        GameObject tooltipRoot = PrefabUtility.InstantiatePrefab(
+            tooltipPrefab,
+            canvas.transform) as GameObject;
+        tooltipRoot.name = "Panel | Tooltips";
+        tooltipRoot.SetActive(true);
+        StretchToParent(tooltipRoot.transform as RectTransform);
+        tooltipRoot.transform.SetAsLastSibling();
+    }
+
+    private static void SyncCanvasUpgradeTooltips(Transform targetCanvas)
+    {
+        List<Transform> targetLayouts = FindDescendants(
+            targetCanvas,
+            BulletManageLayoutName);
+
+        RemoveNamedDescendants(targetCanvas, UpgradeTooltipName);
+
+        foreach (Transform targetLayout in targetLayouts)
+        {
+            ReplaceUpgradeTooltip(targetLayout);
+        }
+    }
+
+    private static void ReplaceUpgradeTooltip(Transform targetLayout)
+    {
+        if (targetLayout == null)
+        {
+            return;
+        }
+
+        RemoveNamedDescendants(targetLayout, UpgradeTooltipName);
+        TooltipPrefabDefinition definition = GetTooltipDefinition(
+            UpgradeTooltipName);
+        GameObject tooltipPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            definition.AssetPath);
+        GameObject instance = PrefabUtility.InstantiatePrefab(
+            tooltipPrefab,
+            targetLayout) as GameObject;
+        instance.name = UpgradeTooltipName;
+        instance.SetActive(false);
+    }
+
+    private static TooltipPrefabDefinition GetTooltipDefinition(
+        string objectName)
+    {
+        foreach (TooltipPrefabDefinition definition in TooltipPrefabs)
+        {
+            if (string.Equals(
+                    definition.ObjectName,
+                    objectName,
+                    StringComparison.Ordinal))
+            {
+                return definition;
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"No tooltip prefab is defined for '{objectName}'.");
+    }
+
+    private static void RewireTooltipReferences(GameObject canvas)
+    {
+        InventoryTooltipUI inventoryTooltip =
+            canvas.GetComponentInChildren<InventoryTooltipUI>(true);
+
+        if (inventoryTooltip != null)
+        {
+            Transform itemTooltip = FindDescendant(
+                canvas.transform,
+                "Panel | Item Tooltip");
+            Transform bulletTooltip = FindDescendant(
+                canvas.transform,
+                "Panel | Bullet Tooltip");
+            Transform cylinderTooltip = FindDescendant(
+                canvas.transform,
+                "Panel | Cylinder Bullet Tooltip");
+            Transform bulletTypeDescription = FindDescendant(
+                canvas.transform,
+                "Panel | Bullet Type Desciption");
+            Transform debuffDescription = FindDescendant(
+                canvas.transform,
+                "Panel | Debuff Desciption");
+            SerializedObject serialized = new SerializedObject(
+                inventoryTooltip);
+
+            AssignObject(serialized, "tooltip", itemTooltip);
+            AssignObject(serialized, "itemIcon", FindNamedComponent<Image>(
+                itemTooltip, "Image | Item Sprite"));
+            AssignObject(serialized, "itemNameText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    itemTooltip, "Text | Item Name"));
+            AssignObject(serialized, "itemDescriptionText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    itemTooltip, "Text | Item Description"));
+            AssignObject(serialized, "bulletTooltip", bulletTooltip);
+            AssignObject(serialized, "bulletIcon", FindNamedComponent<Image>(
+                bulletTooltip, "Image | Bullet Sprite"));
+            AssignObject(serialized, "bulletCylinderIcon",
+                FindNamedComponent<Image>(
+                    bulletTooltip, "Image | Bullet Cylinder Sprite"));
+            AssignObject(serialized, "bulletNameText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    bulletTooltip, "Text | Bullet Name"));
+            AssignObject(serialized, "bulletGradeText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    bulletTooltip, "Text | Bullet Grade"));
+            AssignObject(serialized, "bulletDescriptionText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    bulletTooltip, "Text | Bullet Description"));
+            AssignObject(serialized, "cylinderBulletTooltip", cylinderTooltip);
+            AssignObject(serialized, "cylinderBulletNameText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    cylinderTooltip, "Text | Bullet Name"));
+            AssignObject(serialized, "cylinderBulletGradeText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    cylinderTooltip, "Text | Bullet Grade"));
+            AssignObject(serialized, "cylinderBulletDescriptionText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    cylinderTooltip, "Text | Bullet Description"));
+            AssignObject(
+                serialized,
+                "bulletTypeDescriptionPanel",
+                bulletTypeDescription);
+            AssignObject(serialized, "bulletTypeDescriptionNameText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    bulletTypeDescription, "Text | Bullet Name"));
+            AssignObject(serialized, "bulletTypeDescriptionBodyText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    bulletTypeDescription, "Text | Bullet Description"));
+            AssignObject(
+                serialized,
+                "debuffDescriptionPanel",
+                debuffDescription);
+            AssignObject(serialized, "debuffDescriptionIcon",
+                FindNamedComponent<Image>(
+                    debuffDescription, "Image | Debuff Icon"));
+            AssignObject(serialized, "debuffDescriptionNameText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    debuffDescription, "Text | Bullet Name"));
+            AssignObject(serialized, "debuffDescriptionBodyText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    debuffDescription, "Text | Bullet Description"));
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        foreach (BulletManagementUI management in
+                 canvas.GetComponentsInChildren<BulletManagementUI>(true))
+        {
+            Transform upgradeTooltip = FindDescendant(
+                management.transform.root,
+                UpgradeTooltipName);
+            SerializedObject serialized = new SerializedObject(management);
+            AssignObject(serialized, "upgradeTooltip", upgradeTooltip);
+            AssignObject(serialized, "upgradeTooltipDescriptionText",
+                FindNamedComponent<TMPro.TextMeshProUGUI>(
+                    upgradeTooltip, "Text | Bullet Description"));
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+    }
+
+    private static void AssignObject(
+        SerializedObject serialized,
+        string propertyName,
+        Object value)
+    {
+        SerializedProperty property = serialized.FindProperty(propertyName);
+
+        if (property != null)
+        {
+            property.objectReferenceValue = value;
+        }
+    }
+
+    private static T FindNamedComponent<T>(
+        Transform root,
+        string objectName) where T : Component
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (T component in root.GetComponentsInChildren<T>(true))
+        {
+            if (component.name == objectName)
+            {
+                return component;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<Transform> FindDescendants(
+        Transform root,
+        string objectName)
+    {
+        List<Transform> matches = new List<Transform>();
+
+        foreach (Transform candidate in
+                 root.GetComponentsInChildren<Transform>(true))
+        {
+            if (candidate.name == objectName)
+            {
+                matches.Add(candidate);
+            }
+        }
+
+        return matches;
+    }
+
+    private static void RemoveNamedDescendants(
+        Transform root,
+        string objectName)
+    {
+        List<Transform> matches = FindDescendants(root, objectName);
+
+        for (int index = matches.Count - 1; index >= 0; index--)
+        {
+            Transform match = matches[index];
+
+            if (match != root && match != null)
+            {
+                Object.DestroyImmediate(match.gameObject);
+            }
+        }
+    }
+
+    private static void StretchToParent(RectTransform rect)
+    {
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        rect.localScale = Vector3.one;
     }
 
     private static void BuildPanelPrefab(
@@ -178,6 +622,7 @@ public static class ShopSceneSetupBuilder
             canvas.transform, PausedPanelPath, "Panel | Paused", false);
 
         ClearMissingSceneReferences(canvas);
+        RewireTooltipReferences(canvas);
         ValidateTooltipCoverage(sourceCanvas, canvas);
         PrefabUtility.SaveAsPrefabAsset(canvas, ShopCanvasPath);
         Object.DestroyImmediate(canvas);

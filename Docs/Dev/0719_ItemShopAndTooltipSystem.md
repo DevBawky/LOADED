@@ -52,6 +52,8 @@
 
 `InventoryTooltipUI`는 인벤토리 슬롯, 상점 아이템, 상점 탄환과 Next Chip을 검사한다. Item Tooltip은 이름·설명·아이콘을, Bullet Tooltip은 이름·설명·탄환 아이콘·실린더 아이콘을 표시한다. 툴팁을 배치한 뒤 월드 모서리를 화면 좌표로 변환해 `Screen Padding` 안쪽으로 이동시킨다.
 
+260825 아이템 판매 가능 상태를 `ShopManager`의 단일 규칙으로 확장했다. 인벤토리 아이템은 전투, 상점, 이벤트, 보물에서 우클릭으로 판매할 수 있으며, 모든 상태가 기존 고정 판매가와 `CurrencyManager` 재화 반영 경로를 사용한다. Event와 Treasure 컨트롤러는 퇴장 체크포인트에 변경된 아이템과 재화를 함께 저장한다. Item Tooltip과 최초 상점 가이드도 같은 가능 범위를 안내한다.
+
 새 아이템은 `Create > Loaded > Item`으로 만들고 `ShopManager.Item Pool`에 한 번 등록하면 다른 아이템과 동일한 확률로 등장한다.
 
 ### Decision
@@ -69,6 +71,7 @@
   * 성공한 효과만 아이템을 소모하는지 확인
   * 아이템 사용 경로에 턴 완료 호출이 없는지 확인
   * 툴팁의 네 방향 화면 경계 보정 코드 확인
+  * 전투, 상점, 이벤트, 보물에서 아이템 판매가 허용되고 제거와 재화 지급이 함께 성공하는지 확인
   * `dotnet build Assembly-CSharp.csproj --no-restore`로 C# 컴파일 확인
 
 * 테스트 결과:

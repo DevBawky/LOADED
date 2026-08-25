@@ -279,6 +279,8 @@ DamageContext → DamageResolver → DamageResult
 
 ## UI/UX
 
+- `Panel | Floating > Panel | Relics`는 `RelicManager.OwnedRelics`의 모든 유효한 보유 유물을 획득 순서대로 표시한다. 1~4번째는 `Layout | Upper`, 5~8번째는 `Layout | Lower`를 사용하며, 아이콘이 누락된 유물도 숨기지 않고 대체 슬롯을 표시한다.
+- 보유 유물 아이콘을 호버한 채 우클릭으로 2초간 누르면 `RelicManager`를 통해 제거한다. 툴팁은 이 조작을 안내하고 아이콘 상단의 Filled Image가 홀드 진행도를 표시한다.
 - 전투 HUD에 최대 8개의 유물 아이콘을 표시한다.
 - 툴팁에 효과, 수명 유형, 스택, 남은 충전 횟수, 저장 피해와 조건 진행도를 표시한다.
 - 발동 시 아이콘이 반응하고 소모형 유물이 파괴되면 명확한 피드백을 제공한다.

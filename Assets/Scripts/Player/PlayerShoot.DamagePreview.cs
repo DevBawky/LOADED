@@ -232,6 +232,10 @@ public partial class PlayerShoot
                     }
     
                     GrantPreviewLegacyStacks(firedBullet);
+                    horizontalDirection =
+                        BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                            resolvedBullet,
+                            horizontalDirection);
                     previousResolvedBullet = resolvedBullet;
                     previousPreFireState = currentPreFireState;
                     hasPreviousPreFireState = true;
@@ -469,6 +473,11 @@ public partial class PlayerShoot
                 {
                     GrantPreviewLegacyStacks(firedBullet);
                 }
+
+                horizontalDirection =
+                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                        resolvedBullet,
+                        horizontalDirection);
     
                 previousResolvedBullet = resolvedBullet;
                 previousPreFireState = currentPreFireState;
@@ -499,6 +508,7 @@ public partial class PlayerShoot
             // preview segment belongs to the physical cylinder bullet that will
             // be consumed. Its own upgraded Secondary Line Color is authoritative.
             Color previewColor = firedBullet.SecondaryLineColor;
+            bool shotHasCriticalOutcome = guaranteedCritical;
     
             for (int hitIndex = 0; hitIndex < hitBuffer.Count; hitIndex++)
             {
@@ -523,9 +533,14 @@ public partial class PlayerShoot
                         .GetPreviewTargetConditionalDamageMultiplier(
                             CountActiveStatusTypes(state),
                             CountPreviewActiveEnemies()));
+                bool targetIsCritical =
+                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
+                        guaranteedCritical,
+                        state.IsExposed);
+                shotHasCriticalOutcome |= targetIsCritical;
                 int attackDamage = CalculateAttackDamage(
                     resolvedBullet,
-                    guaranteedCritical,
+                    targetIsCritical,
                     damageMultiplier * targetMultiplier,
                     previewBulletsFired,
                     firedBulletIndex <= 0,
@@ -540,7 +555,7 @@ public partial class PlayerShoot
                         state);
                 }
     
-                if (guaranteedCritical)
+                if (targetIsCritical)
                 {
                     ApplyGuaranteedPreviewConditionalEffects(
                         resolvedBullet,
@@ -558,6 +573,7 @@ public partial class PlayerShoot
                     attackDamage,
                     previewColor,
                     emphasized);
+                state.IsExposed = false;
                 state.WasHitThisTurn = true;
     
                 ApplyPreviewWallImpactDamageTransfer(
@@ -609,7 +625,7 @@ public partial class PlayerShoot
             UpdatePreviewShotAbilities(
                 firedBullet,
                 resolvedBullet,
-                guaranteedCritical,
+                shotHasCriticalOutcome,
                 generatesShells,
                 firedBulletIndex);
     
@@ -620,7 +636,7 @@ public partial class PlayerShoot
     
             RecordPreviewShotForRemainingBullets(firedBulletIndex);
     
-            if (guaranteedCritical)
+            if (shotHasCriticalOutcome)
             {
                 previewCriticalShots++;
             }
@@ -787,6 +803,11 @@ public partial class PlayerShoot
                 {
                     return true;
                 }
+
+                horizontalDirection =
+                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                        resolvedBullet,
+                        horizontalDirection);
     
                 previousResolvedBullet = resolvedBullet;
             }
@@ -1180,22 +1201,7 @@ public partial class PlayerShoot
         private static int CountActiveStatusTypes(
             DamagePreviewEnemyState state)
         {
-            if (state == null || state.StatusStacks == null)
-            {
-                return 0;
-            }
-
-            int count = 0;
-
-            foreach (int stacks in state.StatusStacks)
-            {
-                if (stacks > 0)
-                {
-                    count++;
-                }
-            }
-
-            return count;
+            return state == null ? 0 : state.ActiveStatusTypeCount;
         }
 
         private void ApplyPreviewClosedCircuitDamageTransfer(

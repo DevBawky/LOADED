@@ -86,6 +86,6 @@ MonoBehaviour:
   baseWeight: 8
   oncePerRun: 1
   weightRules: []
-  normalBattleChancePercent: 4
-  eliteBattleChancePercent: 1
-  shopChancePercent: 5
+  normalBattleChancePercent: 10
+  eliteBattleChancePercent: 2
+  shopChancePercent: 0

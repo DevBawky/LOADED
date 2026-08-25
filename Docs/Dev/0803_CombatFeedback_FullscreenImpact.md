@@ -309,6 +309,25 @@ git diff --check
 - 공백 오류 없음
 - 크리티컬 전체 화면 색상 반전 관련 C# 및 Shader 프로퍼티 제거 확인
 
+## 플레이어 회피 연출
+
+`CombatFeedbackController.RecordPlayerDodge`는 적 공격 시스템에서 회피가 확정된 뒤 호출되는 표현 전용 진입점이다. 회피 성공 한 번에 다음 효과를 묶어서 재생한다.
+
+- `SFX_Evade` 효과음
+- 이동 방향으로 흐르는 청백색 `회피!` 텍스트
+- 회피 출발 위치에 잠시 고정되어 적 공격을 대신 받는 청백색 피격 잔상
+- 남은 이동 중 일정한 실제 시간 간격으로 생성되는 플레이어 스프라이트 잔상
+- 발사 펄스 경로를 재사용한 청백색 화면 굴절과 RGB 분리
+- 비네트와 렌즈 왜곡을 강조하고 Bloom은 억제한 전용 Volume Pulse
+- 성공 직후 더 강한 Snap 배율을 짧게 적용한 뒤 이동용 Glide 배율로 전환하고, 마지막에 정상 속도로 복구하는 2단 슬로 모션
+- 약한 카메라 반동
+
+슬로 모션의 실제 강도, 화면 효과의 밝기, 잔상 수와 카메라 반동은 `CombatAccessibilitySettings` 배율을 따른다. 기본 프레젠테이션 강도에서는 작성값보다 완화되며 최대 강도에서 작성값을 그대로 사용한다. 애니메이션은 일시정지 상태에서 진행하지 않고, 슬로 모션과 Volume은 컴포넌트가 비활성화되거나 파괴될 때 기존 상태로 복구한다.
+
+연출은 회피 가능 시간이나 공격 범위를 결정하지 않는다. 적 공격 시스템은 작성된 회피 구간에서 플레이어가 안전한 타일로 넘어가는 첫 프레임에 성공을 잠그고 `RecordPlayerDodge`를 호출한다. 그 결과 진행 중인 `ActorMotion` 이동은 슬로 모션의 영향을 받아 천천히 이어지며, Recovery가 끝나면 남은 이동을 정상 속도로 완료한다. 중복 공격이 같은 프레임에 회피를 보고해도 짧은 중복 방지 구간 안에서는 한 번만 재생한다.
+
+회피 연출은 성공 순간의 짧은 Snap, 남은 이동을 보여주는 Glide, 정상 속도로 돌아가는 Release 순서로 진행한다. `Dodge Sustained Effect Duration`은 Fullscreen Impact와 Volume Pulse가 너무 일찍 사라지지 않도록 두 효과의 최소 지속시간을 맞춘다. `Dodge Initial Slow Motion Scale/Duration`은 첫 순간의 정지감, `Dodge Slow Motion Glide Duration`은 Snap에서 기존 `Dodge Slow Motion Scale`로 넘어가는 시간, `Dodge Afterimage Interval`은 실제 이동 중 잔상 생성 간격, `Dodge Origin Ghost Duration`은 출발 위치 피격 잔상의 유지 시간을 조절한다. 모든 연출 코루틴은 일시정지 중 실제 진행을 멈추며, 컴포넌트 비활성화 시 진행 중인 잔상 생성과 시간 효과를 정리한다.
+
 ## Play Mode 확인 체크리스트
 
 1. 일반 명중 시 짧은 충격파와 Hit Accent가 한 번 발생하는지 확인한다.

@@ -112,7 +112,8 @@ internal static class BulletEffectUtility
             || effectType == BulletEffectType.Tracking
             || effectType == BulletEffectType.Assassination
             || effectType == BulletEffectType.FleshForBone
-            || effectType == BulletEffectType.HighRoller;
+            || effectType == BulletEffectType.HighRoller
+            || effectType == BulletEffectType.RotatePlayer;
     }
 
     public static int ResolveShotDirection(
@@ -121,6 +122,16 @@ internal static class BulletEffectUtility
     {
         int direction = facingDirection >= 0 ? 1 : -1;
         return Find(bullet, BulletEffectType.ReverseShot) == null
+            ? direction
+            : -direction;
+    }
+
+    public static int ResolveFacingDirectionAfterShot(
+        BulletInstance bullet,
+        int facingDirection)
+    {
+        int direction = facingDirection >= 0 ? 1 : -1;
+        return Find(bullet, BulletEffectType.RotatePlayer) == null
             ? direction
             : -direction;
     }

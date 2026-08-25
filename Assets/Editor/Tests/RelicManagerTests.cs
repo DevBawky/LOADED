@@ -47,6 +47,338 @@ public sealed class RelicManagerTests
     }
 
     [Test]
+    public void TryRemove_RemovesExactRelicAndRaisesRemovedReason()
+    {
+        RelicData first = CreateRelic("remove-first");
+        RelicData second = CreateRelic("remove-second");
+        manager.TryAcquire(first);
+        manager.TryAcquire(second);
+        RelicInstance removedRelic = manager.OwnedRelics[0];
+        RelicInstance notifiedRelic = null;
+        RelicRemovalReason notifiedReason = RelicRemovalReason.Consumed;
+        manager.RelicRemoved += (relic, reason) =>
+        {
+            notifiedRelic = relic;
+            notifiedReason = reason;
+        };
+
+        Assert.That(manager.TryRemove(removedRelic), Is.True);
+        Assert.That(manager.Count, Is.EqualTo(1));
+        Assert.That(manager.OwnedRelics[0].Data, Is.SameAs(second));
+        Assert.That(notifiedRelic, Is.SameAs(removedRelic));
+        Assert.That(notifiedReason, Is.EqualTo(RelicRemovalReason.Removed));
+        Assert.That(manager.TryRemove(removedRelic), Is.False);
+    }
+
+    [Test]
+    public void TryRemove_RejectsRemovalDuringActiveShot()
+    {
+        RelicData relicData = CreateRelic("active-shot-removal");
+        manager.TryAcquire(relicData);
+        RelicInstance relic = manager.OwnedRelics[0];
+        manager.NotifyShotStarted();
+
+        Assert.That(manager.CanManuallyRemove(relic), Is.False);
+        Assert.That(manager.TryRemove(relic), Is.False);
+        Assert.That(manager.Count, Is.EqualTo(1));
+
+        manager.NotifyShotCancelled();
+        Assert.That(manager.CanManuallyRemove(relic), Is.True);
+    }
+
+    [TestCase(0, true)]
+    [TestCase(3, true)]
+    [TestCase(4, false)]
+    [TestCase(7, false)]
+    public void RelicHud_UsesFourIconsPerRow(
+        int relicIndex,
+        bool expectedUpperRow)
+    {
+        Assert.That(
+            RelicInventoryUI.ShouldUseUpperContainer(relicIndex),
+            Is.EqualTo(expectedUpperRow));
+    }
+
+    [Test]
+    public void RelicHud_DisplaysEveryOwnedRelicAcrossBothRows()
+    {
+        for (int index = 0;
+             index < RelicManager.MaximumRelicCount - 1;
+             index++)
+        {
+            Assert.That(
+                manager.TryAcquire(CreateRelic($"hud-relic-{index}")),
+                Is.EqualTo(RelicAcquireResult.Acquired));
+        }
+
+        GameObject panel = new GameObject(
+            "Panel | Relics",
+            typeof(RectTransform));
+        panel.SetActive(false);
+
+        try
+        {
+            RectTransform panelRect = panel.GetComponent<RectTransform>();
+            RectTransform upper = CreateRelicRow(
+                panelRect,
+                "Layout | Upper");
+            RectTransform lower = CreateRelicRow(
+                panelRect,
+                "Layout | Lower");
+            RelicInventoryUI inventoryUi =
+                panel.AddComponent<RelicInventoryUI>();
+            GameObject relicPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/UI/Image _ Relic.prefab");
+            Assert.That(relicPrefab, Is.Not.Null);
+
+            SerializedObject serializedUi = new SerializedObject(inventoryUi);
+            serializedUi.FindProperty("relicContainer")
+                .objectReferenceValue = panelRect;
+            serializedUi.FindProperty("upperRelicContainer")
+                .objectReferenceValue = upper;
+            serializedUi.FindProperty("lowerRelicContainer")
+                .objectReferenceValue = lower;
+            serializedUi.FindProperty("relicPrefab")
+                .objectReferenceValue = relicPrefab;
+            serializedUi.ApplyModifiedPropertiesWithoutUndo();
+            inventoryUi.BindRelicManager(manager);
+
+            panel.SetActive(true);
+
+            RelicInventoryIconUI[] displayedRelics =
+                panel.GetComponentsInChildren<RelicInventoryIconUI>(true);
+            Assert.That(displayedRelics.Length, Is.EqualTo(manager.Count));
+            Assert.That(upper.childCount, Is.EqualTo(4));
+            Assert.That(lower.childCount, Is.EqualTo(3));
+
+            Assert.That(
+                manager.TryAcquire(CreateRelic("hud-relic-last")),
+                Is.EqualTo(RelicAcquireResult.Acquired));
+            inventoryUi.BindRelicManager(manager);
+
+            displayedRelics =
+                panel.GetComponentsInChildren<RelicInventoryIconUI>(true);
+            Assert.That(displayedRelics.Length, Is.EqualTo(manager.Count));
+            Assert.That(upper.childCount, Is.EqualTo(4));
+            Assert.That(lower.childCount, Is.EqualTo(4));
+
+            foreach (RelicInventoryIconUI displayedRelic in displayedRelics)
+            {
+                Assert.That(
+                    displayedRelic.GetComponent<UnityEngine.UI.Image>()
+                        .enabled,
+                    Is.True,
+                    "A relic without an authored icon still needs a visible slot.");
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(panel);
+        }
+    }
+
+    [Test]
+    public void RelicHud_ActualCanvasPrefabRendersBoundOwnedRelic()
+    {
+        Assert.That(
+            manager.TryAcquire(CreateRelic("hud-prefab-relic")),
+            Is.EqualTo(RelicAcquireResult.Acquired));
+        GameObject canvasPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Canvas.prefab");
+        Assert.That(canvasPrefab, Is.Not.Null);
+        GameObject canvasInstance = Object.Instantiate(canvasPrefab);
+
+        try
+        {
+            Assert.That(manager.Count, Is.EqualTo(1));
+            RelicInventoryUI inventoryUi = canvasInstance
+                .GetComponentInChildren<RelicInventoryUI>(true);
+            Assert.That(inventoryUi, Is.Not.Null);
+            SerializedObject serializedUi = new SerializedObject(inventoryUi);
+            RectTransform configuredContainer = serializedUi.FindProperty(
+                "relicContainer").objectReferenceValue as RectTransform;
+            GameObject configuredPrefab = serializedUi.FindProperty(
+                "relicPrefab").objectReferenceValue as GameObject;
+            Assert.That(
+                configuredContainer,
+                Is.Not.Null);
+            Assert.That(
+                configuredPrefab,
+                Is.Not.Null);
+            Assert.That(manager.OwnedRelics[0].Data, Is.Not.Null);
+
+            inventoryUi.BindRelicManager(manager);
+            Assert.That(manager.Count, Is.EqualTo(1));
+            serializedUi.Update();
+            RectTransform upper = serializedUi.FindProperty(
+                "upperRelicContainer").objectReferenceValue as RectTransform;
+            RectTransform lower = serializedUi.FindProperty(
+                "lowerRelicContainer").objectReferenceValue as RectTransform;
+            Assert.That(upper, Is.Not.Null);
+            Assert.That(lower, Is.Not.Null);
+            Canvas.ForceUpdateCanvases();
+
+            RelicInventoryIconUI[] icons = inventoryUi
+                .GetComponentsInChildren<RelicInventoryIconUI>(true);
+            Assert.That(icons.Length, Is.EqualTo(1));
+            RectTransform iconRect = icons[0].transform as RectTransform;
+            Assert.That(iconRect, Is.Not.Null);
+            Assert.That(iconRect.rect.width, Is.GreaterThan(0f));
+            Assert.That(iconRect.rect.height, Is.GreaterThan(0f));
+            Assert.That(
+                icons[0].GetComponent<UnityEngine.UI.Image>().enabled,
+                Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasInstance);
+        }
+    }
+
+    [Test]
+    public void RelicTooltip_RemovalGaugeDisplaysFilledHoldProgress()
+    {
+        RelicData relicData = CreateRelic("tooltip-progress-relic");
+        Assert.That(
+            manager.TryAcquire(relicData),
+            Is.EqualTo(RelicAcquireResult.Acquired));
+        GameObject canvasPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Canvas.prefab");
+        Assert.That(canvasPrefab, Is.Not.Null);
+        GameObject canvasInstance = Object.Instantiate(canvasPrefab);
+
+        try
+        {
+            RelicInventoryUI inventoryUi = canvasInstance
+                .GetComponentInChildren<RelicInventoryUI>(true);
+            Assert.That(inventoryUi, Is.Not.Null);
+            inventoryUi.BindRelicManager(manager);
+
+            RelicTooltipUI tooltip = RelicTooltipUI.GetOrCreate(inventoryUi);
+            Assert.That(tooltip, Is.Not.Null);
+            tooltip.Show(relicData, Vector2.zero, true);
+            tooltip.SetRemovalProgress(relicData, 0.5f);
+
+            UnityEngine.UI.Image gauge = FindNamedComponent<
+                UnityEngine.UI.Image>(tooltip.transform, "Image | Gauge Value");
+            Assert.That(gauge, Is.Not.Null);
+            Assert.That(gauge.type, Is.EqualTo(UnityEngine.UI.Image.Type.Filled));
+            Assert.That(gauge.fillAmount, Is.EqualTo(0.5f));
+            Assert.That(gauge.gameObject.activeInHierarchy, Is.True);
+
+            tooltip.SetRemovalProgress(relicData, 1f);
+            Assert.That(gauge.fillAmount, Is.EqualTo(1f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasInstance);
+        }
+    }
+
+    [Test]
+    public void RelicRemovalHold_DeletesRelicWhenProgressReachesOne()
+    {
+        RelicData relicData = CreateRelic("hold-removal-relic");
+        Assert.That(
+            manager.TryAcquire(relicData),
+            Is.EqualTo(RelicAcquireResult.Acquired));
+        GameObject canvasPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Canvas.prefab");
+        Assert.That(canvasPrefab, Is.Not.Null);
+        GameObject canvasInstance = Object.Instantiate(canvasPrefab);
+
+        try
+        {
+            RelicInventoryUI inventoryUi = canvasInstance
+                .GetComponentInChildren<RelicInventoryUI>(true);
+            Assert.That(inventoryUi, Is.Not.Null);
+            inventoryUi.BindRelicManager(manager);
+            RelicInventoryIconUI icon = inventoryUi
+                .GetComponentInChildren<RelicInventoryIconUI>(true);
+            Assert.That(icon, Is.Not.Null);
+
+            UnityEngine.EventSystems.PointerEventData pointer =
+                new UnityEngine.EventSystems.PointerEventData(null)
+                {
+                    button = UnityEngine.EventSystems.PointerEventData
+                        .InputButton.Right,
+                    position = Vector2.zero
+                };
+            icon.OnPointerEnter(pointer);
+            icon.OnPointerDown(pointer);
+
+            Assert.That(icon.AdvanceRemovalHold(1f), Is.False);
+            UnityEngine.UI.Image gauge = FindNamedComponent<
+                UnityEngine.UI.Image>(
+                canvasInstance.transform,
+                "Image | Gauge Value");
+            Assert.That(gauge, Is.Not.Null);
+            Assert.That(gauge.fillAmount, Is.EqualTo(0.5f));
+            Assert.That(manager.Count, Is.EqualTo(1));
+
+            Assert.That(icon.AdvanceRemovalHold(1f), Is.True);
+            Assert.That(manager.Count, Is.EqualTo(0));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasInstance);
+        }
+    }
+
+    [TestCase(0f, 2f, 0f)]
+    [TestCase(1f, 2f, 0.5f)]
+    [TestCase(2f, 2f, 1f)]
+    [TestCase(3f, 2f, 1f)]
+    public void RelicRemovalHold_ReportsNormalizedProgress(
+        float elapsed,
+        float duration,
+        float expected)
+    {
+        Assert.That(
+            RelicInventoryIconUI.CalculateRemovalHoldProgress(
+                elapsed,
+                duration),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void RelicRemovalGuide_PreservesAuthoredTextAtRuntime()
+    {
+        RelicData relicData = CreateRelic("authored-removal-guide-relic");
+        GameObject canvasPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Canvas.prefab");
+        Assert.That(canvasPrefab, Is.Not.Null);
+        GameObject canvasInstance = Object.Instantiate(canvasPrefab);
+
+        try
+        {
+            RelicInventoryUI inventoryUi = canvasInstance
+                .GetComponentInChildren<RelicInventoryUI>(true);
+            Assert.That(inventoryUi, Is.Not.Null);
+            RelicTooltipUI tooltip = RelicTooltipUI.GetOrCreate(inventoryUi);
+            Assert.That(tooltip, Is.Not.Null);
+            TMPro.TMP_Text guide = FindNamedComponent<TMPro.TMP_Text>(
+                tooltip.transform,
+                "Text | Remove");
+            Assert.That(guide, Is.Not.Null);
+            string authoredText = guide.text;
+
+            tooltip.Show(relicData, Vector2.zero, true);
+            Assert.That(guide.text, Is.EqualTo(authoredText));
+            Assert.That(guide.gameObject.activeInHierarchy, Is.True);
+
+            tooltip.Hide();
+            tooltip.Show(relicData, Vector2.zero);
+            Assert.That(guide.text, Is.EqualTo(authoredText));
+            Assert.That(guide.gameObject.activeInHierarchy, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasInstance);
+        }
+    }
+
+    [Test]
     public void RequestedRelics_AreAuthoredWithActiveAbilities()
     {
         string[] activeRelicIds =
@@ -735,6 +1067,30 @@ public sealed class RelicManagerTests
 
         serialized.ApplyModifiedPropertiesWithoutUndo();
         return relic;
+    }
+
+    private static RectTransform CreateRelicRow(
+        RectTransform parent,
+        string objectName)
+    {
+        GameObject row = new GameObject(objectName, typeof(RectTransform));
+        RectTransform rowRect = row.GetComponent<RectTransform>();
+        rowRect.SetParent(parent, false);
+        return rowRect;
+    }
+
+    private static T FindNamedComponent<T>(Transform root, string objectName)
+        where T : Component
+    {
+        foreach (T component in root.GetComponentsInChildren<T>(true))
+        {
+            if (component.name == objectName)
+            {
+                return component;
+            }
+        }
+
+        return null;
     }
 
     private static void SetEffectInt(

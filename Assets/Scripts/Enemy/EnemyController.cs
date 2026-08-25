@@ -112,10 +112,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private BoardManager boardManager;
     private PlayerMove playerMove;
+    private PlayerShoot playerShoot;
     private PlayerHealth playerHealth;
     private WaveManager waveManager;
     private bool isInitialized;
     private readonly List<Vector3> movePath = new List<Vector3>();
+    private readonly List<int> movePathTileIndices = new List<int>();
     private readonly List<EnemyController> attackTargetBuffer =
         new List<EnemyController>();
     private EnemyHealthBarFeedback healthBarFeedback;
@@ -123,9 +125,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private BossHudController bossHud;
     private Animator avatarAnimator;
     private EnemyAnimationSfx avatarEffects;
+    private EnemyAttackAnimationEvents avatarActionWindow;
     private SpriteRenderer avatarSortingRenderer;
+    private CombatFeedbackController combatFeedback;
     private int avatarAnimationSequence;
+    private bool isAttackDodgeWindowOpen;
+    private bool isAttackActiveWindowOpen;
     private bool isStunActive;
+    private bool clearExposedAfterPlayerTurn;
     private EnemyRunStateSerializer runStateSerializer;
     private EnemyTelegraphPresenter telegraphPresenter;
 
@@ -152,6 +159,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     public int PreparedTargetTileIndex => preparedTargetTileIndex;
     public EnemyTurnActionType LastTurnAction => lastTurnAction;
     public bool IsActing => isActing;
+    public bool IsExposed => statusEffects != null && statusEffects.IsExposed;
     public bool WillExecuteDedicatedTurnMotion =>
         isAttackPrepared
         || (enemyData != null
@@ -245,6 +253,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void OnDestroy()
     {
+        UnsubscribePlayerActions();
+
         if (statusEffects != null)
         {
             statusEffects.StacksChanged -= HandleStatusStacksChanged;
@@ -288,11 +298,15 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return false;
         }
 
+        UnsubscribePlayerActions();
         enemyData = assignedEnemyData;
         boardManager = assignedBoardManager;
         playerMove = assignedPlayerMove;
+        playerShoot = playerMove.GetComponent<PlayerShoot>();
         playerHealth = assignedPlayerHealth;
         waveManager = assignedWaveManager;
+        SubscribePlayerActions();
+        combatFeedback = playerMove.GetComponent<CombatFeedbackController>();
         ApplyInitialFacingDirection();
         SpawnAvatar();
         ResetRuntimeState();
@@ -432,6 +446,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void OnDisable()
     {
+        waveManager?.ReleaseMovementTiles(this);
         HideAttackTelegraph();
         bossHud?.Unbind(this);
         bossHud = null;
@@ -439,6 +454,23 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         telegraphPresenter.HideShieldIndicator();
 
         isActing = false;
+        isAttackDodgeWindowOpen = false;
+        isAttackActiveWindowOpen = false;
+    }
+
+    internal void SetAttackDodgeWindowOpen(bool isOpen)
+    {
+        isAttackDodgeWindowOpen = isActing && isOpen;
+    }
+
+    internal void SetAttackActiveWindowOpen(bool isOpen)
+    {
+        if (isOpen)
+        {
+            isAttackDodgeWindowOpen = false;
+        }
+
+        isAttackActiveWindowOpen = isActing && isOpen;
     }
 
     private void HandleStatusStacksChanged(
@@ -762,6 +794,102 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return applied;
     }
 
+    internal bool ApplyExposedFromDodge()
+    {
+        if (currentHealth <= 0 || statusEffects == null)
+        {
+            return false;
+        }
+
+        clearExposedAfterPlayerTurn = false;
+        bool applied = statusEffects.ApplyExposed();
+
+        if (applied)
+        {
+            damageNumberDisplay?.ShowStatus(StatusEffectType.Exposed);
+        }
+
+        return applied;
+    }
+
+    internal static bool TryApplyDodgeExposedToSource(
+        EnemyController source)
+    {
+        return source != null && source.CurrentHealth > 0
+            && source.ApplyExposedFromDodge();
+    }
+
+    internal bool TryConsumeExposedForAttack()
+    {
+        if (statusEffects == null || !statusEffects.ConsumeExposed())
+        {
+            return false;
+        }
+
+        clearExposedAfterPlayerTurn = false;
+        return true;
+    }
+
+    private void SubscribePlayerActions()
+    {
+        if (playerMove != null)
+        {
+            playerMove.BehaviourActionStarted += HandlePlayerActionStarted;
+            playerMove.TurnCompleted += HandlePlayerTurnCompleted;
+        }
+
+        if (playerShoot != null)
+        {
+            playerShoot.BehaviourActionStarted += HandlePlayerActionStarted;
+        }
+    }
+
+    private void UnsubscribePlayerActions()
+    {
+        if (playerMove != null)
+        {
+            playerMove.BehaviourActionStarted -= HandlePlayerActionStarted;
+            playerMove.TurnCompleted -= HandlePlayerTurnCompleted;
+        }
+
+        if (playerShoot != null)
+        {
+            playerShoot.BehaviourActionStarted -= HandlePlayerActionStarted;
+        }
+
+        playerShoot = null;
+        clearExposedAfterPlayerTurn = false;
+    }
+
+    internal void HandlePlayerActionStarted(PlayerBehaviourAction action)
+    {
+        if (!IsExposed)
+        {
+            clearExposedAfterPlayerTurn = false;
+            return;
+        }
+
+        if (action == PlayerBehaviourAction.Shoot)
+        {
+            clearExposedAfterPlayerTurn = true;
+            return;
+        }
+
+        statusEffects.ClearExposed();
+        clearExposedAfterPlayerTurn = false;
+    }
+
+    internal void HandlePlayerTurnCompleted()
+    {
+        if (!clearExposedAfterPlayerTurn)
+        {
+            return;
+        }
+
+        statusEffects?.ClearExposed();
+        clearExposedAfterPlayerTurn = false;
+    }
+
     public int ActiveStatusTypeCount => statusEffects == null
         ? 0
         : statusEffects.ActiveStatusTypeCount;
@@ -919,7 +1047,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!isQueueCreated)
         {
-            CreateAttackQueue();
+            CreateAttackQueueWithAction(
+                EnemyActionType.MeleeAttack,
+                0);
             return;
         }
 
@@ -952,7 +1082,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!isQueueCreated)
         {
-            CreateAttackQueue();
+            CreateAttackQueueWithAction(
+                EnemyActionType.RangedAttack,
+                0);
             return;
         }
 
@@ -988,7 +1120,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!isQueueCreated)
         {
-            CreateAttackQueue();
+            CreateAttackQueueWithAction(
+                EnemyActionType.RangedAttack,
+                0);
             return;
         }
 
@@ -1042,8 +1176,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             case BigBarrelStep.CreateBombQueue:
                 TryEnterBigBarrelPhaseTwo();
                 bigBarrelActionUsesPhaseTwo = isBigBarrelPhaseTwo;
-                bigBarrelStep = BigBarrelStep.RegisterBomb;
-                CreateAttackQueue();
+                CreateBigBarrelBombQueueWithFirstAction();
                 break;
 
             case BigBarrelStep.RegisterBomb:
@@ -1072,8 +1205,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 break;
 
             case BigBarrelStep.CreateShotgunQueue:
-                bigBarrelStep = BigBarrelStep.RegisterShotgun;
-                CreateAttackQueue();
+                CreateBigBarrelQueueWithAction(
+                    EnemyActionType.ShotgunAttack,
+                    BigBarrelStep.AdjustDistance,
+                    BigBarrelStep.Reload);
                 break;
 
             case BigBarrelStep.RegisterShotgun:
@@ -1136,6 +1271,25 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         StartCoroutine(RevealRegisteredAction(attackIcon));
     }
 
+    private void CreateBigBarrelBombQueueWithFirstAction()
+    {
+        if (!TryCreateAttackQueueWithAction(
+                EnemyActionType.ExplosiveThrow,
+                0,
+                out Image attackIcon))
+        {
+            bigBarrelStep = BigBarrelStep.CreateShotgunQueue;
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        bigBarrelStep = queuedAttackActions.Count
+                >= GetBigBarrelBombQueueSize()
+            ? BigBarrelStep.PrepareBomb
+            : BigBarrelStep.RegisterBomb;
+        StartCoroutine(RevealAttackQueueAndRegisteredAction(attackIcon));
+    }
+
     private int GetBigBarrelBombQueueSize()
     {
         return bigBarrelActionUsesPhaseTwo ? 3 : 2;
@@ -1161,6 +1315,25 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         bigBarrelStep = successStep;
         StartCoroutine(RevealRegisteredAction(attackIcon));
+    }
+
+    private void CreateBigBarrelQueueWithAction(
+        EnemyActionType actionType,
+        BigBarrelStep successStep,
+        BigBarrelStep failureStep)
+    {
+        if (!TryCreateAttackQueueWithAction(
+                actionType,
+                0,
+                out Image attackIcon))
+        {
+            bigBarrelStep = failureStep;
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        bigBarrelStep = successStep;
+        StartCoroutine(RevealAttackQueueAndRegisteredAction(attackIcon));
     }
 
     private void CaptureBigBarrelBombTargets()
@@ -1251,6 +1424,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 out int playerTileIndex)
             || targetTileIndex == playerTileIndex
             || waveManager.IsTileOccupied(targetTileIndex, this)
+            || waveManager.IsTileReservedForMovement(targetTileIndex, this)
             || waveManager.IsTileReservedForSpawn(targetTileIndex))
         {
             CompleteAction(EnemyTurnActionType.Wait);
@@ -1345,35 +1519,62 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private IEnumerator FireBigBarrelShotgun()
     {
-        EnemyActionData action = PopFirstQueuedAction();
+        EnemyActionData action = DequeueFirstQueuedAction();
         CaptureBigBarrelShotgunTargets();
-        yield return PlayAvatarAnimation(BigBarrelShotgunAnimationStateHash);
+        bool hasHitPlayer = false;
+        bool actionTileRemoved = false;
+        HashSet<EnemyController> hitEnemies = new HashSet<EnemyController>();
 
-        foreach (int targetTileIndex in preparedShotgunTileIndices)
+        void RemoveActionTile()
         {
-            if (currentHealth <= 0)
+            if (actionTileRemoved)
             {
-                break;
+                return;
             }
 
-            if (boardManager.TryGetTileIndex(
-                    playerMove.transform.position,
-                    out int playerTileIndex)
-                && playerTileIndex == targetTileIndex)
-            {
-                playerHealth.ApplyDamage(enemyData.BigBarrel.ShotgunDamage);
-            }
-
-            if (waveManager.TryGetEnemyAtTile(
-                    targetTileIndex,
-                    out EnemyController target,
-                    this))
-            {
-                target.ApplyEnvironmentalDamage(
-                    enemyData.BigBarrel.ShotgunDamage);
-            }
+            actionTileRemoved = true;
+            RemoveFirstActionTile();
         }
 
+        void EvaluateShotgunHits(bool playerDodged)
+        {
+            foreach (int targetTileIndex in preparedShotgunTileIndices)
+            {
+                if (currentHealth <= 0)
+                {
+                    break;
+                }
+
+                if (!playerDodged && !hasHitPlayer
+                    && boardManager.TryGetTileIndex(
+                        playerMove.transform.position,
+                        out int playerTileIndex)
+                    && playerTileIndex == targetTileIndex)
+                {
+                    playerHealth.ApplyDamage(
+                        enemyData.BigBarrel.ShotgunDamage);
+                    hasHitPlayer = true;
+                }
+
+                if (waveManager.TryGetEnemyAtTile(
+                        targetTileIndex,
+                        out EnemyController target,
+                        this)
+                    && hitEnemies.Add(target))
+                {
+                    target.ApplyEnvironmentalDamage(
+                        enemyData.BigBarrel.ShotgunDamage);
+                }
+            }
+
+            RemoveActionTile();
+        }
+
+        yield return PlayAvatarAnimation(
+            BigBarrelShotgunAnimationStateHash,
+            EvaluateShotgunHits,
+            IsPlayerInPreparedShotgunRange);
+        RemoveActionTile();
 
         if (action != null && action.AttackData != null)
         {
@@ -1449,10 +1650,28 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return null;
         }
 
+        EnemyActionData action = DequeueFirstQueuedAction();
+        RemoveFirstActionTile();
+        return action;
+    }
+
+    private EnemyActionData DequeueFirstQueuedAction()
+    {
+        if (queuedAttackActions.Count == 0)
+        {
+            return null;
+        }
+
         EnemyActionData action = queuedAttackActions[0];
         queuedAttackActions.RemoveAt(0);
-        actionQueueUI.RemoveFirstIcon();
         return action;
+    }
+
+    private void RemoveFirstActionTile()
+    {
+        actionQueueUI.RemoveFirstIcon();
+        actionQueueUI.HideQueue();
+        RefreshGunnerReloadedAnimation();
     }
 
     private void FinishBigBarrelAttack(BigBarrelStep nextStep)
@@ -1563,7 +1782,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!isQueueCreated)
         {
-            CreateAttackQueue();
+            CreateAttackQueueWithAction(
+                EnemyActionType.Support,
+                0);
             return;
         }
 
@@ -1621,11 +1842,41 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
-    private void CreateAttackQueue()
+    private void CreateAttackQueueWithAction(
+        EnemyActionType actionType,
+        int actionIndex)
+    {
+        if (!TryCreateAttackQueueWithAction(
+                actionType,
+                actionIndex,
+                out Image attackIcon))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+
+        StartCoroutine(RevealAttackQueueAndRegisteredAction(attackIcon));
+    }
+
+    private bool TryCreateAttackQueueWithAction(
+        EnemyActionType actionType,
+        int actionIndex,
+        out Image attackIcon)
     {
         isQueueCreated = true;
         isAttackPrepared = false;
-        StartCoroutine(RevealAttackQueue());
+
+        if (TryAppendAction(
+                actionType,
+                actionIndex,
+                out attackIcon,
+                out _))
+        {
+            return true;
+        }
+
+        ClearAttackQueue();
+        return false;
     }
 
     private void RegisterAction(
@@ -1661,11 +1912,13 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         transform.localScale = localScale;
     }
 
-    private IEnumerator RevealAttackQueue()
+    private IEnumerator RevealAttackQueueAndRegisteredAction(
+        Image attackIcon)
     {
-        yield return actionQueueUI.RevealQueue(
+        yield return actionQueueUI.RevealQueueAndIcon(
+            attackIcon,
             enemyData.QueueElementRevealDuration);
-        CompleteAction(EnemyTurnActionType.CreateQueue);
+        CompleteAction(EnemyTurnActionType.RegisterAttack);
     }
 
     private IEnumerator RevealRegisteredAction(Image attackIcon)
@@ -1757,11 +2010,24 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     {
         while (queuedAttackActions.Count > 0)
         {
-            EnemyActionData attackAction = queuedAttackActions[0];
-            queuedAttackActions.RemoveAt(0);
-            yield return ExecuteQueuedAttack(attackAction);
-            actionQueueUI.RemoveFirstIcon();
-            RefreshGunnerReloadedAnimation();
+            EnemyActionData attackAction = DequeueFirstQueuedAction();
+            bool actionTileRemoved = false;
+
+            void RemoveActionTile()
+            {
+                if (actionTileRemoved)
+                {
+                    return;
+                }
+
+                actionTileRemoved = true;
+                RemoveFirstActionTile();
+            }
+
+            yield return ExecuteQueuedAttack(
+                attackAction,
+                RemoveActionTile);
+            RemoveActionTile();
 
             if (queuedAttackActions.Count > 0)
             {
@@ -1788,18 +2054,22 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             : EnemyTurnActionType.Fire);
     }
 
-    private IEnumerator ExecuteQueuedAttack(EnemyActionData attackAction)
+    private IEnumerator ExecuteQueuedAttack(
+        EnemyActionData attackAction,
+        Action onAttackPerformed)
     {
         if (enemyData.BehaviorType == EnemyBehaviorType.Porter
             && attackAction != null
             && attackAction.ActionType == EnemyActionType.Support)
         {
             ExecutePreparedSupport();
+            onAttackPerformed?.Invoke();
             yield break;
         }
 
         if (!TryGetAttackData(attackAction, out EnemyAttackData attackData))
         {
+            onAttackPerformed?.Invoke();
             yield break;
         }
 
@@ -1808,25 +2078,54 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             SoundManager.PlaySfx("SFX_Enemy_Shoot");
         }
 
-        if (enemyData.BehaviorType == EnemyBehaviorType.Melee)
-        {
-            yield return PlayAvatarAttackAnimation();
-        }
-
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
-            yield return ExecuteThrowerAttack(attackData);
+            yield return ExecuteThrowerAttack(
+                attackData,
+                onAttackPerformed);
             yield break;
         }
 
+        bool attackPerformed = false;
+        bool attackEvaluated = false;
+
+        void EvaluateAttackHit(bool playerDodged)
+        {
+            if (!attackEvaluated)
+            {
+                attackEvaluated = true;
+                TryApplyDirectAttack(attackData, playerDodged);
+            }
+
+            if (!attackPerformed)
+            {
+                attackPerformed = true;
+                onAttackPerformed?.Invoke();
+            }
+        }
+
+        yield return PlayAvatarAttackAnimation(
+            EvaluateAttackHit,
+            () => IsDirectAttackThreateningPlayer(attackData));
+        AttackExecuted?.Invoke(this, attackData);
+    }
+
+    private bool TryApplyDirectAttack(
+        EnemyAttackData attackData,
+        bool playerDodged)
+    {
         if (!TryGetAttackTarget(
                 attackData,
                 out EnemyController enemyTarget,
                 out bool targetsPlayer,
                 out Vector3 targetPosition))
         {
-            AttackExecuted?.Invoke(this, attackData);
-            yield break;
+            return false;
+        }
+
+        if (targetsPlayer && playerDodged)
+        {
+            return false;
         }
 
         if (attackData.AttackEffectPrefab != null)
@@ -1841,7 +2140,137 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             attackData,
             enemyTarget,
             targetsPlayer);
-        AttackExecuted?.Invoke(this, attackData);
+        return true;
+    }
+
+    private bool IsDirectAttackThreateningPlayer(
+        EnemyAttackData attackData)
+    {
+        return TryGetAttackTarget(
+                attackData,
+                out _,
+                out bool targetsPlayer,
+                out _)
+            && targetsPlayer;
+    }
+
+    private bool IsPlayerInPreparedThrowerTarget()
+    {
+        return preparedTargetTileIndex >= 0
+            && boardManager != null
+            && playerMove != null
+            && boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex)
+            && playerTileIndex == preparedTargetTileIndex;
+    }
+
+    private bool IsPlayerInPreparedShotgunRange()
+    {
+        return preparedShotgunTileIndices.Count > 0
+            && boardManager != null
+            && playerMove != null
+            && boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex)
+            && preparedShotgunTileIndices.Contains(playerTileIndex);
+    }
+
+    private EnemyPlayerDodgeWindowState CapturePlayerDodgeWindow(
+        Func<bool> isPlayerThreatened)
+    {
+        bool playerWasThreatened = isPlayerThreatened?.Invoke() == true;
+
+        if (!playerWasThreatened || boardManager == null
+            || playerMove == null
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int playerTileIndex))
+        {
+            return default;
+        }
+
+        return new EnemyPlayerDodgeWindowState(
+            true,
+            playerTileIndex,
+            playerMove.transform.position);
+    }
+
+    private bool TryConfirmPlayerDodge(
+        EnemyPlayerDodgeWindowState dodgeState,
+        bool playerIsThreatened,
+        ref EnemyPlayerDodgeResolution resolution)
+    {
+        if (boardManager == null || playerMove == null)
+        {
+            return false;
+        }
+
+        if (!boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                out int currentPlayerTileIndex))
+        {
+            return false;
+        }
+
+        if (!resolution.TryConfirmBeforeImpact(
+                dodgeState,
+                playerIsThreatened,
+                currentPlayerTileIndex,
+                playerMove.transform.position,
+                out int movementDirection))
+        {
+            return false;
+        }
+
+        HandlePlayerDodgeConfirmed(dodgeState, movementDirection);
+        return true;
+    }
+
+    private void ResolvePlayerDodgeAtImpact(
+        EnemyPlayerDodgeWindowState dodgeState,
+        bool playerIsThreatened,
+        ref EnemyPlayerDodgeResolution resolution)
+    {
+        int currentPlayerTileIndex = -1;
+        Vector3 currentPlayerPosition = playerMove == null
+            ? dodgeState.PlayerPosition
+            : playerMove.transform.position;
+
+        if (boardManager != null && playerMove != null)
+        {
+            boardManager.TryGetTileIndex(
+                currentPlayerPosition,
+                out currentPlayerTileIndex);
+        }
+
+        if (resolution.ResolveAtImpact(
+                dodgeState,
+                playerIsThreatened,
+                currentPlayerTileIndex,
+                currentPlayerPosition,
+                out int movementDirection))
+        {
+            HandlePlayerDodgeConfirmed(dodgeState, movementDirection);
+        }
+    }
+
+    private void HandlePlayerDodgeConfirmed(
+        EnemyPlayerDodgeWindowState dodgeState,
+        int movementDirection)
+    {
+        if (playerMove == null)
+        {
+            return;
+        }
+
+        TryApplyDodgeExposedToSource(this);
+        playerMove.TryNotifyDodgeSucceededDuringAction();
+        combatFeedback ??= playerMove.GetComponent<
+            CombatFeedbackController>();
+        combatFeedback?.RecordPlayerDodge(
+            dodgeState.PlayerPosition,
+            movementDirection);
     }
 
     private bool TrySelectSupportTarget(
@@ -2000,105 +2429,63 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
     }
 
-    private IEnumerator ExecuteThrowerAttack(EnemyAttackData attackData)
+    private IEnumerator ExecuteThrowerAttack(
+        EnemyAttackData attackData,
+        Action onAttackPerformed)
     {
         if (preparedTargetTileIndex < 0)
         {
+            onAttackPerformed?.Invoke();
             AttackExecuted?.Invoke(this, attackData);
             yield break;
         }
 
-        // Lock the hit result when the throw begins. The projectile is only a
-        // presentation delay; movement or position refreshes during its flight
-        // must not invalidate a player who occupied the warned tile at launch.
-        bool targetsPlayer = boardManager.TryGetTileIndex(
-                playerMove.transform.position,
-                out int playerTileIndex)
-            && playerTileIndex == preparedTargetTileIndex;
-
         PlayThrowerAttackAnimation();
-        yield return PlayThrownProjectile(preparedTargetPosition);
-        SoundManager.PlaySfx("SFX_Thrower_Bomb");
-
-        TransientVfx.Spawn(
-            enemyData.ExplosionVfxPrefab,
+        onAttackPerformed?.Invoke();
+        Vector3 startPosition = transform.position;
+        GameObject projectile = CreateDefaultThrownProjectile(startPosition);
+        EnemyThrownProjectileFlight flight =
+            new EnemyThrownProjectileFlight(
+                startPosition,
+                preparedTargetPosition,
+                enemyData.ThrownProjectileDuration,
+                enemyData.ThrownProjectileArcHeight,
+                enemyData.AttackDodgeWindowDuration);
+        int attackDamage = statusEffects == null
+            ? attackData.Damage
+            : statusEffects.ModifyOutgoingAttackDamage(
+                attackData.Damage);
+        EnemyThrownAttackRuntime runtime = new EnemyThrownAttackRuntime(
+            this,
+            attackData,
+            boardManager,
+            playerMove,
+            playerHealth,
+            waveManager,
+            combatFeedback,
+            flight,
+            projectile,
+            preparedTargetTileIndex,
             preparedTargetPosition,
-            Quaternion.identity,
+            attackDamage,
+            enemyData.ExplosionVfxPrefab,
             enemyData.ExplosionVfxScale);
 
-        if (attackData.AttackEffectPrefab != null
-            && attackData.AttackEffectPrefab != enemyData.ExplosionVfxPrefab)
-        {
-            TransientVfx.Spawn(
-                attackData.AttackEffectPrefab,
-                preparedTargetPosition,
-                Quaternion.identity);
-        }
-
-        EnemyController enemyTarget = null;
-
-        if (!targetsPlayer)
-        {
-            waveManager.TryGetEnemyAtTile(
-                preparedTargetTileIndex,
-                out enemyTarget);
-        }
-
-        ApplyAttackToTarget(
-            attackData,
-            enemyTarget,
-            targetsPlayer);
-        AttackExecuted?.Invoke(this, attackData);
-    }
-
-    private IEnumerator PlayThrownProjectile(Vector3 targetPosition)
-    {
-        Vector3 startPosition = transform.position;
-        float duration = enemyData.ThrownProjectileDuration;
-        float arcHeight = enemyData.ThrownProjectileArcHeight;
-        GameObject projectile = CreateDefaultThrownProjectile(startPosition);
-
-        if (duration <= 0f)
+        if (!waveManager.TryStartDetachedEnemyAttack(
+                runtime.Resolve(),
+                projectile))
         {
             if (projectile != null)
             {
-                projectile.transform.position = targetPosition;
                 Destroy(projectile);
             }
 
             yield break;
         }
 
-        float elapsedTime = 0f;
-
-        while (elapsedTime < duration)
+        while (!runtime.IsComplete)
         {
             yield return null;
-
-            if (GamePauseController.IsPaused)
-            {
-                continue;
-            }
-
-            elapsedTime += Time.deltaTime;
-            float progress = Mathf.Clamp01(elapsedTime / duration);
-            Vector3 position = Vector3.Lerp(
-                startPosition,
-                targetPosition,
-                progress);
-            position += Vector3.up
-                * (Mathf.Sin(progress * Mathf.PI) * arcHeight);
-
-            if (projectile != null)
-            {
-                projectile.transform.position = position;
-            }
-        }
-
-        if (projectile != null)
-        {
-            projectile.transform.position = targetPosition;
-            Destroy(projectile);
         }
     }
 
@@ -2184,7 +2571,27 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             : statusEffects.ModifyOutgoingAttackDamage(
                 attackData.Damage);
 
-        if (targetsPlayer)
+        ApplyAttackToTarget(
+            playerHealth,
+            attackData,
+            attackDamage,
+            enemyTarget,
+            targetsPlayer);
+    }
+
+    internal static void ApplyAttackToTarget(
+        PlayerHealth playerHealth,
+        EnemyAttackData attackData,
+        int attackDamage,
+        EnemyController enemyTarget,
+        bool targetsPlayer)
+    {
+        if (attackData == null)
+        {
+            return;
+        }
+
+        if (targetsPlayer && playerHealth != null)
         {
             playerHealth.ApplyDamage(attackDamage);
 
@@ -2201,6 +2608,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             {
                 ApplyAttackStatusEffects(enemyTarget, attackData);
             }
+        }
+    }
+
+    internal void NotifyAttackExecuted(EnemyAttackData attackData)
+    {
+        if (currentHealth > 0 && attackData != null)
+        {
+            AttackExecuted?.Invoke(this, attackData);
         }
     }
 
@@ -2470,6 +2885,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                     out int playerIndex)
                 || targetIndex == playerIndex
                 || waveManager.IsTileOccupied(targetIndex, this)
+                || waveManager.IsTileReservedForMovement(targetIndex, this)
                 || waveManager.IsTileReservedForSpawn(targetIndex))
             {
                 break;
@@ -2485,7 +2901,20 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private IEnumerator MoveRoutine(Vector3[] path, bool updateRetreatState)
     {
-        yield return actorMotion.MoveAlongPath(path);
+        if (!TryReserveMovePath(path))
+        {
+            CompleteAction(EnemyTurnActionType.Wait);
+            yield break;
+        }
+
+        try
+        {
+            yield return actorMotion.MoveAlongPath(path);
+        }
+        finally
+        {
+            waveManager?.ReleaseMovementTiles(this);
+        }
 
         if (updateRetreatState
             && boardManager.TryGetTileDistance(
@@ -2498,6 +2927,33 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         CompleteAction(EnemyTurnActionType.Move);
+    }
+
+    private bool TryReserveMovePath(IReadOnlyList<Vector3> path)
+    {
+        if (waveManager == null || boardManager == null
+            || path == null || path.Count == 0)
+        {
+            return false;
+        }
+
+        movePathTileIndices.Clear();
+
+        for (int index = 0; index < path.Count; index++)
+        {
+            if (!boardManager.TryGetTileIndex(
+                    path[index],
+                    out int tileIndex))
+            {
+                return false;
+            }
+
+            movePathTileIndices.Add(tileIndex);
+        }
+
+        return waveManager.TryReserveMovementTiles(
+            this,
+            movePathTileIndices);
     }
 
     private IEnumerator RotateRoutine(int directionToPlayer)
@@ -2635,6 +3091,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         preparedShotgunTileIndices.Clear();
         lastTurnAction = EnemyTurnActionType.None;
         isActing = false;
+        isAttackDodgeWindowOpen = false;
+        isAttackActiveWindowOpen = false;
+        clearExposedAfterPlayerTurn = false;
 
         if (statusEffects != null)
         {
@@ -2661,6 +3120,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         avatarInstance = null;
         avatarAnimator = null;
         avatarEffects = null;
+        avatarActionWindow = null;
         avatarSortingRenderer = null;
 
         if (enemyData == null || enemyData.Avatar == null)
@@ -2692,6 +3152,21 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (avatarAnimator != null)
         {
             avatarEffects = avatarAnimator.GetComponent<EnemyAnimationSfx>();
+            avatarActionWindow =
+                avatarAnimator.GetComponent<EnemyAttackAnimationEvents>();
+
+            if (avatarActionWindow == null)
+            {
+                Debug.LogWarning(
+                    $"Enemy Avatar '{enemyData.Avatar.name}' has no "
+                    + "EnemyAttackAnimationEvents Action Window component "
+                    + "on its Animator GameObject.",
+                    avatarAnimator);
+            }
+            else
+            {
+                avatarActionWindow.Initialize(this);
+            }
         }
 
         if (avatarAnimator == null)
@@ -2764,21 +3239,99 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
     }
 
-    private IEnumerator PlayAvatarAttackAnimation()
+    private IEnumerator PlayAvatarAttackAnimation(
+        Action<bool> evaluateAttackHit,
+        Func<bool> isPlayerThreatened)
     {
-        yield return PlayAvatarAnimation(AttackAnimationStateHash);
+        yield return PlayAvatarAnimation(
+            AttackAnimationStateHash,
+            evaluateAttackHit,
+            isPlayerThreatened);
     }
 
     private IEnumerator PlayAvatarAnimation(int animationStateHash)
     {
-        if (avatarAnimator == null
-            || avatarAnimator.runtimeAnimatorController == null
-            || !avatarAnimator.HasState(0, animationStateHash))
+        yield return PlayAvatarAnimation(animationStateHash, null, null);
+    }
+
+    private IEnumerator PlayAvatarAnimation(
+        int animationStateHash,
+        Action<bool> evaluateAttackHit,
+        Func<bool> isPlayerThreatened)
+    {
+        bool hasAnimation = avatarAnimator != null
+            && avatarAnimator.runtimeAnimatorController != null
+            && avatarAnimator.HasState(0, animationStateHash);
+        EnemyPlayerDodgeWindowState dodgeState = default;
+        EnemyPlayerDodgeResolution dodgeResolution = default;
+        bool dodgeWindowStarted = false;
+        bool attackEvaluated = false;
+
+        void BeginDodgeWindow()
         {
+            if (dodgeWindowStarted || evaluateAttackHit == null)
+            {
+                return;
+            }
+
+            dodgeWindowStarted = true;
+            isAttackDodgeWindowOpen = true;
+            dodgeState = CapturePlayerDodgeWindow(isPlayerThreatened);
+        }
+
+        void TryConfirmDodgeBeforeImpact()
+        {
+            if (!dodgeWindowStarted || dodgeResolution.IsResolved)
+            {
+                return;
+            }
+
+            if (TryConfirmPlayerDodge(
+                    dodgeState,
+                    isPlayerThreatened?.Invoke() == true,
+                    ref dodgeResolution))
+            {
+                isAttackDodgeWindowOpen = false;
+            }
+        }
+
+        void EvaluateAttackAtImpact()
+        {
+            if (evaluateAttackHit == null || attackEvaluated)
+            {
+                return;
+            }
+
+            attackEvaluated = true;
+            isAttackDodgeWindowOpen = false;
+
+            if (!dodgeResolution.IsResolved)
+            {
+                ResolvePlayerDodgeAtImpact(
+                    dodgeState,
+                    isPlayerThreatened?.Invoke() == true,
+                    ref dodgeResolution);
+            }
+
+            evaluateAttackHit(dodgeResolution.PlayerDodged);
+        }
+
+        if (!hasAnimation)
+        {
+            BeginDodgeWindow();
+            yield return WaitForAttackTiming(
+                enemyData == null
+                    ? EnemyData.DefaultAttackDodgeWindowDuration
+                    : enemyData.AttackDodgeWindowDuration,
+                TryConfirmDodgeBeforeImpact);
+            TryConfirmDodgeBeforeImpact();
+            EvaluateAttackAtImpact();
             yield break;
         }
 
         int animationSequence = ++avatarAnimationSequence;
+        isAttackDodgeWindowOpen = false;
+        isAttackActiveWindowOpen = false;
         avatarEffects?.StopEffects();
         avatarAnimator.Play(animationStateHash, 0, 0f);
         avatarAnimator.Update(0f);
@@ -2787,11 +3340,71 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         float duration = Mathf.Max(
             0f,
             attackState.length / Mathf.Max(0.01f, avatarAnimator.speed));
+        bool hasActiveWindow = TryGetAttackActiveWindowTiming(
+            out EnemyAttackActiveWindowTiming activeWindowTiming);
+        float fallbackHitTime = enemyData == null
+            ? EnemyData.DefaultAttackDodgeWindowDuration
+            : enemyData.AttackDodgeWindowDuration;
+
         float elapsedTime = 0f;
+        float previousNormalizedTime = 0f;
+
+        if (evaluateAttackHit != null && (!hasActiveWindow
+            || activeWindowTiming.DodgeStartNormalizedTime <= 0f))
+        {
+            BeginDodgeWindow();
+        }
 
         while (elapsedTime < duration && avatarAnimator != null
             && animationSequence == avatarAnimationSequence)
         {
+            if (evaluateAttackHit != null
+                && !GamePauseController.IsPaused)
+            {
+                float normalizedTime = duration <= 0f
+                    ? 1f
+                    : Mathf.Clamp01(elapsedTime / duration);
+
+                if (hasActiveWindow)
+                {
+                    if (!dodgeWindowStarted
+                        && (isAttackDodgeWindowOpen
+                            || activeWindowTiming.CrossesDodgeStart(
+                                previousNormalizedTime,
+                                normalizedTime)))
+                    {
+                        BeginDodgeWindow();
+                    }
+
+                    bool activeWindowReached =
+                        isAttackActiveWindowOpen
+                        || activeWindowTiming.CrossesActiveStart(
+                            previousNormalizedTime,
+                            normalizedTime)
+                        || normalizedTime
+                            >= activeWindowTiming.StartNormalizedTime;
+
+                    if (activeWindowReached)
+                    {
+                        EvaluateAttackAtImpact();
+                    }
+                    else
+                    {
+                        TryConfirmDodgeBeforeImpact();
+                    }
+                }
+                else if (elapsedTime >= fallbackHitTime)
+                {
+                    EvaluateAttackAtImpact();
+                }
+                else
+                {
+                    TryConfirmDodgeBeforeImpact();
+                }
+
+                previousNormalizedTime = normalizedTime;
+            }
+
             yield return null;
 
             if (!GamePauseController.IsPaused)
@@ -2802,8 +3415,77 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (animationSequence == avatarAnimationSequence)
         {
+            if (evaluateAttackHit != null && hasActiveWindow)
+            {
+                if (!dodgeWindowStarted
+                    && activeWindowTiming.CrossesDodgeStart(
+                        previousNormalizedTime,
+                        1f))
+                {
+                    BeginDodgeWindow();
+                }
+
+                TryConfirmDodgeBeforeImpact();
+                EvaluateAttackAtImpact();
+            }
+            else if (evaluateAttackHit != null
+                && !attackEvaluated)
+            {
+                yield return WaitForAttackTiming(
+                    Mathf.Max(0f, fallbackHitTime - elapsedTime),
+                    TryConfirmDodgeBeforeImpact);
+                TryConfirmDodgeBeforeImpact();
+                EvaluateAttackAtImpact();
+            }
+
+            isAttackDodgeWindowOpen = false;
+            isAttackActiveWindowOpen = false;
             PlayAvatarIdle();
         }
+    }
+
+    private static IEnumerator WaitForAttackTiming(
+        float duration,
+        Action onUpdated = null)
+    {
+        float elapsedTime = 0f;
+
+        while (elapsedTime < duration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsedTime += Time.deltaTime;
+                onUpdated?.Invoke();
+            }
+        }
+    }
+
+    private bool TryGetAttackActiveWindowTiming(
+        out EnemyAttackActiveWindowTiming timing)
+    {
+        timing = default;
+
+        if (avatarAnimator == null)
+        {
+            return false;
+        }
+
+        AnimatorClipInfo[] clipInfo =
+            avatarAnimator.GetCurrentAnimatorClipInfo(0);
+
+        for (int index = 0; index < clipInfo.Length; index++)
+        {
+            if (EnemyAttackActiveWindowTiming.TryCreate(
+                    clipInfo[index].clip,
+                    out timing))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void ValidateBigBarrelAnimatorStates()

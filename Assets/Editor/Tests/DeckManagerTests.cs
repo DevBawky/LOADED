@@ -170,6 +170,294 @@ public class DeckManagerTests
     }
 
     [Test]
+    public void CombatGuideExplainsDuelClockAndEightCountCombo()
+    {
+        FirstRunGuideContent.GuidePage[] pages =
+            FirstRunGuideContent.CombatSystemPages;
+
+        Assert.That(
+            System.Array.Exists(
+                pages,
+                page => page.Title.Contains("DUEL CLOCK")
+                    && page.Description.Contains("COUNT")),
+            Is.True);
+        Assert.That(
+            System.Array.Exists(
+                pages,
+                page => page.Title.Contains("8 COUNT")
+                    && page.Description.Contains("8 COUNT")),
+            Is.True);
+    }
+
+    [Test]
+    public void CombatGuideExplainsDodgeAndExposedCritical()
+    {
+        FirstRunGuideContent.GuidePage[] pages =
+            FirstRunGuideContent.CombatSystemPages;
+
+        Assert.That(
+            System.Array.Exists(
+                pages,
+                page => page.Title.Contains("회피")
+                    && page.Description.Contains("무방비")
+                    && page.Description.Contains("크리티컬")),
+            Is.True);
+        Assert.That(
+            System.Array.Exists(
+                pages,
+                page => page.Title.Contains("디버프")
+                    && page.Description.Contains("무방비")
+                    && page.Description.Contains("비스택")
+                    && page.Description.Contains("다른 행동")),
+            Is.True);
+    }
+
+    [Test]
+    public void UpdatedGuideRequiresOneTimeProgressReset()
+    {
+        Assert.That(
+            FirstRunGuideController.RequiresGuideProgressReset(0),
+            Is.True);
+        Assert.That(
+            FirstRunGuideController.RequiresGuideProgressReset(1),
+            Is.True);
+        Assert.That(
+            FirstRunGuideController.RequiresGuideProgressReset(2),
+            Is.True);
+        Assert.That(
+            FirstRunGuideController.RequiresGuideProgressReset(3),
+            Is.True);
+        Assert.That(
+            FirstRunGuideController.RequiresGuideProgressReset(4),
+            Is.False);
+    }
+
+    [Test]
+    public void GuideTooltipRendersAboveGuideAndBelowSystemOverlays()
+    {
+        Assert.That(
+            FirstRunGuideController.GuideTooltipSortingOrder,
+            Is.GreaterThan(FirstRunGuideController.GuideSortingOrder));
+        Assert.That(
+            FirstRunGuideController.GuideTooltipSortingOrder,
+            Is.LessThan(short.MaxValue));
+    }
+
+    [Test]
+    public void NodeMapGuideExplainsNodeTypesAndSelection()
+    {
+        FirstRunGuideContent.GuidePage[] pages =
+            FirstRunGuideContent.NodeMapPages;
+
+        Assert.That(pages, Has.Length.GreaterThanOrEqualTo(3));
+        Assert.That(
+            System.Array.Exists(
+                pages,
+                page => page.Description.Contains("시작")
+                    && page.Description.Contains("전투")
+                    && page.Description.Contains("정예 전투")
+                    && page.Description.Contains("상점")
+                    && page.Description.Contains("이벤트")
+                    && page.Description.Contains("보물")
+                    && page.Description.Contains("보스")),
+            Is.True);
+        Assert.That(
+            System.Array.Exists(
+                pages,
+                page => page.Description.Contains("마우스 왼쪽 클릭")
+                    && page.TargetKind
+                        == FirstRunGuideContent.TargetKind.AvailableNode),
+            Is.True);
+    }
+
+    [Test]
+    public void EventAndTreasureGuidesExplainTheirCoreChoices()
+    {
+        FirstRunGuideContent.GuidePage[] eventPages =
+            FirstRunGuideContent.EventPages;
+        FirstRunGuideContent.GuidePage[] treasurePages =
+            FirstRunGuideContent.TreasurePages;
+
+        Assert.That(eventPages, Has.Length.GreaterThanOrEqualTo(2));
+        Assert.That(
+            System.Array.Exists(
+                eventPages,
+                page => page.Description.Contains("비용")
+                    && page.Description.Contains("조건")
+                    && page.Description.Contains("확률")),
+            Is.True);
+        Assert.That(treasurePages, Has.Length.GreaterThanOrEqualTo(2));
+        Assert.That(
+            System.Array.Exists(
+                treasurePages,
+                page => page.TargetName == "Button | Treasure Chest"),
+            Is.True);
+        Assert.That(
+            System.Array.Exists(
+                treasurePages,
+                page => page.TargetName == "Panel | Relic Choices"
+                    && page.Description.Contains("하나를 선택")),
+            Is.True);
+    }
+
+    [Test]
+    public void ShopPresentationUsesDedicatedTitleAndGuideCanvasAnchor()
+    {
+        Assert.That(
+            StageProgressUI.ShopStageTitle,
+            Is.EqualTo("마을. 상점"));
+        Assert.That(
+            FirstRunGuideController.IsGuideCanvasAnchor(
+                "Shop",
+                "Panel | Shop"),
+            Is.True);
+    }
+
+    [TestCase(NodeMapNodeType.Shop)]
+    [TestCase(NodeMapNodeType.Event)]
+    [TestCase(NodeMapNodeType.Treasure)]
+    public void PlaceGuideOnlyClassifiesFirstActiveNodeOfItsType(
+        NodeMapNodeType nodeType)
+    {
+        NodeMapRunData map = new NodeMapRunData
+        {
+            currentNodeId = 0,
+            activeNodeId = 1,
+            awaitingNodeSelection = false
+        };
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 0,
+            type = NodeMapNodeType.Start
+        });
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 1,
+            type = nodeType
+        });
+        map.completedNodeIds.Add(0);
+
+        Assert.That(
+            FirstRunGuideController.IsFirstActiveNodeOfType(
+                map,
+                nodeType),
+            Is.True);
+
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 2,
+            type = nodeType
+        });
+        map.completedNodeIds.Add(2);
+
+        Assert.That(
+            FirstRunGuideController.IsFirstActiveNodeOfType(
+                map,
+                nodeType),
+            Is.False);
+    }
+
+    [Test]
+    public void FirstSelectedBattleNodeStartsCombatGuideRegardlessOfBattleIndex()
+    {
+        NodeMapRunData map = CreateFirstSelectedBattleMap(
+            NodeMapNodeType.NormalBattle);
+
+        Assert.That(
+            FirstRunGuideController.IsFirstBattleNode(map),
+            Is.True);
+
+        Assert.That(
+            FirstRunGuideController.IsFirstBattleNode(
+                CreateFirstSelectedBattleMap(
+                    NodeMapNodeType.EliteBattle)),
+            Is.True);
+        Assert.That(
+            FirstRunGuideController.IsFirstBattleNode(
+                CreateFirstSelectedBattleMap(
+                    NodeMapNodeType.Boss)),
+            Is.True);
+
+        map.nodes[1].battleIndex = 2;
+
+        Assert.That(
+            FirstRunGuideController.IsFirstBattleNode(map),
+            Is.True);
+    }
+
+    [Test]
+    public void CompletedBattlePreventsFirstBattleGuideClassification()
+    {
+        NodeMapRunData map = CreateFirstSelectedBattleMap(
+            NodeMapNodeType.NormalBattle);
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 2,
+            type = NodeMapNodeType.NormalBattle
+        });
+        map.completedNodeIds.Add(2);
+
+        Assert.That(
+            FirstRunGuideController.IsFirstBattleNode(map),
+            Is.False);
+    }
+
+    [Test]
+    public void FreshNodeMapSelectionResolvesFirstReachableNode()
+    {
+        NodeMapRunData map = new NodeMapRunData
+        {
+            currentNodeId = 0,
+            activeNodeId = -1,
+            awaitingNodeSelection = true
+        };
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 0,
+            type = NodeMapNodeType.Start,
+            nextNodeIds = new System.Collections.Generic.List<int> { 3, 4 }
+        });
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 3,
+            type = NodeMapNodeType.NormalBattle
+        });
+        map.completedNodeIds.Add(0);
+
+        Assert.That(
+            FirstRunGuideController.IsInitialNodeSelection(map),
+            Is.True);
+        Assert.That(
+            FirstRunGuideController.ResolveFirstAvailableNodeId(map),
+            Is.EqualTo(3));
+    }
+
+    private static NodeMapRunData CreateFirstSelectedBattleMap(
+        NodeMapNodeType battleType)
+    {
+        NodeMapRunData map = new NodeMapRunData
+        {
+            currentNodeId = 0,
+            activeNodeId = 1,
+            awaitingNodeSelection = false
+        };
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 0,
+            type = NodeMapNodeType.Start,
+            nextNodeIds = new System.Collections.Generic.List<int> { 1 }
+        });
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 1,
+            type = battleType,
+            battleIndex = 1
+        });
+        map.completedNodeIds.Add(0);
+        return map;
+    }
+
+    [Test]
     public void WaitCompletesExactlyOneTurn()
     {
         PlayerMove playerMove = gameObject.AddComponent<PlayerMove>();
@@ -184,6 +472,49 @@ public class DeckManagerTests
         Assert.That(playerMove.TurnCount, Is.EqualTo(1));
         Assert.That(completionCount, Is.EqualTo(1));
         Assert.That(startedAction, Is.EqualTo(PlayerBehaviourAction.Wait));
+    }
+
+    [Test]
+    public void SuccessfulReloadCompletesExactlyOneTurn()
+    {
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        PlayerMove playerMove = gameObject.AddComponent<PlayerMove>();
+        PlayerShoot playerShoot = gameObject.AddComponent<PlayerShoot>();
+        SerializedObject serializedShoot = new SerializedObject(playerShoot);
+        serializedShoot.FindProperty("deckManager").objectReferenceValue =
+            deckManager;
+        serializedShoot.FindProperty("playerMove").objectReferenceValue =
+            playerMove;
+        serializedShoot.ApplyModifiedPropertiesWithoutUndo();
+        int completionCount = 0;
+        playerMove.TurnCompleted += () => completionCount++;
+
+        playerShoot.Reload();
+
+        Assert.That(deckManager.LoadedBullets, Has.Count.EqualTo(1));
+        Assert.That(playerMove.TurnCount, Is.EqualTo(1));
+        Assert.That(completionCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void FailedReloadDoesNotCompleteTurn()
+    {
+        PlayerMove playerMove = gameObject.AddComponent<PlayerMove>();
+        PlayerShoot playerShoot = gameObject.AddComponent<PlayerShoot>();
+        SerializedObject serializedShoot = new SerializedObject(playerShoot);
+        serializedShoot.FindProperty("deckManager").objectReferenceValue =
+            deckManager;
+        serializedShoot.FindProperty("playerMove").objectReferenceValue =
+            playerMove;
+        serializedShoot.ApplyModifiedPropertiesWithoutUndo();
+        int completionCount = 0;
+        playerMove.TurnCompleted += () => completionCount++;
+
+        playerShoot.Reload();
+
+        Assert.That(deckManager.LoadedBullets, Is.Empty);
+        Assert.That(playerMove.TurnCount, Is.Zero);
+        Assert.That(completionCount, Is.Zero);
     }
 
     [Test]
@@ -315,6 +646,50 @@ public sealed class EnemyDamageNumberDisplayTests
 
 public sealed class ComboFeedbackProgressionTests
 {
+    [Test]
+    public void ComboExpiresAfterEightCountsWithoutAnotherDefeat()
+    {
+        int remainingCounts = 8;
+
+        for (int count = 0; count < 8; count++)
+        {
+            remainingCounts = CombatFeedbackController
+                .CalculateRemainingComboCounts(
+                    remainingCounts,
+                    false);
+        }
+
+        Assert.That(remainingCounts, Is.Zero);
+    }
+
+    [Test]
+    public void DefeatDuringCountRefreshDoesNotConsumeThatCount()
+    {
+        int remainingCounts = CombatFeedbackController
+            .CalculateRemainingComboCounts(8, true);
+
+        Assert.That(remainingCounts, Is.EqualTo(8));
+    }
+
+    [Test]
+    public void CountDisplayUsesCountTerminology()
+    {
+        Assert.That(TurnCountText.FormatCount(12), Is.EqualTo("COUNT 12"));
+    }
+
+    [Test]
+    public void CumulativeCountSaturatesWithoutOverflow()
+    {
+        Assert.That(
+            StateManager.CalculateCumulativeBattleCount(10, 3),
+            Is.EqualTo(13));
+        Assert.That(
+            StateManager.CalculateCumulativeBattleCount(
+                int.MaxValue,
+                1),
+            Is.EqualTo(int.MaxValue));
+    }
+
     [Test]
     public void FeedbackMultiplier_IncreasesForEveryFiringSequenceKill()
     {
@@ -536,5 +911,93 @@ public sealed class CombatPresentationSignatureTests
         Assert.That(finalDevastating.UsesFinalExecutionSeal, Is.False);
         Assert.That(regularDefeat.UsesFinalExecutionSeal, Is.False);
         Assert.That(finalDefeat.UsesFinalExecutionSeal, Is.True);
+    }
+}
+
+public sealed class RunEntrySceneResolverTests
+{
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase("Stage 1")]
+    public void LegacyConfiguredSceneFallsBackToBattle(string configuredScene)
+    {
+        Assert.That(
+            MainMenuVideoController.NormalizeConfiguredGameSceneName(
+                configuredScene),
+            Is.EqualTo("Battle"));
+    }
+
+    [Test]
+    public void CurrentConfiguredSceneIsPreserved()
+    {
+        Assert.That(
+            MainMenuVideoController.NormalizeConfiguredGameSceneName(
+                "NodeMap"),
+            Is.EqualTo("NodeMap"));
+    }
+
+    [Test]
+    public void ContinueWithoutRunSnapshotResumesSelectedBattle()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.Continue,
+            false,
+            false,
+            true,
+            string.Empty);
+
+        Assert.That(sceneName, Is.EqualTo("Battle"));
+    }
+
+    [Test]
+    public void ContinueWithoutRunSnapshotAndSelectionReturnsToNodeMap()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.Continue,
+            false,
+            false,
+            false,
+            string.Empty);
+
+        Assert.That(sceneName, Is.EqualTo("NodeMap"));
+    }
+
+    [Test]
+    public void AwaitingSelectionKeepsValidRunOnNodeMap()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.Continue,
+            true,
+            true,
+            false,
+            "Battle");
+
+        Assert.That(sceneName, Is.EqualTo("NodeMap"));
+    }
+
+    [Test]
+    public void ValidRunResumesItsActiveNodeScene()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.Continue,
+            true,
+            false,
+            false,
+            "Treasure");
+
+        Assert.That(sceneName, Is.EqualTo("Treasure"));
+    }
+
+    [Test]
+    public void NewRunAlwaysStartsOnNodeMap()
+    {
+        string sceneName = MainMenuVideoController.ResolveRunEntryScene(
+            RunStartMode.New,
+            false,
+            false,
+            true,
+            string.Empty);
+
+        Assert.That(sceneName, Is.EqualTo("NodeMap"));
     }
 }

@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 public class StageProgressUI : MonoBehaviour
 {
-    public const string ShopStageTitle = "상점. 마을";
+    public const string ShopStageTitle = "마을. 상점";
 
     [Header("References")]
     [SerializeField] private StateManager stateManager;

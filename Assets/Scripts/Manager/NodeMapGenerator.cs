@@ -23,13 +23,13 @@ public static class NodeMapGenerator
         new NodeMapGenerationRule
         {
             nodeType = NodeMapNodeType.Shop,
-            weight = 10,
-            maximumCount = 2
+            weight = 0,
+            maximumCount = 0
         },
         new NodeMapGenerationRule
         {
             nodeType = NodeMapNodeType.Treasure,
-            weight = 10,
+            weight = 0,
             maximumCount = 0
         },
         new NodeMapGenerationRule
@@ -155,27 +155,17 @@ public static class NodeMapGenerator
             configuredRules == null || configuredRules.Count == 0
                 ? DefaultRules
                 : configuredRules;
-        NodeMapGenerationRule treasureRule = sourceRules.FirstOrDefault(
-            rule => rule != null
-                && rule.nodeType == NodeMapNodeType.Treasure);
-        int doubleTreasureChance = Mathf.Clamp(
-            treasureRule == null ? 0 : treasureRule.weight,
-            0,
-            100);
-        bool useDoubleTreasureColumns = doubleTreasureChance >= 100
-            || (doubleTreasureChance > 0
-                && random.Next(100) < doubleTreasureChance);
         HashSet<int> forcedTreasureColumns = GetForcedTreasureColumns(
-            maximumColumn,
-            useDoubleTreasureColumns);
+            maximumColumn);
+        HashSet<int> forcedShopColumns = GetForcedShopColumns(maximumColumn);
 
-        // Treasure is exclusively assigned by the fixed progress columns.
-        // Its Weight is the double-appearance percentage, and Min/Max do not
-        // participate in ordinary node allocation.
+        // Shop and Treasure are exclusively assigned by fixed progress
+        // columns and never participate in ordinary allocation.
         List<NodeMapGenerationRule> rules = sourceRules
             .Where(rule => rule != null
                 && rule.nodeType != NodeMapNodeType.Start
                 && rule.nodeType != NodeMapNodeType.Boss
+                && rule.nodeType != NodeMapNodeType.Shop
                 && rule.nodeType != NodeMapNodeType.Treasure)
             .GroupBy(rule => rule.nodeType)
             .Select(group => group.First())
@@ -188,10 +178,9 @@ public static class NodeMapGenerator
         Dictionary<NodeMapNodeType, int> counts = rules.ToDictionary(
             rule => rule.nodeType, _ => 0);
 
-        // Fixed columns take priority over configured weights and limits.
-        // In very short maps, the first playable column remains a battle and
-        // the pre-boss Shop takes priority over a colliding Treasure column.
-        int preBossColumn = Mathf.Max(1, maximumColumn - 1);
+        // Guaranteed columns take priority over configured rules. The first
+        // playable column remains a battle in very short maps. If fixed
+        // columns overlap, Treasure keeps its half-progress column.
         List<NodeMapNodeData> unassignedNodes = new List<NodeMapNodeData>();
         foreach (NodeMapNodeData node in nodes)
         {
@@ -200,15 +189,13 @@ public static class NodeMapGenerator
                 node.type = NodeMapNodeType.NormalBattle;
                 IncrementCount(counts, node.type);
             }
-            else if (node.column == preBossColumn)
-            {
-                node.type = NodeMapNodeType.Shop;
-                IncrementCount(counts, node.type);
-            }
             else if (forcedTreasureColumns.Contains(node.column))
             {
                 node.type = NodeMapNodeType.Treasure;
-                IncrementCount(counts, node.type);
+            }
+            else if (forcedShopColumns.Contains(node.column))
+            {
+                node.type = NodeMapNodeType.Shop;
             }
             else
             {
@@ -333,26 +320,30 @@ public static class NodeMapGenerator
             return type == NodeMapNodeType.NormalBattle;
         }
 
-        // Treasure is never part of the weighted/minimum allocation pass.
-        return type != NodeMapNodeType.Treasure;
+        // Shop and Treasure are never part of the weighted/minimum allocation
+        // pass.
+        return type != NodeMapNodeType.Shop
+            && type != NodeMapNodeType.Treasure;
     }
 
     private static HashSet<int> GetForcedTreasureColumns(
-        int maximumColumn,
-        bool useDoubleTreasureColumns)
+        int maximumColumn)
     {
-        HashSet<int> columns = new HashSet<int>();
-        if (useDoubleTreasureColumns)
+        return new HashSet<int>
         {
-            columns.Add(GetColumnNearestProgress(maximumColumn, 1f / 3f));
-            columns.Add(GetColumnNearestProgress(maximumColumn, 2f / 3f));
-        }
-        else
-        {
-            columns.Add(GetColumnNearestProgress(maximumColumn, 0.5f));
-        }
+            GetColumnNearestProgress(maximumColumn, 0.5f)
+        };
+    }
 
-        return columns;
+    private static HashSet<int> GetForcedShopColumns(int maximumColumn)
+    {
+        int preBossColumn = Mathf.Max(1, maximumColumn - 1);
+        return new HashSet<int>
+        {
+            GetColumnNearestProgress(maximumColumn, 1f / 3f),
+            GetColumnNearestProgress(maximumColumn, 2f / 3f),
+            preBossColumn
+        };
     }
 
     private static int GetColumnNearestProgress(

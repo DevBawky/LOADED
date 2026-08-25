@@ -13,21 +13,44 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private const string CombatGuideKey = "loaded.guide.combat.v1";
     private const string ItemGuideKey = "loaded.guide.item.v1";
     private const string ShopGuideKey = "loaded.guide.shop.v1";
+    private const string NodeMapGuideKey = "loaded.guide.node_map.v1";
+    private const string EventGuideKey = "loaded.guide.event.v1";
+    private const string TreasureGuideKey = "loaded.guide.treasure.v1";
     private const string GuideDisabledKey = "loaded.guide.disabled.v1";
     private const string FirstTutorialRunStartedKey =
         "loaded.guide.first_run_started.v1";
+    private const string GuideContentVersionKey =
+        "loaded.guide.content_version";
+    private const int CurrentGuideContentVersion = 4;
+    internal const int GuideSortingOrder = 30000;
+    internal const int GuideTooltipSortingOrder = GuideSortingOrder + 1;
     private const float StepAdvanceDelay = 0.45f;
     private const string PreferredGuideFontName = "Bold_Ko SDF";
     private const string FallbackGuideFontName = "Galmuri9 SDF";
 
     private static FirstRunGuideController activeInstance;
 
+    internal static bool IsGuidePanelOpen => activeInstance != null
+        && activeInstance.isActiveAndEnabled
+        && activeInstance.card != null
+        && activeInstance.card.activeInHierarchy;
+
+    internal static bool IsGuideElement(Transform candidate)
+    {
+        return IsGuidePanelOpen && candidate != null
+            && activeInstance.guideRoot != null
+            && candidate.IsChildOf(activeInstance.guideRoot);
+    }
+
     private enum GuideMode
     {
         None,
         Combat,
         Item,
-        Shop
+        Shop,
+        NodeMap,
+        Event,
+        Treasure
     }
 
     private StateManager stateManager;
@@ -84,8 +107,14 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private int combatStepIndex;
     private int combatReviewStepIndex = -1;
     private int shopPageIndex;
+    private int nodeMapPageIndex;
+    private int eventPageIndex;
+    private int treasurePageIndex;
     private bool combatGuideStarted;
     private bool shopGuideStarted;
+    private bool nodeMapGuideStarted;
+    private bool eventGuideStarted;
+    private bool treasureGuideStarted;
     private bool showingCombatSystemPages;
     private bool missionActive;
     private bool pendingAdvance;
@@ -137,9 +166,14 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
     private static void InstallIfNeeded()
     {
+        string sceneName = SceneManager.GetActiveScene().name;
+        bool isNodeMapScene = sceneName == "NodeMap";
+        bool isEventScene = sceneName == "Event";
+        bool isTreasureScene = sceneName == "Treasure";
         StateManager manager = FindFirstObjectByType<StateManager>(
             FindObjectsInactive.Include);
-        if (manager == null
+        if ((manager == null && !isNodeMapScene
+                && !isEventScene && !isTreasureScene)
             || FindFirstObjectByType<FirstRunGuideController>(
                 FindObjectsInactive.Include) != null)
         {
@@ -160,7 +194,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
                 canvas.GetComponentsInChildren<RectTransform>(true);
             foreach (RectTransform descendant in descendants)
             {
-                if (descendant.name == "Panel | MainGame")
+                if (IsGuideCanvasAnchor(sceneName, descendant.name))
                 {
                     selectedCanvas = canvas;
                     break;
@@ -177,6 +211,21 @@ public sealed class FirstRunGuideController : MonoBehaviour
         {
             selectedCanvas.gameObject.AddComponent<FirstRunGuideController>();
         }
+    }
+
+    internal static bool IsGuideCanvasAnchor(
+        string sceneName,
+        string objectName)
+    {
+        return objectName == "Panel | MainGame"
+            || sceneName == "NodeMap"
+                && objectName == "Scroll View | Map"
+            || sceneName == "Shop"
+                && objectName == "Panel | Shop"
+            || sceneName == "Event"
+                && objectName == "Text | Event Dialogue"
+            || sceneName == "Treasure"
+                && objectName == "Button | Treasure Chest";
     }
 
     public static bool TrySkipActiveGuide()
@@ -202,6 +251,9 @@ public sealed class FirstRunGuideController : MonoBehaviour
         PlayerPrefs.DeleteKey(CombatGuideKey);
         PlayerPrefs.DeleteKey(ItemGuideKey);
         PlayerPrefs.DeleteKey(ShopGuideKey);
+        PlayerPrefs.DeleteKey(NodeMapGuideKey);
+        PlayerPrefs.DeleteKey(EventGuideKey);
+        PlayerPrefs.DeleteKey(TreasureGuideKey);
         PlayerPrefs.DeleteKey(GuideDisabledKey);
         PlayerPrefs.DeleteKey(FirstTutorialRunStartedKey);
         PlayerPrefs.Save();
@@ -210,6 +262,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private void Awake()
     {
         activeInstance = this;
+        EnsureCurrentGuideContentVersion();
         ResolveReferences();
         ResolveFont();
         BuildInterface();
@@ -260,9 +313,12 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         if (mode == GuideMode.None)
         {
+            TryStartNodeMapGuide();
             TryStartCombatGuide();
             TryStartItemGuide();
             TryStartShopGuide();
+            TryStartEventGuide();
+            TryStartTreasureGuide();
         }
         else if ((mode == GuideMode.Combat || mode == GuideMode.Item)
             && stateManager != null
@@ -313,7 +369,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             || stateManager == null || playerMove == null
             || stateManager.CurrentState != GameFlowState.Battle
             || stateManager.CurrentStageIndex != 0
-            || stateManager.CurrentBattleIndex != 0
+            || !IsFirstBattleNode()
             || !stateManager.IsFreshRun
             || !playerMove.CanStartAction
             || LoadingTransitionController.IsTransitioning)
@@ -342,6 +398,33 @@ public sealed class FirstRunGuideController : MonoBehaviour
         combatReviewStepIndex = -1;
         showingCombatSystemPages = true;
         ShowCombatSystemPage();
+    }
+
+    private void TryStartNodeMapGuide()
+    {
+        if (nodeMapGuideStarted
+            || SceneManager.GetActiveScene().name != "NodeMap")
+        {
+            return;
+        }
+
+        if (IsGuideDisabled() || RunSaveSystem.HasValidSave)
+        {
+            nodeMapGuideStarted = true;
+            return;
+        }
+
+        if (!IsInitialNodeSelection()
+            || LoadingTransitionController.IsTransitioning)
+        {
+            return;
+        }
+
+        nodeMapGuideStarted = true;
+        mode = GuideMode.NodeMap;
+        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        nodeMapPageIndex = 0;
+        ShowNodeMapPage();
     }
 
     private void TryStartItemGuide()
@@ -377,6 +460,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (shopGuideStarted || IsGuideDisabled() || stateManager == null
             || stateManager.CurrentState != GameFlowState.Shop
             || !stateManager.IsFreshRun
+            || !IsFirstActiveNodeOfType(NodeMapNodeType.Shop)
             || LoadingTransitionController.IsTransitioning)
         {
             return;
@@ -387,6 +471,40 @@ public sealed class FirstRunGuideController : MonoBehaviour
         isMandatoryGuideSession = IsFirstTutorialPlaythrough();
         shopPageIndex = 0;
         ShowShopPage();
+    }
+
+    private void TryStartEventGuide()
+    {
+        if (eventGuideStarted || IsGuideDisabled()
+            || SceneManager.GetActiveScene().name != "Event"
+            || !IsFirstActiveNodeOfType(NodeMapNodeType.Event)
+            || LoadingTransitionController.IsTransitioning)
+        {
+            return;
+        }
+
+        eventGuideStarted = true;
+        mode = GuideMode.Event;
+        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        eventPageIndex = 0;
+        ShowEventPage();
+    }
+
+    private void TryStartTreasureGuide()
+    {
+        if (treasureGuideStarted || IsGuideDisabled()
+            || SceneManager.GetActiveScene().name != "Treasure"
+            || !IsFirstActiveNodeOfType(NodeMapNodeType.Treasure)
+            || LoadingTransitionController.IsTransitioning)
+        {
+            return;
+        }
+
+        treasureGuideStarted = true;
+        mode = GuideMode.Treasure;
+        isMandatoryGuideSession = IsFirstTutorialPlaythrough();
+        treasurePageIndex = 0;
+        ShowTreasurePage();
     }
 
     private void ShowCombatSystemPage()
@@ -482,6 +600,70 @@ public sealed class FirstRunGuideController : MonoBehaviour
             shopPageIndex == ShopPages.Length - 1 ? "완료" : "다음");
     }
 
+    private void ShowNodeMapPage()
+    {
+        if (nodeMapPageIndex >= NodeMapPages.Length)
+        {
+            SaveCompleted(NodeMapGuideKey);
+            HideGuide(false);
+            return;
+        }
+
+        GuidePage page = NodeMapPages[nodeMapPageIndex];
+        SetActiveTarget(page.TargetName, page.TargetKind);
+        ShowCard(
+            $"NODE MAP GUIDE {nodeMapPageIndex + 1}/{NodeMapPages.Length}",
+            page.Title,
+            page.Description,
+            null,
+            page.VideoPath,
+            nodeMapPageIndex == NodeMapPages.Length - 1 ? "확인" : "다음");
+    }
+
+    private void ShowEventPage()
+    {
+        if (eventPageIndex >= EventPages.Length)
+        {
+            CommitNeverShowPreference();
+            SaveCompleted(EventGuideKey);
+            HideGuide(false);
+            return;
+        }
+
+        GuidePage page = EventPages[eventPageIndex];
+        SetActiveTarget(page.TargetName, page.TargetKind);
+        ShowCard(
+            $"EVENT GUIDE {eventPageIndex + 1}/{EventPages.Length}",
+            page.Title,
+            page.Description,
+            null,
+            page.VideoPath,
+            eventPageIndex == EventPages.Length - 1 ? "확인" : "다음");
+    }
+
+    private void ShowTreasurePage()
+    {
+        if (treasurePageIndex >= TreasurePages.Length)
+        {
+            CommitNeverShowPreference();
+            SaveCompleted(TreasureGuideKey);
+            HideGuide(false);
+            return;
+        }
+
+        GuidePage page = TreasurePages[treasurePageIndex];
+        SetActiveTarget(page.TargetName, page.TargetKind);
+        ShowCard(
+            $"TREASURE GUIDE {treasurePageIndex + 1}/{TreasurePages.Length}",
+            page.Title,
+            page.Description,
+            null,
+            page.VideoPath,
+            treasurePageIndex == TreasurePages.Length - 1
+                ? "확인"
+                : "다음");
+    }
+
     private void ShowCard(
         string stepLabel,
         string title,
@@ -550,10 +732,31 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
     private void HandleContinue()
     {
+        if (mode == GuideMode.NodeMap)
+        {
+            nodeMapPageIndex++;
+            ShowNodeMapPage();
+            return;
+        }
+
         if (mode == GuideMode.Shop)
         {
             shopPageIndex++;
             ShowShopPage();
+            return;
+        }
+
+        if (mode == GuideMode.Event)
+        {
+            eventPageIndex++;
+            ShowEventPage();
+            return;
+        }
+
+        if (mode == GuideMode.Treasure)
+        {
+            treasurePageIndex++;
+            ShowTreasurePage();
             return;
         }
 
@@ -613,12 +816,45 @@ public sealed class FirstRunGuideController : MonoBehaviour
             return;
         }
 
+        if (mode == GuideMode.NodeMap)
+        {
+            if (nodeMapPageIndex > 0)
+            {
+                nodeMapPageIndex--;
+                ShowNodeMapPage();
+            }
+
+            return;
+        }
+
         if (mode == GuideMode.Shop)
         {
             if (shopPageIndex > 0)
             {
                 shopPageIndex--;
                 ShowShopPage();
+            }
+
+            return;
+        }
+
+        if (mode == GuideMode.Event)
+        {
+            if (eventPageIndex > 0)
+            {
+                eventPageIndex--;
+                ShowEventPage();
+            }
+
+            return;
+        }
+
+        if (mode == GuideMode.Treasure)
+        {
+            if (treasurePageIndex > 0)
+            {
+                treasurePageIndex--;
+                ShowTreasurePage();
             }
 
             return;
@@ -668,7 +904,10 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         bool canGoBack = !completionCardOpen && (mode switch
         {
+            GuideMode.NodeMap => nodeMapPageIndex > 0,
             GuideMode.Shop => shopPageIndex > 0,
+            GuideMode.Event => eventPageIndex > 0,
+            GuideMode.Treasure => treasurePageIndex > 0,
             GuideMode.Combat when showingCombatSystemPages =>
                 combatSystemPageIndex > 0,
             GuideMode.Combat => combatStepIndex > 0
@@ -933,7 +1172,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
                 if (!HasInspectableEnemyAction())
                 {
                     priority = new PriorityMission(
-                        "적 행동 아이콘이 나타날 때까지 회전하며 한 턴 진행",
+                        "적 행동 아이콘이 나타날 때까지 회전해 DUEL CLOCK 충전",
                         "Button | Rotate");
                     return true;
                 }
@@ -1080,7 +1319,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         else
         {
             priority = new PriorityMission(
-                "이동 경로가 열릴 때까지 회전하며 한 턴 진행",
+                "이동 경로가 열릴 때까지 회전해 DUEL CLOCK 충전",
                 "Button | Rotate");
         }
 
@@ -1138,7 +1377,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         else
         {
             priority = new PriorityMission(
-                "적이 등장할 때까지 회전하며 한 턴 진행",
+                "적이 등장할 때까지 회전해 DUEL CLOCK 충전",
                 "Button | Rotate");
         }
 
@@ -1151,7 +1390,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (!TryGetNearestEnemy(out int direction, out int distance))
         {
             priority = new PriorityMission(
-                "적이 등장할 때까지 회전하며 한 턴 진행",
+                "적이 등장할 때까지 회전해 DUEL CLOCK 충전",
                 "Button | Rotate");
             return true;
         }
@@ -1176,7 +1415,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (playerMove != null && !playerMove.CanPush)
         {
             priority = new PriorityMission(
-                $"발차기 재사용까지 회전 ({playerMove.RemainingPushCooldownTurns}턴)",
+                $"발차기 재사용까지 회전 ({playerMove.RemainingPushCooldownTurns}회 행동)",
                 "Button | Rotate");
             return true;
         }
@@ -1326,7 +1565,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         SaveCompleted(ItemGuideKey);
         ShowCompletionCard(
             "전투 가이드 완료",
-            "이제 <color=#FFD05A><b>탄환 순서와 적 행동</b></color>을 확인하며 전투하세요.");
+            "이제 <color=#FFD05A><b>DUEL CLOCK, 콤보와 적 행동</b></color>을 확인하며 전투하세요.");
     }
 
     private void FinishItemGuide()
@@ -1383,10 +1622,16 @@ public sealed class FirstRunGuideController : MonoBehaviour
         PlayerPrefs.SetInt(CombatGuideKey, 1);
         PlayerPrefs.SetInt(ItemGuideKey, 1);
         PlayerPrefs.SetInt(ShopGuideKey, 1);
+        PlayerPrefs.SetInt(NodeMapGuideKey, 1);
+        PlayerPrefs.SetInt(EventGuideKey, 1);
+        PlayerPrefs.SetInt(TreasureGuideKey, 1);
         PlayerPrefs.Save();
 
         combatGuideStarted = true;
         shopGuideStarted = true;
+        nodeMapGuideStarted = true;
+        eventGuideStarted = true;
+        treasureGuideStarted = true;
     }
 
     private void HideGuide(bool unlockInput)
@@ -1669,6 +1914,162 @@ public sealed class FirstRunGuideController : MonoBehaviour
             && (playerShoot == null || !playerShoot.IsFiring);
     }
 
+    private bool IsFirstBattleNode()
+    {
+        return NodeMapSaveSystem.TryLoad(out NodeMapRunData mapData)
+            ? IsFirstBattleNode(mapData)
+            : stateManager != null && stateManager.CurrentBattleIndex == 0;
+    }
+
+    internal static bool IsFirstBattleNode(NodeMapRunData mapData)
+    {
+        if (mapData == null || mapData.activeNodeId < 0
+            || mapData.nodes == null || mapData.completedNodeIds == null)
+        {
+            return false;
+        }
+
+        NodeMapNodeData activeNode = null;
+        foreach (NodeMapNodeData node in mapData.nodes)
+        {
+            if (node != null && node.id == mapData.activeNodeId)
+            {
+                activeNode = node;
+                break;
+            }
+        }
+
+        if (activeNode == null || !IsBattleNodeType(activeNode.type))
+        {
+            return false;
+        }
+
+        foreach (int completedNodeId in mapData.completedNodeIds)
+        {
+            foreach (NodeMapNodeData node in mapData.nodes)
+            {
+                if (node != null && node.id == completedNodeId
+                    && IsBattleNodeType(node.type))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static bool IsInitialNodeSelection()
+    {
+        return NodeMapSaveSystem.TryLoad(out NodeMapRunData mapData)
+            && IsInitialNodeSelection(mapData);
+    }
+
+    internal static bool IsInitialNodeSelection(NodeMapRunData mapData)
+    {
+        if (mapData == null || !mapData.awaitingNodeSelection
+            || mapData.activeNodeId >= 0 || mapData.nodes == null
+            || mapData.completedNodeIds == null)
+        {
+            return false;
+        }
+
+        foreach (NodeMapNodeData node in mapData.nodes)
+        {
+            if (node == null || node.id == mapData.currentNodeId)
+            {
+                continue;
+            }
+
+            if (mapData.completedNodeIds.Contains(node.id))
+            {
+                return false;
+            }
+        }
+
+        foreach (NodeMapNodeData node in mapData.nodes)
+        {
+            if (node != null && node.id == mapData.currentNodeId)
+            {
+                return node.type == NodeMapNodeType.Start;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsFirstActiveNodeOfType(NodeMapNodeType nodeType)
+    {
+        return NodeMapSaveSystem.TryLoad(out NodeMapRunData mapData)
+            && IsFirstActiveNodeOfType(mapData, nodeType);
+    }
+
+    internal static bool IsFirstActiveNodeOfType(
+        NodeMapRunData mapData,
+        NodeMapNodeType nodeType)
+    {
+        if (mapData == null || mapData.activeNodeId < 0
+            || mapData.nodes == null || mapData.completedNodeIds == null)
+        {
+            return false;
+        }
+
+        NodeMapNodeData activeNode = null;
+        foreach (NodeMapNodeData node in mapData.nodes)
+        {
+            if (node != null && node.id == mapData.activeNodeId)
+            {
+                activeNode = node;
+                break;
+            }
+        }
+
+        if (activeNode == null || activeNode.type != nodeType)
+        {
+            return false;
+        }
+
+        foreach (int completedNodeId in mapData.completedNodeIds)
+        {
+            foreach (NodeMapNodeData node in mapData.nodes)
+            {
+                if (node != null && node.id == completedNodeId
+                    && node.type == nodeType)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    internal static int ResolveFirstAvailableNodeId(NodeMapRunData mapData)
+    {
+        if (mapData == null || mapData.nodes == null)
+        {
+            return -1;
+        }
+
+        foreach (NodeMapNodeData node in mapData.nodes)
+        {
+            if (node != null && node.id == mapData.currentNodeId
+                && node.nextNodeIds != null && node.nextNodeIds.Count > 0)
+            {
+                return node.nextNodeIds[0];
+            }
+        }
+
+        return -1;
+    }
+
+    private static bool IsBattleNodeType(NodeMapNodeType nodeType)
+    {
+        return nodeType == NodeMapNodeType.NormalBattle
+            || nodeType == NodeMapNodeType.EliteBattle
+            || nodeType == NodeMapNodeType.Boss;
+    }
+
     private void SetTutorialInputLocked(bool locked)
     {
         playerMove?.SetInputLocked(locked);
@@ -1684,6 +2085,26 @@ public sealed class FirstRunGuideController : MonoBehaviour
         return PlayerPrefs.GetInt(GuideDisabledKey, 0) != 0;
     }
 
+    internal static bool RequiresGuideProgressReset(int storedVersion)
+    {
+        return storedVersion < CurrentGuideContentVersion;
+    }
+
+    private static void EnsureCurrentGuideContentVersion()
+    {
+        int storedVersion = PlayerPrefs.GetInt(GuideContentVersionKey, 0);
+        if (!RequiresGuideProgressReset(storedVersion))
+        {
+            return;
+        }
+
+        ResetSavedProgress();
+        PlayerPrefs.SetInt(
+            GuideContentVersionKey,
+            CurrentGuideContentVersion);
+        PlayerPrefs.Save();
+    }
+
     private bool IsFirstTutorialPlaythrough()
     {
         if (tutorialRunResolved)
@@ -1697,7 +2118,10 @@ public sealed class FirstRunGuideController : MonoBehaviour
                 0) != 0
             || IsCompleted(CombatGuideKey)
             || IsCompleted(ItemGuideKey)
-            || IsCompleted(ShopGuideKey);
+            || IsCompleted(ShopGuideKey)
+            || IsCompleted(NodeMapGuideKey)
+            || IsCompleted(EventGuideKey)
+            || IsCompleted(TreasureGuideKey);
         isFirstTutorialRun = !hasPreviousTutorialRun;
 
         if (isFirstTutorialRun)
@@ -1762,6 +2186,11 @@ public sealed class FirstRunGuideController : MonoBehaviour
             return ResolveNamedTarget("Button | Move L");
         }
 
+        if (activeTargetKind == TargetKind.AvailableNode)
+        {
+            return ResolveAvailableNodeTarget();
+        }
+
         if (string.IsNullOrWhiteSpace(activeTargetName))
         {
             return null;
@@ -1802,6 +2231,36 @@ public sealed class FirstRunGuideController : MonoBehaviour
         }
 
         return best;
+    }
+
+    private RectTransform ResolveAvailableNodeTarget()
+    {
+        if (!NodeMapSaveSystem.TryLoad(out NodeMapRunData mapData))
+        {
+            return null;
+        }
+
+        int nodeId = ResolveFirstAvailableNodeId(mapData);
+        if (nodeId < 0)
+        {
+            return null;
+        }
+
+        string namePrefix = $"Node {nodeId} |";
+        foreach (RectTransform candidate in FindObjectsByType<RectTransform>(
+                     FindObjectsInactive.Exclude,
+                     FindObjectsSortMode.None))
+        {
+            if (candidate != null
+                && candidate.name.StartsWith(
+                    namePrefix,
+                    StringComparison.Ordinal))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     private static EnemyController FindTutorialEnemy()
@@ -2012,6 +2471,12 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
         guideRoot = CreateRect("Guide | First Run", rootCanvas.transform);
         Stretch(guideRoot);
+
+        Canvas guideCanvas = guideRoot.gameObject.AddComponent<Canvas>();
+        guideCanvas.overrideSorting = true;
+        guideCanvas.sortingLayerID = rootCanvas.sortingLayerID;
+        guideCanvas.sortingOrder = GuideSortingOrder;
+        guideRoot.gameObject.AddComponent<GraphicRaycaster>();
 
         inputBlocker = CreateImage(
             "Image | Guide Blocker",

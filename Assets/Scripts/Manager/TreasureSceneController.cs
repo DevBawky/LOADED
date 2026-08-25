@@ -193,6 +193,16 @@ public sealed class TreasureSceneController : MonoBehaviour
             runData.battleIndex,
             GameFlowState.Treasure);
 
+        int cumulativeCount = Mathf.Max(
+            0,
+            runData.cumulativeBattleTurnCount);
+        foreach (TurnCountText countText in FindObjectsByType<TurnCountText>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            countText.SetExternalCount(cumulativeCount);
+        }
+
         bool resumeVisit = runData.treasureVisitActive
             && runData.flowState == (int)GameFlowState.Treasure
             && runData.treasureOfferRelicIds.Count > 0;

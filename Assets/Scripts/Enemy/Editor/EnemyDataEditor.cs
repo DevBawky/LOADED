@@ -20,6 +20,7 @@ public class EnemyDataEditor : Editor
     private SerializedProperty maxQueuedAttacks;
     private SerializedProperty queuedActionInterval;
     private SerializedProperty queueElementRevealDuration;
+    private SerializedProperty attackDodgeWindowDuration;
     private SerializedProperty firingRange;
     private SerializedProperty recoveryTurns;
     private SerializedProperty maxSupportCharges;
@@ -63,6 +64,7 @@ public class EnemyDataEditor : Editor
         maxQueuedAttacks = Find("maxQueuedAttacks");
         queuedActionInterval = Find("queuedActionInterval");
         queueElementRevealDuration = Find("queueElementRevealDuration");
+        attackDodgeWindowDuration = Find("attackDodgeWindowDuration");
         firingRange = Find("firingRange");
         recoveryTurns = Find("recoveryTurns");
         maxSupportCharges = Find("maxSupportCharges");
@@ -108,7 +110,8 @@ public class EnemyDataEditor : Editor
             maxHealth,
             maxQueuedAttacks,
             queuedActionInterval,
-            queueElementRevealDuration);
+            queueElementRevealDuration,
+            attackDodgeWindowDuration);
 
         EditorGUILayout.Space(6f);
         EditorGUILayout.BeginVertical(EditorStyles.helpBox);
@@ -129,7 +132,7 @@ public class EnemyDataEditor : Editor
 
             case EnemyBehaviorType.Gunner:
                 EditorGUILayout.HelpBox(
-                    "공격 타일을 먼저 등록한 뒤, 설정된 사거리 안까지 접근합니다. 사선이 확보되면 공격을 준비하고 다음 턴에 사격합니다.",
+                    "공격 타일을 먼저 등록한 뒤, 설정된 사거리 안까지 접근합니다. 사선이 확보되면 공격을 준비하고 다음 COUNT에 사격합니다.",
                     MessageType.Info);
                 EditorGUILayout.PropertyField(firingRange);
                 EditorGUILayout.PropertyField(recoveryTurns);

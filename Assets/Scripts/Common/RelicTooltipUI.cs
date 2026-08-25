@@ -20,9 +20,24 @@ public sealed class RelicTooltipUI : MonoBehaviour
         "Text | Description"
     };
 
+    private static readonly string[] GuideTextHints =
+    {
+        "Text | Relic Guide",
+        "Text | Remove",
+        "Text | Guide"
+    };
+
+    private static readonly string[] RemovalProgressImageHints =
+    {
+        "Image | Gauge Value",
+        "Image | Removal Hold Progress"
+    };
+
     [SerializeField] private RectTransform panel;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text descriptionText;
+    [SerializeField] private TMP_Text guideText;
+    [SerializeField] private Image removalProgressImage;
     [SerializeField] private Vector2 pointerOffset = new Vector2(18f, -18f);
     [SerializeField] private float screenPadding = 10f;
 
@@ -71,7 +86,10 @@ public sealed class RelicTooltipUI : MonoBehaviour
         }
 
         presenter = tooltipPanel.GetComponent<RelicTooltipUI>();
-        presenter ??= tooltipPanel.gameObject.AddComponent<RelicTooltipUI>();
+        if (presenter == null)
+        {
+            presenter = tooltipPanel.gameObject.AddComponent<RelicTooltipUI>();
+        }
         presenter.panel = tooltipPanel;
         presenter.positioningCanvas = rootCanvas;
         presenter.Initialize(fontSource);
@@ -79,7 +97,10 @@ public sealed class RelicTooltipUI : MonoBehaviour
         return presenter;
     }
 
-    public void Show(RelicData relic, Vector2 pointerScreenPosition)
+    public void Show(
+        RelicData relic,
+        Vector2 pointerScreenPosition,
+        bool showRemovalGuide = false)
     {
         if (relic == null)
         {
@@ -98,6 +119,12 @@ public sealed class RelicTooltipUI : MonoBehaviour
         string effect = relic.BuildEffectSummary();
         descriptionText.text = TooltipTextFormatter.Format(
             string.IsNullOrWhiteSpace(effect) ? relic.Description : effect);
+        if (guideText != null)
+        {
+            guideText.gameObject.SetActive(showRemovalGuide);
+        }
+        SetRemovalProgressVisible(showRemovalGuide);
+        SetRemovalProgress(relic, 0f);
         panel.gameObject.SetActive(true);
         panel.SetAsLastSibling();
         Position(pointerScreenPosition);
@@ -119,6 +146,8 @@ public sealed class RelicTooltipUI : MonoBehaviour
             return;
         }
 
+        SetRemovalProgress(displayedRelic, 0f);
+        SetRemovalProgressVisible(false);
         displayedRelic = null;
         if (panel != null)
         {
@@ -126,19 +155,52 @@ public sealed class RelicTooltipUI : MonoBehaviour
         }
     }
 
+    internal void SetRemovalProgress(RelicData relic, float progress)
+    {
+        if (relic != null && !ReferenceEquals(displayedRelic, relic))
+        {
+            return;
+        }
+
+        Initialize(null);
+        if (removalProgressImage != null)
+        {
+            removalProgressImage.fillAmount = Mathf.Clamp01(progress);
+        }
+    }
+
     private void Initialize(TMP_Text fontSource)
     {
-        panel ??= transform as RectTransform;
+        if (panel == null)
+        {
+            panel = transform as RectTransform;
+        }
         if (panel == null)
         {
             return;
         }
 
-        nameText ??= FindText(panel, NameTextHints, "Name");
-        descriptionText ??= FindText(
-            panel,
-            DescriptionTextHints,
-            "Description");
+        if (nameText == null)
+        {
+            nameText = FindText(panel, NameTextHints, "Name");
+        }
+        if (descriptionText == null)
+        {
+            descriptionText = FindText(
+                panel,
+                DescriptionTextHints,
+                "Description");
+        }
+        if (guideText == null)
+        {
+            guideText = FindText(panel, GuideTextHints, "Guide");
+        }
+        if (removalProgressImage == null)
+        {
+            removalProgressImage = FindImage(
+                panel,
+                RemovalProgressImageHints);
+        }
 
         if (nameText == null)
         {
@@ -162,6 +224,30 @@ public sealed class RelicTooltipUI : MonoBehaviour
                 16f,
                 FontStyles.Normal);
         }
+        if (guideText == null)
+        {
+            guideText = CreateText(
+                "Text | Relic Guide",
+                panel,
+                fontSource,
+                new Vector2(0.55f, 0.8f),
+                new Vector2(0.94f, 0.95f),
+                14f,
+                FontStyles.Bold);
+            guideText.alignment = TextAlignmentOptions.MidlineRight;
+            guideText.color = new Color32(247, 191, 62, 255);
+            guideText.gameObject.SetActive(false);
+        }
+
+        if (removalProgressImage == null)
+        {
+            removalProgressImage = CreateRemovalProgressImage(panel);
+        }
+
+        removalProgressImage.type = Image.Type.Filled;
+        removalProgressImage.fillMethod = Image.FillMethod.Horizontal;
+        removalProgressImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+        removalProgressImage.raycastTarget = false;
 
         Image image = panel.GetComponent<Image>();
         if (image == null)
@@ -172,6 +258,25 @@ public sealed class RelicTooltipUI : MonoBehaviour
         foreach (Graphic graphic in panel.GetComponentsInChildren<Graphic>(true))
         {
             graphic.raycastTarget = false;
+        }
+    }
+
+    private void SetRemovalProgressVisible(bool visible)
+    {
+        if (removalProgressImage == null)
+        {
+            return;
+        }
+
+        Transform progressRoot = removalProgressImage.transform.parent;
+        if (progressRoot != null
+            && progressRoot.name == "Image | Remove Gauge")
+        {
+            progressRoot.gameObject.SetActive(visible);
+        }
+        else
+        {
+            removalProgressImage.gameObject.SetActive(visible);
         }
     }
 
@@ -186,9 +291,12 @@ public sealed class RelicTooltipUI : MonoBehaviour
             ? positioningCanvas
             : panel.GetComponentInParent<Canvas>()?.rootCanvas;
         RectTransform containerRect = panel.parent as RectTransform;
-        containerRect ??= canvas == null
-            ? null
-            : canvas.transform as RectTransform;
+        if (containerRect == null)
+        {
+            containerRect = canvas == null
+                ? null
+                : canvas.transform as RectTransform;
+        }
         if (canvas == null || containerRect == null)
         {
             return;
@@ -253,6 +361,48 @@ public sealed class RelicTooltipUI : MonoBehaviour
             }
         }
         return fallback;
+    }
+
+    private static Image FindImage(Transform root, string[] exactNames)
+    {
+        foreach (Image image in root.GetComponentsInChildren<Image>(true))
+        {
+            foreach (string exactName in exactNames)
+            {
+                if (image.name == exactName)
+                {
+                    return image;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static Image CreateRemovalProgressImage(Transform parent)
+    {
+        GameObject progressObject = new GameObject(
+            "Image | Removal Hold Progress",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image));
+        progressObject.layer = parent.gameObject.layer;
+        RectTransform rect = progressObject.GetComponent<RectTransform>();
+        rect.SetParent(parent, false);
+        rect.anchorMin = new Vector2(0.4f, 0.1f);
+        rect.anchorMax = new Vector2(0.9f, 0.2f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image image = progressObject.GetComponent<Image>();
+        image.color = new Color32(239, 75, 57, 230);
+        image.type = Image.Type.Filled;
+        image.fillMethod = Image.FillMethod.Horizontal;
+        image.fillOrigin = (int)Image.OriginHorizontal.Left;
+        image.fillAmount = 0f;
+        image.raycastTarget = false;
+        progressObject.SetActive(false);
+        return image;
     }
 
     private static RectTransform CreatePanel(Transform parent)

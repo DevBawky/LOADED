@@ -146,6 +146,20 @@ public static class NewBulletAssetBuilder
                 50, 7, 30f, 2.2f, Effect(BulletEffectType.ReverseShot), 100f));
 
         yield return new BulletSpec(
+            "Assets/Scripts/Bullet/SO/Rare/Rotation Shot.asset",
+            "bullet_rotation_shot",
+            "회전탄",
+            BulletGrade.Rare,
+            Level("발사 후 플레이어 회전",
+                35, 5, 20f, 2f, Effect(BulletEffectType.RotatePlayer)),
+            Level("발사 후 플레이어 회전",
+                40, 6, 22f, 2f, Effect(BulletEffectType.RotatePlayer)),
+            Level("발사 후 플레이어 회전\n관통 1회 (50%)",
+                45, 6, 25f, 2f, Effect(BulletEffectType.RotatePlayer), 50f),
+            Level("발사 후 플레이어 회전\n관통 1회",
+                50, 7, 30f, 2.2f, Effect(BulletEffectType.RotatePlayer), 100f));
+
+        yield return new BulletSpec(
             "Assets/Scripts/Bullet/SO/Rare/Evasion.asset",
             "bullet_evasion",
             "회피탄",

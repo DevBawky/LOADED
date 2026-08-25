@@ -57,7 +57,9 @@ public class DebuffIconUI : MonoBehaviour,
 
         if (stackText != null)
         {
-            stackText.text = currentStacks.ToString();
+            stackText.text = effectType == StatusEffectType.Exposed
+                ? string.Empty
+                : currentStacks.ToString();
         }
     }
 
@@ -124,6 +126,9 @@ public class DebuffIconUI : MonoBehaviour,
             StatusEffectType.Weakness => Highlight(
                 "약화",
                 TooltipTextFormatter.WeaknessColor),
+            StatusEffectType.Exposed => Highlight(
+                "무방비",
+                TooltipTextFormatter.ExposedColor),
             _ => type.ToString()
         };
     }
@@ -134,8 +139,8 @@ public class DebuffIconUI : MonoBehaviour,
         string stackText = Highlight(
             $"{safeStacks}스택",
             TooltipTextFormatter.StackColor);
-        string turnText = Highlight(
-            $"{safeStacks}턴",
+        string countText = Highlight(
+            $"{safeStacks} COUNT",
             TooltipTextFormatter.RangeColor);
 
         return type switch
@@ -143,27 +148,31 @@ public class DebuffIconUI : MonoBehaviour,
             StatusEffectType.Mark =>
                 $"{Highlight("받는 피해", TooltipTextFormatter.DamageColor)}가 "
                 + $"{Highlight("50% 증가", TooltipTextFormatter.MarkColor)}합니다.\n\n"
-                + $"현재 {stackText}: {turnText} 동안 "
+                + $"현재 {stackText}: {countText} 동안 "
                 + $"{Highlight("50%의 추가 대미지", TooltipTextFormatter.DamageColor)}를 "
                 + "받습니다.",
             StatusEffectType.Poison =>
-                $"턴 종료 시 현재 스택만큼 {Highlight("피해", TooltipTextFormatter.DamageColor)}를 "
+                $"COUNT 종료 시 현재 스택만큼 {Highlight("피해", TooltipTextFormatter.DamageColor)}를 "
                 + $"받고 {Highlight("1스택 감소", TooltipTextFormatter.StackColor)}합니다.\n\n"
-                + $"현재 {stackText}: {turnText} 동안 독의 대미지를 받습니다. "
+                + $"현재 {stackText}: {countText} 동안 독의 대미지를 받습니다. "
                 + Highlight(
-                    $"이번 턴 피해량: {safeStacks}",
+                    $"이번 COUNT 피해량: {safeStacks}",
                     TooltipTextFormatter.DamageColor),
             StatusEffectType.Stun =>
                 $"{Highlight("행동 불가", TooltipTextFormatter.StunColor)} 상태이며 "
-                + $"행동할 때마다 {Highlight("1스택 감소", TooltipTextFormatter.StackColor)}합니다.\n\n"
-                + $"현재 {stackText}: {turnText} 동안 "
+                + $"COUNT마다 {Highlight("1스택 감소", TooltipTextFormatter.StackColor)}합니다.\n\n"
+                + $"현재 {stackText}: {countText} 동안 "
                 + $"{Highlight("행동 불가", TooltipTextFormatter.StunColor)}.",
             StatusEffectType.Weakness =>
                 $"{Highlight("공격력", TooltipTextFormatter.WeaknessColor)}이 "
                 + $"{Highlight("30% 감소", TooltipTextFormatter.DebuffColor)}합니다.\n\n"
-                + $"현재 {stackText}: {turnText} 동안 "
+                + $"현재 {stackText}: {countText} 동안 "
                 + $"{Highlight("공격력", TooltipTextFormatter.WeaknessColor)}이 "
                 + $"{Highlight("30% 감소", TooltipTextFormatter.DebuffColor)}합니다.",
+            StatusEffectType.Exposed =>
+                $"다음 {Highlight("피격", TooltipTextFormatter.DamageColor)}이 "
+                + $"{Highlight("크리티컬로 확정", TooltipTextFormatter.ExposedColor)}됩니다.\n\n"
+                + "한 번 피격되거나, 공격하지 않고 다른 행동을 하면 사라집니다.",
             _ => string.Empty
         };
     }

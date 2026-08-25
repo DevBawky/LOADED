@@ -10,13 +10,22 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class RelicInventoryUI : MonoBehaviour
 {
+    private const int RelicsPerRow = 4;
+    private const string UpperContainerName = "Layout | Upper";
+    private const string LowerContainerName = "Layout | Lower";
     private const float PulseScale = 1.18f;
     private const float PulseUpDuration = 0.08f;
     private const float PulseDownDuration = 0.14f;
 
     [SerializeField] private RectTransform relicContainer;
+    [SerializeField] private RectTransform upperRelicContainer;
+    [SerializeField] private RectTransform lowerRelicContainer;
     [SerializeField] private GameObject relicPrefab;
     [SerializeField] private RelicManager relicManager;
+
+    [Header("Manual Removal")]
+    [Min(0.1f)]
+    [SerializeField] private float manualRemovalHoldDuration = 2f;
 
     [Header("Relic Activation Effect")]
     [Min(0.1f)] [SerializeField] private float activationDuration = 0.48f;
@@ -42,6 +51,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
     private Texture2D activationRingTexture;
     private Sprite activationRingSprite;
     private RelicTooltipUI tooltip;
+    private RelicManager subscribedRelicManager;
     private RelicInstance hoveredRelic;
     private readonly List<RelicInstance> eventSelectedRelics =
         new List<RelicInstance>();
@@ -52,24 +62,24 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
     public event Action<int, int> EventSelectionChanged;
     public bool IsEventSelectionActive => eventRequiredSelectionCount > 0;
+    internal float ManualRemovalHoldDuration =>
+        Mathf.Max(0.1f, manualRemovalHoldDuration);
 
     private void Awake()
     {
-        relicContainer ??= transform as RectTransform;
+        if (relicContainer == null)
+        {
+            relicContainer = transform as RectTransform;
+        }
+        ResolveRelicContainers();
         ResolveRelicManager();
     }
 
     private void OnEnable()
     {
+        ResolveRelicContainers();
         ResolveRelicManager();
-
-        if (relicManager != null)
-        {
-            relicManager.InventoryChanged -= Refresh;
-            relicManager.InventoryChanged += Refresh;
-            relicManager.RelicTriggered -= HandleRelicTriggered;
-            relicManager.RelicTriggered += HandleRelicTriggered;
-        }
+        SubscribeToRelicManager();
 
         Refresh();
         StartCoroutine(RefreshAfterSceneInitialization());
@@ -87,11 +97,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
             }
         }
         ClearActivationEffects();
-        if (relicManager != null)
-        {
-            relicManager.InventoryChanged -= Refresh;
-            relicManager.RelicTriggered -= HandleRelicTriggered;
-        }
+        UnsubscribeFromRelicManager();
 
         HideTooltip();
 
@@ -111,8 +117,90 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
     private void ResolveRelicManager()
     {
-        relicManager ??= FindFirstObjectByType<RelicManager>(
-            FindObjectsInactive.Include);
+        if (relicManager == null)
+        {
+            relicManager = FindFirstObjectByType<RelicManager>(
+                FindObjectsInactive.Include);
+        }
+    }
+
+    internal void BindRelicManager(RelicManager value)
+    {
+        if (relicManager == value)
+        {
+            ResolveRelicContainers();
+            if (isActiveAndEnabled)
+            {
+                SubscribeToRelicManager();
+            }
+            Refresh();
+            return;
+        }
+
+        UnsubscribeFromRelicManager();
+        relicManager = value;
+        ResolveRelicContainers();
+
+        if (isActiveAndEnabled)
+        {
+            SubscribeToRelicManager();
+        }
+        Refresh();
+    }
+
+    private void SubscribeToRelicManager()
+    {
+        if (subscribedRelicManager == relicManager)
+        {
+            return;
+        }
+
+        UnsubscribeFromRelicManager();
+        subscribedRelicManager = relicManager;
+
+        if (subscribedRelicManager == null)
+        {
+            return;
+        }
+
+        subscribedRelicManager.InventoryChanged += Refresh;
+        subscribedRelicManager.RelicTriggered += HandleRelicTriggered;
+    }
+
+    private void UnsubscribeFromRelicManager()
+    {
+        if (subscribedRelicManager != null)
+        {
+            subscribedRelicManager.InventoryChanged -= Refresh;
+            subscribedRelicManager.RelicTriggered -= HandleRelicTriggered;
+        }
+
+        subscribedRelicManager = null;
+    }
+
+    private void ResolveRelicContainers()
+    {
+        if (relicContainer == null)
+        {
+            relicContainer = transform as RectTransform;
+        }
+        if (relicContainer == null)
+        {
+            return;
+        }
+
+        if (upperRelicContainer == null)
+        {
+            upperRelicContainer = FindNamedRectTransform(
+                relicContainer,
+                UpperContainerName);
+        }
+        if (lowerRelicContainer == null)
+        {
+            lowerRelicContainer = FindNamedRectTransform(
+                relicContainer,
+                LowerContainerName);
+        }
     }
 
     private IEnumerator RefreshAfterSceneInitialization()
@@ -122,14 +210,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
         // floating inventory is not left empty because of Awake/OnEnable order.
         yield return null;
         ResolveRelicManager();
-
-        if (relicManager != null)
-        {
-            relicManager.InventoryChanged -= Refresh;
-            relicManager.InventoryChanged += Refresh;
-            relicManager.RelicTriggered -= HandleRelicTriggered;
-            relicManager.RelicTriggered += HandleRelicTriggered;
-        }
+        SubscribeToRelicManager();
 
         Refresh();
     }
@@ -145,6 +226,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
         HashSet<RelicInstance> currentRelics =
             new HashSet<RelicInstance>();
+        int displayIndex = 0;
         foreach (RelicInstance relic in relicManager.OwnedRelics)
         {
             if (relic?.Data == null)
@@ -156,19 +238,28 @@ public sealed class RelicInventoryUI : MonoBehaviour
             if (relicIcons.TryGetValue(relic, out RectTransform existingIcon)
                 && existingIcon != null)
             {
+                PlaceRelicIcon(existingIcon, displayIndex);
                 ConfigureRelic(existingIcon.gameObject, relic);
+                displayIndex++;
                 continue;
             }
 
-            GameObject relicObject = Instantiate(relicPrefab, relicContainer);
+            RectTransform targetContainer = GetContainerForIndex(displayIndex);
+            GameObject relicObject = Instantiate(relicPrefab, targetContainer);
             relicObject.name = relicPrefab.name;
+            RectTransform relicRect = relicObject.transform as RectTransform;
+            PlaceRelicIcon(relicRect, displayIndex);
             ConfigureRelic(relicObject, relic);
             RelicInventoryIconUI interaction =
                 relicObject.GetComponent<RelicInventoryIconUI>();
-            interaction ??= relicObject.AddComponent<RelicInventoryIconUI>();
+            if (interaction == null)
+            {
+                interaction = relicObject.AddComponent<RelicInventoryIconUI>();
+            }
             interaction.Initialize(this, relic);
             spawnedRelics.Add(relicObject);
-            relicIcons[relic] = relicObject.transform as RectTransform;
+            relicIcons[relic] = relicRect;
+            displayIndex++;
         }
 
         List<RelicInstance> removedRelics = new List<RelicInstance>();
@@ -204,6 +295,35 @@ public sealed class RelicInventoryUI : MonoBehaviour
             spawnedRelics.Remove(removedObject);
             DestroyRelicObject(removedObject);
         }
+    }
+
+    internal static bool ShouldUseUpperContainer(int relicIndex)
+    {
+        return relicIndex >= 0 && relicIndex < RelicsPerRow;
+    }
+
+    private RectTransform GetContainerForIndex(int relicIndex)
+    {
+        RectTransform rowContainer = ShouldUseUpperContainer(relicIndex)
+            ? upperRelicContainer
+            : lowerRelicContainer;
+        return rowContainer != null ? rowContainer : relicContainer;
+    }
+
+    private void PlaceRelicIcon(RectTransform icon, int relicIndex)
+    {
+        if (icon == null)
+        {
+            return;
+        }
+
+        RectTransform targetContainer = GetContainerForIndex(relicIndex);
+        if (targetContainer != null && icon.parent != targetContainer)
+        {
+            icon.SetParent(targetContainer, false);
+        }
+
+        icon.SetSiblingIndex(Mathf.Max(0, relicIndex % RelicsPerRow));
     }
 
     private void ClearSpawnedRelics()
@@ -567,7 +687,10 @@ public sealed class RelicInventoryUI : MonoBehaviour
         }
 
         hoveredRelic = relic;
-        tooltip.Show(relic.Data, pointerPosition);
+        tooltip.Show(
+            relic.Data,
+            pointerPosition,
+            CanManuallyRemoveRelic(relic));
     }
 
     internal void MoveTooltip(RelicInstance relic, Vector2 pointerPosition)
@@ -576,6 +699,17 @@ public sealed class RelicInventoryUI : MonoBehaviour
             && tooltip != null)
         {
             tooltip.Move(relic.Data, pointerPosition);
+        }
+    }
+
+    internal void SetManualRemovalProgress(
+        RelicInstance relic,
+        float progress)
+    {
+        if (tooltip != null && ReferenceEquals(hoveredRelic, relic)
+            && relic?.Data != null)
+        {
+            tooltip.SetRemovalProgress(relic.Data, progress);
         }
     }
 
@@ -624,6 +758,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
         eventSelectionPredicate = selectionPredicate;
         eventConfirmCallback = onConfirm;
         eventCancelCallback = onCancel;
+        HideTooltip();
         EventSelectionChanged?.Invoke(0, eventRequiredSelectionCount);
         Refresh();
         return true;
@@ -681,6 +816,25 @@ public sealed class RelicInventoryUI : MonoBehaviour
         Refresh();
     }
 
+    internal bool CanManuallyRemoveRelic(RelicInstance relic)
+    {
+        return !IsEventSelectionActive
+            && relicManager != null
+            && relic?.Data != null
+            && relicManager.CanManuallyRemove(relic);
+    }
+
+    internal bool TryRemoveRelic(RelicInstance relic)
+    {
+        if (!CanManuallyRemoveRelic(relic))
+        {
+            return false;
+        }
+
+        HideTooltip(relic);
+        return relicManager.TryRemove(relic, RelicRemovalReason.Removed);
+    }
+
     private void ResetEventSelection()
     {
         eventSelectedRelics.Clear();
@@ -713,11 +867,13 @@ public sealed class RelicInventoryUI : MonoBehaviour
         {
             icon.sprite = relic.Data.Icon;
             icon.preserveAspect = true;
-            icon.enabled = relic.Data.Icon != null;
+            icon.enabled = true;
             icon.color = IsEventSelectionActive
                 && eventSelectedRelics.Contains(relic)
                     ? new Color(1f, 0.72f, 0.2f, 1f)
-                    : Color.white;
+                    : relic.Data.Icon != null
+                        ? Color.white
+                        : new Color32(112, 94, 58, 255);
         }
 
         TMP_Text stackText = FindStackText(relicObject.transform);
@@ -754,6 +910,27 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
         return null;
     }
+
+    private static RectTransform FindNamedRectTransform(
+        Transform root,
+        string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (RectTransform candidate in
+                 root.GetComponentsInChildren<RectTransform>(true))
+        {
+            if (candidate != root && candidate.name == objectName)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
 }
 
 [DisallowMultipleComponent]
@@ -761,15 +938,62 @@ public sealed class RelicInventoryIconUI : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler,
     IPointerMoveHandler,
-    IPointerClickHandler
+    IPointerClickHandler,
+    IPointerDownHandler,
+    IPointerUpHandler
 {
     private RelicInventoryUI owner;
     private RelicInstance relic;
+    private float removalHoldElapsed;
+    private bool isHoldingForRemoval;
 
     public void Initialize(RelicInventoryUI value, RelicInstance instance)
     {
+        CancelRemovalHold();
         owner = value;
         relic = instance;
+    }
+
+    private void Update()
+    {
+        AdvanceRemovalHold(Time.unscaledDeltaTime);
+    }
+
+    internal bool AdvanceRemovalHold(float unscaledDeltaTime)
+    {
+        if (!isHoldingForRemoval)
+        {
+            return false;
+        }
+
+        if (owner == null || !owner.CanManuallyRemoveRelic(relic))
+        {
+            CancelRemovalHold();
+            return false;
+        }
+
+        float safeDeltaTime = float.IsNaN(unscaledDeltaTime)
+            || float.IsInfinity(unscaledDeltaTime)
+                ? 0f
+                : Mathf.Max(0f, unscaledDeltaTime);
+        removalHoldElapsed += safeDeltaTime;
+        float progress = CalculateRemovalHoldProgress(
+            removalHoldElapsed,
+            owner.ManualRemovalHoldDuration);
+        owner.SetManualRemovalProgress(relic, progress);
+
+        if (progress < 1f)
+        {
+            return false;
+        }
+
+        isHoldingForRemoval = false;
+        bool removed = owner.TryRemoveRelic(relic);
+        if (!removed)
+        {
+            CancelRemovalHold();
+        }
+        return removed;
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -779,6 +1003,7 @@ public sealed class RelicInventoryIconUI : MonoBehaviour,
 
     public void OnPointerExit(PointerEventData eventData)
     {
+        CancelRemovalHold();
         owner?.HideTooltip(relic);
     }
 
@@ -793,5 +1018,57 @@ public sealed class RelicInventoryIconUI : MonoBehaviour,
         {
             owner?.ToggleEventSelection(relic);
         }
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Right
+            || owner == null || !owner.CanManuallyRemoveRelic(relic))
+        {
+            return;
+        }
+
+        removalHoldElapsed = 0f;
+        isHoldingForRemoval = true;
+        owner.SetManualRemovalProgress(relic, 0f);
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right)
+        {
+            CancelRemovalHold();
+        }
+    }
+
+    private void OnDisable()
+    {
+        CancelRemovalHold();
+    }
+
+    internal static float CalculateRemovalHoldProgress(
+        float elapsed,
+        float duration)
+    {
+        if (float.IsNaN(elapsed) || float.IsInfinity(elapsed)
+            || elapsed <= 0f)
+        {
+            return 0f;
+        }
+
+        if (float.IsNaN(duration) || float.IsInfinity(duration)
+            || duration <= 0f)
+        {
+            return 1f;
+        }
+
+        return Mathf.Clamp01(elapsed / duration);
+    }
+
+    private void CancelRemovalHold()
+    {
+        isHoldingForRemoval = false;
+        removalHoldElapsed = 0f;
+        owner?.SetManualRemovalProgress(relic, 0f);
     }
 }

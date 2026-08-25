@@ -413,6 +413,25 @@ public sealed class RelicManager : MonoBehaviour
         return true;
     }
 
+    public bool TryRemove(
+        RelicInstance relic,
+        RelicRemovalReason reason = RelicRemovalReason.Removed)
+    {
+        return CanManuallyRemove(relic)
+            && TryRemoveAt(ownedRelics.IndexOf(relic), reason);
+    }
+
+    public bool CanManuallyRemove(RelicInstance relic)
+    {
+        return relic != null
+            && ownedRelics.Contains(relic)
+            && !isShotActive
+            && (playerMove == null
+                || !playerMove.IsShooting
+                && !playerMove.IsActing
+                && !playerMove.IsEnemyTurnResolving);
+    }
+
     public RelicInstance FindOwned(string relicId)
     {
         if (string.IsNullOrWhiteSpace(relicId))
@@ -1068,9 +1087,11 @@ public sealed class RelicManager : MonoBehaviour
             return false;
         }
 
-        Array values = Enum.GetValues(typeof(StatusEffectType));
-        StatusEffectType selected = (StatusEffectType)values.GetValue(
-            UnityEngine.Random.Range(0, values.Length));
+        StatusEffectType selected =
+            StatusEffectController.GetStackableStatusType(
+                UnityEngine.Random.Range(
+                    0,
+                    StatusEffectController.StackableStatusTypeCount));
         bool applied = enemy.AddStatusEffect(selected, 1, true);
 
         if (applied)
@@ -1770,6 +1791,11 @@ public sealed class RelicManager : MonoBehaviour
         foreach (StatusEffectType type in Enum.GetValues(
                      typeof(StatusEffectType)))
         {
+            if (type == StatusEffectType.Exposed)
+            {
+                continue;
+            }
+
             int sourceStacks = defeatedEnemy.GetStatusStacks(type);
 
             if (sourceStacks <= 0)

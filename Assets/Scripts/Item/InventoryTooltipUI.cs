@@ -263,9 +263,12 @@ public class InventoryTooltipUI : MonoBehaviour
     public void ShowEventRewardPreview(
         BulletData bullet,
         ItemData item,
-        RectTransform hoverTarget)
+        RectTransform hoverTarget,
+        StatusEffectType? pendingStatusEffect = null,
+        int bulletLevel = 0)
     {
-        if (hoverTarget == null || bullet == null && item == null)
+        if (hoverTarget == null
+            || bullet == null && item == null && !pendingStatusEffect.HasValue)
         {
             HideEventRewardPreview();
             return;
@@ -281,16 +284,50 @@ public class InventoryTooltipUI : MonoBehaviour
         {
             ShowBullet(
                 bullet,
+                bulletLevel,
                 topLeft,
                 TooltipPointerAnchor.BottomRight);
         }
-        else
+        else if (item != null)
         {
             ShowItem(
                 item,
                 topLeft,
                 TooltipPointerAnchor.BottomRight,
                 false);
+        }
+        else
+        {
+            HideItemTooltip();
+            HideBulletTooltip();
+            HideCylinderBulletTooltip();
+        }
+
+        if (!pendingStatusEffect.HasValue)
+        {
+            return;
+        }
+
+        RectTransform rewardTooltip = bullet != null
+            ? bulletTooltip
+            : item != null
+                ? tooltip
+                : null;
+        RectTransform adjacentTooltip = bulletTypeDescriptionPanel != null
+            && bulletTypeDescriptionPanel.gameObject.activeSelf
+                ? bulletTypeDescriptionPanel
+                : rewardTooltip;
+        if (ShowDebuffDescription(
+                pendingStatusEffect,
+                adjacentTooltip,
+                false,
+                adjacentTooltip != rewardTooltip ? rewardTooltip : null)
+            && rewardTooltip == null)
+        {
+            PositionInsideScreen(
+                debuffDescriptionPanel,
+                topLeft,
+                TooltipPointerAnchor.BottomRight);
         }
     }
 

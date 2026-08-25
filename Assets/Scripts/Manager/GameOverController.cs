@@ -6,7 +6,7 @@ using UnityEngine.UI;
 [DefaultExecutionOrder(-900)]
 public sealed class GameOverController : MonoBehaviour
 {
-    private const string StageOneSceneName = "Stage 1";
+    private const string BattleSceneName = "Battle";
     private const string MainMenuSceneName = "MainMenu";
     private const string GameOverPanelName = "Panel | GameOver";
     private const string GameOverReasonTextName = "Text | Reason";
@@ -192,7 +192,7 @@ public sealed class GameOverController : MonoBehaviour
             switch (button.name)
             {
                 case "Button | Restart":
-                    button.onClick.AddListener(RestartStageOne);
+                    button.onClick.AddListener(RestartBattle);
                     break;
                 case "Button | MainMenu":
                     button.onClick.AddListener(ReturnToMainMenu);
@@ -204,9 +204,9 @@ public sealed class GameOverController : MonoBehaviour
         }
     }
 
-    private void RestartStageOne()
+    private void RestartBattle()
     {
-        LoadScene(StageOneSceneName);
+        LoadScene(BattleSceneName);
     }
 
     private void ReturnToMainMenu()

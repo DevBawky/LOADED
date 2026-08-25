@@ -103,6 +103,8 @@ public class EnemyDropItemData
 [CreateAssetMenu(fileName = "New Enemy", menuName = "Loaded/Enemy/Enemy")]
 public class EnemyData : ScriptableObject
 {
+    public const float DefaultAttackDodgeWindowDuration = 0.2f;
+
     [Header("Basic Information")]
     [Tooltip("저장 및 참조에 사용하는 고유 ID입니다. 다른 적과 중복되지 않게 설정하세요.")]
     [SerializeField] private string enemyId;
@@ -152,6 +154,10 @@ public class EnemyData : ScriptableObject
     [Min(0f)]
     [Tooltip("Image | Queue와 행동 타일 하나가 서서히 나타나는 시간입니다.")]
     [SerializeField] private float queueElementRevealDuration = 0.25f;
+    [Min(0f)]
+    [Tooltip("공격 애니메이션의 피격 키프레임이 없을 때의 공격 지연이자, 투척 도착 직전 및 폭탄 폭발 직후의 회피 가능 시간입니다.")]
+    [SerializeField] private float attackDodgeWindowDuration =
+        DefaultAttackDodgeWindowDuration;
     [Range(0f, 1f)]
     [Tooltip("근접 적이 선호 거리 안에서 추가 공격을 예약할 확률입니다.")]
     [SerializeField] private float meleeAdditionalAttackChance = 0.5f;
@@ -247,6 +253,8 @@ public class EnemyData : ScriptableObject
     public float QueuedActionInterval => Mathf.Max(0f, queuedActionInterval);
     public float QueueElementRevealDuration =>
         Mathf.Max(0f, queueElementRevealDuration);
+    public float AttackDodgeWindowDuration =>
+        Mathf.Max(0f, attackDodgeWindowDuration);
     public float MeleeAdditionalAttackChance =>
         Mathf.Clamp01(meleeAdditionalAttackChance);
     public int FiringRange => Mathf.Max(1, firingRange);
@@ -359,6 +367,9 @@ public class EnemyData : ScriptableObject
         queueElementRevealDuration = Mathf.Max(
             0f,
             queueElementRevealDuration);
+        attackDodgeWindowDuration = Mathf.Max(
+            0f,
+            attackDodgeWindowDuration);
         meleeAdditionalAttackChance = Mathf.Clamp01(
             meleeAdditionalAttackChance);
         firingRange = Mathf.Max(1, firingRange);

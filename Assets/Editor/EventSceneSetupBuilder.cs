@@ -203,18 +203,6 @@ public static class EventSceneSetupBuilder
         management.name = "Panel | Manage Bullets";
         management.SetActive(false);
 
-        Transform tooltipSource = FindDescendant(
-            shopPanel,
-            "Panel | Upgrade Tooltip");
-        if (tooltipSource != null)
-        {
-            GameObject tooltip = Object.Instantiate(
-                tooltipSource.gameObject,
-                canvas.transform);
-            tooltip.name = "Panel | Upgrade Tooltip";
-            tooltip.SetActive(false);
-        }
-
         Object.DestroyImmediate(shopPanel.gameObject);
         GameObject eventPanelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
             EventPanelPath);

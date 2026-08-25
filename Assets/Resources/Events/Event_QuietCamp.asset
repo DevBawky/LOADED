@@ -101,6 +101,6 @@ MonoBehaviour:
     threshold: 40
     operation: 0
     value: 18
-  normalBattleChancePercent: 0
-  eliteBattleChancePercent: 0
+  normalBattleChancePercent: 10
+  eliteBattleChancePercent: 2
   shopChancePercent: 0

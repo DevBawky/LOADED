@@ -101,6 +101,18 @@ public class BossBomb : MonoBehaviour
         }
 
         isExploding = true;
+        DisposeVisuals();
+
+        if (bombRenderer != null)
+        {
+            bombRenderer.enabled = false;
+        }
+
+        if (fuseText != null)
+        {
+            fuseText.gameObject.SetActive(false);
+        }
+
         return true;
     }
 

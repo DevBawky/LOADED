@@ -85,7 +85,8 @@ internal sealed class EventChoiceButtonPresenter
 
     public void ShowDynamicChoices(
         IReadOnlyList<string> choiceLabels,
-        Action<int> onSelected)
+        Action<int> onSelected,
+        Action<Button, int> configureRewardPreview = null)
     {
         int count = Math.Min(
             MaximumVisibleChoices,
@@ -100,7 +101,7 @@ internal sealed class EventChoiceButtonPresenter
                 false);
         }
 
-        PresentChoices(states, onSelected);
+        PresentChoices(states, onSelected, configureRewardPreview);
     }
 
     public void ShowExternalSelectionControls(

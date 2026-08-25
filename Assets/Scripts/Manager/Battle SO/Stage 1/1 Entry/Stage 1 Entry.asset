@@ -31,3 +31,24 @@ MonoBehaviour:
   - enemies:
     - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
       count: 2
+  combatPacingMode: 1
+  duelClockNaturalProgressPerSecond: 10
+  duelClockPaidActionProgress: 50
+  duelClockEnemyWaveCount: 3
+  duelClockEnemySpawnCount: 6
+  duelClockEnemySpawnEntries:
+  - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+    weight: 70
+    minimumSpawnCount: 2
+    missedSpawnWeightIncrease: 0
+    previousSpawnWeightMultiplier: 0.65
+  - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
+    weight: 30
+    minimumSpawnCount: 0
+    missedSpawnWeightIncrease: 5
+    previousSpawnWeightMultiplier: 0.3
+  duelClockEnemyPool:
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
+  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}

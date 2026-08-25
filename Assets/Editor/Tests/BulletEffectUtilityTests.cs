@@ -43,6 +43,8 @@ public sealed class BulletEffectUtilityTests
         BulletGrade.Rare, 6, 10, 20, 40)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Reverse Shot.asset",
         BulletGrade.Rare, 6, 10, 20, 40)]
+    [TestCase("Assets/Scripts/Bullet/SO/Rare/Rotation Shot.asset",
+        BulletGrade.Rare, 6, 10, 20, 40)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Evasion.asset",
         BulletGrade.Rare, 6, 10, 20, 40)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Immersion.asset",
@@ -133,6 +135,98 @@ public sealed class BulletEffectUtilityTests
                 new BulletInstance(data, 0),
                 1),
             Is.EqualTo(-1));
+    }
+
+    [Test]
+    public void RotatePlayerEffectFlipsFacingDirectionAfterShot()
+    {
+        BulletData data = CreateBulletWithEffect(
+            BulletEffectType.RotatePlayer);
+
+        try
+        {
+            BulletInstance bullet = new BulletInstance(data, 0);
+
+            Assert.That(
+                BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                    bullet,
+                    1),
+                Is.EqualTo(-1));
+            Assert.That(
+                BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                    bullet,
+                    -1),
+                Is.EqualTo(1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void RotationShotAssetRotatesPlayerAfterShot()
+    {
+        BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(
+            "Assets/Scripts/Bullet/SO/Rare/Rotation Shot.asset");
+
+        Assert.That(data, Is.Not.Null);
+        Assert.That(
+            BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                new BulletInstance(data, 0),
+                1),
+            Is.EqualTo(-1));
+    }
+
+    [Test]
+    public void ShotRangePreviewUsesReverseShotDirection()
+    {
+        BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(
+            "Assets/Scripts/Bullet/SO/Rare/Reverse Shot.asset");
+        Assert.That(data, Is.Not.Null);
+        BulletInstance bullet = new BulletInstance(data, 0);
+
+        bool resolved = PlayerShotRangePreview.TryResolveLoadedShot(
+            new[] { bullet },
+            0,
+            1,
+            out BulletInstance resolvedBullet,
+            out int shotDirection);
+
+        Assert.That(resolved, Is.True);
+        Assert.That(resolvedBullet, Is.SameAs(bullet));
+        Assert.That(shotDirection, Is.EqualTo(-1));
+    }
+
+    [Test]
+    public void ShotRangePreviewAccountsForEarlierRotationBullet()
+    {
+        BulletData rotationData = CreateBulletWithEffect(
+            BulletEffectType.RotatePlayer);
+        BulletData reverseData = AssetDatabase.LoadAssetAtPath<BulletData>(
+            "Assets/Scripts/Bullet/SO/Rare/Reverse Shot.asset");
+        Assert.That(reverseData, Is.Not.Null);
+
+        try
+        {
+            BulletInstance reverseBullet = new BulletInstance(reverseData, 0);
+            BulletInstance rotationBullet = new BulletInstance(rotationData, 0);
+
+            bool resolved = PlayerShotRangePreview.TryResolveLoadedShot(
+                new[] { reverseBullet, rotationBullet },
+                0,
+                1,
+                out BulletInstance resolvedBullet,
+                out int shotDirection);
+
+            Assert.That(resolved, Is.True);
+            Assert.That(resolvedBullet, Is.SameAs(reverseBullet));
+            Assert.That(shotDirection, Is.EqualTo(1));
+        }
+        finally
+        {
+            Object.DestroyImmediate(rotationData);
+        }
     }
 
     [Test]
@@ -311,6 +405,22 @@ public sealed class BulletEffectUtilityTests
         BulletData data = ScriptableObject.CreateInstance<BulletData>();
         SerializedObject serialized = new SerializedObject(data);
         serialized.FindProperty("bulletType").enumValueIndex = (int)bulletType;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        return data;
+    }
+
+    private static BulletData CreateBulletWithEffect(BulletEffectType effectType)
+    {
+        BulletData data = CreateBulletOfType(BulletType.Normal);
+        SerializedObject serialized = new SerializedObject(data);
+        SerializedProperty effects = serialized.FindProperty("effects");
+        effects.arraySize = 1;
+        SerializedProperty effect = effects.GetArrayElementAtIndex(0);
+        effect.FindPropertyRelative("effectType").enumValueIndex =
+            (int)effectType;
+        effect.FindPropertyRelative("target").enumValueIndex =
+            (int)BulletEffectTarget.FiringPlayer;
+        effect.FindPropertyRelative("activationChance").floatValue = 100f;
         serialized.ApplyModifiedPropertiesWithoutUndo();
         return data;
     }

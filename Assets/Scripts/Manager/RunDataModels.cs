@@ -50,6 +50,7 @@ public sealed class RunStatusEffectSaveData
     public int stunStacks;
     public int weaknessStacks;
     public bool poisonCreditedToPlayer;
+    public bool isExposed;
 }
 
 [Serializable]
@@ -162,6 +163,18 @@ public sealed class RunSaveData
     public int playerTurnCount;
     public int cumulativeBattleTurnCount;
     public int nextPushAvailableTurn;
+    public int combatPacingMode = (int)CombatPacingMode.Legacy;
+    public double duelClockProgress;
+    public long duelClockCumulativeBeats;
+    public bool duelClockSpawnPoolInitialized;
+    public List<string> duelClockRemainingEnemyAssetNames =
+        new List<string>();
+    public bool duelClockWeightedSpawnStateInitialized;
+    public int duelClockRemainingEnemySpawnCount;
+    public List<int> duelClockEnemySpawnCounts = new List<int>();
+    public List<int> duelClockEnemyMissedSpawnCounts = new List<int>();
+    public string duelClockLastSpawnedEnemyAssetName = string.Empty;
+    public int duelClockPendingEnemySpawns;
     public RunStatusEffectSaveData playerStatusEffects =
         new RunStatusEffectSaveData();
     public RunStatusEffectSaveData pendingNextBattlePlayerStatusEffects =

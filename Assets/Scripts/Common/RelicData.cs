@@ -203,7 +203,7 @@ public sealed class RelicEffectData
                 + "해당 적 처치 시 디버프 "
                 + $"{FormatNumber(DebuffTransferPercent)}%를 가장 가까운 적에게 이전",
             RelicEffectType.EmptyBeat =>
-                "재장전 시 턴 소모 없음 "
+                "재장전 시 DUEL CLOCK 충전 없음 "
                 + $"({FormatNumber(PrimerBaseChance)}%)",
             RelicEffectType.EyeOfTheStorm =>
                 "실린더 내 모든 적 공격 시 최고 단일 피해의 "
@@ -241,7 +241,7 @@ public sealed class RelicEffectData
             RelicEffectType.AdvancedScope =>
                 $"모든 탄환 사거리 +{ShotRangeBonus}",
             RelicEffectType.RunningSpur =>
-                "이동 시 턴 소모 없음 "
+                "이동 시 DUEL CLOCK 충전 없음 "
                 + $"({FormatNumber(PrimerBaseChance)}%)",
             _ => "효과 없음"
         };

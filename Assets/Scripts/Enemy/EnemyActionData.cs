@@ -65,7 +65,7 @@ public class EnemyActionData : ScriptableObject
                 EnemyActionType.Rotate => "플레이어 방향으로 회전합니다.",
                 EnemyActionType.MeleeAttack => CreateAttackSummary(),
                 EnemyActionType.RangedAttack => CreateAttackSummary(),
-                EnemyActionType.Wait => "이번 턴에는 행동하지 않습니다.",
+                EnemyActionType.Wait => "이번 COUNT에는 행동하지 않습니다.",
                 EnemyActionType.Support => "아군을 지원합니다.",
                 EnemyActionType.ExplosiveThrow => "고정된 타일에 폭탄을 투척합니다.",
                 EnemyActionType.ShotgunAttack =>

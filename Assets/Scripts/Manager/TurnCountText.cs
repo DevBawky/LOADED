@@ -1,35 +1,52 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public class TurnCountText : MonoBehaviour
 {
     [SerializeField] private PlayerMove playerMove;
-    [SerializeField] private TextMeshProUGUI turnCountText;
-    private int externalTurnCount;
-    private bool useExternalTurnCount;
+    [SerializeField] private WaveManager waveManager;
+    [SerializeField] private StateManager stateManager;
+    [FormerlySerializedAs("turnCountText")]
+    [SerializeField] private TextMeshProUGUI countText;
+    private int externalCount;
+    private bool useExternalCount;
 
     public void SetExternalTurnCount(int turnCount)
     {
-        externalTurnCount = Mathf.Max(0, turnCount);
-        useExternalTurnCount = true;
+        SetExternalCount(turnCount);
+    }
+
+    public void SetExternalCount(int count)
+    {
+        externalCount = Mathf.Max(0, count);
+        useExternalCount = true;
         Refresh();
     }
 
     private void Awake()
     {
-        if (turnCountText == null)
+        if (countText == null)
         {
-            turnCountText = GetComponent<TextMeshProUGUI>();
+            countText = GetComponent<TextMeshProUGUI>();
         }
 
+        ResolveCountSources();
         Refresh();
     }
 
     private void OnEnable()
     {
-        if (playerMove != null)
+        ResolveCountSources();
+
+        if (waveManager != null)
         {
-            playerMove.TurnCountChanged += HandleTurnCountChanged;
+            waveManager.EnemyTurnCycleCompleted += HandleCountCompleted;
+        }
+
+        if (stateManager != null)
+        {
+            stateManager.StateChanged += Refresh;
         }
 
         Refresh();
@@ -37,33 +54,49 @@ public class TurnCountText : MonoBehaviour
 
     private void OnDisable()
     {
-        if (playerMove != null)
+        if (waveManager != null)
         {
-            playerMove.TurnCountChanged -= HandleTurnCountChanged;
+            waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
+        }
+
+        if (stateManager != null)
+        {
+            stateManager.StateChanged -= Refresh;
         }
     }
 
-    private void HandleTurnCountChanged(int turnCount)
+    private void HandleCountCompleted(int _)
     {
         Refresh();
     }
 
     private void Refresh()
     {
-        if (turnCountText == null)
+        if (countText == null)
         {
             return;
         }
 
-        if (useExternalTurnCount)
-        {
-            turnCountText.text = $"Turn {externalTurnCount}";
-            return;
-        }
+        int count = useExternalCount
+            ? externalCount
+            : stateManager != null
+                ? stateManager.CumulativeBattleCount
+                : waveManager == null
+                    ? 0
+                    : waveManager.CurrentEnemyTurnCycle;
+        countText.text = FormatCount(count);
+    }
 
-        if (playerMove != null)
-        {
-            turnCountText.text = $"Turn {playerMove.TurnCount}";
-        }
+    private void ResolveCountSources()
+    {
+        waveManager ??= FindFirstObjectByType<WaveManager>(
+            FindObjectsInactive.Include);
+        stateManager ??= FindFirstObjectByType<StateManager>(
+            FindObjectsInactive.Include);
+    }
+
+    internal static string FormatCount(int count)
+    {
+        return $"COUNT {Mathf.Max(0, count)}";
     }
 }
