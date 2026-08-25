@@ -281,12 +281,12 @@ MonoBehaviour:
   bossIconScale: 1.5
   minimumContentHeight: 500
   viewportPadding: {x: 0, y: 24, z: 0, w: 0}
-  unavailableColor: {r: 0.45, g: 0.45, b: 0.45, a: 0.72}
+  unavailableColor: {r: 0.2735849, g: 0.2735849, b: 0.2735849, a: 1}
   availableColor: {r: 1, g: 1, b: 1, a: 1}
   completedColor: {r: 0.3, g: 0.65, b: 0.42, a: 1}
   activeNodeHoverScale: 1.15
   activeNodeHoverDuration: 0.12
-  startIcon: {fileID: -3764558647745528456, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
+  startIcon: {fileID: 2945834632122699969, guid: cddef3ad222b61b499c202f2b3dd3424, type: 3}
   normalBattleIcon: {fileID: 354016729513242704, guid: fbaf128253f7a9342be7e80274543d99, type: 3}
   eliteBattleIcon: {fileID: 1856344591294532619, guid: 641181f891e3d3445b7778fa90b7dcf6, type: 3}
   shopIcon: {fileID: -5419993759424957379, guid: 66e5c5168d4921b45a879a78a12b66ec, type: 3}

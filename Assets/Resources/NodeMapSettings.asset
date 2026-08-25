@@ -75,7 +75,8 @@ MonoBehaviour:
   - nodeType: 5
     displayName: "\uC774\uBCA4\uD2B8"
     description: "\uD2B9\uBCC4\uD55C \uC0AC\uAC74\uACFC \uC120\uD0DD\uC9C0\uB97C
-      \uB9C8\uC8FC\uD569\uB2C8\uB2E4."
+      \uB9C8\uC8FC\uD569\uB2C8\uB2E4.\n<color=red>\uC804\uD22C</color> \uB610\uB294
+      <color=red>\uC0C1\uC810</color>\uC774 \uB098\uC62C \uC218 \uC788\uC2B5\uB2C8\uB2E4."
   - nodeType: 6
     displayName: "\uBCF4\uC2A4"
     description: "\uC2A4\uD14C\uC774\uC9C0\uC758 \uBCF4\uC2A4\uC640 \uACB0\uC804\uC744

@@ -1,10 +1,12 @@
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public sealed class SceneIntegrityTests
 {
@@ -212,6 +214,110 @@ public sealed class SceneIntegrityTests
         Assert.That(failures, Is.Empty, string.Join("\n", failures));
     }
 
+    [Test]
+    public void EventPanel_PreservesControllerBindingsAndLoadedPresentation()
+    {
+        GameObject panel = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Event/Panel_Event.prefab");
+
+        Assert.That(panel, Is.Not.Null);
+        AssertNamedComponent<Image>(panel, "Image | Event Artwork");
+        AssertNamedComponent<TMP_Text>(panel, "Text | Event Title");
+        AssertNamedComponent<TMP_Text>(panel, "Text | Event Dialogue");
+
+        for (int index = 1; index <= 3; index++)
+        {
+            Button choice = AssertNamedComponent<Button>(
+                panel,
+                $"Button | Event Choice {index}");
+            AssertLoadedButton(choice);
+        }
+
+        AssertNamedComponent<Image>(panel, "Image | Top Ember Line");
+        AssertNamedComponent<Image>(panel, "Image | Artwork Footer");
+        AssertNamedComponent<Image>(panel, "Image | Dialogue Divider");
+    }
+
+    [Test]
+    public void TreasurePanel_PreservesControllerBindingsAndLoadedPresentation()
+    {
+        GameObject panel = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Treasure/Panel_Treasure.prefab");
+
+        Assert.That(panel, Is.Not.Null);
+        Button chest = AssertNamedComponent<Button>(
+            panel,
+            "Button | Treasure Chest");
+        Assert.That(
+            chest.GetComponent<MainButtonShaderFeedback>(),
+            Is.Null,
+            "The chest must keep its authored sprite-compatible UI material.");
+        AssertNamedComponent<TMP_Text>(panel, "Text | Chest Label");
+        AssertNamedComponent<Transform>(panel, "Panel | Relic Choices");
+        AssertNamedComponent<TMP_Text>(
+            panel,
+            "Text | Treasure Instruction");
+
+        for (int index = 1; index <= 3; index++)
+        {
+            Button choice = AssertNamedComponent<Button>(
+                panel,
+                $"Button | Relic Choice {index}");
+            AssertLoadedButton(choice);
+            AssertNamedComponent<Image>(
+                panel,
+                $"Image | Relic Icon {index}");
+            AssertNamedComponent<TMP_Text>(
+                panel,
+                $"Text | Relic Name {index}");
+            AssertNamedComponent<TMP_Text>(
+                panel,
+                $"Text | Relic Description {index}");
+        }
+
+        Button continueButton = AssertNamedComponent<Button>(
+            panel,
+            "Button | Treasure Continue");
+        AssertLoadedButton(continueButton);
+        AssertNamedComponent<Image>(panel, "Image | Top Ember Line");
+        AssertNamedComponent<Transform>(panel, "Panel | Chest Housing");
+    }
+
+    [Test]
+    public void TreasureCanvas_CustomRelicChoicesUseLoadedCards()
+    {
+        GameObject canvas = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Treasure/TreasureCanvas.prefab");
+
+        Assert.That(canvas, Is.Not.Null);
+        Transform choices = AssertNamedComponent<Transform>(
+            canvas,
+            "Panel | Relic Choice");
+        Assert.That(choices.GetComponent<Outline>(), Is.Not.Null);
+
+        for (int index = 1; index <= 3; index++)
+        {
+            Button choice = AssertNamedComponent<Button>(
+                canvas,
+                $"Button | Relic {index}");
+            AssertLoadedButton(choice);
+            Image icon = AssertNamedComponent<Image>(
+                canvas,
+                $"Image | Relic Icon {index}");
+            Assert.That(
+                icon.material == null
+                    || icon.material.shader.name != "Loaded/UI/Main Button",
+                Is.True,
+                "Relic artwork must keep a sprite-compatible UI material.");
+            AssertNamedComponent<TMP_Text>(
+                canvas,
+                $"Text | Relic Name {index}");
+            AssertNamedComponent<TMP_Text>(
+                canvas,
+                $"Text | Relic Description {index}");
+        }
+    }
+
     private static void AssertBattlePool(
         IReadOnlyList<BattleData> battles,
         HashSet<BattleData> stageBattles,
@@ -235,5 +341,37 @@ public sealed class SceneIntegrityTests
                 Is.True,
                 $"NodeMapSettings {poolName} battle '{battle.name}' is not in its configured stage.");
         }
+    }
+
+    private static T AssertNamedComponent<T>(
+        GameObject root,
+        string objectName)
+        where T : Component
+    {
+        Transform match = root.GetComponentsInChildren<Transform>(true)
+            .FirstOrDefault(child => child.name == objectName);
+        Assert.That(match, Is.Not.Null, $"Missing '{objectName}'.");
+
+        T component = match.GetComponent<T>();
+        Assert.That(
+            component,
+            Is.Not.Null,
+            $"'{objectName}' is missing {typeof(T).Name}.");
+        return component;
+    }
+
+    private static void AssertLoadedButton(Button button)
+    {
+        Assert.That(button.transition, Is.EqualTo(Selectable.Transition.None));
+        Assert.That(
+            button.GetComponent<MainButtonShaderFeedback>(),
+            Is.Not.Null,
+            $"'{button.name}' is missing shader feedback.");
+        Assert.That(button.image, Is.Not.Null);
+        Assert.That(button.image.material, Is.Not.Null);
+        Assert.That(button.image.material.shader, Is.Not.Null);
+        Assert.That(
+            button.image.material.shader.name,
+            Is.EqualTo("Loaded/UI/Main Button"));
     }
 }

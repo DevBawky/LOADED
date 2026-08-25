@@ -756,6 +756,15 @@ MonoBehaviour:
   m_GrainTex:
     m_OverrideState: 1
     m_Value: 8
+  m_Audio:
+    m_OverrideState: 1
+    m_Value: 0
+  m_Volume:
+    m_OverrideState: 1
+    m_Value: 0
+  m_Pich:
+    m_OverrideState: 1
+    m_Value: 0
 --- !u!114 &7933203426823181213
 MonoBehaviour:
   m_ObjectHideFlags: 3

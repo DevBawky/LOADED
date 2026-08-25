@@ -422,9 +422,12 @@ public static class ShopSceneSetupBuilder
             AssignObject(serialized, "bulletNameText",
                 FindNamedComponent<TMPro.TextMeshProUGUI>(
                     bulletTooltip, "Text | Bullet Name"));
+            AssignObject(serialized, "bulletTypeText",
+                FindComponentUnderNamedParent<TMPro.TextMeshProUGUI>(
+                    bulletTooltip, "BG | Bullet Type"));
             AssignObject(serialized, "bulletGradeText",
-                FindNamedComponent<TMPro.TextMeshProUGUI>(
-                    bulletTooltip, "Text | Bullet Grade"));
+                FindComponentUnderNamedParent<TMPro.TextMeshProUGUI>(
+                    bulletTooltip, "BG | Bullet Grade"));
             AssignObject(serialized, "bulletDescriptionText",
                 FindNamedComponent<TMPro.TextMeshProUGUI>(
                     bulletTooltip, "Text | Bullet Description"));
@@ -432,9 +435,12 @@ public static class ShopSceneSetupBuilder
             AssignObject(serialized, "cylinderBulletNameText",
                 FindNamedComponent<TMPro.TextMeshProUGUI>(
                     cylinderTooltip, "Text | Bullet Name"));
+            AssignObject(serialized, "cylinderBulletTypeText",
+                FindComponentUnderNamedParent<TMPro.TextMeshProUGUI>(
+                    cylinderTooltip, "BG | Bullet Type"));
             AssignObject(serialized, "cylinderBulletGradeText",
-                FindNamedComponent<TMPro.TextMeshProUGUI>(
-                    cylinderTooltip, "Text | Bullet Grade"));
+                FindComponentUnderNamedParent<TMPro.TextMeshProUGUI>(
+                    cylinderTooltip, "BG | Bullet Grade"));
             AssignObject(serialized, "cylinderBulletDescriptionText",
                 FindNamedComponent<TMPro.TextMeshProUGUI>(
                     cylinderTooltip, "Text | Bullet Description"));
@@ -504,6 +510,27 @@ public static class ShopSceneSetupBuilder
         foreach (T component in root.GetComponentsInChildren<T>(true))
         {
             if (component.name == objectName)
+            {
+                return component;
+            }
+        }
+
+        return null;
+    }
+
+    private static T FindComponentUnderNamedParent<T>(
+        Transform root,
+        string parentObjectName) where T : Component
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (T component in root.GetComponentsInChildren<T>(true))
+        {
+            if (component.transform.parent != null
+                && component.transform.parent.name == parentObjectName)
             {
                 return component;
             }

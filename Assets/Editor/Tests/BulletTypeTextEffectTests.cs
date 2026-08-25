@@ -102,6 +102,35 @@ public sealed class BulletTypeTextEffectTests
         AssertOriginalPrefabSource(tooltipRoots[0], SharedTooltipPath);
     }
 
+    [TestCase(
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_BulletTooltip.prefab")]
+    [TestCase(
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_CylinderBulletTooltip.prefab")]
+    public void BulletTooltipContainsSeparateTypeAndGradeFields(
+        string prefabPath)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            prefabPath);
+
+        Assert.That(prefab, Is.Not.Null, prefabPath);
+        Transform typeBackground = FindDescendant(
+            prefab.transform,
+            "BG | Bullet Type");
+        Transform gradeBackground = FindDescendant(
+            prefab.transform,
+            "BG | Bullet Grade");
+        Assert.That(typeBackground, Is.Not.Null, prefabPath);
+        Assert.That(gradeBackground, Is.Not.Null, prefabPath);
+        Assert.That(
+            typeBackground.GetComponentInChildren<TextMeshProUGUI>(true),
+            Is.Not.Null,
+            prefabPath);
+        Assert.That(
+            gradeBackground.GetComponentInChildren<TextMeshProUGUI>(true),
+            Is.Not.Null,
+            prefabPath);
+    }
+
     [TestCase("Assets/Prefabs/UI/Canvas.prefab")]
     [TestCase("Assets/Prefabs/UI/Shop/Panel_Shop.prefab")]
     [TestCase("Assets/Prefabs/UI/Event/EventCanvas.prefab")]
@@ -196,6 +225,60 @@ public sealed class BulletTypeTextEffectTests
         finally
         {
             Object.DestroyImmediate(textObject);
+        }
+    }
+
+    [Test]
+    public void BulletTooltipMetadataRendersTypeAndGradeSeparately()
+    {
+        TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
+            KoreanFontPath);
+        GameObject typeObject = new GameObject(
+            "Bullet Type",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+        GameObject gradeObject = new GameObject(
+            "Bullet Grade",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+
+        try
+        {
+            Assert.That(font, Is.Not.Null);
+            TextMeshProUGUI typeText =
+                typeObject.GetComponent<TextMeshProUGUI>();
+            TextMeshProUGUI gradeText =
+                gradeObject.GetComponent<TextMeshProUGUI>();
+            typeText.font = font;
+            gradeText.font = font;
+            Color gradeColor = new Color(0.3f, 0.6f, 0.9f, 1f);
+
+            InventoryTooltipUI.ApplyBulletMetadata(
+                typeText,
+                gradeText,
+                BulletType.Storm,
+                BulletGrade.Ace,
+                gradeColor);
+
+            Assert.That(
+                typeText.text,
+                Is.EqualTo(BulletData.GetBulletTypeDisplayName(
+                    BulletType.Storm)));
+            Assert.That(gradeText.text, Is.EqualTo("Ace"));
+            Assert.That(gradeText.color, Is.EqualTo(gradeColor));
+            Assert.That(
+                typeText.GetComponent<BulletTypeTextEffect>(),
+                Is.Not.Null);
+            Assert.That(
+                gradeText.GetComponent<BulletTypeTextEffect>(),
+                Is.Null);
+        }
+        finally
+        {
+            Object.DestroyImmediate(typeObject);
+            Object.DestroyImmediate(gradeObject);
         }
     }
 

@@ -58,12 +58,14 @@ public class InventoryTooltipUI : MonoBehaviour
     [SerializeField] private Image bulletIcon;
     [SerializeField] private Image bulletCylinderIcon;
     [SerializeField] private TextMeshProUGUI bulletNameText;
+    [SerializeField] private TextMeshProUGUI bulletTypeText;
     [SerializeField] private TextMeshProUGUI bulletGradeText;
     [SerializeField] private TextMeshProUGUI bulletDescriptionText;
 
     [Header("Cylinder Bullet Tooltip")]
     [SerializeField] private RectTransform cylinderBulletTooltip;
     [SerializeField] private TextMeshProUGUI cylinderBulletNameText;
+    [SerializeField] private TextMeshProUGUI cylinderBulletTypeText;
     [SerializeField] private TextMeshProUGUI cylinderBulletGradeText;
     [SerializeField] private TextMeshProUGUI cylinderBulletDescriptionText;
 
@@ -189,9 +191,7 @@ public class InventoryTooltipUI : MonoBehaviour
         bulletNameText = FindNamedChild<TextMeshProUGUI>(
             bulletTooltip,
             "Text | Bullet Name");
-        bulletGradeText = FindNamedChild<TextMeshProUGUI>(
-            bulletTooltip,
-            "Text | Bullet Grade");
+        ResolveBulletMetadataReferences();
         bulletDescriptionText = FindNamedChild<TextMeshProUGUI>(
             bulletTooltip,
             "Text | Bullet Description");
@@ -692,12 +692,12 @@ public class InventoryTooltipUI : MonoBehaviour
         bulletNameText.color = bullet.GradeNameColor;
         bulletNameText.text = bullet.GetRichDisplayName(level);
 
-        if (bulletGradeText != null)
-        {
-            bulletGradeText.text = bullet.BulletTypeDisplayName;
-            bulletGradeText.color = Color.white;
-            BulletTypeTextEffect.Apply(bulletGradeText, bullet.BulletType);
-        }
+        ApplyBulletMetadata(
+            bulletTypeText,
+            bulletGradeText,
+            bullet.BulletType,
+            bullet.Grade,
+            bullet.GradeNameColor);
 
         bulletDescriptionText.richText = true;
         bulletDescriptionText.text = bullet.GetDetailedDescription(level);
@@ -737,14 +737,12 @@ public class InventoryTooltipUI : MonoBehaviour
         cylinderBulletNameText.color = bullet.GradeNameColor;
         cylinderBulletNameText.text = bullet.RichDisplayName;
 
-        if (cylinderBulletGradeText != null)
-        {
-            cylinderBulletGradeText.text = bullet.BulletTypeDisplayName;
-            cylinderBulletGradeText.color = Color.white;
-            BulletTypeTextEffect.Apply(
-                cylinderBulletGradeText,
-                bullet.BulletType);
-        }
+        ApplyBulletMetadata(
+            cylinderBulletTypeText,
+            cylinderBulletGradeText,
+            bullet.BulletType,
+            bullet.Grade,
+            bullet.GradeNameColor);
 
         cylinderBulletDescriptionText.richText = true;
         relicManager ??= FindFirstObjectByType<RelicManager>(
@@ -1108,6 +1106,27 @@ public class InventoryTooltipUI : MonoBehaviour
         bool hasSpecificDebuff)
     {
         return bulletType == BulletType.Debuff && !hasSpecificDebuff;
+    }
+
+    internal static void ApplyBulletMetadata(
+        TextMeshProUGUI typeText,
+        TextMeshProUGUI gradeText,
+        BulletType bulletType,
+        BulletGrade grade,
+        Color gradeColor)
+    {
+        if (typeText != null)
+        {
+            typeText.text = BulletData.GetBulletTypeDisplayName(bulletType);
+            typeText.color = Color.white;
+            BulletTypeTextEffect.Apply(typeText, bulletType);
+        }
+
+        if (gradeText != null)
+        {
+            gradeText.text = grade.ToString();
+            gradeText.color = gradeColor;
+        }
     }
 
     private bool ShowBulletTypeDescription(
@@ -1853,18 +1872,13 @@ public class InventoryTooltipUI : MonoBehaviour
         bulletNameText ??= FindNamedChild<TextMeshProUGUI>(
             bulletTooltip,
             "Text | Bullet Name");
-        bulletGradeText ??= FindNamedChild<TextMeshProUGUI>(
-            bulletTooltip,
-            "Text | Bullet Grade");
+        ResolveBulletMetadataReferences();
         bulletDescriptionText ??= FindNamedChild<TextMeshProUGUI>(
             bulletTooltip,
             "Text | Bullet Description");
         cylinderBulletNameText ??= FindNamedChild<TextMeshProUGUI>(
             cylinderBulletTooltip,
             "Text | Bullet Name");
-        cylinderBulletGradeText ??= FindNamedChild<TextMeshProUGUI>(
-            cylinderBulletTooltip,
-            "Text | Bullet Grade");
         cylinderBulletDescriptionText ??= FindNamedChild<TextMeshProUGUI>(
             cylinderBulletTooltip,
             "Text | Bullet Description");
@@ -1884,6 +1898,24 @@ public class InventoryTooltipUI : MonoBehaviour
             debuffDescriptionPanel,
             "Text | Bullet Description");
         nextChipIcon ??= FindNamedChild<Image>(nextChip, "Image | Next Chip");
+    }
+
+    private void ResolveBulletMetadataReferences()
+    {
+        bulletTypeText = FindComponentUnderNamedParent<TextMeshProUGUI>(
+            bulletTooltip,
+            "BG | Bullet Type");
+        bulletGradeText = FindComponentUnderNamedParent<TextMeshProUGUI>(
+            bulletTooltip,
+            "BG | Bullet Grade");
+        cylinderBulletTypeText =
+            FindComponentUnderNamedParent<TextMeshProUGUI>(
+                cylinderBulletTooltip,
+                "BG | Bullet Type");
+        cylinderBulletGradeText =
+            FindComponentUnderNamedParent<TextMeshProUGUI>(
+                cylinderBulletTooltip,
+                "BG | Bullet Grade");
     }
 
     private BulletTooltipContext CreateBulletTooltipContext()
@@ -2015,6 +2047,27 @@ public class InventoryTooltipUI : MonoBehaviour
         foreach (T component in components)
         {
             if (component.name == objectName)
+            {
+                return component;
+            }
+        }
+
+        return null;
+    }
+
+    private static T FindComponentUnderNamedParent<T>(
+        RectTransform root,
+        string parentObjectName) where T : Component
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (T component in root.GetComponentsInChildren<T>(true))
+        {
+            if (component.transform.parent != null
+                && component.transform.parent.name == parentObjectName)
             {
                 return component;
             }

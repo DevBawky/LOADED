@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   relicId: eye_of_the_storm
   displayName: "\uD3ED\uD48D\uC758 \uB208"
-  description: "실린더 내 모든 적 공격 시 최고 단일 피해의 40%를 생존 적 전체에 적용"
+  description: "\uC804\uC7A5 \uB0B4 \uBAA8\uB4E0 \uC801 \uACF5\uACA9 \uC2DC \uCD5C\uACE0
+    \uB2E8\uC77C \uD53C\uD574\uC758 40%\uB97C \uC0DD\uC874 \uC801 \uC804\uCCB4\uC5D0
+    \uC801\uC6A9"
   icon: {fileID: 591604309567753858, guid: d92d42f095f878343ac6ec00e42ffdf2, type: 3}
   lifetimeType: 0
   initialCharges: 1
@@ -50,3 +52,4 @@ MonoBehaviour:
     brinkHealthThresholdPercent: 25
     brinkBaseChance: 30
     brinkFailureChanceBonus: 10
+    shotRangeBonus: 1

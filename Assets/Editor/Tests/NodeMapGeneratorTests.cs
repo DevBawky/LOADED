@@ -161,7 +161,7 @@ public sealed class NodeMapGeneratorTests
     }
 
     [Test]
-    public void Generate_UsesOnlyThirdsAndPreBossShopColumns()
+    public void Generate_UsesOneFifthTwoThirdsAndPreBossShopColumns()
     {
         NodeMapGenerationRule[] rules =
         {
@@ -204,7 +204,7 @@ public sealed class NodeMapGeneratorTests
                 .Distinct()
                 .ToList();
 
-            Assert.That(shopColumns, Is.EqualTo(new[] { 5, 9, 13 }));
+            Assert.That(shopColumns, Is.EqualTo(new[] { 3, 9, 13 }));
             Assert.That(treasureColumns, Is.EqualTo(new[] { 7 }));
             Assert.That(shopColumns.Contains(1), Is.False);
             Assert.That(shopColumns.Intersect(treasureColumns), Is.Empty);
@@ -283,6 +283,77 @@ public sealed class NodeMapGeneratorTests
 
         Assert.That(normalCount, Is.InRange(3, 4));
         Assert.That(eliteCount, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Generate_PlacesEliteBattlesOnlyAfterFirstShop()
+    {
+        NodeMapGenerationRule[] rules =
+        {
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.EliteBattle,
+                weight = 100,
+                maximumCount = -1
+            }
+        };
+
+        for (int seed = 0; seed < 50; seed++)
+        {
+            NodeMapRunData map = NodeMapGenerator.Generate(
+                seed, 0, 15, 4, 3, rules);
+            int firstShopColumn = map.nodes
+                .Where(node => node.type == NodeMapNodeType.Shop)
+                .Min(node => node.column);
+            List<NodeMapNodeData> elites = map.nodes
+                .Where(node => node.type == NodeMapNodeType.EliteBattle)
+                .ToList();
+
+            Assert.That(elites, Is.Not.Empty, $"Seed {seed}");
+            Assert.That(
+                elites.All(node => node.column > firstShopColumn),
+                Is.True,
+                $"Seed {seed}");
+        }
+    }
+
+    [Test]
+    public void Generate_SeparatesEliteBattlesAcrossNonAdjacentColumns()
+    {
+        NodeMapGenerationRule[] rules =
+        {
+            new NodeMapGenerationRule
+            {
+                nodeType = NodeMapNodeType.EliteBattle,
+                weight = 100,
+                maximumCount = -1
+            }
+        };
+
+        for (int seed = 0; seed < 50; seed++)
+        {
+            NodeMapRunData map = NodeMapGenerator.Generate(
+                seed, 0, 15, 4, 3, rules);
+            List<int> eliteColumns = map.nodes
+                .Where(node => node.type == NodeMapNodeType.EliteBattle)
+                .Select(node => node.column)
+                .OrderBy(column => column)
+                .ToList();
+
+            Assert.That(eliteColumns, Has.Count.GreaterThan(1), $"Seed {seed}");
+            Assert.That(
+                eliteColumns.Distinct().Count(),
+                Is.EqualTo(eliteColumns.Count),
+                $"Seed {seed}");
+
+            for (int index = 1; index < eliteColumns.Count; index++)
+            {
+                Assert.That(
+                    eliteColumns[index] - eliteColumns[index - 1],
+                    Is.GreaterThanOrEqualTo(2),
+                    $"Seed {seed}");
+            }
+        }
     }
 
     [TestCase(1, NodeMapBattleProgressSection.Early)]

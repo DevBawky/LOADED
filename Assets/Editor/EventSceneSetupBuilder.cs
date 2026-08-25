@@ -24,6 +24,23 @@ public static class EventSceneSetupBuilder
     private const string EventManagersPath =
         EventFolder + "/EventSceneManagers.prefab";
     private const string EventDataFolder = "Assets/Resources/Events";
+    private const string MainButtonMaterialPath =
+        "Assets/Materials/UI/MainButtonLoaded.mat";
+    private const string LoadedFontAssetPath =
+        "Assets/Package/Galmuri9 SDF.asset";
+
+    private static readonly Color BackdropColor =
+        new Color(0.025f, 0.016f, 0.014f, 0.995f);
+    private static readonly Color PanelColor =
+        new Color(0.075f, 0.045f, 0.032f, 0.985f);
+    private static readonly Color GunmetalColor =
+        new Color(0.12f, 0.075f, 0.05f, 1f);
+    private static readonly Color BrassColor =
+        new Color(0.72f, 0.43f, 0.16f, 1f);
+    private static readonly Color EmberColor =
+        new Color(0.95f, 0.22f, 0.035f, 1f);
+    private static readonly Color PaperColor =
+        new Color(0.94f, 0.86f, 0.72f, 1f);
 
     [MenuItem("Tools/LOADED/Build Dedicated Event Scene")]
     public static void Build()
@@ -57,6 +74,22 @@ public static class EventSceneSetupBuilder
         AssetDatabase.Refresh();
         Debug.Log(
             "Dedicated Event scene, conditional event data, and reusable UI were built successfully.");
+    }
+
+    [MenuItem("Tools/LOADED/UI/Rebuild Event Presentation")]
+    public static void RebuildPresentation()
+    {
+        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        {
+            throw new InvalidOperationException(
+                "Exit Play Mode before rebuilding the Event presentation.");
+        }
+
+        EnsureFolder("Assets/Prefabs/UI", "Event");
+        BuildEventPanel();
+        AssetDatabase.SaveAssets();
+        AssetDatabase.Refresh();
+        Debug.Log("Event presentation prefab was rebuilt successfully.");
     }
 
     [MenuItem("Tools/LOADED/Refresh Event Definition Pool")]
@@ -117,51 +150,157 @@ public static class EventSceneSetupBuilder
         GameObject root = CreateUiObject("Panel | Event", null);
         Stretch(root.GetComponent<RectTransform>());
         Image background = root.AddComponent<Image>();
-        background.color = new Color(0.055f, 0.05f, 0.08f, 0.97f);
+        background.color = BackdropColor;
 
-        GameObject artFrame = CreateUiObject("Panel | Event Artwork", root.transform);
+        CreateBackdropStripes(root.transform);
+        CreateImage(
+            "Image | Top Rail",
+            root.transform,
+            new Vector2(0f, 0.945f),
+            Vector2.one,
+            GunmetalColor);
+        CreateImage(
+            "Image | Top Ember Line",
+            root.transform,
+            new Vector2(0.035f, 0.942f),
+            new Vector2(0.965f, 0.947f),
+            EmberColor);
+        CreateText(
+            "Text | Event Kicker",
+            root.transform,
+            new Vector2(0.055f, 0.902f),
+            new Vector2(0.945f, 0.94f),
+            "FIELD ENCOUNTER  //  MAKE YOUR CALL",
+            15f,
+            TextAlignmentOptions.Left).color = BrassColor;
+
+        GameObject artShadow = CreateFramedPanel(
+            "Image | Event Artwork Shadow",
+            root.transform,
+            new Vector2(0.052f, 0.105f),
+            new Vector2(0.475f, 0.885f),
+            new Color(0f, 0f, 0f, 0.72f),
+            Color.black,
+            1f);
+        artShadow.GetComponent<RectTransform>().anchoredPosition =
+            new Vector2(7f, -7f);
+
+        GameObject artFrame = CreateFramedPanel(
+            "Panel | Event Artwork",
+            root.transform,
+            new Vector2(0.045f, 0.115f),
+            new Vector2(0.468f, 0.895f),
+            GunmetalColor,
+            BrassColor,
+            2f);
         SetAnchors(artFrame.GetComponent<RectTransform>(),
-            new Vector2(0.045f, 0.10f), new Vector2(0.48f, 0.90f),
+            new Vector2(0.045f, 0.115f), new Vector2(0.468f, 0.895f),
             Vector2.zero, Vector2.zero);
-        Image artFrameImage = artFrame.AddComponent<Image>();
-        artFrameImage.color = new Color(0.12f, 0.105f, 0.13f, 1f);
+
+        CreateImage(
+            "Image | Artwork Header",
+            artFrame.transform,
+            new Vector2(0f, 0.925f),
+            Vector2.one,
+            new Color(0.22f, 0.105f, 0.045f, 1f));
+        TMP_Text recordLabel = CreateText(
+            "Text | Artwork Header",
+            artFrame.transform,
+            new Vector2(0.045f, 0.932f),
+            new Vector2(0.955f, 0.995f),
+            "INCIDENT RECORD  //  01",
+            14f,
+            TextAlignmentOptions.Left);
+        recordLabel.color = new Color(1f, 0.69f, 0.3f, 1f);
+        recordLabel.fontStyle = FontStyles.Bold;
 
         GameObject artwork = CreateUiObject("Image | Event Artwork", artFrame.transform);
-        Stretch(artwork.GetComponent<RectTransform>(), 14f);
+        SetAnchors(
+            artwork.GetComponent<RectTransform>(),
+            new Vector2(0.032f, 0.075f),
+            new Vector2(0.968f, 0.91f),
+            Vector2.zero,
+            Vector2.zero);
         Image artworkImage = artwork.AddComponent<Image>();
         artworkImage.color = Color.white;
         artworkImage.preserveAspect = true;
         artworkImage.raycastTarget = false;
 
-        GameObject dialoguePanel = CreateUiObject(
-            "Panel | Event Dialogue",
-            root.transform);
-        SetAnchors(dialoguePanel.GetComponent<RectTransform>(),
-            new Vector2(0.52f, 0.10f), new Vector2(0.955f, 0.90f),
-            Vector2.zero, Vector2.zero);
-        Image dialogueBackground = dialoguePanel.AddComponent<Image>();
-        dialogueBackground.color = new Color(0.09f, 0.078f, 0.105f, 0.98f);
+        CreateImage(
+            "Image | Artwork Footer",
+            artFrame.transform,
+            new Vector2(0.032f, 0.028f),
+            new Vector2(0.968f, 0.05f),
+            new Color(0.38f, 0.16f, 0.055f, 1f));
 
-        CreateText(
+        GameObject dialogueShadow = CreateFramedPanel(
+            "Image | Event Dialogue Shadow",
+            root.transform,
+            new Vector2(0.522f, 0.105f),
+            new Vector2(0.952f, 0.885f),
+            new Color(0f, 0f, 0f, 0.72f),
+            Color.black,
+            1f);
+        dialogueShadow.GetComponent<RectTransform>().anchoredPosition =
+            new Vector2(7f, -7f);
+
+        GameObject dialoguePanel = CreateFramedPanel(
+            "Panel | Event Dialogue",
+            root.transform,
+            new Vector2(0.515f, 0.115f),
+            new Vector2(0.945f, 0.895f),
+            PanelColor,
+            BrassColor,
+            2f);
+        SetAnchors(dialoguePanel.GetComponent<RectTransform>(),
+            new Vector2(0.515f, 0.115f), new Vector2(0.945f, 0.895f),
+            Vector2.zero, Vector2.zero);
+
+        CreateImage(
+            "Image | Dialogue Header",
+            dialoguePanel.transform,
+            new Vector2(0f, 0.825f),
+            Vector2.one,
+            new Color(0.20f, 0.085f, 0.035f, 1f));
+        CreateImage(
+            "Image | Dialogue Divider",
+            dialoguePanel.transform,
+            new Vector2(0.045f, 0.805f),
+            new Vector2(0.955f, 0.811f),
+            EmberColor);
+
+        TMP_Text title = CreateText(
             "Text | Event Title",
             dialoguePanel.transform,
-            new Vector2(0.055f, 0.84f),
-            new Vector2(0.945f, 0.965f),
+            new Vector2(0.055f, 0.842f),
+            new Vector2(0.945f, 0.982f),
             "EVENT",
-            34f,
+            36f,
             TextAlignmentOptions.Left);
-        CreateText(
+        title.color = new Color(1f, 0.78f, 0.42f, 1f);
+        title.fontStyle = FontStyles.Bold;
+
+        TMP_Text dialogue = CreateText(
             "Text | Event Dialogue",
             dialoguePanel.transform,
-            new Vector2(0.055f, 0.39f),
-            new Vector2(0.945f, 0.82f),
+            new Vector2(0.065f, 0.405f),
+            new Vector2(0.935f, 0.785f),
             "Event dialogue",
-            22f,
+            21f,
             TextAlignmentOptions.TopLeft);
+        dialogue.color = PaperColor;
+        dialogue.lineSpacing = 6f;
 
-        CreateChoiceButton(dialoguePanel.transform, 1, 0.275f, 0.365f);
-        CreateChoiceButton(dialoguePanel.transform, 2, 0.165f, 0.255f);
-        CreateChoiceButton(dialoguePanel.transform, 3, 0.055f, 0.145f);
+        CreateChoiceButton(dialoguePanel.transform, 1, 0.292f, 0.382f);
+        CreateChoiceButton(dialoguePanel.transform, 2, 0.184f, 0.274f);
+        CreateChoiceButton(dialoguePanel.transform, 3, 0.076f, 0.166f);
+
+        CreateImage(
+            "Image | Bottom Rail",
+            root.transform,
+            Vector2.zero,
+            new Vector2(1f, 0.038f),
+            new Color(0.055f, 0.028f, 0.02f, 1f));
 
         PrefabUtility.SaveAsPrefabAsset(root, EventPanelPath);
         Object.DestroyImmediate(root);
@@ -590,6 +729,12 @@ public static class EventSceneSetupBuilder
             Vector2.zero,
             Vector2.zero);
         TextMeshProUGUI text = gameObject.AddComponent<TextMeshProUGUI>();
+        TMP_FontAsset loadedFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
+            LoadedFontAssetPath);
+        if (loadedFont != null)
+        {
+            text.font = loadedFont;
+        }
         text.text = value;
         text.fontSize = fontSize;
         text.color = new Color(0.93f, 0.90f, 0.84f, 1f);
@@ -615,24 +760,115 @@ public static class EventSceneSetupBuilder
             Vector2.zero,
             Vector2.zero);
         Image image = gameObject.AddComponent<Image>();
-        image.color = new Color(0.24f, 0.205f, 0.17f, 1f);
+        image.color = new Color(0.92f, 0.72f, 0.5f, 1f);
         Button button = gameObject.AddComponent<Button>();
-        ColorBlock colors = button.colors;
-        colors.normalColor = Color.white;
-        colors.highlightedColor = new Color(1.12f, 1.08f, 0.95f, 1f);
-        colors.pressedColor = new Color(0.78f, 0.75f, 0.7f, 1f);
-        colors.disabledColor = new Color(0.45f, 0.45f, 0.45f, 0.6f);
-        button.colors = colors;
+        StyleLoadedButton(button, image);
+
+        CreateImage(
+            "Image | Choice Accent",
+            gameObject.transform,
+            new Vector2(0f, 0f),
+            new Vector2(0.018f, 1f),
+            index == 1 ? EmberColor : BrassColor);
+        TMP_Text indexText = CreateText(
+            "Text | Choice Index",
+            gameObject.transform,
+            new Vector2(0.025f, 0.08f),
+            new Vector2(0.12f, 0.92f),
+            index.ToString("00"),
+            16f,
+            TextAlignmentOptions.Center);
+        indexText.color = new Color(1f, 0.55f, 0.19f, 1f);
+        indexText.fontStyle = FontStyles.Bold;
 
         TMP_Text text = CreateText(
             "Text | Choice",
             gameObject.transform,
-            new Vector2(0.035f, 0.05f),
-            new Vector2(0.965f, 0.95f),
+            new Vector2(0.13f, 0.08f),
+            new Vector2(0.965f, 0.92f),
             $"Choice {index}",
-            20f,
+            18f,
             TextAlignmentOptions.Left);
         text.alignment = TextAlignmentOptions.MidlineLeft;
+        text.color = new Color(1f, 0.92f, 0.8f, 1f);
+    }
+
+    private static void CreateBackdropStripes(Transform parent)
+    {
+        for (int index = 0; index < 7; index++)
+        {
+            float y = 0.11f + index * 0.125f;
+            Image stripe = CreateImage(
+                $"Image | Backdrop Stripe {index + 1}",
+                parent,
+                new Vector2(-0.06f, y),
+                new Vector2(1.06f, y + 0.018f),
+                new Color(0.28f, 0.085f, 0.025f, 0.12f));
+            stripe.rectTransform.localEulerAngles = new Vector3(0f, 0f, -7f);
+        }
+    }
+
+    private static GameObject CreateFramedPanel(
+        string name,
+        Transform parent,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        Color fill,
+        Color outlineColor,
+        float outlineSize)
+    {
+        Image image = CreateImage(
+            name,
+            parent,
+            anchorMin,
+            anchorMax,
+            fill);
+        Outline outline = image.gameObject.AddComponent<Outline>();
+        outline.effectColor = outlineColor;
+        outline.effectDistance = new Vector2(outlineSize, -outlineSize);
+        outline.useGraphicAlpha = true;
+        return image.gameObject;
+    }
+
+    private static Image CreateImage(
+        string name,
+        Transform parent,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        Color color)
+    {
+        GameObject gameObject = CreateUiObject(name, parent);
+        SetAnchors(
+            gameObject.GetComponent<RectTransform>(),
+            anchorMin,
+            anchorMax,
+            Vector2.zero,
+            Vector2.zero);
+        Image image = gameObject.AddComponent<Image>();
+        image.color = color;
+        image.raycastTarget = false;
+        return image;
+    }
+
+    private static void StyleLoadedButton(Button button, Image image)
+    {
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(
+            MainButtonMaterialPath);
+        if (material == null)
+        {
+            throw new MissingReferenceException(
+                "LOADED main button material is missing: "
+                + MainButtonMaterialPath);
+        }
+
+        image.material = material;
+        image.raycastTarget = true;
+        button.targetGraphic = image;
+        button.transition = Selectable.Transition.None;
+        if (button.GetComponent<MainButtonShaderFeedback>() == null)
+        {
+            button.gameObject.AddComponent<MainButtonShaderFeedback>();
+        }
     }
 
     private static void Stretch(RectTransform rect, float inset = 0f)

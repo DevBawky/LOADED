@@ -640,6 +640,18 @@ public class BulletData : ScriptableObject
             builder.AppendLine();
         }
 
+        string effectDescription = BulletEffectDescriptionFormatter.Build(
+            GetEffects(level),
+            GetConditionalEvents(level),
+            GetPenetrationChances(level));
+
+        if (!string.IsNullOrEmpty(effectDescription))
+        {
+            builder.AppendLine("<color=#B8C6D9>효과 상세</color>");
+            builder.AppendLine(effectDescription);
+            builder.AppendLine();
+        }
+
         int baseDamage = GetDamage(level);
         int currentDamage = Mathf.Max(
             0,

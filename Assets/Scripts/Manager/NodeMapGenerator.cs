@@ -5,6 +5,8 @@ using UnityEngine;
 
 public static class NodeMapGenerator
 {
+    private const int MinimumEliteColumnGap = 2;
+
     private static readonly NodeMapGenerationRule[] DefaultRules =
     {
         new NodeMapGenerationRule
@@ -177,6 +179,7 @@ public static class NodeMapGenerator
 
         Dictionary<NodeMapNodeType, int> counts = rules.ToDictionary(
             rule => rule.nodeType, _ => 0);
+        HashSet<int> eliteColumns = new HashSet<int>();
 
         // Guaranteed columns take priority over configured rules. The first
         // playable column remains a battle in very short maps. If fixed
@@ -203,11 +206,22 @@ public static class NodeMapGenerator
             }
         }
 
+        int firstShopColumn = nodes
+            .Where(node => node.type == NodeMapNodeType.Shop)
+            .Select(node => node.column)
+            .DefaultIfEmpty(maximumColumn)
+            .Min();
+
         // Constrained types are placed first so their minimum count cannot be
         // consumed by types that are valid in every playable column.
         foreach (NodeMapGenerationRule rule in rules
                      .OrderBy(rule => unassignedNodes.Count(node =>
-                         CanAssignType(node, rule.nodeType, maximumColumn))))
+                         CanAssignType(
+                             node,
+                             rule.nodeType,
+                             maximumColumn,
+                             firstShopColumn,
+                             eliteColumns))))
         {
             int maximum = rule.maximumCount < 0
                 ? nodes.Count
@@ -224,7 +238,9 @@ public static class NodeMapGenerator
                     .Where(node => CanAssignType(
                         node,
                         rule.nodeType,
-                        maximumColumn))
+                        maximumColumn,
+                        firstShopColumn,
+                        eliteColumns))
                     .ToList();
                 if (eligibleNodes.Count == 0)
                 {
@@ -236,6 +252,10 @@ public static class NodeMapGenerator
                 selectedNode.type = rule.nodeType;
                 unassignedNodes.Remove(selectedNode);
                 IncrementCount(counts, rule.nodeType);
+                RegisterEliteColumn(
+                    selectedNode,
+                    rule.nodeType,
+                    eliteColumns);
                 required--;
             }
         }
@@ -245,7 +265,12 @@ public static class NodeMapGenerator
         {
             List<NodeMapGenerationRule> candidates = rules
                 .Where(rule => rule.weight > 0
-                    && CanAssignType(node, rule.nodeType, maximumColumn)
+                    && CanAssignType(
+                        node,
+                        rule.nodeType,
+                        maximumColumn,
+                        firstShopColumn,
+                        eliteColumns)
                     && (rule.maximumCount < 0
                         || GetCount(counts, rule.nodeType)
                             < rule.maximumCount))
@@ -257,11 +282,14 @@ public static class NodeMapGenerator
                         && CanAssignType(
                             node,
                             rule.nodeType,
-                            maximumColumn));
+                            maximumColumn,
+                            firstShopColumn,
+                            eliteColumns));
                 node.type = fallback == null
                     ? NodeMapNodeType.NormalBattle
                     : fallback.nodeType;
                 IncrementCount(counts, node.type);
+                RegisterEliteColumn(node, node.type, eliteColumns);
                 continue;
             }
 
@@ -279,6 +307,7 @@ public static class NodeMapGenerator
             }
             node.type = selected.nodeType;
             IncrementCount(counts, node.type);
+            RegisterEliteColumn(node, node.type, eliteColumns);
         }
 
         foreach (NodeMapNodeData node in nodes)
@@ -308,7 +337,9 @@ public static class NodeMapGenerator
     private static bool CanAssignType(
         NodeMapNodeData node,
         NodeMapNodeType type,
-        int maximumColumn)
+        int maximumColumn,
+        int firstShopColumn,
+        IReadOnlyCollection<int> eliteColumns)
     {
         if (node == null)
         {
@@ -322,8 +353,31 @@ public static class NodeMapGenerator
 
         // Shop and Treasure are never part of the weighted/minimum allocation
         // pass.
-        return type != NodeMapNodeType.Shop
-            && type != NodeMapNodeType.Treasure;
+        if (type == NodeMapNodeType.Shop
+            || type == NodeMapNodeType.Treasure)
+        {
+            return false;
+        }
+
+        if (type != NodeMapNodeType.EliteBattle)
+        {
+            return true;
+        }
+
+        return node.column > firstShopColumn
+            && (eliteColumns == null || eliteColumns.All(column =>
+                Mathf.Abs(column - node.column) >= MinimumEliteColumnGap));
+    }
+
+    private static void RegisterEliteColumn(
+        NodeMapNodeData node,
+        NodeMapNodeType type,
+        ISet<int> eliteColumns)
+    {
+        if (node != null && type == NodeMapNodeType.EliteBattle)
+        {
+            eliteColumns?.Add(node.column);
+        }
     }
 
     private static HashSet<int> GetForcedTreasureColumns(
@@ -340,7 +394,7 @@ public static class NodeMapGenerator
         int preBossColumn = Mathf.Max(1, maximumColumn - 1);
         return new HashSet<int>
         {
-            GetColumnNearestProgress(maximumColumn, 1f / 3f),
+            GetColumnNearestProgress(maximumColumn, 1f / 5f),
             GetColumnNearestProgress(maximumColumn, 2f / 3f),
             preBossColumn
         };

@@ -179,7 +179,7 @@ public class NodeMapSettingsDefinition : ScriptableObject
         {
             unchecked
             {
-                const int GenerationAlgorithmRevision = 7;
+                const int GenerationAlgorithmRevision = 9;
                 int hash = 17;
                 hash = hash * 31 + GenerationAlgorithmRevision;
                 hash = hash * 31 + Columns;
