@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
 using TMPro;
@@ -8,6 +9,8 @@ using UnityEngine;
 
 public sealed class BulletTypeTextEffectTests
 {
+    private const string SharedTooltipPath =
+        "Assets/Prefabs/UI/Shared/Panel_Tooltips.prefab";
     private const string ShaderPath =
         "Assets/Resources/Shaders/BulletTypeText.shader";
     private const string KoreanFontPath =
@@ -41,6 +44,85 @@ public sealed class BulletTypeTextEffectTests
             FindDescendant(panel, "Text | Bullet Description"),
             Is.Not.Null,
             prefabPath);
+    }
+
+    [TestCase(
+        "Panel | Item Tooltip",
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_ItemTooltip.prefab")]
+    [TestCase(
+        "Panel | Bullet Tooltip",
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_BulletTooltip.prefab")]
+    [TestCase(
+        "Panel | Cylinder Bullet Tooltip",
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_CylinderBulletTooltip.prefab")]
+    [TestCase(
+        "Panel | Action Tooltip",
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_ActionTooltip.prefab")]
+    [TestCase(
+        "Panel | Relic Tooltip",
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_RelicTooltip.prefab")]
+    [TestCase(
+        "Panel | Debuff Desciption",
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_DebuffDescription.prefab")]
+    [TestCase(
+        "Panel | Bullet Type Desciption",
+        "Assets/Prefabs/UI/Shared/Tooltips/Panel_BulletTypeDescription.prefab")]
+    public void SharedContainerUsesIndividualTooltipPrefab(
+        string objectName,
+        string sourcePrefabPath)
+    {
+        GameObject sharedTooltips = AssetDatabase.LoadAssetAtPath<GameObject>(
+            SharedTooltipPath);
+        GameObject sourcePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            sourcePrefabPath);
+
+        Assert.That(sharedTooltips, Is.Not.Null);
+        Assert.That(sourcePrefab, Is.Not.Null, sourcePrefabPath);
+        Transform[] matches = FindDescendants(
+            sharedTooltips.transform,
+            objectName);
+        Assert.That(matches, Has.Length.EqualTo(1), objectName);
+        AssertOriginalPrefabSource(matches[0], sourcePrefabPath);
+    }
+
+    [TestCase("Assets/Prefabs/UI/Canvas.prefab")]
+    [TestCase("Assets/Prefabs/UI/Shop/ShopCanvas.prefab")]
+    [TestCase("Assets/Prefabs/UI/Treasure/TreasureCanvas.prefab")]
+    [TestCase("Assets/Prefabs/UI/Event/EventCanvas.prefab")]
+    public void GameplayCanvasUsesSingleSharedTooltipPrefab(string prefabPath)
+    {
+        GameObject canvas = AssetDatabase.LoadAssetAtPath<GameObject>(
+            prefabPath);
+
+        Assert.That(canvas, Is.Not.Null, prefabPath);
+        Transform[] tooltipRoots = FindDescendants(
+            canvas.transform,
+            "Panel | Tooltips");
+        Assert.That(tooltipRoots, Has.Length.EqualTo(1), prefabPath);
+        AssertOriginalPrefabSource(tooltipRoots[0], SharedTooltipPath);
+    }
+
+    [TestCase("Assets/Prefabs/UI/Canvas.prefab")]
+    [TestCase("Assets/Prefabs/UI/Shop/Panel_Shop.prefab")]
+    [TestCase("Assets/Prefabs/UI/Event/EventCanvas.prefab")]
+    public void BulletManagementUsesSharedUpgradeTooltipPrefab(string prefabPath)
+    {
+        GameObject target = AssetDatabase.LoadAssetAtPath<GameObject>(
+            prefabPath);
+
+        Assert.That(target, Is.Not.Null, prefabPath);
+        Transform[] targetTooltips = FindDescendants(
+            target.transform,
+            "Panel | Upgrade Tooltip");
+
+        Assert.That(targetTooltips, Has.Length.EqualTo(1), prefabPath);
+        Assert.That(
+            targetTooltips[0].parent.name,
+            Is.EqualTo("Layout | Bullet Manage"),
+            prefabPath);
+        AssertOriginalPrefabSource(
+            targetTooltips[0],
+            "Assets/Prefabs/UI/Shared/Tooltips/Panel_UpgradeTooltip.prefab");
     }
 
     [Test]
@@ -168,6 +250,29 @@ public sealed class BulletTypeTextEffectTests
         }
 
         return null;
+    }
+
+    private static Transform[] FindDescendants(
+        Transform root,
+        string objectName)
+    {
+        return root.GetComponentsInChildren<Transform>(true)
+            .Where(candidate => candidate.name == objectName)
+            .ToArray();
+    }
+
+    private static void AssertOriginalPrefabSource(
+        Transform instance,
+        string expectedAssetPath)
+    {
+        GameObject originalSource =
+            PrefabUtility.GetCorrespondingObjectFromOriginalSource(
+                instance.gameObject);
+        Assert.That(originalSource, Is.Not.Null, instance.name);
+        Assert.That(
+            AssetDatabase.GetAssetPath(originalSource),
+            Is.EqualTo(expectedAssetPath),
+            instance.name);
     }
 }
 #endif

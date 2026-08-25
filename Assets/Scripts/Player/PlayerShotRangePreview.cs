@@ -56,11 +56,13 @@ internal sealed class PlayerShotRangePreview
             return false;
         }
 
-        BulletInstance bullet = ResolveLoadedBullet(
+        bool hasResolvedShot = TryResolveLoadedShot(
             loadedBullets,
-            loadedBulletIndex);
+            loadedBulletIndex,
+            out BulletInstance bullet,
+            out int shotDirection);
 
-        if (bullet == null
+        if (!hasResolvedShot
             || !boardManager.TryGetTileIndex(
                 owner.position,
                 out int playerTileIndex))
@@ -89,7 +91,8 @@ internal sealed class PlayerShotRangePreview
             bullet,
             playerTileIndex,
             startPosition,
-            line);
+            line,
+            shotDirection);
     }
 
     public void Hide()
@@ -169,9 +172,9 @@ internal sealed class PlayerShotRangePreview
         BulletInstance bullet,
         int playerTileIndex,
         Vector3 startPosition,
-        LineRenderer line)
+        LineRenderer line,
+        int direction)
     {
-        int direction = owner.localScale.x >= 0f ? 1 : -1;
         int shotRange = relicManager == null
             ? bullet.MaxRange
             : relicManager.GetShotRange(bullet);
@@ -335,22 +338,70 @@ internal sealed class PlayerShotRangePreview
             : Mathf.Clamp(chance.Chance, 0f, 100f);
     }
 
-    private static BulletInstance ResolveLoadedBullet(
+    internal static bool TryResolveLoadedShot(
         IReadOnlyList<BulletInstance> loadedBullets,
-        int loadedBulletIndex)
+        int loadedBulletIndex,
+        int facingDirection,
+        out BulletInstance resolvedBullet,
+        out int shotDirection)
     {
-        BulletInstance resolved = null;
+        resolvedBullet = null;
+        shotDirection = facingDirection >= 0 ? 1 : -1;
+
+        if (loadedBullets == null
+            || loadedBulletIndex < 0
+            || loadedBulletIndex >= loadedBullets.Count)
+        {
+            return false;
+        }
+
+        BulletInstance previousResolvedBullet = null;
+        int resolvedFacingDirection = shotDirection;
 
         for (int index = loadedBullets.Count - 1;
              index >= loadedBulletIndex;
              index--)
         {
-            resolved = BulletEffectUtility.ResolveShot(
+            resolvedBullet = BulletEffectUtility.ResolveShot(
                 loadedBullets[index],
-                resolved);
+                previousResolvedBullet);
+
+            if (resolvedBullet == null)
+            {
+                return false;
+            }
+
+            if (index == loadedBulletIndex)
+            {
+                shotDirection = BulletEffectUtility.ResolveShotDirection(
+                    resolvedBullet,
+                    resolvedFacingDirection);
+                return true;
+            }
+
+            resolvedFacingDirection =
+                BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                    resolvedBullet,
+                    resolvedFacingDirection);
+            previousResolvedBullet = resolvedBullet;
         }
 
-        return resolved;
+        return false;
+    }
+
+    private bool TryResolveLoadedShot(
+        IReadOnlyList<BulletInstance> loadedBullets,
+        int loadedBulletIndex,
+        out BulletInstance resolvedBullet,
+        out int shotDirection)
+    {
+        int facingDirection = owner.localScale.x >= 0f ? 1 : -1;
+        return TryResolveLoadedShot(
+            loadedBullets,
+            loadedBulletIndex,
+            facingDirection,
+            out resolvedBullet,
+            out shotDirection);
     }
 
     private LineRenderer GetOrCreatePrimaryLine()

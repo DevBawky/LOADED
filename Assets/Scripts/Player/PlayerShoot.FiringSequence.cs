@@ -134,12 +134,6 @@ public partial class PlayerShoot
             set => owner.pendingSaverGold = value;
         }
 
-        private bool isFiring
-        {
-            get => owner.isFiring;
-            set => owner.isFiring = value;
-        }
-
         public FiringSequenceController(PlayerShoot owner)
         {
             this.owner = owner;
@@ -201,8 +195,6 @@ public partial class PlayerShoot
         {
             reservedDamageByEnemy.Clear();
             pendingEffectDefeats.Clear();
-            isFiring = true;
-            playerMove.SetShooting(true);
             bool firedAnyBullet = false;
             bool consumesTurn = false;
             BulletInstance previousResolvedBullet = null;
@@ -594,6 +586,17 @@ public partial class PlayerShoot
     
                     HandlePostBulletAbility(firedBullet, resolvedBullet);
                 }
+
+                int nextFacingDirection =
+                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                        resolvedBullet,
+                        horizontalDirection);
+
+                if (nextFacingDirection != horizontalDirection)
+                {
+                    yield return playerMove.RotateFromBullet();
+                    horizontalDirection = nextFacingDirection;
+                }
     
                 BulletEffectData saverEffect = FindSpecialEffect(
                     resolvedBullet,
@@ -642,8 +645,7 @@ public partial class PlayerShoot
             }
     
             bool shouldCompleteTurn = firedAnyBullet && consumesTurn;
-            isFiring = false;
-            playerMove.SetShooting(false);
+            owner.EndFiringSequence();
             combatFeedback?.EndCylinder();
             currentConsumedBullet = null;
             reservedDamageByEnemy.Clear();
@@ -999,6 +1001,11 @@ public partial class PlayerShoot
                 {
                     return true;
                 }
+
+                horizontalDirection =
+                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                        resolvedBullet,
+                        horizontalDirection);
     
                 previousResolvedBullet = resolvedBullet;
             }

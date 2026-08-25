@@ -130,8 +130,11 @@ public class StateManager : MonoBehaviour
             FindObjectsInactive.Include);
         combatFeedback ??= FindFirstObjectByType<CombatFeedbackController>(
             FindObjectsInactive.Include);
-        relicManager ??= FindFirstObjectByType<RelicManager>(
-            FindObjectsInactive.Include);
+        if (relicManager == null)
+        {
+            relicManager = FindFirstObjectByType<RelicManager>(
+                FindObjectsInactive.Include);
+        }
 
         if (relicManager == null)
         {
@@ -139,6 +142,7 @@ public class StateManager : MonoBehaviour
         }
 
         relicManager.BindPlayerMove(playerMove);
+        BindRelicInventoryViews();
 
         gameStartUI ??= FindFirstObjectByType<GameStartUI>(
             FindObjectsInactive.Include);
@@ -152,6 +156,21 @@ public class StateManager : MonoBehaviour
         if (playerMove != null)
         {
             playerMove.SetInputLocked(true);
+        }
+    }
+
+    private void BindRelicInventoryViews()
+    {
+        foreach (RelicInventoryUI inventory in FindObjectsByType<
+                     RelicInventoryUI>(
+                     FindObjectsInactive.Include,
+                     FindObjectsSortMode.None))
+        {
+            if (inventory != null
+                && inventory.gameObject.scene == gameObject.scene)
+            {
+                inventory.BindRelicManager(relicManager);
+            }
         }
     }
 

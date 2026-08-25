@@ -80,6 +80,18 @@ internal sealed class DuelClockState
         return result;
     }
 
+    public DuelClockAdvanceResult CommitUntilNextBeat(double addedProgress)
+    {
+        ValidateProgress(addedProgress, nameof(addedProgress));
+        double remainingProgress = CycleLength - progress;
+        DuelClockAdvanceResult result = Calculate(
+            Snapshot,
+            Math.Min(addedProgress, remainingProgress));
+        progress = result.After.Progress;
+        cumulativeBeats = result.After.CumulativeBeats;
+        return result;
+    }
+
     public double Reduce(double removedProgress)
     {
         ValidateProgress(removedProgress, nameof(removedProgress));

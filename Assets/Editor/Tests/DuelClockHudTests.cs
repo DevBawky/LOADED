@@ -173,6 +173,50 @@ public sealed class DuelClockHudFormattingTests
         Assert.That(frame.FillAmount, Is.EqualTo(0.75f));
         Assert.That(frame.BeatReached, Is.False);
     }
+
+    [Test]
+    public void CompletedShootBeatStaysFullUntilFiringEnds()
+    {
+        DuelClockFillAnimation animation = new DuelClockFillAnimation();
+        animation.Reset(0.8f, 0L);
+        animation.Observe(0f, 1L);
+        float currentFill = 0.8f;
+        bool beatReached = false;
+
+        for (int frameIndex = 0;
+             frameIndex < 120 && !beatReached;
+             frameIndex++)
+        {
+            DuelClockFillFrame frame = animation.Advance(
+                currentFill,
+                12f,
+                28f,
+                0.08f,
+                1f / 60f,
+                true);
+            currentFill = frame.FillAmount;
+            beatReached = frame.BeatReached;
+        }
+
+        DuelClockFillFrame heldFrame = animation.Advance(
+            currentFill,
+            12f,
+            28f,
+            0.08f,
+            1f,
+            true);
+        DuelClockFillFrame releasedFrame = animation.Advance(
+            heldFrame.FillAmount,
+            12f,
+            28f,
+            0.08f,
+            1f / 60f,
+            false);
+
+        Assert.That(beatReached, Is.True);
+        Assert.That(heldFrame.FillAmount, Is.EqualTo(1f));
+        Assert.That(releasedFrame.FillAmount, Is.Zero);
+    }
 }
 
 public sealed class WaveManagerEnemyProgressTests

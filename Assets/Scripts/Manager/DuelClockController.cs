@@ -17,6 +17,7 @@ public sealed class DuelClockController : MonoBehaviour
     private double paidActionProgress;
     private int enemyWaveCount = 5;
     private bool shootProgressCommitted;
+    private bool shootCompletedBeat;
     private bool playerActionPending;
     private bool paidActionProgressSuppressed;
     private bool subscribedToCombatEvents;
@@ -33,6 +34,9 @@ public sealed class DuelClockController : MonoBehaviour
         ? (int)(CumulativeBeats % enemyWaveCount)
         : 0;
     internal DuelClockSnapshot Snapshot => state.Snapshot;
+    internal bool ShouldHoldCompletedShootBeat =>
+        IsActive && shootCompletedBeat
+        && playerShoot != null && playerShoot.IsFiring;
 
     internal void Initialize(
         PlayerMove assignedPlayerMove,
@@ -172,7 +176,12 @@ public sealed class DuelClockController : MonoBehaviour
 
         if (IsActive && action == PlayerBehaviourAction.Shoot)
         {
-            shootProgressCommitted = TryCommitProgress(paidActionProgress);
+            long cumulativeBeatsBeforeShoot = CumulativeBeats;
+            shootProgressCommitted = TryCommitProgress(
+                paidActionProgress,
+                stopAtNextBeat: true);
+            shootCompletedBeat = shootProgressCommitted
+                && CumulativeBeats > cumulativeBeatsBeforeShoot;
         }
     }
 
@@ -226,13 +235,17 @@ public sealed class DuelClockController : MonoBehaviour
         return Math.Max(0d, multiplier);
     }
 
-    private bool TryCommitProgress(double addedProgress)
+    private bool TryCommitProgress(
+        double addedProgress,
+        bool stopAtNextBeat = false)
     {
         DuelClockAdvanceResult result;
 
         try
         {
-            result = state.Commit(addedProgress);
+            result = stopAtNextBeat
+                ? state.CommitUntilNextBeat(addedProgress)
+                : state.Commit(addedProgress);
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -382,6 +395,7 @@ public sealed class DuelClockController : MonoBehaviour
     private void ResetPlayerActionTracking()
     {
         shootProgressCommitted = false;
+        shootCompletedBeat = false;
         playerActionPending = false;
         paidActionProgressSuppressed = false;
     }

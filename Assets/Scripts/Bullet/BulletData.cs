@@ -59,7 +59,8 @@ public enum BulletEffectType
     Tracking = 50,
     Assassination = 51,
     FleshForBone = 52,
-    HighRoller = 53
+    HighRoller = 53,
+    RotatePlayer = 54
 }
 
 public enum BulletEffectTarget

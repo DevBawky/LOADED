@@ -95,7 +95,9 @@ public sealed class DuelClockHUD : MonoBehaviour
                 fillLerpSpeed,
                 beatFillLerpSpeed,
                 beatFullHoldDuration,
-                unscaledDeltaTime);
+                unscaledDeltaTime,
+                clockController != null
+                    && clockController.ShouldHoldCompletedShootBeat);
             progressFill.fillAmount = frame.FillAmount;
             UpdateProgressFillColor(frame.FillAmount);
             UpdateProgressText(frame.FillAmount);
@@ -614,7 +616,8 @@ internal sealed class DuelClockFillAnimation
         float normalSpeed,
         float beatSpeed,
         float fullHoldDuration,
-        float unscaledDeltaTime)
+        float unscaledDeltaTime,
+        bool holdCompletedBeat = false)
     {
         float current = Mathf.Clamp01(currentFill);
 
@@ -643,6 +646,15 @@ internal sealed class DuelClockFillAnimation
                 break;
 
             case FillPhase.HoldingBeat:
+                if (holdCompletedBeat)
+                {
+                    holdElapsed = Mathf.Max(
+                        holdElapsed,
+                        Mathf.Max(0f, fullHoldDuration));
+                    current = 1f;
+                    break;
+                }
+
                 holdElapsed += unscaledDeltaTime;
 
                 if (holdElapsed >= Mathf.Max(0f, fullHoldDuration))

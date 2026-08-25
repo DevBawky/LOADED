@@ -162,7 +162,15 @@ public class ShopManager : MonoBehaviour
     public bool IsRefreshing => isRefreshing;
     public bool CanSellInventoryItems => standaloneShopMode
         || stateManager != null
-        && stateManager.CurrentState == GameFlowState.Shop;
+        && IsInventoryItemSaleState(stateManager.CurrentState);
+
+    internal static bool IsInventoryItemSaleState(GameFlowState flowState)
+    {
+        return flowState == GameFlowState.Battle
+            || flowState == GameFlowState.Shop
+            || flowState == GameFlowState.Event
+            || flowState == GameFlowState.Treasure;
+    }
 
     public void ConfigureStandaloneShop(bool enabled = true)
     {
@@ -451,8 +459,8 @@ public class ShopManager : MonoBehaviour
         int paidRefreshCost = currentRefreshCost;
         GameStatistics.RecordGoldSpent(paidRefreshCost);
         currentRefreshCost = CalculateNextRefreshCost(currentRefreshCost);
-        StartCoroutine(RefreshOffersSequence());
         RefreshRefreshButton();
+        StartCoroutine(RefreshOffersSequence());
         return true;
     }
 

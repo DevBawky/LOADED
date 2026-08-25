@@ -206,9 +206,9 @@ MonoBehaviour:
     maximumSelections: 0
     selectionLimitReason: "\uB354 \uC774\uC0C1 \uC774 \uC120\uD0DD\uC9C0\uB97C \uACE0\uB97C
       \uC218 \uC5C6\uC2B5\uB2C8\uB2E4."
-  baseWeight: 7
+  baseWeight: 0
   oncePerRun: 1
   weightRules: []
-  normalBattleChancePercent: 10
-  eliteBattleChancePercent: 2
+  normalBattleChancePercent: 0
+  eliteBattleChancePercent: 0
   shopChancePercent: 0

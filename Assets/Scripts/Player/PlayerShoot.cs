@@ -299,12 +299,7 @@ public partial class PlayerShoot : MonoBehaviour
             playerMove.TurnCompleted -= HandleTurnCompleted;
         }
         ClearLoadedBulletDamagePreview();
-        isFiring = false;
-
-        if (playerMove != null)
-        {
-            playerMove.SetShooting(false);
-        }
+        EndFiringSequence();
 
         bulletFeedbackView?.Hide();
         reservedDamageByEnemy.Clear();
@@ -516,8 +511,21 @@ public partial class PlayerShoot : MonoBehaviour
         }
 
         ClearLoadedBulletDamagePreview();
-        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Shoot);
+        BeginFiringSequence();
         StartCoroutine(firingSequence.Execute(horizontalDirection));
+    }
+
+    internal void BeginFiringSequence()
+    {
+        isFiring = true;
+        playerMove.SetShooting(true);
+        BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Shoot);
+    }
+
+    internal void EndFiringSequence()
+    {
+        isFiring = false;
+        playerMove?.SetShooting(false);
     }
 
     public bool TryEjectLoadedBullet(int loadedBulletIndex)

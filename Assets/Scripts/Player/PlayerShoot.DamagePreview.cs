@@ -232,6 +232,10 @@ public partial class PlayerShoot
                     }
     
                     GrantPreviewLegacyStacks(firedBullet);
+                    horizontalDirection =
+                        BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                            resolvedBullet,
+                            horizontalDirection);
                     previousResolvedBullet = resolvedBullet;
                     previousPreFireState = currentPreFireState;
                     hasPreviousPreFireState = true;
@@ -469,6 +473,11 @@ public partial class PlayerShoot
                 {
                     GrantPreviewLegacyStacks(firedBullet);
                 }
+
+                horizontalDirection =
+                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                        resolvedBullet,
+                        horizontalDirection);
     
                 previousResolvedBullet = resolvedBullet;
                 previousPreFireState = currentPreFireState;
@@ -794,6 +803,11 @@ public partial class PlayerShoot
                 {
                     return true;
                 }
+
+                horizontalDirection =
+                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
+                        resolvedBullet,
+                        horizontalDirection);
     
                 previousResolvedBullet = resolvedBullet;
             }

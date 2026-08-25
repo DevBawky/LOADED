@@ -70,7 +70,11 @@ percentage points added per real-time second, so `4` fills an empty clock in
 charging while leaving paid-action progress available. All-battle authoring
 preserves intentionally tuned per-battle charge and interval values. Natural
 charging pauses for the full `PlayerShoot` firing sequence and resumes after
-the cylinder has finished resolving.
+the cylinder has finished resolving. Shooting progress stops at the next
+`100` boundary: it commits that Beat immediately but discards any excess
+paid-action progress. The HUD holds the completed meter at `100%` for the
+rest of the firing sequence, then returns to zero and follows natural charging
+without carryover.
 
 Set `Combat Pacing > Duel Clock Enemy Wave Count` to change the reinforcement
 interval and HUD denominator. A value of `5` displays completed Beats as
@@ -161,7 +165,9 @@ count without another defeat expires the combo.
 
 - Progress is always normalized to `[0, 100)`.
 - Reaching exactly `100` produces one beat and resets progress to `0`.
-- Overflow is preserved, and one commit may produce multiple beats.
+- Overflow is preserved for ordinary commits, and one commit may produce
+  multiple beats. Shooting is capped at the next Beat and discards its
+  overflow.
 - `Preview` performs the same calculation as `Commit` without changing state.
 - Progress inputs must be finite and nonnegative.
 - Restored progress is normalized, adding every completed cycle to the saved
@@ -223,10 +229,12 @@ count state.
 ## Enemy-cycle ordering
 
 `WaveManager` queues every triggered beat in one resolver coroutine. Shooting
-commits its paid-action progress when the valid firing sequence starts, then
-natural progress pauses until that sequence settles. Enemy execution waits for
-the player action to settle. New beats that arrive during enemy resolution
-also join that queue. In Duel Clock mode,
+locks the firing sequence before it commits paid-action progress. Therefore a
+Beat that reaches `100` from that shot may enter the resolver queue immediately,
+but enemy execution waits until the complete cylinder sequence settles. The
+ordering contract is player firing first, then queued enemy attacks. Natural
+progress pauses for the same firing interval. New beats that arrive during
+enemy resolution also join that queue. In Duel Clock mode,
 `IsResolvingTurn` remains true for save/exit settlement but no longer blocks a
 new player action after the action that preceded the beat has settled. Legacy
 mode retains its enemy-turn input lock. Tooltip, explicit input-lock, and reload

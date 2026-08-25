@@ -266,12 +266,12 @@ internal static class FirstRunGuideContent
             "Button | Manage Bullet"),
         new GuidePage(
             "인벤토리",
-            "왼쪽 인벤토리에서 <color=#FFD05A><b>보유 아이템</b></color>을 확인하세요.\n상점에서는 아이템을 <color=#FF5757><b>마우스 우클릭</b></color>해 판매할 수 있습니다.",
+            "왼쪽 인벤토리에서 <color=#FFD05A><b>보유 아이템</b></color>을 확인하세요.\n전투·상점·이벤트·보물에서는 아이템을 <color=#FF5757><b>마우스 우클릭</b></color>해 판매할 수 있습니다.",
             null,
             "Layout | Inventory"),
         new GuidePage(
             "새로고침",
-            "원하는 상품이 없다면 <color=#FFD05A><b>새로고침</b></color>하세요.\n새로고침할 때마다 다음 비용이 증가합니다.\n<color=#67E480><b>(현재는 데모 버전이므로 새로고침 비용이 무료입니다!)</b></color>",
+            "원하는 상품이 없다면 <color=#FFD05A><b>새로고침</b></color>하세요.\n새로고침할 때마다 다음 비용이 증가합니다.",
             null,
             "Button | Refresh"),
         new GuidePage(

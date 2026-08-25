@@ -276,6 +276,24 @@ public class PlayerMove : MonoBehaviour
         StartCoroutine(RotateRoutine(targetDirection));
     }
 
+    internal IEnumerator RotateFromBullet()
+    {
+        int targetDirection = transform.localScale.x >= 0f ? -1 : 1;
+
+        if (actorMotion != null)
+        {
+            yield return actorMotion.RotateToDirection(targetDirection);
+            yield break;
+        }
+
+        Vector3 localScale = transform.localScale;
+        float scaleMagnitude = Mathf.Max(
+            0.0001f,
+            Mathf.Abs(localScale.x));
+        localScale.x = scaleMagnitude * targetDirection;
+        transform.localScale = localScale;
+    }
+
     public void Wait()
     {
         if (!CanPerformAction())

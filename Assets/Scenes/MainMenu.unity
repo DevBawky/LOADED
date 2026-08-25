@@ -17885,6 +17885,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345002, type: 2}
   - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345001, type: 2}
   - {fileID: 11400000, guid: 2838b42f520519147b57cc3f93b5e3e0, type: 2}
+  - {fileID: 11400000, guid: 304f04b86c179a84a93fb9ab819456c5, type: 2}
   content: {fileID: 341642505}
   bulletLayoutPrefab: {fileID: 3727325486795848461, guid: 58e3f88cc9ea5134db1026db5b40f702, type: 3}
   bulletButtonPrefab: {fileID: 5713783274229849583, guid: 756c5bbecfce4db42a55a5c28fccc531, type: 3}
@@ -18500,7 +18501,7 @@ PrefabInstance:
     - target: {fileID: 3624594527708742573, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
       propertyPath: m_Material
       value: 
-      objectReference: {fileID: 0}
+      objectReference: {fileID: 2100000, guid: 8a0692127aea7f3448e390e7336ddcaf, type: 2}
     - target: {fileID: 6980026793849441214, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
       propertyPath: m_Name
       value: Button | Game Info
