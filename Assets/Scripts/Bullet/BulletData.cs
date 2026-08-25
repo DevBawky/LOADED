@@ -519,17 +519,18 @@ public class BulletData : ScriptableObject
     {
         return bulletType switch
         {
-            BulletType.Ghost => "장전 시 DUEL CLOCK 충전 없음",
+            BulletType.Ghost =>
+                "장전 시 DUEL CLOCK을 충전하지 않습니다.",
             BulletType.Sniper =>
-                "관통 확률에 따라 뒤쪽 적 추가 공격",
+                "관통 확률에 따라 뒤쪽 적을 추가로 공격합니다.",
             BulletType.Storm =>
-                "방향과 관계없이 생존 적 전체 공격",
+                "방향과 관계없이 생존한 모든 적을 공격합니다.",
             BulletType.Shotgun =>
-                $"탄환 1발 소모, 한 번에 {GetShotCount(level)}발 발사",
+                $"탄환 1발을 소모하여 한 번에 {GetShotCount(level)}발 발사합니다.",
             BulletType.Piercing =>
-                "관통 횟수·확률에 따라 뒤쪽 적 추가 공격",
+                "관통 횟수와 확률에 따라 뒤쪽 적을 추가로 공격합니다.",
             BulletType.Debuff =>
-                "독·기절·표식·약화 부여 또는 활용",
+                "독·기절·표식·약화를 부여하거나 활용합니다.",
             _ => string.Empty
         };
     }
@@ -637,18 +638,6 @@ public class BulletData : ScriptableObject
         if (!string.IsNullOrWhiteSpace(levelDescription))
         {
             builder.AppendLine(levelDescription);
-            builder.AppendLine();
-        }
-
-        string effectDescription = BulletEffectDescriptionFormatter.Build(
-            GetEffects(level),
-            GetConditionalEvents(level),
-            GetPenetrationChances(level));
-
-        if (!string.IsNullOrEmpty(effectDescription))
-        {
-            builder.AppendLine("<color=#B8C6D9>효과 상세</color>");
-            builder.AppendLine(effectDescription);
             builder.AppendLine();
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -19,6 +20,15 @@ internal sealed class SoundtrackDirector : IDisposable
     public void RefreshForScene(Scene scene)
     {
         soundManager.UnlockGameOverBgm();
+        SoundClipLibrary library = soundManager.ClipLibrary;
+
+        if (TryGetScenePlaylist(library, scene.name, out var scenePlaylist))
+        {
+            ObserveStateManager(null);
+            soundManager.PlayPlaylist(scenePlaylist);
+            return;
+        }
+
         ObserveStateManager(UnityEngine.Object.FindFirstObjectByType<StateManager>(
             FindObjectsInactive.Include));
 
@@ -28,12 +38,7 @@ internal sealed class SoundtrackDirector : IDisposable
             return;
         }
 
-        SoundClipLibrary library = soundManager.ClipLibrary;
-        soundManager.PlayPlaylist(scene.name.IndexOf(
-            "MainMenu",
-            StringComparison.OrdinalIgnoreCase) >= 0
-                ? library?.MainMenuBgm
-                : null);
+        soundManager.PlayPlaylist(null);
     }
 
     public void Dispose()
@@ -96,11 +101,79 @@ internal sealed class SoundtrackDirector : IDisposable
         }
 
         BattleData battle = observedStateManager.CurrentBattle;
-        soundManager.PlayPlaylist(battle != null && battle.IsBoss
-            ? library.BossBgm
-            : library.GetBattleBgm(
-                observedStateManager.CurrentStage?.StageId,
-                observedStateManager.CurrentBattleIndex,
-                battle?.BattleId));
+        soundManager.PlayPlaylist(battle == null
+            ? null
+            : ResolveBattlePlaylist(library, battle.BattleType));
+    }
+
+    internal static IReadOnlyList<AudioClip> ResolveBattlePlaylist(
+        SoundClipLibrary library,
+        BattleType battleType)
+    {
+        if (library == null)
+        {
+            return null;
+        }
+
+        return battleType switch
+        {
+            BattleType.Boss => library.BossBgm,
+            BattleType.Elite => library.EliteBattleBgm,
+            _ => library.NormalBattleBgm
+        };
+    }
+
+    private static bool TryGetScenePlaylist(
+        SoundClipLibrary library,
+        string sceneName,
+        out IReadOnlyList<AudioClip> playlist)
+    {
+        playlist = null;
+        if (library == null)
+        {
+            return false;
+        }
+
+        if (sceneName.IndexOf(
+                "MainMenu",
+                StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            playlist = library.MainMenuBgm;
+            return true;
+        }
+
+        if (UsesNodeMapBgm(sceneName))
+        {
+            playlist = library.NodeMapBgm;
+            return true;
+        }
+
+        if (UsesEventAndTreasureBgm(sceneName))
+        {
+            playlist = library.EventAndTreasureBgm;
+            return true;
+        }
+
+        return false;
+    }
+
+    internal static bool UsesNodeMapBgm(string sceneName)
+    {
+        return string.Equals(
+            sceneName,
+            "NodeMap",
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static bool UsesEventAndTreasureBgm(string sceneName)
+    {
+        return string.Equals(
+                sceneName,
+                "Event",
+                StringComparison.OrdinalIgnoreCase)
+            || string.Equals(
+                sceneName,
+                "Treasure",
+                StringComparison.OrdinalIgnoreCase);
     }
 }

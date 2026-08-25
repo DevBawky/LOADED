@@ -3,16 +3,15 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
+using UnityEngine;
 
 public sealed class BulletEffectDescriptionFormatterTests
 {
     private const string BulletAssetRoot = "Assets/Scripts/Bullet/SO";
 
     [Test]
-    public void EveryAuthoredEffectIsIncludedInDetailedDescription()
+    public void EveryDetailedDescriptionUsesSerializedLevelDescriptionAndStats()
     {
-        HashSet<BulletEffectType> authoredTypes =
-            new HashSet<BulletEffectType>();
         string[] guids = AssetDatabase.FindAssets(
             "t:BulletData",
             new[] { BulletAssetRoot });
@@ -26,94 +25,120 @@ public sealed class BulletEffectDescriptionFormatterTests
 
             Assert.That(bullet, Is.Not.Null, path);
 
+            SerializedObject serialized = new SerializedObject(bullet);
+
             for (int level = 0;
                  level <= BulletData.MaximumUpgradeLevel;
                  level++)
             {
-                IReadOnlyList<BulletEffectData> effects =
-                    bullet.GetEffects(level);
-                IReadOnlyList<BulletConditionalEventData> conditionalEvents =
-                    bullet.GetConditionalEvents(level);
-                IReadOnlyList<PenetrationChanceData> penetrationChances =
-                    bullet.GetPenetrationChances(level);
-                string generatedDescription =
-                    BulletEffectDescriptionFormatter.Build(
-                        effects,
-                        conditionalEvents,
-                        penetrationChances);
-
-                CollectAndAssertDescriptions(
-                    authoredTypes,
-                    effects,
-                    generatedDescription,
-                    path,
+                string expectedDescription = GetSerializedDescription(
+                    serialized,
                     level);
+                string tooltip = StripRichText(
+                    bullet.GetDetailedDescription(level));
 
-                foreach (BulletConditionalEventData conditionalEvent
-                         in conditionalEvents)
-                {
-                    if (conditionalEvent != null)
-                    {
-                        CollectAndAssertDescriptions(
-                            authoredTypes,
-                            conditionalEvent.Events,
-                            generatedDescription,
-                            path,
-                            level);
-                    }
-                }
-
-                if (!string.IsNullOrEmpty(generatedDescription))
-                {
-                    string tooltip = StripRichText(
-                        bullet.GetDetailedDescription(level));
-                    Assert.That(
-                        tooltip,
-                        Does.Contain(StripRichText(generatedDescription)),
-                        $"{path} level {level}");
-                }
+                Assert.That(
+                    bullet.GetDescription(level),
+                    Is.EqualTo(expectedDescription),
+                    $"{path} level {level}");
+                Assert.That(
+                    expectedDescription,
+                    Is.Not.Empty,
+                    $"{path} level {level}");
+                Assert.That(
+                    tooltip,
+                    Does.StartWith(
+                        NormalizeNewlines(expectedDescription)
+                        + "\n\n피해:"),
+                    $"{path} level {level}");
+                Assert.That(
+                    tooltip,
+                    Does.Not.Contain("효과 상세"),
+                    $"{path} level {level}");
+                Assert.That(
+                    tooltip,
+                    Does.Contain("유효 범위:"),
+                    $"{path} level {level}");
+                Assert.That(
+                    tooltip,
+                    Does.Contain("치명타 확률:"),
+                    $"{path} level {level}");
+                Assert.That(
+                    tooltip,
+                    Does.Contain("치명타 배율:"),
+                    $"{path} level {level}");
             }
         }
-
-        CollectionAssert.AreEquivalent(
-            (BulletEffectType[])Enum.GetValues(typeof(BulletEffectType)),
-            authoredTypes);
     }
 
     [Test]
-    public void PenetrationDescriptionListsEveryStepChance()
+    public void GradeSynergyBulletsUseAuthoredKoreanTerminology()
     {
-        BulletData judgment = Load(
-            "Assets/Scripts/Bullet/SO/Ace/Judgment.asset");
+        BulletData massProduced = Load(
+            "Assets/Scripts/Bullet/SO/Rare/Mass Produced.asset");
+        BulletData masterpiece = Load(
+            "Assets/Scripts/Bullet/SO/Ace/Masterpiece.asset");
 
-        string description = StripRichText(
-            judgment.GetDetailedDescription(3));
+        for (int level = 0;
+             level <= BulletData.MaximumUpgradeLevel;
+             level++)
+        {
+            string massProducedDescription =
+                massProduced.GetDescription(level);
+            string masterpieceDescription =
+                masterpiece.GetDescription(level);
+            string massProducedTooltip = StripRichText(
+                massProduced.GetDetailedDescription(level));
+            string masterpieceTooltip = StripRichText(
+                masterpiece.GetDetailedDescription(level));
 
-        Assert.That(
-            description,
-            Does.Contain("관통: 최대 2회 (1차 75% / 2차 50%)"));
+            Assert.That(
+                massProducedDescription,
+                Does.Contain("일반·레어 탄환"),
+                $"양산탄 level {level}");
+            Assert.That(
+                masterpieceDescription,
+                Does.Contain("에이스·레전드리 탄환"),
+                $"명품탄 level {level}");
+            Assert.That(
+                massProducedTooltip,
+                Does.Not.Contain("매스프로듀스"),
+                $"양산탄 level {level}");
+            Assert.That(
+                masterpieceTooltip,
+                Does.Not.Contain("마스터피스 브랜드"),
+                $"명품탄 level {level}");
+        }
     }
 
     [Test]
-    public void DebuffDescriptionUsesActualTargetStacksAndChance()
+    public void BulletTypeDescriptionsUseFormalSentenceEndings()
     {
-        BulletData venom = Load(
-            "Assets/Scripts/Bullet/SO/Rare/Venom.asset");
-        BulletData weakness = Load(
-            "Assets/Scripts/Bullet/SO/Rare/Weakness.asset");
+        foreach (BulletType bulletType in Enum.GetValues(typeof(BulletType)))
+        {
+            if (bulletType == BulletType.Normal)
+            {
+                continue;
+            }
 
-        string venomDescription = StripRichText(
-            venom.GetDetailedDescription(1));
-        string weaknessDescription = StripRichText(
-            weakness.GetDetailedDescription(3));
+            BulletData bullet = ScriptableObject.CreateInstance<BulletData>();
+            SerializedObject serialized = new SerializedObject(bullet);
+            serialized.FindProperty("bulletType").enumValueIndex =
+                (int)bulletType;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
 
-        Assert.That(
-            venomDescription,
-            Does.Contain("명중한 적에게 독 +5"));
-        Assert.That(venomDescription, Does.Contain("발동 70%"));
-        Assert.That(
-            weaknessDescription,
-            Does.Contain("명중한 적에게 약화 +6"));
+            try
+            {
+                Assert.That(
+                    bullet.GetBulletTypeDescription(0),
+                    Does.EndWith("합니다."),
+                    bulletType.ToString());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(bullet);
+            }
+        }
     }
 
     [Test]
@@ -152,32 +177,23 @@ public sealed class BulletEffectDescriptionFormatterTests
         }
     }
 
-    private static void CollectAndAssertDescriptions(
-        HashSet<BulletEffectType> authoredTypes,
-        IReadOnlyList<BulletEffectData> effects,
-        string generatedDescription,
-        string path,
+    private static string GetSerializedDescription(
+        SerializedObject bullet,
         int level)
     {
-        foreach (BulletEffectData effect in effects)
+        if (level <= 0)
         {
-            if (effect == null)
-            {
-                continue;
-            }
-
-            authoredTypes.Add(effect.EffectType);
-            string effectDescription =
-                BulletEffectDescriptionFormatter.DescribeEffect(effect);
-            Assert.That(
-                effectDescription,
-                Is.Not.Empty,
-                $"{path} level {level}: {effect.EffectType}");
-            Assert.That(
-                generatedDescription,
-                Does.Contain(effectDescription),
-                $"{path} level {level}: {effect.EffectType}");
+            return bullet.FindProperty("description").stringValue;
         }
+
+        SerializedProperty levels = bullet.FindProperty("upgradeLevels");
+        Assert.That(
+            levels.arraySize,
+            Is.GreaterThanOrEqualTo(level),
+            bullet.targetObject.name);
+        return levels.GetArrayElementAtIndex(level - 1)
+            .FindPropertyRelative("description")
+            .stringValue;
     }
 
     private static void AssertPlayerOnlyTargets(
@@ -214,6 +230,12 @@ public sealed class BulletEffectDescriptionFormatterTests
 
     private static string StripRichText(string value)
     {
-        return Regex.Replace(value ?? string.Empty, "<[^>]+>", string.Empty);
+        return NormalizeNewlines(
+            Regex.Replace(value ?? string.Empty, "<[^>]+>", string.Empty));
+    }
+
+    private static string NormalizeNewlines(string value)
+    {
+        return (value ?? string.Empty).Replace("\r\n", "\n");
     }
 }

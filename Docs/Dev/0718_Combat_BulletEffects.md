@@ -154,10 +154,12 @@ EffectApplied = 효과 적중 시
 
 enum을 ScriptableObject에 저장할 때는 기존 정수 값을 고정하고 새 항목을 마지막에 추가해야 에셋 마이그레이션 위험을 줄일 수 있다.
 
-## 2026-08-25 탄환 효과 상세 설명 동기화
+## 2026-08-25 탄환 설명 소유권
 
-- 탄환 툴팁의 `효과 상세`은 현재 강화 레벨의 `Effects`, `Conditional Events`, `Penetration Chances`에서 자동 생성한다.
-- 직접 효과와 조건부 효과는 대상, 스택, 발동 확률과 효과별 핵심 수치를 표시한다. 독·기절·표식·약화는 실제 상태 규칙까지 함께 안내한다.
-- 관통은 최대 횟수와 단계별 확률을 모두 표시한다. 모든 단계의 확률이 같으면 `각 N%`, 서로 다르면 `1차 N% / 2차 M%` 형식으로 표시한다.
-- 새 `BulletEffectType`을 추가할 때는 실행 경로와 함께 `BulletEffectDescriptionFormatter`의 설명 및 전체 에셋 검사 테스트를 갱신해야 한다.
+- 탄환 툴팁의 설명 본문은 `BulletData.description`과 현재 강화 단계의 `BulletLevelData.Description`을 작성 원본으로 사용한다.
+- 레벨 0은 `BulletData.description`을 사용하고 레벨 1~3은 대응하는 `upgradeLevels` 항목의 `Description`을 사용한다.
+- `Effects`, `Conditional Events`, `Penetration Chances`에서 별도의 사용자 노출 문장을 합성하지 않는다. 효과 수치가 바뀌면 같은 강화 단계의 `Description`도 함께 갱신한다.
+- 작성된 설명 아래에는 피해·사거리·치명타 수치와 현재 누적 정보를 표시한다.
+- 양산탄은 일반·레어 등급 보유 수를 기준으로 하고 명품탄은 에이스·레전드리 등급 보유 수를 기준으로 한다. enum이나 에셋 파일의 영문 이름을 사용자 노출 용어로 번역하지 않는다.
+- 독·기절·표식·약화의 공통 규칙은 별도의 디버프 툴팁이 안내한다.
 - 플레이어 전용 효과인 흡혈, 최대 체력 증가, 탄환 파괴, 골드 획득은 모든 에셋에서 `FiringPlayer` 대상을 사용해야 한다.

@@ -22,45 +22,38 @@ MonoBehaviour:
   mainMenuBgm:
   - {fileID: 8300000, guid: 7ffc2268029963e4b9ad7251e98ae581, type: 3}
   - {fileID: 8300000, guid: a055a8da2b1a5db46bfd70868bac2464, type: 3}
+  nodeMapBgm:
+  - {fileID: 8300000, guid: 2d4316941e4306448a10e8c8a2ff2ef2, type: 3}
+  - {fileID: 8300000, guid: 76528a16bfa45f54b89bb89ccbd11ef0, type: 3}
   shopBgm:
   - {fileID: 8300000, guid: 9eed58b59abcdd14a9f3b208a4c9445b, type: 3}
   - {fileID: 8300000, guid: 2e26ab9176844994aa648313ef23a61c, type: 3}
+  eventAndTreasureBgm:
+  - {fileID: 8300000, guid: cec98f3201961084984362fd46214e45, type: 3}
+  - {fileID: 8300000, guid: 6a5b95576c0e15447a6f2c7a4869089a, type: 3}
+  - {fileID: 8300000, guid: 90436ab868c06eb4fa83d41dd0d499f0, type: 3}
+  - {fileID: 8300000, guid: 660ee235a613d5245a2d320b6d8de2fc, type: 3}
   bossBgm:
   - {fileID: 8300000, guid: b9cd7576958f444469c4ea4fe08bd8c8, type: 3}
   - {fileID: 8300000, guid: 1fa8511452e414f49884ff881c5d7b79, type: 3}
   gameOverBgm:
   - {fileID: 8300000, guid: 43df88b5634da27408a2d1be0fe1f986, type: 3}
-  battleBgm:
-  - stageId: stage_1
-    battleIndex: 0
-    battleId: stage_1_battle_01
-    clips:
-    - {fileID: 8300000, guid: 12bfe66bebee7db408bda4eb9a49baae, type: 3}
-    - {fileID: 8300000, guid: b476d2f1b07b4b64ca66857c3687235f, type: 3}
-  - stageId: stage_1
-    battleIndex: 1
-    battleId: stage_1_battle_02
-    clips:
-    - {fileID: 8300000, guid: 538af94ddc3b60f4c8b308b34baf082f, type: 3}
-    - {fileID: 8300000, guid: 71231d2f604457545ab08caded11fd29, type: 3}
-  - stageId: stage_1
-    battleIndex: 2
-    battleId: stage_1_battle_03
-    clips:
-    - {fileID: 8300000, guid: b6caecf366838574881e1a248a00dff0, type: 3}
-    - {fileID: 8300000, guid: 4150eeab689926b4187eaef6fcd1b88e, type: 3}
-  - stageId: stage_1
-    battleIndex: 3
-    battleId: stage_1_battle_04
-    clips:
-    - {fileID: 8300000, guid: 825c7d96644187a4eb3cf6cd5d360079, type: 3}
-    - {fileID: 8300000, guid: c96475fe9df1eb4469138567daa6b1fd, type: 3}
-  - stageId: stage_1
-    battleIndex: 4
-    battleId: stage_1_battle_05
-    clips:
-    - {fileID: 8300000, guid: 55b3c2a7b98da314d823bb88cae96396, type: 3}
-    - {fileID: 8300000, guid: 333a3d08a5c70ac4cb1314e6a088e6f4, type: 3}
+  normalBattleBgm:
+  - {fileID: 8300000, guid: 12bfe66bebee7db408bda4eb9a49baae, type: 3}
+  - {fileID: 8300000, guid: b476d2f1b07b4b64ca66857c3687235f, type: 3}
+  - {fileID: 8300000, guid: 538af94ddc3b60f4c8b308b34baf082f, type: 3}
+  - {fileID: 8300000, guid: 71231d2f604457545ab08caded11fd29, type: 3}
+  - {fileID: 8300000, guid: b6caecf366838574881e1a248a00dff0, type: 3}
+  - {fileID: 8300000, guid: 4150eeab689926b4187eaef6fcd1b88e, type: 3}
+  - {fileID: 8300000, guid: 55b3c2a7b98da314d823bb88cae96396, type: 3}
+  - {fileID: 8300000, guid: 333a3d08a5c70ac4cb1314e6a088e6f4, type: 3}
+  - {fileID: 8300000, guid: 825c7d96644187a4eb3cf6cd5d360079, type: 3}
+  - {fileID: 8300000, guid: c96475fe9df1eb4469138567daa6b1fd, type: 3}
+  eliteBattleBgm:
+  - {fileID: 8300000, guid: 91236b237de9dc840b2d5d5b2bfed579, type: 3}
+  - {fileID: 8300000, guid: ab6d397da76f0324692fd1aea70cab11, type: 3}
+  - {fileID: 8300000, guid: 20c68d356039cb340abdd691f6d8ed2e, type: 3}
+  - {fileID: 8300000, guid: 852d724ebded5b944bd0b054985a8db1, type: 3}
   sfx:
   - id: SFX_Player_Reload
     category: 1

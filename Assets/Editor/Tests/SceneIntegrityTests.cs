@@ -11,6 +11,60 @@ using UnityEngine.UI;
 public sealed class SceneIntegrityTests
 {
     [Test]
+    public void SoundClipLibrary_SeparatesNormalAndEliteBattlePools()
+    {
+        SoundClipLibrary library = AssetDatabase.LoadAssetAtPath<
+            SoundClipLibrary>(
+            "Assets/Resources/Sound/SoundClipLibrary.asset");
+
+        Assert.That(library, Is.Not.Null);
+        Assert.That(library.NormalBattleBgm, Is.Not.Empty);
+        Assert.That(library.NormalBattleBgm.All(clip => clip != null), Is.True);
+        Assert.That(library.EliteBattleBgm, Is.Not.Empty);
+        Assert.That(library.EliteBattleBgm.All(clip => clip != null), Is.True);
+        Assert.That(library.NodeMapBgm, Has.Count.EqualTo(2));
+        Assert.That(library.EventAndTreasureBgm, Is.Not.Empty);
+        Assert.That(
+            library.EventAndTreasureBgm.All(clip => clip != null),
+            Is.True);
+        Assert.That(
+            SoundtrackDirector.ResolveBattlePlaylist(
+                library,
+                BattleType.Normal),
+            Is.SameAs(library.NormalBattleBgm));
+        Assert.That(
+            SoundtrackDirector.ResolveBattlePlaylist(
+                library,
+                BattleType.Elite),
+            Is.SameAs(library.EliteBattleBgm));
+    }
+
+    [TestCase("NodeMap", true)]
+    [TestCase("nodemap", true)]
+    [TestCase("Battle", false)]
+    public void NodeMapSceneUsesDedicatedSoundtrackPool(
+        string sceneName,
+        bool expected)
+    {
+        Assert.That(
+            SoundtrackDirector.UsesNodeMapBgm(sceneName),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase("Event", true)]
+    [TestCase("Treasure", true)]
+    [TestCase("Battle", false)]
+    [TestCase("Shop", false)]
+    public void EventAndTreasureScenesShareSoundtrackPool(
+        string sceneName,
+        bool expected)
+    {
+        Assert.That(
+            SoundtrackDirector.UsesEventAndTreasureBgm(sceneName),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
     public void StageOneBattleList_ContainsOnlyValidAuthoredBattles()
     {
         StageData stage = AssetDatabase.LoadAssetAtPath<StageData>(

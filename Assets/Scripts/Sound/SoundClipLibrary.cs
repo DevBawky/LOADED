@@ -4,19 +4,6 @@ using UnityEngine;
 using UnityEngine.Audio;
 
 [Serializable]
-public sealed class BattleBgmPlaylist
-{
-    [SerializeField] private string stageId;
-    [Min(0)] [SerializeField] private int battleIndex;
-    [SerializeField] private string battleId;
-    [SerializeField] private List<AudioClip> clips = new List<AudioClip>();
-    public string BattleId => battleId;
-    public string StageId => stageId;
-    public int BattleIndex => Mathf.Max(0, battleIndex);
-    public IReadOnlyList<AudioClip> Clips => clips;
-}
-
-[Serializable]
 public enum SfxCategory
 {
     General = 0,
@@ -91,10 +78,16 @@ public sealed class SoundClipLibrary : ScriptableObject
     [Header("BGM")]
     [Range(0f, 1f)] [SerializeField] private float bgmVolume = 1f;
     [SerializeField] private List<AudioClip> mainMenuBgm = new List<AudioClip>();
+    [SerializeField] private List<AudioClip> nodeMapBgm = new List<AudioClip>();
     [SerializeField] private List<AudioClip> shopBgm = new List<AudioClip>();
+    [SerializeField] private List<AudioClip> eventAndTreasureBgm =
+        new List<AudioClip>();
     [SerializeField] private List<AudioClip> bossBgm = new List<AudioClip>();
     [SerializeField] private List<AudioClip> gameOverBgm = new List<AudioClip>();
-    [SerializeField] private List<BattleBgmPlaylist> battleBgm = new List<BattleBgmPlaylist>();
+    [SerializeField] private List<AudioClip> normalBattleBgm =
+        new List<AudioClip>();
+    [SerializeField] private List<AudioClip> eliteBattleBgm =
+        new List<AudioClip>();
 
     [Header("SFX")]
     [Tooltip("Animation Event에서는 이 목록의 id를 PlaySfx(string)에 전달합니다.")]
@@ -104,40 +97,14 @@ public sealed class SoundClipLibrary : ScriptableObject
     public AudioMixerGroup SfxMixerGroup => sfxMixerGroup;
     public float BgmVolume => Mathf.Clamp01(bgmVolume);
     public IReadOnlyList<AudioClip> MainMenuBgm => mainMenuBgm;
+    public IReadOnlyList<AudioClip> NodeMapBgm => nodeMapBgm;
     public IReadOnlyList<AudioClip> ShopBgm => shopBgm;
+    public IReadOnlyList<AudioClip> EventAndTreasureBgm =>
+        eventAndTreasureBgm;
     public IReadOnlyList<AudioClip> BossBgm => bossBgm;
     public IReadOnlyList<AudioClip> GameOverBgm => gameOverBgm;
-    public IReadOnlyList<AudioClip> GetBattleBgm(
-        string stageId,
-        int battleIndex,
-        string battleId)
-    {
-        if (battleBgm != null)
-        {
-            foreach (BattleBgmPlaylist playlist in battleBgm)
-            {
-                if (playlist != null
-                    && string.Equals(playlist.StageId, stageId,
-                        StringComparison.OrdinalIgnoreCase)
-                    && playlist.BattleIndex == battleIndex)
-                {
-                    return playlist.Clips;
-                }
-            }
-
-            foreach (BattleBgmPlaylist playlist in battleBgm)
-            {
-                if (playlist != null && !string.IsNullOrWhiteSpace(battleId)
-                    && string.Equals(playlist.BattleId, battleId,
-                        StringComparison.OrdinalIgnoreCase))
-                {
-                    return playlist.Clips;
-                }
-            }
-        }
-
-        return Array.Empty<AudioClip>();
-    }
+    public IReadOnlyList<AudioClip> NormalBattleBgm => normalBattleBgm;
+    public IReadOnlyList<AudioClip> EliteBattleBgm => eliteBattleBgm;
 
     public AudioClip GetSfx(string id)
     {
