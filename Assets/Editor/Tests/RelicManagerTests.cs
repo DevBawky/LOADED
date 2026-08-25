@@ -256,7 +256,7 @@ public sealed class RelicManagerTests
 
             RelicTooltipUI tooltip = RelicTooltipUI.GetOrCreate(inventoryUi);
             Assert.That(tooltip, Is.Not.Null);
-            tooltip.Show(relicData, Vector2.zero, "remove");
+            tooltip.Show(relicData, Vector2.zero, true);
             tooltip.SetRemovalProgress(relicData, 0.5f);
 
             UnityEngine.UI.Image gauge = FindNamedComponent<
@@ -342,11 +342,40 @@ public sealed class RelicManagerTests
     }
 
     [Test]
-    public void RelicRemovalGuide_ExplainsTwoSecondRightClickHold()
+    public void RelicRemovalGuide_PreservesAuthoredTextAtRuntime()
     {
-        Assert.That(
-            RelicInventoryUI.FormatManualRemovalGuideText(2f),
-            Is.EqualTo("우클릭 2초간 누르기: 유물 제거"));
+        RelicData relicData = CreateRelic("authored-removal-guide-relic");
+        GameObject canvasPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Canvas.prefab");
+        Assert.That(canvasPrefab, Is.Not.Null);
+        GameObject canvasInstance = Object.Instantiate(canvasPrefab);
+
+        try
+        {
+            RelicInventoryUI inventoryUi = canvasInstance
+                .GetComponentInChildren<RelicInventoryUI>(true);
+            Assert.That(inventoryUi, Is.Not.Null);
+            RelicTooltipUI tooltip = RelicTooltipUI.GetOrCreate(inventoryUi);
+            Assert.That(tooltip, Is.Not.Null);
+            TMPro.TMP_Text guide = FindNamedComponent<TMPro.TMP_Text>(
+                tooltip.transform,
+                "Text | Remove");
+            Assert.That(guide, Is.Not.Null);
+            string authoredText = guide.text;
+
+            tooltip.Show(relicData, Vector2.zero, true);
+            Assert.That(guide.text, Is.EqualTo(authoredText));
+            Assert.That(guide.gameObject.activeInHierarchy, Is.True);
+
+            tooltip.Hide();
+            tooltip.Show(relicData, Vector2.zero);
+            Assert.That(guide.text, Is.EqualTo(authoredText));
+            Assert.That(guide.gameObject.activeInHierarchy, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasInstance);
+        }
     }
 
     [Test]

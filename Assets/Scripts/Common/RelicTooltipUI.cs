@@ -100,7 +100,7 @@ public sealed class RelicTooltipUI : MonoBehaviour
     public void Show(
         RelicData relic,
         Vector2 pointerScreenPosition,
-        string guide = null)
+        bool showRemovalGuide = false)
     {
         if (relic == null)
         {
@@ -121,11 +121,9 @@ public sealed class RelicTooltipUI : MonoBehaviour
             string.IsNullOrWhiteSpace(effect) ? relic.Description : effect);
         if (guideText != null)
         {
-            bool showGuide = !string.IsNullOrWhiteSpace(guide);
-            guideText.text = showGuide ? guide : string.Empty;
-            guideText.gameObject.SetActive(showGuide);
-            SetRemovalProgressVisible(showGuide);
+            guideText.gameObject.SetActive(showRemovalGuide);
         }
+        SetRemovalProgressVisible(showRemovalGuide);
         SetRemovalProgress(relic, 0f);
         panel.gameObject.SetActive(true);
         panel.SetAsLastSibling();

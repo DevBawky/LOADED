@@ -687,10 +687,10 @@ public sealed class RelicInventoryUI : MonoBehaviour
         }
 
         hoveredRelic = relic;
-        string guideText = CanManuallyRemoveRelic(relic)
-            ? FormatManualRemovalGuideText(ManualRemovalHoldDuration)
-            : string.Empty;
-        tooltip.Show(relic.Data, pointerPosition, guideText);
+        tooltip.Show(
+            relic.Data,
+            pointerPosition,
+            CanManuallyRemoveRelic(relic));
     }
 
     internal void MoveTooltip(RelicInstance relic, Vector2 pointerPosition)
@@ -833,17 +833,6 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
         HideTooltip(relic);
         return relicManager.TryRemove(relic, RelicRemovalReason.Removed);
-    }
-
-    internal static string FormatManualRemovalGuideText(float holdDuration)
-    {
-        float seconds = float.IsNaN(holdDuration)
-            || float.IsInfinity(holdDuration)
-                ? 2f
-                : Mathf.Max(0.1f, holdDuration);
-        return "우클릭 "
-            + seconds.ToString("0.#", CultureInfo.InvariantCulture)
-            + "초간 누르기: 유물 제거";
     }
 
     private void ResetEventSelection()
