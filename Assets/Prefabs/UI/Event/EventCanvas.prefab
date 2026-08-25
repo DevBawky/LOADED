@@ -15983,7 +15983,7 @@ MonoBehaviour:
   lowerRelicContainer: {fileID: 0}
   relicPrefab: {fileID: 7365361337853700759, guid: ef20bd005aaf12e42bc589d1c679fa42, type: 3}
   relicManager: {fileID: 0}
-  manualRemovalHoldDuration: 2
+  manualRemovalHoldDuration: 1
   activationDuration: 0.48
   activationWaveScale: 1.65
   attackActivationColor: {r: 1, g: 0.35, b: 0.08, a: 1}

@@ -307,7 +307,7 @@ public sealed class RelicManagerTests
             icon.OnPointerEnter(pointer);
             icon.OnPointerDown(pointer);
 
-            Assert.That(icon.AdvanceRemovalHold(1f), Is.False);
+            Assert.That(icon.AdvanceRemovalHold(0.5f), Is.False);
             UnityEngine.UI.Image gauge = FindNamedComponent<
                 UnityEngine.UI.Image>(
                 canvasInstance.transform,
@@ -316,7 +316,7 @@ public sealed class RelicManagerTests
             Assert.That(gauge.fillAmount, Is.EqualTo(0.5f));
             Assert.That(manager.Count, Is.EqualTo(1));
 
-            Assert.That(icon.AdvanceRemovalHold(1f), Is.True);
+            Assert.That(icon.AdvanceRemovalHold(0.5f), Is.True);
             Assert.That(manager.Count, Is.EqualTo(0));
         }
         finally
@@ -341,6 +341,27 @@ public sealed class RelicManagerTests
             Is.EqualTo(expected));
     }
 
+    [TestCase("Assets/Prefabs/UI/Shared/Panel_Floating.prefab")]
+    [TestCase("Assets/Prefabs/UI/Canvas.prefab")]
+    [TestCase("Assets/Prefabs/UI/Event/EventCanvas.prefab")]
+    [TestCase("Assets/Prefabs/UI/Shop/ShopCanvas.prefab")]
+    [TestCase("Assets/Prefabs/UI/Treasure/TreasureCanvas.prefab")]
+    public void RelicRemovalHold_UsesOneSecondInGameplayPrefabs(
+        string prefabPath)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            prefabPath);
+        Assert.That(prefab, Is.Not.Null);
+        RelicInventoryUI inventoryUi = prefab
+            .GetComponentInChildren<RelicInventoryUI>(true);
+        Assert.That(inventoryUi, Is.Not.Null);
+
+        SerializedObject serializedUi = new SerializedObject(inventoryUi);
+        Assert.That(
+            serializedUi.FindProperty("manualRemovalHoldDuration").floatValue,
+            Is.EqualTo(1f));
+    }
+
     [Test]
     public void RelicRemovalGuide_PreservesAuthoredTextAtRuntime()
     {
@@ -362,6 +383,7 @@ public sealed class RelicManagerTests
                 "Text | Remove");
             Assert.That(guide, Is.Not.Null);
             string authoredText = guide.text;
+            Assert.That(authoredText, Is.EqualTo("제거: 우클릭 1초"));
 
             tooltip.Show(relicData, Vector2.zero, true);
             Assert.That(guide.text, Is.EqualTo(authoredText));

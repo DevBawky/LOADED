@@ -25,7 +25,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
     [Header("Manual Removal")]
     [Min(0.1f)]
-    [SerializeField] private float manualRemovalHoldDuration = 2f;
+    [SerializeField] private float manualRemovalHoldDuration = 1f;
 
     [Header("Relic Activation Effect")]
     [Min(0.1f)] [SerializeField] private float activationDuration = 0.48f;
