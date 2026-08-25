@@ -35,6 +35,13 @@ public sealed class FirstRunGuideController : MonoBehaviour
         && activeInstance.card != null
         && activeInstance.card.activeInHierarchy;
 
+    internal static bool IsMandatoryGuideInputBlocked =>
+        activeInstance != null
+        && activeInstance.isActiveAndEnabled
+        && activeInstance.isMandatoryGuideSession
+        && activeInstance.card != null
+        && activeInstance.card.activeInHierarchy;
+
     internal static bool IsGuideElement(Transform candidate)
     {
         return IsGuidePanelOpen && candidate != null
@@ -235,7 +242,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             return false;
         }
 
-        if (activeInstance.isMandatoryGuideSession)
+        if (IsMandatoryGuideInputBlocked)
         {
             // Consume Escape without closing or opening another panel while
             // an automatically started early-game tutorial is in progress.
@@ -682,8 +689,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         inputBlocker.gameObject.SetActive(true);
         inputBlocker.raycastTarget = true;
         card.SetActive(true);
-        cardExitButton?.gameObject.SetActive(!isMandatoryGuideSession);
-        neverShowToggle?.gameObject.SetActive(!isMandatoryGuideSession);
+        RefreshMandatoryDismissControls();
         missionBar.SetActive(false);
         missionActive = false;
         pendingAdvance = false;
@@ -727,6 +733,28 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (mode == GuideMode.Combat || mode == GuideMode.Item)
         {
             SetTutorialInputLocked(true);
+        }
+    }
+
+    private void RefreshMandatoryDismissControls()
+    {
+        bool canDismiss = !isMandatoryGuideSession;
+
+        if (cardExitButton != null)
+        {
+            cardExitButton.interactable = canDismiss;
+            cardExitButton.gameObject.SetActive(canDismiss);
+        }
+
+        if (neverShowToggle != null)
+        {
+            if (!canDismiss)
+            {
+                neverShowToggle.SetIsOnWithoutNotify(false);
+            }
+
+            neverShowToggle.interactable = canDismiss;
+            neverShowToggle.gameObject.SetActive(canDismiss);
         }
     }
 
