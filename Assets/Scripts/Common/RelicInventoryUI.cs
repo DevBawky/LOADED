@@ -10,13 +10,22 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class RelicInventoryUI : MonoBehaviour
 {
+    private const int RelicsPerRow = 4;
+    private const string UpperContainerName = "Layout | Upper";
+    private const string LowerContainerName = "Layout | Lower";
     private const float PulseScale = 1.18f;
     private const float PulseUpDuration = 0.08f;
     private const float PulseDownDuration = 0.14f;
 
     [SerializeField] private RectTransform relicContainer;
+    [SerializeField] private RectTransform upperRelicContainer;
+    [SerializeField] private RectTransform lowerRelicContainer;
     [SerializeField] private GameObject relicPrefab;
     [SerializeField] private RelicManager relicManager;
+
+    [Header("Manual Removal")]
+    [Min(0.1f)]
+    [SerializeField] private float manualRemovalHoldDuration = 2f;
 
     [Header("Relic Activation Effect")]
     [Min(0.1f)] [SerializeField] private float activationDuration = 0.48f;
@@ -52,15 +61,19 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
     public event Action<int, int> EventSelectionChanged;
     public bool IsEventSelectionActive => eventRequiredSelectionCount > 0;
+    internal float ManualRemovalHoldDuration =>
+        Mathf.Max(0.1f, manualRemovalHoldDuration);
 
     private void Awake()
     {
         relicContainer ??= transform as RectTransform;
+        ResolveRelicContainers();
         ResolveRelicManager();
     }
 
     private void OnEnable()
     {
+        ResolveRelicContainers();
         ResolveRelicManager();
 
         if (relicManager != null)
@@ -115,6 +128,22 @@ public sealed class RelicInventoryUI : MonoBehaviour
             FindObjectsInactive.Include);
     }
 
+    private void ResolveRelicContainers()
+    {
+        relicContainer ??= transform as RectTransform;
+        if (relicContainer == null)
+        {
+            return;
+        }
+
+        upperRelicContainer ??= FindNamedRectTransform(
+            relicContainer,
+            UpperContainerName);
+        lowerRelicContainer ??= FindNamedRectTransform(
+            relicContainer,
+            LowerContainerName);
+    }
+
     private IEnumerator RefreshAfterSceneInitialization()
     {
         // Dedicated Shop/Event managers and restored run data are prepared by
@@ -145,6 +174,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
         HashSet<RelicInstance> currentRelics =
             new HashSet<RelicInstance>();
+        int displayIndex = 0;
         foreach (RelicInstance relic in relicManager.OwnedRelics)
         {
             if (relic?.Data == null)
@@ -156,19 +186,25 @@ public sealed class RelicInventoryUI : MonoBehaviour
             if (relicIcons.TryGetValue(relic, out RectTransform existingIcon)
                 && existingIcon != null)
             {
+                PlaceRelicIcon(existingIcon, displayIndex);
                 ConfigureRelic(existingIcon.gameObject, relic);
+                displayIndex++;
                 continue;
             }
 
-            GameObject relicObject = Instantiate(relicPrefab, relicContainer);
+            RectTransform targetContainer = GetContainerForIndex(displayIndex);
+            GameObject relicObject = Instantiate(relicPrefab, targetContainer);
             relicObject.name = relicPrefab.name;
+            RectTransform relicRect = relicObject.transform as RectTransform;
+            PlaceRelicIcon(relicRect, displayIndex);
             ConfigureRelic(relicObject, relic);
             RelicInventoryIconUI interaction =
                 relicObject.GetComponent<RelicInventoryIconUI>();
             interaction ??= relicObject.AddComponent<RelicInventoryIconUI>();
             interaction.Initialize(this, relic);
             spawnedRelics.Add(relicObject);
-            relicIcons[relic] = relicObject.transform as RectTransform;
+            relicIcons[relic] = relicRect;
+            displayIndex++;
         }
 
         List<RelicInstance> removedRelics = new List<RelicInstance>();
@@ -204,6 +240,34 @@ public sealed class RelicInventoryUI : MonoBehaviour
             spawnedRelics.Remove(removedObject);
             DestroyRelicObject(removedObject);
         }
+    }
+
+    internal static bool ShouldUseUpperContainer(int relicIndex)
+    {
+        return relicIndex >= 0 && relicIndex < RelicsPerRow;
+    }
+
+    private RectTransform GetContainerForIndex(int relicIndex)
+    {
+        return ShouldUseUpperContainer(relicIndex)
+            ? upperRelicContainer ?? relicContainer
+            : lowerRelicContainer ?? relicContainer;
+    }
+
+    private void PlaceRelicIcon(RectTransform icon, int relicIndex)
+    {
+        if (icon == null)
+        {
+            return;
+        }
+
+        RectTransform targetContainer = GetContainerForIndex(relicIndex);
+        if (targetContainer != null && icon.parent != targetContainer)
+        {
+            icon.SetParent(targetContainer, false);
+        }
+
+        icon.SetSiblingIndex(Mathf.Max(0, relicIndex % RelicsPerRow));
     }
 
     private void ClearSpawnedRelics()
@@ -567,7 +631,10 @@ public sealed class RelicInventoryUI : MonoBehaviour
         }
 
         hoveredRelic = relic;
-        tooltip.Show(relic.Data, pointerPosition);
+        string guideText = CanManuallyRemoveRelic(relic)
+            ? FormatManualRemovalGuideText(ManualRemovalHoldDuration)
+            : string.Empty;
+        tooltip.Show(relic.Data, pointerPosition, guideText);
     }
 
     internal void MoveTooltip(RelicInstance relic, Vector2 pointerPosition)
@@ -624,6 +691,7 @@ public sealed class RelicInventoryUI : MonoBehaviour
         eventSelectionPredicate = selectionPredicate;
         eventConfirmCallback = onConfirm;
         eventCancelCallback = onCancel;
+        HideTooltip();
         EventSelectionChanged?.Invoke(0, eventRequiredSelectionCount);
         Refresh();
         return true;
@@ -679,6 +747,36 @@ public sealed class RelicInventoryUI : MonoBehaviour
             eventSelectedRelics.Count,
             eventRequiredSelectionCount);
         Refresh();
+    }
+
+    internal bool CanManuallyRemoveRelic(RelicInstance relic)
+    {
+        return !IsEventSelectionActive
+            && relicManager != null
+            && relic?.Data != null
+            && relicManager.CanManuallyRemove(relic);
+    }
+
+    internal bool TryRemoveRelic(RelicInstance relic)
+    {
+        if (!CanManuallyRemoveRelic(relic))
+        {
+            return false;
+        }
+
+        HideTooltip(relic);
+        return relicManager.TryRemove(relic, RelicRemovalReason.Removed);
+    }
+
+    internal static string FormatManualRemovalGuideText(float holdDuration)
+    {
+        float seconds = float.IsNaN(holdDuration)
+            || float.IsInfinity(holdDuration)
+                ? 2f
+                : Mathf.Max(0.1f, holdDuration);
+        return "우클릭 "
+            + seconds.ToString("0.#", CultureInfo.InvariantCulture)
+            + "초간 누르기: 유물 제거";
     }
 
     private void ResetEventSelection()
@@ -754,6 +852,27 @@ public sealed class RelicInventoryUI : MonoBehaviour
 
         return null;
     }
+
+    private static RectTransform FindNamedRectTransform(
+        Transform root,
+        string objectName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        foreach (RectTransform candidate in
+                 root.GetComponentsInChildren<RectTransform>(true))
+        {
+            if (candidate != root && candidate.name == objectName)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
 }
 
 [DisallowMultipleComponent]
@@ -761,15 +880,52 @@ public sealed class RelicInventoryIconUI : MonoBehaviour,
     IPointerEnterHandler,
     IPointerExitHandler,
     IPointerMoveHandler,
-    IPointerClickHandler
+    IPointerClickHandler,
+    IPointerDownHandler,
+    IPointerUpHandler
 {
     private RelicInventoryUI owner;
     private RelicInstance relic;
+    private Image removalProgressImage;
+    private float removalHoldElapsed;
+    private bool isHoldingForRemoval;
 
     public void Initialize(RelicInventoryUI value, RelicInstance instance)
     {
+        CancelRemovalHold();
         owner = value;
         relic = instance;
+    }
+
+    private void Update()
+    {
+        if (!isHoldingForRemoval)
+        {
+            return;
+        }
+
+        if (owner == null || !owner.CanManuallyRemoveRelic(relic))
+        {
+            CancelRemovalHold();
+            return;
+        }
+
+        removalHoldElapsed += Mathf.Max(0f, Time.unscaledDeltaTime);
+        float progress = CalculateRemovalHoldProgress(
+            removalHoldElapsed,
+            owner.ManualRemovalHoldDuration);
+        SetRemovalProgress(progress);
+
+        if (progress < 1f)
+        {
+            return;
+        }
+
+        isHoldingForRemoval = false;
+        if (!owner.TryRemoveRelic(relic))
+        {
+            CancelRemovalHold();
+        }
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -779,6 +935,7 @@ public sealed class RelicInventoryIconUI : MonoBehaviour,
 
     public void OnPointerExit(PointerEventData eventData)
     {
+        CancelRemovalHold();
         owner?.HideTooltip(relic);
     }
 
@@ -792,6 +949,113 @@ public sealed class RelicInventoryIconUI : MonoBehaviour,
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             owner?.ToggleEventSelection(relic);
+        }
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Right
+            || owner == null || !owner.CanManuallyRemoveRelic(relic))
+        {
+            return;
+        }
+
+        removalHoldElapsed = 0f;
+        isHoldingForRemoval = true;
+        EnsureRemovalProgressImage();
+        SetRemovalProgress(0f);
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        if (eventData.button == PointerEventData.InputButton.Right)
+        {
+            CancelRemovalHold();
+        }
+    }
+
+    private void OnDisable()
+    {
+        CancelRemovalHold();
+    }
+
+    internal static float CalculateRemovalHoldProgress(
+        float elapsed,
+        float duration)
+    {
+        if (float.IsNaN(elapsed) || float.IsInfinity(elapsed)
+            || elapsed <= 0f)
+        {
+            return 0f;
+        }
+
+        if (float.IsNaN(duration) || float.IsInfinity(duration)
+            || duration <= 0f)
+        {
+            return 1f;
+        }
+
+        return Mathf.Clamp01(elapsed / duration);
+    }
+
+    private void EnsureRemovalProgressImage()
+    {
+        if (removalProgressImage != null)
+        {
+            return;
+        }
+
+        GameObject progressObject = new GameObject(
+            "Image | Removal Hold Progress",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image));
+        progressObject.layer = gameObject.layer;
+        RectTransform progressRect =
+            progressObject.GetComponent<RectTransform>();
+        progressRect.SetParent(transform, false);
+        progressRect.anchorMin = Vector2.zero;
+        progressRect.anchorMax = Vector2.one;
+        progressRect.pivot = new Vector2(0.5f, 0.5f);
+        progressRect.anchoredPosition = Vector2.zero;
+        progressRect.sizeDelta = Vector2.zero;
+        progressRect.SetSiblingIndex(0);
+
+        removalProgressImage = progressObject.GetComponent<Image>();
+        Image relicIcon = GetComponent<Image>();
+        removalProgressImage.sprite = relicIcon == null
+            ? null
+            : relicIcon.sprite;
+        removalProgressImage.color = new Color32(239, 75, 57, 230);
+        removalProgressImage.raycastTarget = false;
+        removalProgressImage.type = Image.Type.Filled;
+        removalProgressImage.fillMethod = Image.FillMethod.Horizontal;
+        removalProgressImage.fillOrigin = (int)Image.OriginHorizontal.Left;
+        removalProgressImage.preserveAspect = true;
+        removalProgressImage.fillAmount = 0f;
+        progressObject.SetActive(false);
+    }
+
+    private void SetRemovalProgress(float progress)
+    {
+        if (removalProgressImage == null)
+        {
+            return;
+        }
+
+        removalProgressImage.gameObject.SetActive(true);
+        removalProgressImage.fillAmount = Mathf.Clamp01(progress);
+    }
+
+    private void CancelRemovalHold()
+    {
+        isHoldingForRemoval = false;
+        removalHoldElapsed = 0f;
+
+        if (removalProgressImage != null)
+        {
+            removalProgressImage.fillAmount = 0f;
+            removalProgressImage.gameObject.SetActive(false);
         }
     }
 }

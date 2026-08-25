@@ -51,6 +51,35 @@ public sealed class ExposedStatusEffectTests
     }
 
     [Test]
+    public void DestroyedDodgeSourceDoesNotExposeAnotherEnemy()
+    {
+        GameObject otherObject = new GameObject("Other Thrower");
+        otherObject.AddComponent<StatusEffectController>();
+        EnemyController otherEnemy =
+            otherObject.AddComponent<EnemyController>();
+        SerializedObject serializedOther = new SerializedObject(otherEnemy);
+        serializedOther.FindProperty("currentHealth").intValue = 10;
+        serializedOther.ApplyModifiedPropertiesWithoutUndo();
+        EnemyController destroyedSource = enemy;
+
+        Object.DestroyImmediate(enemyObject);
+        enemyObject = null;
+
+        try
+        {
+            Assert.That(
+                EnemyController.TryApplyDodgeExposedToSource(
+                    destroyedSource),
+                Is.False);
+            Assert.That(otherEnemy.IsExposed, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(otherObject);
+        }
+    }
+
+    [Test]
     public void ExposedPersistsInRunStateAndOlderStateDefaultsInactive()
     {
         enemy.ApplyExposedFromDodge();

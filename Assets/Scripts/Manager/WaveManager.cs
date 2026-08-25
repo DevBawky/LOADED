@@ -84,6 +84,10 @@ public class WaveManager : MonoBehaviour
     private Coroutine enemyTurnCoroutine;
     private int currentEnemyTurnCycle;
     private long pendingEnemyTurnCycles;
+    private int pendingDetachedEnemyAttacks;
+    private bool isCancellingManagedCoroutines;
+    private readonly List<GameObject> detachedEnemyAttackVisuals =
+        new List<GameObject>();
     private int maximumActiveEnemyCount = 1;
     private readonly DuelClockEnemySpawnPool duelClockEnemySpawnPool =
         new DuelClockEnemySpawnPool();
@@ -126,7 +130,8 @@ public class WaveManager : MonoBehaviour
     public bool IsBattleCompleted => isBattleCompleted;
     public bool IsBattleCompletionPending => isBattleCompletionPending;
     public bool IsStageCleared => isBattleCompleted;
-    public bool IsResolvingTurn => isResolvingTurn;
+    public bool IsResolvingTurn => isResolvingTurn
+        || pendingDetachedEnemyAttacks > 0;
     public int CurrentEnemyTurnCycle => currentEnemyTurnCycle;
     public CombatPacingMode PacingMode => combatPacingMode;
     public bool HasRemainingEnemiesToSpawn =>
@@ -146,6 +151,8 @@ public class WaveManager : MonoBehaviour
                 currentWaveIndex,
                 GetLivingEnemyCount());
     internal long PendingEnemyTurnCycles => pendingEnemyTurnCycles;
+    internal int PendingDetachedEnemyAttackCount =>
+        pendingDetachedEnemyAttacks;
 
     private void Awake()
     {
@@ -157,6 +164,8 @@ public class WaveManager : MonoBehaviour
         isWaitingForNextWave = false;
         isBattleCompleted = false;
         isBattleCompletionPending = false;
+        pendingDetachedEnemyAttacks = 0;
+        detachedEnemyAttackVisuals.Clear();
         duelClockController = GetComponent<DuelClockController>();
     }
 
@@ -183,11 +192,7 @@ public class WaveManager : MonoBehaviour
     {
         ClearSpawnWarnings();
 
-        if (enemyTurnCoroutine != null)
-        {
-            StopCoroutine(enemyTurnCoroutine);
-            enemyTurnCoroutine = null;
-        }
+        CancelManagedCoroutines();
 
         isResolvingTurn = false;
         pendingEnemyTurnCycles = 0;
@@ -912,6 +917,88 @@ public class WaveManager : MonoBehaviour
         return usesDuelClock && (isShooting || isActing);
     }
 
+    internal bool TryStartDetachedEnemyAttack(
+        IEnumerator attackRoutine,
+        GameObject attackVisual)
+    {
+        if (attackRoutine == null || !isActiveAndEnabled
+            || isBattleCompleted)
+        {
+            return false;
+        }
+
+        pendingDetachedEnemyAttacks++;
+
+        if (attackVisual != null)
+        {
+            detachedEnemyAttackVisuals.Add(attackVisual);
+        }
+
+        StartCoroutine(ResolveDetachedEnemyAttack(
+            attackRoutine,
+            attackVisual));
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    private IEnumerator ResolveDetachedEnemyAttack(
+        IEnumerator attackRoutine,
+        GameObject attackVisual)
+    {
+        try
+        {
+            yield return attackRoutine;
+        }
+        finally
+        {
+            detachedEnemyAttackVisuals.Remove(attackVisual);
+
+            if (attackVisual != null)
+            {
+                Destroy(attackVisual);
+            }
+
+            pendingDetachedEnemyAttacks = Mathf.Max(
+                0,
+                pendingDetachedEnemyAttacks - 1);
+
+            if (!isCancellingManagedCoroutines)
+            {
+                ResolveBattleAfterDetachedEnemyAttacks();
+                StateChanged?.Invoke();
+            }
+        }
+    }
+
+    private void ResolveBattleAfterDetachedEnemyAttacks()
+    {
+        if (pendingDetachedEnemyAttacks > 0 || isBattleCompleted)
+        {
+            return;
+        }
+
+        if (playerHealth != null && playerHealth.IsDefeated)
+        {
+            isBattleCompletionPending = false;
+            return;
+        }
+
+        if (activeEnemies.Count > 0)
+        {
+            isBattleCompletionPending = false;
+            return;
+        }
+
+        if (combatPacingMode == CombatPacingMode.DuelClock)
+        {
+            ResolveEmptyDuelClockBattle();
+        }
+        else
+        {
+            HandleWaveCleared();
+        }
+    }
+
     private IEnumerator ResolveOneEnemyTurnCycle()
     {
         RemoveMissingEnemies();
@@ -968,6 +1055,7 @@ public class WaveManager : MonoBehaviour
         }
 
         yield return WaitForEnemyActions(concurrentActions);
+        yield return WaitForDetachedEnemyAttacks();
 
         float remainingTurnDelay = Mathf.Max(
             0f,
@@ -1397,6 +1485,13 @@ public class WaveManager : MonoBehaviour
         activeEnemies.Remove(enemy);
         EnemyDefeated?.Invoke(enemy);
 
+        if (activeEnemies.Count == 0 && pendingDetachedEnemyAttacks > 0)
+        {
+            isBattleCompletionPending = true;
+            StateChanged?.Invoke();
+            return;
+        }
+
         if (combatPacingMode == CombatPacingMode.DuelClock)
         {
             ResolveEmptyDuelClockBattle();
@@ -1411,6 +1506,13 @@ public class WaveManager : MonoBehaviour
 
     private void HandleWaveCleared()
     {
+        if (pendingDetachedEnemyAttacks > 0)
+        {
+            isBattleCompletionPending = true;
+            StateChanged?.Invoke();
+            return;
+        }
+
         if (combatPacingMode == CombatPacingMode.DuelClock)
         {
             ResolveEmptyDuelClockBattle();
@@ -1492,6 +1594,13 @@ public class WaveManager : MonoBehaviour
             return;
         }
 
+        if (pendingDetachedEnemyAttacks > 0)
+        {
+            isBattleCompletionPending = true;
+            StateChanged?.Invoke();
+            return;
+        }
+
         isBattleCompletionPending = false;
         isBattleCompleted = true;
         bossBombManager?.ClearAll();
@@ -1512,7 +1621,8 @@ public class WaveManager : MonoBehaviour
             ResolveEmptyDuelClockBattle();
         }
 
-        if (!isBattleCompletionPending || isBattleCompleted)
+        if (!isBattleCompletionPending || isBattleCompleted
+            || pendingDetachedEnemyAttacks > 0)
         {
             return;
         }
@@ -1545,15 +1655,29 @@ public class WaveManager : MonoBehaviour
         BattleFailed?.Invoke();
     }
 
+    private void CancelManagedCoroutines()
+    {
+        isCancellingManagedCoroutines = true;
+        StopAllCoroutines();
+        enemyTurnCoroutine = null;
+
+        foreach (GameObject attackVisual in detachedEnemyAttackVisuals)
+        {
+            if (attackVisual != null)
+            {
+                Destroy(attackVisual);
+            }
+        }
+
+        detachedEnemyAttackVisuals.Clear();
+        pendingDetachedEnemyAttacks = 0;
+        isCancellingManagedCoroutines = false;
+    }
+
     private void ResetBattleRuntime()
     {
         ClearSpawnWarnings();
-
-        if (enemyTurnCoroutine != null)
-        {
-            StopCoroutine(enemyTurnCoroutine);
-            enemyTurnCoroutine = null;
-        }
+        CancelManagedCoroutines();
 
         foreach (EnemyController enemy in activeEnemies)
         {
@@ -1579,6 +1703,7 @@ public class WaveManager : MonoBehaviour
         isResolvingTurn = false;
         currentEnemyTurnCycle = 0;
         pendingEnemyTurnCycles = 0;
+        pendingDetachedEnemyAttacks = 0;
         duelClockEnemySpawnPool.Clear();
         duelClockSpawnEntries = Array.Empty<DuelClockEnemySpawnEntry>();
         duelClockAuthoredEnemies = Array.Empty<EnemyData>();
@@ -1999,6 +2124,15 @@ public class WaveManager : MonoBehaviour
         }
     }
 
+    private IEnumerator WaitForDetachedEnemyAttacks()
+    {
+        while (pendingDetachedEnemyAttacks > 0
+               && !isBattleCompleted && !playerHealth.IsDefeated)
+        {
+            yield return null;
+        }
+    }
+
     private void AdvanceDuelClockEnemySpawns()
     {
         if (isBattleCompleted || !isDuelClockEnemyPoolConfigured)
@@ -2032,6 +2166,13 @@ public class WaveManager : MonoBehaviour
         if (combatPacingMode != CombatPacingMode.DuelClock
             || !isDuelClockEnemyPoolConfigured || isBattleCompleted)
         {
+            return;
+        }
+
+        if (pendingDetachedEnemyAttacks > 0)
+        {
+            isBattleCompletionPending = true;
+            StateChanged?.Invoke();
             return;
         }
 
@@ -2121,6 +2262,7 @@ public class WaveManager : MonoBehaviour
         if (combatPacingMode != CombatPacingMode.DuelClock
             || !isDuelClockEnemyPoolConfigured
             || isBattleCompleted || activeEnemies.Count > 0
+            || pendingDetachedEnemyAttacks > 0
             || !duelClockEnemySpawnPool.IsExhausted)
         {
             return;

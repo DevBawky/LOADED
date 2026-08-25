@@ -105,6 +105,26 @@ public sealed class EventScenePresentationTests
     }
 
     [Test]
+    public void ShowDynamicChoices_ConfiguresPreviewForEachVisibleChoice()
+    {
+        CreateChoiceViews(4, out Button[] buttons, out TMP_Text[] labels);
+        List<int> previewIndices = new List<int>();
+        EventChoiceButtonPresenter presenter = new EventChoiceButtonPresenter(
+            buttons,
+            labels,
+            _ => { },
+            _ => { });
+
+        presenter.ShowDynamicChoices(
+            new[] { "First", "Second", "Third", "Ignored" },
+            _ => { },
+            (_, index) => previewIndices.Add(index));
+
+        Assert.That(previewIndices, Is.EqualTo(new[] { 0, 1, 2 }));
+        Assert.That(buttons[3].gameObject.activeSelf, Is.False);
+    }
+
+    [Test]
     public void PresentResult_ShowsTextWithoutThreeReelSymbols()
     {
         CreateDialogue(out TMP_Text dialogue);

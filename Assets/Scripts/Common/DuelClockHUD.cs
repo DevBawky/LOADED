@@ -18,6 +18,10 @@ public sealed class DuelClockHUD : MonoBehaviour
     [Header("View")]
     [SerializeField] private CanvasGroup canvasGroup;
     [SerializeField] private Image progressFill;
+    [SerializeField] private Color progressStartColor =
+        new Color32(247, 191, 62, 255);
+    [SerializeField] private Color progressEndColor =
+        new Color32(231, 77, 42, 255);
     [SerializeField, Min(0.01f)] private float fillLerpSpeed = 12f;
     [SerializeField, Min(0.01f)] private float beatFillLerpSpeed = 28f;
     [SerializeField, Min(0f)] private float beatFullHoldDuration = 0.08f;
@@ -93,6 +97,7 @@ public sealed class DuelClockHUD : MonoBehaviour
                 beatFullHoldDuration,
                 unscaledDeltaTime);
             progressFill.fillAmount = frame.FillAmount;
+            UpdateProgressFillColor(frame.FillAmount);
             UpdateProgressText(frame.FillAmount);
 
             if (frame.BeatReached)
@@ -204,6 +209,7 @@ public sealed class DuelClockHUD : MonoBehaviour
             if (progressFill != null)
             {
                 progressFill.fillAmount = normalizedProgress;
+                UpdateProgressFillColor(normalizedProgress);
                 UpdateProgressText(normalizedProgress);
             }
         }
@@ -304,6 +310,17 @@ public sealed class DuelClockHUD : MonoBehaviour
             lerpAmount);
     }
 
+    internal static Color EvaluateProgressColor(
+        float normalizedProgress,
+        Color startColor,
+        Color endColor)
+    {
+        float progress = IsFinite(normalizedProgress)
+            ? Mathf.Clamp01(normalizedProgress)
+            : 0f;
+        return Color.Lerp(startColor, endColor, progress);
+    }
+
     private void RefreshEnemyProgress()
     {
         if (!enemyProgressDirty)
@@ -339,6 +356,17 @@ public sealed class DuelClockHUD : MonoBehaviour
         }
 
         displayedProgress = wholeProgress;
+    }
+
+    private void UpdateProgressFillColor(float normalizedProgress)
+    {
+        if (progressFill != null)
+        {
+            progressFill.color = EvaluateProgressColor(
+                normalizedProgress,
+                progressStartColor,
+                progressEndColor);
+        }
     }
 
     private void RefreshNextWaveProgress()

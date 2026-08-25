@@ -94,6 +94,26 @@ public sealed class DuelClockHudFormattingTests
     }
 
     [Test]
+    public void ProgressColorTransitionsFromYellowToRed()
+    {
+        Color yellow = new Color32(247, 191, 62, 255);
+        Color red = new Color32(231, 77, 42, 255);
+
+        Assert.That(
+            DuelClockHUD.EvaluateProgressColor(0f, yellow, red),
+            Is.EqualTo(yellow));
+        Assert.That(
+            DuelClockHUD.EvaluateProgressColor(0.5f, yellow, red),
+            Is.EqualTo(Color.Lerp(yellow, red, 0.5f)));
+        Assert.That(
+            DuelClockHUD.EvaluateProgressColor(1f, yellow, red),
+            Is.EqualTo(red));
+        Assert.That(
+            DuelClockHUD.EvaluateProgressColor(float.NaN, yellow, red),
+            Is.EqualTo(yellow));
+    }
+
+    [Test]
     public void BeatFillReachesFullThenLerpsFromZeroToOverflow()
     {
         DuelClockFillAnimation animation = new DuelClockFillAnimation();
@@ -589,6 +609,10 @@ public sealed class DuelClockHudAssetTests
             .objectReferenceValue, Is.Not.Null);
         Assert.That(serializedHud.FindProperty("progressFill")
             .objectReferenceValue, Is.Not.Null);
+        Assert.That(serializedHud.FindProperty("progressStartColor")
+            .colorValue, Is.EqualTo(new Color32(247, 191, 62, 255)));
+        Assert.That(serializedHud.FindProperty("progressEndColor")
+            .colorValue, Is.EqualTo(new Color32(231, 77, 42, 255)));
         Assert.That(serializedHud.FindProperty("titleText")
             .objectReferenceValue, Is.Not.Null);
         Assert.That(serializedHud.FindProperty("enemyCountText")

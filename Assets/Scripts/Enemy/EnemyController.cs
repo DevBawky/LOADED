@@ -812,6 +812,13 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return applied;
     }
 
+    internal static bool TryApplyDodgeExposedToSource(
+        EnemyController source)
+    {
+        return source != null && source.CurrentHealth > 0
+            && source.ApplyExposedFromDodge();
+    }
+
     internal bool TryConsumeExposedForAttack()
     {
         if (statusEffects == null || !statusEffects.ConsumeExposed())
@@ -2257,7 +2264,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        ApplyExposedFromDodge();
+        TryApplyDodgeExposedToSource(this);
         playerMove.TryNotifyDodgeSucceededDuringAction();
         combatFeedback ??= playerMove.GetComponent<
             CombatFeedbackController>();
@@ -2435,166 +2442,51 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         PlayThrowerAttackAnimation();
         onAttackPerformed?.Invoke();
-        EnemyPlayerDodgeWindowState dodgeState = default;
-        EnemyPlayerDodgeResolution dodgeResolution = default;
-        bool dodgeWindowStarted = false;
-
-        void BeginDodgeWindow()
-        {
-            if (dodgeWindowStarted)
-            {
-                return;
-            }
-
-            dodgeWindowStarted = true;
-            dodgeState = CapturePlayerDodgeWindow(
-                IsPlayerInPreparedThrowerTarget);
-        }
-
-        void TryConfirmDodge()
-        {
-            if (!dodgeWindowStarted || dodgeResolution.IsResolved)
-            {
-                return;
-            }
-
-            TryConfirmPlayerDodge(
-                dodgeState,
-                IsPlayerInPreparedThrowerTarget(),
-                ref dodgeResolution);
-        }
-
-        yield return PlayThrownProjectile(
+        Vector3 startPosition = transform.position;
+        GameObject projectile = CreateDefaultThrownProjectile(startPosition);
+        EnemyThrownProjectileFlight flight =
+            new EnemyThrownProjectileFlight(
+                startPosition,
+                preparedTargetPosition,
+                enemyData.ThrownProjectileDuration,
+                enemyData.ThrownProjectileArcHeight,
+                enemyData.AttackDodgeWindowDuration);
+        int attackDamage = statusEffects == null
+            ? attackData.Damage
+            : statusEffects.ModifyOutgoingAttackDamage(
+                attackData.Damage);
+        EnemyThrownAttackRuntime runtime = new EnemyThrownAttackRuntime(
+            this,
+            attackData,
+            boardManager,
+            playerMove,
+            playerHealth,
+            waveManager,
+            combatFeedback,
+            flight,
+            projectile,
+            preparedTargetTileIndex,
             preparedTargetPosition,
-            BeginDodgeWindow,
-            TryConfirmDodge);
-
-        ResolvePlayerDodgeAtImpact(
-            dodgeState,
-            IsPlayerInPreparedThrowerTarget(),
-            ref dodgeResolution);
-        SoundManager.PlaySfx("SFX_Thrower_Bomb");
-
-        TransientVfx.Spawn(
+            attackDamage,
             enemyData.ExplosionVfxPrefab,
-            preparedTargetPosition,
-            Quaternion.identity,
             enemyData.ExplosionVfxScale);
 
-        if (attackData.AttackEffectPrefab != null
-            && attackData.AttackEffectPrefab != enemyData.ExplosionVfxPrefab)
+        if (!waveManager.TryStartDetachedEnemyAttack(
+                runtime.Resolve(),
+                projectile))
         {
-            TransientVfx.Spawn(
-                attackData.AttackEffectPrefab,
-                preparedTargetPosition,
-                Quaternion.identity);
-        }
-
-        EnemyController enemyTarget = null;
-        bool targetsPlayer = !dodgeResolution.PlayerDodged
-            && boardManager.TryGetTileIndex(
-                playerMove.transform.position,
-                out int playerTileIndex)
-            && playerTileIndex == preparedTargetTileIndex;
-
-        if (!targetsPlayer)
-        {
-            waveManager.TryGetEnemyAtTile(
-                preparedTargetTileIndex,
-                out enemyTarget);
-        }
-
-        ApplyAttackToTarget(
-            attackData,
-            enemyTarget,
-            targetsPlayer);
-        AttackExecuted?.Invoke(this, attackData);
-    }
-
-    private IEnumerator PlayThrownProjectile(
-        Vector3 targetPosition,
-        Action onDodgeWindowStarted,
-        Action onDodgeWindowUpdated)
-    {
-        Vector3 startPosition = transform.position;
-        float duration = enemyData.ThrownProjectileDuration;
-        float arcHeight = enemyData.ThrownProjectileArcHeight;
-        float dodgeWindowStartTime = Mathf.Max(
-            0f,
-            duration - enemyData.AttackDodgeWindowDuration);
-        GameObject projectile = CreateDefaultThrownProjectile(startPosition);
-        bool dodgeWindowStarted = false;
-
-        void BeginDodgeWindow()
-        {
-            if (dodgeWindowStarted)
-            {
-                return;
-            }
-
-            dodgeWindowStarted = true;
-            onDodgeWindowStarted?.Invoke();
-        }
-
-        if (duration <= 0f)
-        {
-            BeginDodgeWindow();
-
             if (projectile != null)
             {
-                projectile.transform.position = targetPosition;
                 Destroy(projectile);
             }
 
             yield break;
         }
 
-        float elapsedTime = 0f;
-
-        if (dodgeWindowStartTime <= 0f)
-        {
-            BeginDodgeWindow();
-        }
-
-        while (elapsedTime < duration)
+        while (!runtime.IsComplete)
         {
             yield return null;
-
-            if (GamePauseController.IsPaused)
-            {
-                continue;
-            }
-
-            elapsedTime += Time.deltaTime;
-
-            if (elapsedTime >= dodgeWindowStartTime)
-            {
-                BeginDodgeWindow();
-                onDodgeWindowUpdated?.Invoke();
-            }
-
-            float progress = Mathf.Clamp01(elapsedTime / duration);
-            Vector3 position = Vector3.Lerp(
-                startPosition,
-                targetPosition,
-                progress);
-            position += Vector3.up
-                * (Mathf.Sin(progress * Mathf.PI) * arcHeight);
-
-            if (projectile != null)
-            {
-                projectile.transform.position = position;
-            }
         }
-
-        if (projectile != null)
-        {
-            projectile.transform.position = targetPosition;
-            Destroy(projectile);
-        }
-
-        BeginDodgeWindow();
-        onDodgeWindowUpdated?.Invoke();
     }
 
     private GameObject CreateDefaultThrownProjectile(Vector3 position)
@@ -2679,7 +2571,27 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             : statusEffects.ModifyOutgoingAttackDamage(
                 attackData.Damage);
 
-        if (targetsPlayer)
+        ApplyAttackToTarget(
+            playerHealth,
+            attackData,
+            attackDamage,
+            enemyTarget,
+            targetsPlayer);
+    }
+
+    internal static void ApplyAttackToTarget(
+        PlayerHealth playerHealth,
+        EnemyAttackData attackData,
+        int attackDamage,
+        EnemyController enemyTarget,
+        bool targetsPlayer)
+    {
+        if (attackData == null)
+        {
+            return;
+        }
+
+        if (targetsPlayer && playerHealth != null)
         {
             playerHealth.ApplyDamage(attackDamage);
 
@@ -2696,6 +2608,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             {
                 ApplyAttackStatusEffects(enemyTarget, attackData);
             }
+        }
+    }
+
+    internal void NotifyAttackExecuted(EnemyAttackData attackData)
+    {
+        if (currentHealth > 0 && attackData != null)
+        {
+            AttackExecuted?.Invoke(this, attackData);
         }
     }
 

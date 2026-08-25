@@ -59,6 +59,54 @@ public sealed class RefactoringPolicyTests
         Assert.That(offers, Is.Empty);
     }
 
+    [TestCase(-1, 0)]
+    [TestCase(0, 0)]
+    [TestCase(4, 4)]
+    [TestCase(5, 5)]
+    [TestCase(6, 5)]
+    [TestCase(int.MaxValue, 5)]
+    public void ClampRefreshCost_RestrictsCostToSupportedRange(
+        int refreshCost,
+        int expected)
+    {
+        Assert.That(
+            ShopManager.ClampRefreshCost(refreshCost),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase(-1, 1)]
+    [TestCase(0, 1)]
+    [TestCase(4, 5)]
+    [TestCase(5, 5)]
+    [TestCase(6, 5)]
+    [TestCase(int.MaxValue, 5)]
+    public void CalculateNextRefreshCost_IncreasesByOneAndStopsAtFive(
+        int currentRefreshCost,
+        int expected)
+    {
+        Assert.That(
+            ShopManager.CalculateNextRefreshCost(currentRefreshCost),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void RefreshCostRule_StartsAtZeroAndStopsAtFive()
+    {
+        int refreshCost = ShopManager.InitialRefreshCost;
+
+        Assert.That(refreshCost, Is.Zero);
+
+        for (int expected = 1; expected <= 5; expected++)
+        {
+            refreshCost = ShopManager.CalculateNextRefreshCost(refreshCost);
+            Assert.That(refreshCost, Is.EqualTo(expected));
+        }
+
+        Assert.That(
+            ShopManager.CalculateNextRefreshCost(refreshCost),
+            Is.EqualTo(5));
+    }
+
     [Test]
     public void CylinderEffectPolicy_TracksDirectTemporaryDamageBonus()
     {

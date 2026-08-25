@@ -916,6 +916,26 @@ public sealed class CombatPresentationSignatureTests
 
 public sealed class RunEntrySceneResolverTests
 {
+    [TestCase(null)]
+    [TestCase("")]
+    [TestCase("Stage 1")]
+    public void LegacyConfiguredSceneFallsBackToBattle(string configuredScene)
+    {
+        Assert.That(
+            MainMenuVideoController.NormalizeConfiguredGameSceneName(
+                configuredScene),
+            Is.EqualTo("Battle"));
+    }
+
+    [Test]
+    public void CurrentConfiguredSceneIsPreserved()
+    {
+        Assert.That(
+            MainMenuVideoController.NormalizeConfiguredGameSceneName(
+                "NodeMap"),
+            Is.EqualTo("NodeMap"));
+    }
+
     [Test]
     public void ContinueWithoutRunSnapshotResumesSelectedBattle()
     {

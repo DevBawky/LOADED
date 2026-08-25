@@ -413,6 +413,25 @@ public sealed class RelicManager : MonoBehaviour
         return true;
     }
 
+    public bool TryRemove(
+        RelicInstance relic,
+        RelicRemovalReason reason = RelicRemovalReason.Removed)
+    {
+        return CanManuallyRemove(relic)
+            && TryRemoveAt(ownedRelics.IndexOf(relic), reason);
+    }
+
+    public bool CanManuallyRemove(RelicInstance relic)
+    {
+        return relic != null
+            && ownedRelics.Contains(relic)
+            && !isShotActive
+            && (playerMove == null
+                || !playerMove.IsShooting
+                && !playerMove.IsActing
+                && !playerMove.IsEnemyTurnResolving);
+    }
+
     public RelicInstance FindOwned(string relicId)
     {
         if (string.IsNullOrWhiteSpace(relicId))

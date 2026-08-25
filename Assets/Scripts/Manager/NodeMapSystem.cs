@@ -1206,7 +1206,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
         if (destination == EventFollowUpDestination.NormalBattle
             || destination == EventFollowUpDestination.EliteBattle)
         {
-            battleIndex = ResolveEventBattleIndex(destination);
+            battleIndex = ResolveEventBattleIndex(node, destination);
             if (battleIndex < 0)
             {
                 destination = EventFollowUpDestination.NodeMap;
@@ -1252,6 +1252,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
     }
 
     private int ResolveEventBattleIndex(
+        NodeMapNodeData node,
         EventFollowUpDestination destination)
     {
         if (settings.Stage == null)
@@ -1263,11 +1264,18 @@ public class NodeMapControllerDefinition : MonoBehaviour
                 == EventFollowUpDestination.EliteBattle
             ? BattleType.Elite
             : BattleType.Normal;
+        IReadOnlyList<BattleData> battleCandidates =
+            GetBattleCandidatesForNode(
+                settings,
+                map,
+                node,
+                requestedType);
         List<int> candidates = new List<int>();
-        for (int index = 0; index < settings.Stage.Battles.Count; index++)
+        foreach (BattleData battle in battleCandidates)
         {
-            BattleData battle = settings.Stage.Battles[index];
-            if (battle != null && battle.BattleType == requestedType)
+            int index = FindStageBattleIndex(battle);
+            if (battle != null && battle.BattleType == requestedType
+                && index >= 0 && !candidates.Contains(index))
             {
                 candidates.Add(index);
             }
@@ -1280,13 +1288,12 @@ public class NodeMapControllerDefinition : MonoBehaviour
 
     private int ResolveStageBattleIndex(NodeMapNodeData node)
     {
-        int maximumColumn = map.nodes.Max(candidate => candidate.column);
-        IReadOnlyList<BattleData> normalBattles = settings.GetNormalBattles(
-            NodeMapGenerator.GetNormalBattleProgressSection(
-                node.column,
-                maximumColumn,
-                settings.EarlyBattleEndProgress,
-                settings.MiddleBattleEndProgress));
+        IReadOnlyList<BattleData> normalBattles =
+            GetBattleCandidatesForNode(
+                settings,
+                map,
+                node,
+                BattleType.Normal);
         BattleData selected = node.type switch
         {
             NodeMapNodeType.Boss => settings.BossBattle,
@@ -1308,6 +1315,42 @@ public class NodeMapControllerDefinition : MonoBehaviour
             + $"'{settings.Stage?.name}'. Using the first battle.",
             this);
         return 0;
+    }
+
+    internal static IReadOnlyList<BattleData> GetBattleCandidatesForNode(
+        NodeMapSettingsDefinition mapSettings,
+        NodeMapRunData mapData,
+        NodeMapNodeData node,
+        BattleType battleType)
+    {
+        if (mapSettings == null || node == null)
+        {
+            return Array.Empty<BattleData>();
+        }
+
+        if (battleType == BattleType.Elite)
+        {
+            return mapSettings.EliteBattles;
+        }
+
+        if (battleType != BattleType.Normal || mapData?.nodes == null
+            || mapData.nodes.Count == 0)
+        {
+            return Array.Empty<BattleData>();
+        }
+
+        int maximumColumn = mapData.nodes
+            .Where(candidate => candidate != null)
+            .Select(candidate => candidate.column)
+            .DefaultIfEmpty(node.column)
+            .Max();
+        NodeMapBattleProgressSection progressSection =
+            NodeMapGenerator.GetNormalBattleProgressSection(
+                node.column,
+                maximumColumn,
+                mapSettings.EarlyBattleEndProgress,
+                mapSettings.MiddleBattleEndProgress);
+        return mapSettings.GetNormalBattles(progressSection);
     }
 
     private int FindStageBattleIndex(BattleData selected)

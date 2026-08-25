@@ -47,6 +47,83 @@ public sealed class RelicManagerTests
     }
 
     [Test]
+    public void TryRemove_RemovesExactRelicAndRaisesRemovedReason()
+    {
+        RelicData first = CreateRelic("remove-first");
+        RelicData second = CreateRelic("remove-second");
+        manager.TryAcquire(first);
+        manager.TryAcquire(second);
+        RelicInstance removedRelic = manager.OwnedRelics[0];
+        RelicInstance notifiedRelic = null;
+        RelicRemovalReason notifiedReason = RelicRemovalReason.Consumed;
+        manager.RelicRemoved += (relic, reason) =>
+        {
+            notifiedRelic = relic;
+            notifiedReason = reason;
+        };
+
+        Assert.That(manager.TryRemove(removedRelic), Is.True);
+        Assert.That(manager.Count, Is.EqualTo(1));
+        Assert.That(manager.OwnedRelics[0].Data, Is.SameAs(second));
+        Assert.That(notifiedRelic, Is.SameAs(removedRelic));
+        Assert.That(notifiedReason, Is.EqualTo(RelicRemovalReason.Removed));
+        Assert.That(manager.TryRemove(removedRelic), Is.False);
+    }
+
+    [Test]
+    public void TryRemove_RejectsRemovalDuringActiveShot()
+    {
+        RelicData relicData = CreateRelic("active-shot-removal");
+        manager.TryAcquire(relicData);
+        RelicInstance relic = manager.OwnedRelics[0];
+        manager.NotifyShotStarted();
+
+        Assert.That(manager.CanManuallyRemove(relic), Is.False);
+        Assert.That(manager.TryRemove(relic), Is.False);
+        Assert.That(manager.Count, Is.EqualTo(1));
+
+        manager.NotifyShotCancelled();
+        Assert.That(manager.CanManuallyRemove(relic), Is.True);
+    }
+
+    [TestCase(0, true)]
+    [TestCase(3, true)]
+    [TestCase(4, false)]
+    [TestCase(7, false)]
+    public void RelicHud_UsesFourIconsPerRow(
+        int relicIndex,
+        bool expectedUpperRow)
+    {
+        Assert.That(
+            RelicInventoryUI.ShouldUseUpperContainer(relicIndex),
+            Is.EqualTo(expectedUpperRow));
+    }
+
+    [TestCase(0f, 2f, 0f)]
+    [TestCase(1f, 2f, 0.5f)]
+    [TestCase(2f, 2f, 1f)]
+    [TestCase(3f, 2f, 1f)]
+    public void RelicRemovalHold_ReportsNormalizedProgress(
+        float elapsed,
+        float duration,
+        float expected)
+    {
+        Assert.That(
+            RelicInventoryIconUI.CalculateRemovalHoldProgress(
+                elapsed,
+                duration),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void RelicRemovalGuide_ExplainsTwoSecondRightClickHold()
+    {
+        Assert.That(
+            RelicInventoryUI.FormatManualRemovalGuideText(2f),
+            Is.EqualTo("우클릭 2초간 누르기: 유물 제거"));
+    }
+
+    [Test]
     public void RequestedRelics_AreAuthoredWithActiveAbilities()
     {
         string[] activeRelicIds =

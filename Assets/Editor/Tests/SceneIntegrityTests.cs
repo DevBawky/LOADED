@@ -66,6 +66,48 @@ public sealed class SceneIntegrityTests
             "NodeMapSettings boss battle is not in its configured stage.");
     }
 
+    [TestCase(1, NodeMapBattleProgressSection.Early)]
+    [TestCase(6, NodeMapBattleProgressSection.Middle)]
+    [TestCase(10, NodeMapBattleProgressSection.Late)]
+    public void EventReplacementNormalBattleUsesNodeProgressPool(
+        int nodeColumn,
+        NodeMapBattleProgressSection expectedSection)
+    {
+        NodeMapSettings settings = AssetDatabase.LoadAssetAtPath<
+            NodeMapSettings>("Assets/Resources/NodeMapSettings.asset");
+        NodeMapNodeData eventNode = new NodeMapNodeData
+        {
+            id = 1,
+            column = nodeColumn,
+            type = NodeMapNodeType.Event
+        };
+        NodeMapRunData map = new NodeMapRunData();
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 0,
+            column = 0,
+            type = NodeMapNodeType.Start
+        });
+        map.nodes.Add(eventNode);
+        map.nodes.Add(new NodeMapNodeData
+        {
+            id = 2,
+            column = 14,
+            type = NodeMapNodeType.Boss
+        });
+
+        IReadOnlyList<BattleData> candidates =
+            NodeMapControllerDefinition.GetBattleCandidatesForNode(
+                settings,
+                map,
+                eventNode,
+                BattleType.Normal);
+
+        Assert.That(
+            candidates,
+            Is.EqualTo(settings.GetNormalBattles(expectedSection)));
+    }
+
     [Test]
     public void ShopStageBindingUsesTownLabel()
     {

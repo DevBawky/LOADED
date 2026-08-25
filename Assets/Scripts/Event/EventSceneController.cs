@@ -364,6 +364,8 @@ public sealed class EventSceneController : MonoBehaviour
         EventChoiceData[] visibleChoices = new EventChoiceData[choiceCount];
         EventChoiceButtonState[] states =
             new EventChoiceButtonState[choiceCount];
+        bool preparedRewardsChanged =
+            EnsurePreparedChoiceRewardCapacity(choiceCount);
         for (int index = 0; index < choiceCount; index++)
         {
             EventChoiceData choice = currentEvent.choices[index];
@@ -378,6 +380,16 @@ public sealed class EventSceneController : MonoBehaviour
 
             visibleChoices[index] = choice;
             bool available = IsChoiceAvailable(choice, out string reason);
+            if (available)
+            {
+                int previousSelections = EventRuntimeRules.GetChoiceProgress(
+                    runData.eventChoiceSelectionCounts,
+                    index);
+                preparedRewardsChanged |= PrepareRandomBulletReward(
+                    choice,
+                    index,
+                    previousSelections);
+            }
             states[index] = new EventChoiceButtonState(
                 FormatChoiceText(choice, available, reason),
                 available,
@@ -391,6 +403,11 @@ public sealed class EventSceneController : MonoBehaviour
             (button, index) => ConfigureChoiceRewardPreview(
                 button,
                 visibleChoices[index]));
+
+        if (preparedRewardsChanged)
+        {
+            SaveEventState();
+        }
     }
 
     private bool IsChoiceAvailable(
@@ -674,7 +691,8 @@ public sealed class EventSceneController : MonoBehaviour
             chosenBullets,
             chosenItemSlots,
             chosenRelics,
-            previousSelections);
+            previousSelections,
+            choice);
 
         float successChance = EventRuntimeRules.GetSuccessChance(
             choice,
@@ -691,7 +709,8 @@ public sealed class EventSceneController : MonoBehaviour
             chosenBullets,
             chosenItemSlots,
             chosenRelics,
-            previousSelections);
+            previousSelections,
+            choice);
 
         EnsureChoiceProgressCapacity();
         runData.eventChoiceSelectionCounts[choiceIndex] =
@@ -701,6 +720,7 @@ public sealed class EventSceneController : MonoBehaviour
             runData.eventChoiceFailureCounts[choiceIndex] =
                 previousFailures + 1;
         }
+        ClearPreparedChoiceReward(choiceIndex);
 
         RefreshHealthPresentation();
 
@@ -732,7 +752,8 @@ public sealed class EventSceneController : MonoBehaviour
         IReadOnlyList<BulletInstance> chosenBullets,
         IReadOnlyList<int> chosenItemSlots,
         IReadOnlyList<RelicInstance> chosenRelics,
-        int previousSelections)
+        int previousSelections,
+        EventChoiceData sourceChoice)
     {
         foreach (EventEffect effect in effects)
         {
@@ -760,7 +781,11 @@ public sealed class EventSceneController : MonoBehaviour
                     ChangeRunHealth(-(long)amount);
                     break;
                 case EventEffectType.AddBullet:
-                    AddBulletReward(effect, chosenBullets);
+                    AddBulletReward(
+                        effect,
+                        chosenBullets,
+                        sourceChoice,
+                        previousSelections);
                     break;
                 case EventEffectType.RemoveChosenBullet:
                     foreach (BulletInstance bullet in chosenBullets
@@ -804,11 +829,23 @@ public sealed class EventSceneController : MonoBehaviour
 
     private void AddBulletReward(
         EventEffect effect,
-        IReadOnlyList<BulletInstance> chosenBullets)
+        IReadOnlyList<BulletInstance> chosenBullets,
+        EventChoiceData sourceChoice,
+        int previousSelections)
     {
         if (effect.bullet != null)
         {
             deckManager.TryAddBullet(effect.bullet, effect.bulletLevel);
+            return;
+        }
+
+        BulletData preparedReward = ResolvePreparedRandomBulletReward(
+            sourceChoice,
+            effect,
+            previousSelections);
+        if (preparedReward != null)
+        {
+            deckManager.TryAddBullet(preparedReward, effect.bulletLevel);
             return;
         }
 
@@ -826,6 +863,138 @@ public sealed class EventSceneController : MonoBehaviour
             deckManager.TryAddBullet(
                 bulletOfferBuffer[0],
                 effect.bulletLevel);
+        }
+    }
+
+    private bool EnsurePreparedChoiceRewardCapacity(int choiceCount)
+    {
+        if (runData.eventInteractionStage != 0)
+        {
+            return false;
+        }
+
+        // At the base choice stage, the existing offer list stores one
+        // prepared reward asset name per choice. Staged offers and quizzes
+        // replace this list only after their interaction stage is committed.
+        bool changed = false;
+        while (runData.eventOfferAssetNames.Count < choiceCount)
+        {
+            runData.eventOfferAssetNames.Add(string.Empty);
+            changed = true;
+        }
+
+        if (runData.eventOfferAssetNames.Count > choiceCount)
+        {
+            runData.eventOfferAssetNames.RemoveRange(
+                choiceCount,
+                runData.eventOfferAssetNames.Count - choiceCount);
+            changed = true;
+        }
+
+        return changed;
+    }
+
+    private bool PrepareRandomBulletReward(
+        EventChoiceData choice,
+        int choiceIndex,
+        int previousSelections)
+    {
+        EventEffect reward = FindPreviewableRandomBulletReward(
+            choice,
+            previousSelections);
+        if (reward == null
+            || choiceIndex < 0
+            || choiceIndex >= runData.eventOfferAssetNames.Count)
+        {
+            return false;
+        }
+
+        string storedAssetName = runData.eventOfferAssetNames[choiceIndex];
+        if (EventRuntimeRules.FindBulletByAssetName(
+                dataResolver.BulletCatalog,
+                storedAssetName) != null)
+        {
+            return false;
+        }
+
+        EventRuntimeRules.GenerateBulletOffers(
+            dataResolver.BulletCatalog,
+            dataResolver.BulletGradeWeights,
+            1,
+            reward.randomBulletGradeMode,
+            reward.fixedBulletGrade,
+            reward.oneGradeHigherChancePercent,
+            Array.Empty<BulletInstance>(),
+            bulletOfferBuffer);
+        if (bulletOfferBuffer.Count == 0)
+        {
+            return false;
+        }
+
+        runData.eventOfferAssetNames[choiceIndex] = bulletOfferBuffer[0].name;
+        return true;
+    }
+
+    private BulletData ResolvePreparedRandomBulletReward(
+        EventChoiceData choice,
+        EventEffect effect,
+        int previousSelections)
+    {
+        if (effect == null
+            || !ReferenceEquals(
+                effect,
+                FindPreviewableRandomBulletReward(
+                    choice,
+                    previousSelections)))
+        {
+            return null;
+        }
+
+        int choiceIndex = GetChoiceIndex(choice);
+        if (choiceIndex < 0
+            || choiceIndex >= runData.eventOfferAssetNames.Count)
+        {
+            return null;
+        }
+
+        return EventRuntimeRules.FindBulletByAssetName(
+            dataResolver.BulletCatalog,
+            runData.eventOfferAssetNames[choiceIndex]);
+    }
+
+    private static EventEffect FindPreviewableRandomBulletReward(
+        EventChoiceData choice,
+        int previousSelections)
+    {
+        if (choice == null || choice.specialAction != EventSpecialAction.None)
+        {
+            return null;
+        }
+
+        return EventRuntimeRules.GetActiveEffects(
+                choice.effects,
+                previousSelections)
+            .FirstOrDefault(IsIndependentRandomBulletReward);
+    }
+
+    internal static bool IsIndependentRandomBulletReward(EventEffect effect)
+    {
+        return effect != null
+            && effect.type == EventEffectType.AddBullet
+            && effect.bullet == null
+            && (effect.randomBulletGradeMode
+                    == EventRandomBulletGradeMode.Weighted
+                || effect.randomBulletGradeMode
+                    == EventRandomBulletGradeMode.Fixed);
+    }
+
+    private void ClearPreparedChoiceReward(int choiceIndex)
+    {
+        if (runData.eventInteractionStage == 0
+            && choiceIndex >= 0
+            && choiceIndex < runData.eventOfferAssetNames.Count)
+        {
+            runData.eventOfferAssetNames[choiceIndex] = string.Empty;
         }
     }
 
@@ -963,7 +1132,8 @@ public sealed class EventSceneController : MonoBehaviour
             chosenBullets,
             chosenItemSlots,
             chosenRelics,
-            previousSelections);
+            previousSelections,
+            choice);
         ApplyEffects(
             EventRuntimeRules.GetActiveEffects(
                 choice.effects,
@@ -972,7 +1142,8 @@ public sealed class EventSceneController : MonoBehaviour
             chosenBullets,
             chosenItemSlots,
             chosenRelics,
-            previousSelections);
+            previousSelections,
+            choice);
         int choiceIndex = GetChoiceIndex(choice);
         EnsureChoiceProgressCapacity();
         runData.eventChoiceSelectionCounts[choiceIndex] =
@@ -1021,7 +1192,15 @@ public sealed class EventSceneController : MonoBehaviour
         ConfigureDynamicChoices(
             bulletOfferBuffer.Select(bullet => bullet.GetDisplayName(
                     choice.offeredBulletLevel)).ToList(),
-            index => SelectRandomBulletOffer(index, choice));
+            index => SelectRandomBulletOffer(index, choice),
+            (button, index) => ConfigureRewardPreview(
+                button,
+                index >= 0 && index < bulletOfferBuffer.Count
+                    ? bulletOfferBuffer[index]
+                    : null,
+                choice.offeredBulletLevel,
+                null,
+                null));
     }
 
     private void SelectRandomBulletOffer(
@@ -1076,8 +1255,7 @@ public sealed class EventSceneController : MonoBehaviour
             answers.Select(answer => answer.name));
         runData.eventOutcomeText =
             $"노인은 탄환의 내용물을 가리고 {target.Grade} 등급 테두리만 내밀었다.";
-        runData.eventResultText =
-            $"<color=#{ColorUtility.ToHtmlStringRGB(target.GradeNameColor)}>◆ {target.Grade} ◆</color>";
+        runData.eventResultText = FormatBulletQuizHint(target);
         runData.eventInteractionStage = 2;
         pendingChoice = null;
         SaveEventState();
@@ -1088,14 +1266,46 @@ public sealed class EventSceneController : MonoBehaviour
     {
         dialogueText.text = runData.eventOutcomeText;
         SetResultText(runData.eventResultText);
-        List<string> labels = runData.eventOfferAssetNames
-            .Select(assetName => EventRuntimeRules.FindBulletByAssetName(
+        bulletOfferBuffer.Clear();
+        foreach (string assetName in runData.eventOfferAssetNames)
+        {
+            BulletData bullet = EventRuntimeRules.FindBulletByAssetName(
                 dataResolver.BulletCatalog,
-                assetName))
-            .Where(bullet => bullet != null)
-            .Select(bullet => bullet.GetDisplayName(0))
-            .ToList();
-        ConfigureDynamicChoices(labels, ResolveQuizAnswer);
+                assetName);
+            if (bullet != null)
+            {
+                bulletOfferBuffer.Add(bullet);
+            }
+        }
+
+        ConfigureDynamicChoices(
+            bulletOfferBuffer
+                .Select(bullet => bullet.GetDisplayName(0))
+                .ToList(),
+            ResolveQuizAnswer,
+            (button, index) => ConfigureRewardPreview(
+                button,
+                index >= 0 && index < bulletOfferBuffer.Count
+                    ? bulletOfferBuffer[index]
+                    : null,
+                0,
+                null,
+                null));
+    }
+
+    internal static string FormatBulletQuizHint(BulletInstance target)
+    {
+        if (target?.Data == null)
+        {
+            return string.Empty;
+        }
+
+        string gradeHint =
+            $"<color=#{ColorUtility.ToHtmlStringRGB(target.GradeNameColor)}>◆ {target.Grade} ◆</color>";
+        string description = target.Description?.Trim();
+        return string.IsNullOrWhiteSpace(description)
+            ? gradeHint
+            : $"{gradeHint}\n설명: {TooltipTextFormatter.Format(description)}";
     }
 
     private void ResolveQuizAnswer(int index)
@@ -1130,7 +1340,8 @@ public sealed class EventSceneController : MonoBehaviour
             Array.Empty<BulletInstance>(),
             Array.Empty<int>(),
             Array.Empty<RelicInstance>(),
-            previousSelections);
+            previousSelections,
+            choice);
         List<string> symbols = BuildEligibleSlotSymbols();
         if (symbols.Count == 0)
         {
@@ -1284,10 +1495,14 @@ public sealed class EventSceneController : MonoBehaviour
 
     private void ConfigureDynamicChoices(
         IReadOnlyList<string> labels,
-        Action<int> onSelected)
+        Action<int> onSelected,
+        Action<Button, int> configureRewardPreview = null)
     {
         EnsurePresenters();
-        choiceButtonPresenter.ShowDynamicChoices(labels, onSelected);
+        choiceButtonPresenter.ShowDynamicChoices(
+            labels,
+            onSelected,
+            configureRewardPreview);
     }
 
     private void ShowExternalSelectionControls(
@@ -1691,15 +1906,47 @@ public sealed class EventSceneController : MonoBehaviour
         int previousSelections = EventRuntimeRules.GetChoiceProgress(
             runData.eventChoiceSelectionCounts,
             GetChoiceIndex(choice));
-        EventEffect reward = EventRuntimeRules.GetActiveEffects(
+        List<EventEffect> rewards = EventRuntimeRules.GetActiveEffects(
                 choice?.effects,
                 previousSelections)
-            .FirstOrDefault(effect => effect != null
-                && (effect.type == EventEffectType.AddBullet
-                    && effect.bullet != null
-                    || effect.type == EventEffectType.AddItem
-                    && effect.item != null));
-        if (reward == null)
+            .Where(effect => effect != null)
+            .ToList();
+        EventEffect bulletReward = rewards.FirstOrDefault(effect =>
+            effect.type == EventEffectType.AddBullet);
+        BulletData bullet = bulletReward?.bullet
+            ?? ResolvePreparedRandomBulletReward(
+                choice,
+                bulletReward,
+                previousSelections);
+        EventEffect itemReward = rewards.FirstOrDefault(effect =>
+            effect.type == EventEffectType.AddItem && effect.item != null);
+        EventEffect statusReward = rewards.FirstOrDefault(effect =>
+            effect.type == EventEffectType.AddPendingStatusEffect);
+
+        ConfigureRewardPreview(
+            button,
+            bullet,
+            bulletReward?.bulletLevel ?? 0,
+            itemReward?.item,
+            statusReward == null
+                ? (StatusEffectType?)null
+                : statusReward.statusEffectType);
+    }
+
+    private void ConfigureRewardPreview(
+        Button button,
+        BulletData bullet,
+        int bulletLevel,
+        ItemData item,
+        StatusEffectType? pendingStatusEffect)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        ClearChoiceRewardPreview(button);
+        if (bullet == null && item == null && !pendingStatusEffect.HasValue)
         {
             return;
         }
@@ -1712,9 +1959,11 @@ public sealed class EventSceneController : MonoBehaviour
             eventID = EventTriggerType.PointerEnter
         };
         enter.callback.AddListener(_ => eventTooltipUI?.ShowEventRewardPreview(
-            reward.bullet,
-            reward.item,
-            button.transform as RectTransform));
+            bullet,
+            item,
+            button.transform as RectTransform,
+            pendingStatusEffect,
+            bulletLevel));
         trigger.triggers.Add(enter);
 
         EventTrigger.Entry exit = new EventTrigger.Entry

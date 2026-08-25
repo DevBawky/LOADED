@@ -20,9 +20,16 @@ public sealed class RelicTooltipUI : MonoBehaviour
         "Text | Description"
     };
 
+    private static readonly string[] GuideTextHints =
+    {
+        "Text | Relic Guide",
+        "Text | Guide"
+    };
+
     [SerializeField] private RectTransform panel;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text descriptionText;
+    [SerializeField] private TMP_Text guideText;
     [SerializeField] private Vector2 pointerOffset = new Vector2(18f, -18f);
     [SerializeField] private float screenPadding = 10f;
 
@@ -79,7 +86,10 @@ public sealed class RelicTooltipUI : MonoBehaviour
         return presenter;
     }
 
-    public void Show(RelicData relic, Vector2 pointerScreenPosition)
+    public void Show(
+        RelicData relic,
+        Vector2 pointerScreenPosition,
+        string guide = null)
     {
         if (relic == null)
         {
@@ -98,6 +108,12 @@ public sealed class RelicTooltipUI : MonoBehaviour
         string effect = relic.BuildEffectSummary();
         descriptionText.text = TooltipTextFormatter.Format(
             string.IsNullOrWhiteSpace(effect) ? relic.Description : effect);
+        if (guideText != null)
+        {
+            bool showGuide = !string.IsNullOrWhiteSpace(guide);
+            guideText.text = showGuide ? guide : string.Empty;
+            guideText.gameObject.SetActive(showGuide);
+        }
         panel.gameObject.SetActive(true);
         panel.SetAsLastSibling();
         Position(pointerScreenPosition);
@@ -139,6 +155,7 @@ public sealed class RelicTooltipUI : MonoBehaviour
             panel,
             DescriptionTextHints,
             "Description");
+        guideText ??= FindText(panel, GuideTextHints, "Guide");
 
         if (nameText == null)
         {
@@ -161,6 +178,20 @@ public sealed class RelicTooltipUI : MonoBehaviour
                 new Vector2(0.94f, 0.64f),
                 16f,
                 FontStyles.Normal);
+        }
+        if (guideText == null)
+        {
+            guideText = CreateText(
+                "Text | Relic Guide",
+                panel,
+                fontSource,
+                new Vector2(0.55f, 0.8f),
+                new Vector2(0.94f, 0.95f),
+                14f,
+                FontStyles.Bold);
+            guideText.alignment = TextAlignmentOptions.MidlineRight;
+            guideText.color = new Color32(247, 191, 62, 255);
+            guideText.gameObject.SetActive(false);
         }
 
         Image image = panel.GetComponent<Image>();

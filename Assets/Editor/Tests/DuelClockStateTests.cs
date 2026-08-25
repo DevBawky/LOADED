@@ -704,7 +704,7 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
-    public void NaturalClockPolicyStopsForGamePauseOrGuidePanel()
+    public void NaturalClockPolicyStopsForPauseGuideOrFiringSequence()
     {
         Assert.That(DuelClockController.ShouldAdvanceNaturalClock(
             true, true, false, true, true, false), Is.True);
@@ -712,6 +712,8 @@ public sealed class DuelClockControllerTests
             true, true, true, true, true, false), Is.False);
         Assert.That(DuelClockController.ShouldAdvanceNaturalClock(
             true, true, false, true, true, false, true), Is.False);
+        Assert.That(DuelClockController.ShouldAdvanceNaturalClock(
+            true, true, false, true, true, false, false, true), Is.False);
     }
 
     [Test]
@@ -1161,6 +1163,36 @@ public sealed class EnemyPlayerDodgeWindowStateTests
     }
 }
 
+public sealed class EnemyThrownProjectileFlightTests
+{
+    [Test]
+    public void FlightReachesTargetAfterCrossingDodgeWindow()
+    {
+        EnemyThrownProjectileFlight flight =
+            new EnemyThrownProjectileFlight(
+                Vector3.zero,
+                new Vector3(10f, 0f, 0f),
+                1f,
+                2f,
+                0.2f);
+
+        EnemyThrownProjectileFrame midpoint = flight.Advance(0.5f);
+
+        Assert.That(midpoint.Position.x, Is.EqualTo(5f).Within(0.0001f));
+        Assert.That(midpoint.Position.y, Is.EqualTo(2f).Within(0.0001f));
+        Assert.That(midpoint.ReachedDodgeWindow, Is.False);
+        Assert.That(midpoint.Completed, Is.False);
+
+        EnemyThrownProjectileFrame dodgeWindow = flight.Advance(0.3f);
+        Assert.That(dodgeWindow.ReachedDodgeWindow, Is.True);
+        Assert.That(dodgeWindow.Completed, Is.False);
+
+        EnemyThrownProjectileFrame impact = flight.Advance(0.2f);
+        Assert.That(impact.Position, Is.EqualTo(new Vector3(10f, 0f, 0f)));
+        Assert.That(impact.Completed, Is.True);
+    }
+}
+
 public sealed class WaveManagerMovementReservationTests
 {
     private readonly List<GameObject> createdObjects = new List<GameObject>();
@@ -1233,6 +1265,40 @@ public sealed class WaveManagerMovementReservationTests
         Assert.That(
             waveManager.TryReserveMovementTile(thirdOwner, 8),
             Is.True);
+    }
+
+    [UnityTest]
+    public IEnumerator DetachedEnemyAttackContinuesAfterSourceIsDestroyed()
+    {
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave Manager");
+        GameObject source = new GameObject("Destroyed Thrower");
+        GameObject attackVisual = new GameObject("Thrown Projectile");
+        createdObjects.Add(source);
+        createdObjects.Add(attackVisual);
+        bool attackResolved = false;
+
+        IEnumerator ResolveAttack()
+        {
+            yield return null;
+            attackResolved = true;
+        }
+
+        Assert.That(
+            waveManager.TryStartDetachedEnemyAttack(
+                ResolveAttack(),
+                attackVisual),
+            Is.True);
+        Assert.That(waveManager.PendingDetachedEnemyAttackCount, Is.EqualTo(1));
+        Assert.That(waveManager.IsResolvingTurn, Is.True);
+
+        UnityEngine.Object.DestroyImmediate(source);
+        yield return null;
+        yield return null;
+
+        Assert.That(attackResolved, Is.True);
+        Assert.That(waveManager.PendingDetachedEnemyAttackCount, Is.Zero);
+        Assert.That(waveManager.IsResolvingTurn, Is.False);
+        Assert.That(attackVisual == null, Is.True);
     }
 
     private T CreateComponent<T>(string objectName) where T : Component

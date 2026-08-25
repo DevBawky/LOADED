@@ -16,9 +16,11 @@ MonoBehaviour:
   displayName: "\uD22C\uCC99\uBCD1"
   description: 
   avatar: {fileID: 1233976601806711513, guid: 6718b6967c22ff54490cf76113040c67, type: 3}
+  avatarMaterialOverride: {fileID: 0}
+  avatarTint: {r: 1, g: 1, b: 1, a: 1}
   maxHealth: 50
-  minimumGoldDrop: 3
-  maximumGoldDrop: 7
+  minimumGoldDrop: 1
+  maximumGoldDrop: 3
   dropChance: 10
   dropItems:
   - dropType: 1
@@ -36,11 +38,17 @@ MonoBehaviour:
     selectionWeight: 1
     itemData: {fileID: 11400000, guid: 1c726a25a24e426a8b770796f000af19, type: 2}
     bulletData: {fileID: 0}
+  - dropType: 1
+    amount: 1
+    selectionWeight: 0.5
+    itemData: {fileID: 11400000, guid: 63f9ffcefb944fc8bbeb16e419249663, type: 2}
+    bulletData: {fileID: 0}
   behaviorType: 2
   preferredDistance: 2
   maxQueuedAttacks: 1
   queuedActionInterval: 0.2
   queueElementRevealDuration: 0.25
+  attackDodgeWindowDuration: 0.2
   meleeAdditionalAttackChance: 0.5
   firingRange: 4
   recoveryTurns: 1

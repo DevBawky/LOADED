@@ -32,7 +32,9 @@ public static class DuelClockHudAuthoring
         new Color32(145, 148, 158, 255);
     private static readonly Color32 TrackColor =
         new Color32(60, 43, 66, 230);
-    private static readonly Color32 FillColor =
+    private static readonly Color32 FillStartColor =
+        new Color32(247, 191, 62, 255);
+    private static readonly Color32 FillEndColor =
         new Color32(231, 77, 42, 255);
     private static readonly Color32 MarkerColor =
         new Color32(255, 215, 92, 255);
@@ -204,7 +206,7 @@ public static class DuelClockHudAuthoring
         Image progressFill = CreateImage(
             "Image | Progress Fill",
             meter.transform,
-            FillColor);
+            FillStartColor);
         Stretch(progressFill.rectTransform, 3f, 3f, 3f, 3f);
         progressFill.type = Image.Type.Filled;
         progressFill.fillMethod = Image.FillMethod.Horizontal;
@@ -259,6 +261,10 @@ public static class DuelClockHudAuthoring
             canvasGroup;
         serializedHud.FindProperty("progressFill").objectReferenceValue =
             progressFill;
+        serializedHud.FindProperty("progressStartColor").colorValue =
+            FillStartColor;
+        serializedHud.FindProperty("progressEndColor").colorValue =
+            FillEndColor;
         serializedHud.FindProperty("fillLerpSpeed").floatValue = 12f;
         serializedHud.FindProperty("beatFillLerpSpeed").floatValue = 28f;
         serializedHud.FindProperty("beatFullHoldDuration").floatValue =

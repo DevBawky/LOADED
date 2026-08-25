@@ -284,7 +284,8 @@ public sealed class DuelClockController : MonoBehaviour
             playerMove != null,
             waveManager != null,
             waveManager != null && waveManager.IsBattleCompleted,
-            FirstRunGuideController.IsGuidePanelOpen);
+            FirstRunGuideController.IsGuidePanelOpen,
+            playerShoot != null && playerShoot.IsFiring);
     }
 
     internal static bool ShouldAdvanceNaturalClock(
@@ -294,10 +295,12 @@ public sealed class DuelClockController : MonoBehaviour
         bool hasPlayerMove,
         bool hasWaveManager,
         bool battleCompleted,
-        bool guidePanelOpen = false)
+        bool guidePanelOpen = false,
+        bool playerFiring = false)
     {
         return isActive && componentEnabled && !gamePaused
-            && !guidePanelOpen && hasPlayerMove && hasWaveManager
+            && !guidePanelOpen && !playerFiring
+            && hasPlayerMove && hasWaveManager
             && !battleCompleted;
     }
 

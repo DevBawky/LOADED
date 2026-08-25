@@ -10,6 +10,9 @@ using UnityEngine.Video;
 [RequireComponent(typeof(VideoPlayer))]
 public sealed class MainMenuVideoController : MonoBehaviour
 {
+    private const string BattleSceneName = "Battle";
+    private const string LegacyStageOneSceneName = "Stage 1";
+
     private static readonly string[] ModalPanelNames =
     {
         "Panel | Settings",
@@ -39,7 +42,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
     [SerializeField] private CanvasGroup pilDogCanvasGroup;
     [Min(0.01f)]
     [SerializeField] private float buttonsFadeOutDuration = 0.5f;
-    [SerializeField] private string gameSceneName = "Stage 1";
+    [SerializeField] private string gameSceneName = BattleSceneName;
 
     private VideoPlayer videoPlayer;
     private PlaybackState playbackState;
@@ -50,6 +53,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
 
     private void Awake()
     {
+        gameSceneName = NormalizeConfiguredGameSceneName(gameSceneName);
         StatisticsPanelController.EnsureExists();
         ResolvePlayGameButton();
         ResolveLoadGameControls();
@@ -270,8 +274,19 @@ public sealed class MainMenuVideoController : MonoBehaviour
         }
 
         return string.IsNullOrEmpty(activeNodeScene)
-            ? "Battle"
+            ? BattleSceneName
             : activeNodeScene;
+    }
+
+    internal static string NormalizeConfiguredGameSceneName(string sceneName)
+    {
+        return string.IsNullOrWhiteSpace(sceneName)
+            || string.Equals(
+                sceneName,
+                LegacyStageOneSceneName,
+                System.StringComparison.Ordinal)
+            ? BattleSceneName
+            : sceneName;
     }
 
     private void ShowLoadGamePanel()
@@ -565,6 +580,7 @@ public sealed class MainMenuVideoController : MonoBehaviour
     private void LoadGameScene()
     {
         enabled = false;
+        gameSceneName = NormalizeConfiguredGameSceneName(gameSceneName);
 
         if (!LoadingTransitionController.LoadScene(gameSceneName))
         {

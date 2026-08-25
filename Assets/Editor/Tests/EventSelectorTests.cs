@@ -134,6 +134,49 @@ public sealed class EventSelectorTests
             Is.EqualTo("Event"));
     }
 
+    [TestCase(EventRandomBulletGradeMode.Weighted, true)]
+    [TestCase(EventRandomBulletGradeMode.Fixed, true)]
+    [TestCase(EventRandomBulletGradeMode.MatchSelected, false)]
+    [TestCase(EventRandomBulletGradeMode.MatchSelectedOrOneHigher, false)]
+    public void IndependentRandomBulletReward_CanBePreparedBeforeSelection(
+        EventRandomBulletGradeMode gradeMode,
+        bool expected)
+    {
+        EventEffect effect = new EventEffect
+        {
+            type = EventEffectType.AddBullet,
+            randomBulletGradeMode = gradeMode
+        };
+
+        Assert.That(
+            EventSceneController.IsIndependentRandomBulletReward(effect),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void BulletQuizHint_IncludesAuthoredBulletDescription()
+    {
+        BulletData bullet = CreateBullet(BulletGrade.Rare);
+        try
+        {
+            SerializedObject serialized = new SerializedObject(bullet);
+            serialized.FindProperty("description").stringValue =
+                "피해를 주고 출혈을 부여한다.";
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+
+            string hint = EventSceneController.FormatBulletQuizHint(
+                new BulletInstance(bullet, 0));
+
+            Assert.That(hint, Does.Contain(BulletGrade.Rare.ToString()));
+            Assert.That(hint, Does.Contain(TooltipTextFormatter.Format(
+                "피해를 주고 출혈을 부여한다.")));
+        }
+        finally
+        {
+            Object.DestroyImmediate(bullet);
+        }
+    }
+
     [Test]
     public void AuthoredEventCatalog_LoadsAllNewEventsWithValidChoiceCounts()
     {
@@ -182,6 +225,23 @@ public sealed class EventSelectorTests
         Assert.That(poisonEvent.choices[0].effects.Any(effect =>
             effect.type == EventEffectType.AddItem
             && effect.item != null), Is.True);
+        Assert.That(poisonEvent.choices[0].effects.Any(effect =>
+            effect.type == EventEffectType.AddPendingStatusEffect), Is.True);
+
+        EventDefinition merchantEvent = definitions.First(definition =>
+            definition.StableId == "unvisited-merchant");
+        EventEffect merchantBulletReward = merchantEvent.choices[0].effects
+            .First(effect => effect.type == EventEffectType.AddBullet);
+        Assert.That(
+            EventSceneController.IsIndependentRandomBulletReward(
+                merchantBulletReward),
+            Is.True);
+
+        EventDefinition oldManEvent = definitions.First(definition =>
+            definition.StableId == "talkative-old-man");
+        Assert.That(
+            oldManEvent.choices[0].specialAction,
+            Is.EqualTo(EventSpecialAction.BulletQuiz));
     }
 
     private static EventDefinition CreateEvent(

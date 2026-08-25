@@ -46,7 +46,7 @@ MonoBehaviour:
     weight: 30
     minimumSpawnCount: 0
     missedSpawnWeightIncrease: 5
-    previousSpawnWeightMultiplier: 1
+    previousSpawnWeightMultiplier: 0.3
   duelClockEnemyPool:
   - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
   - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}

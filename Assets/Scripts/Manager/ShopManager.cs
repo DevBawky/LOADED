@@ -66,6 +66,9 @@ public class ShopItemSlot
 public class ShopManager : MonoBehaviour
 {
     public const int InventoryItemSellPrice = 3;
+    internal const int InitialRefreshCost = 0;
+    internal const int RefreshCostIncrease = 1;
+    internal const int MaximumRefreshCost = 5;
     private const string PurchasedCostLabel = "구매 완료";
     private static readonly Color UnaffordableCostColor = Color.red;
     private static readonly Color PurchasedCostColor = Color.red;
@@ -223,7 +226,7 @@ public class ShopManager : MonoBehaviour
 
     public void RestoreRunState(int savedRefreshCost)
     {
-        currentRefreshCost = Mathf.Max(0, savedRefreshCost);
+        currentRefreshCost = ClampRefreshCost(savedRefreshCost);
         ClearOffers();
         RefreshRefreshButton();
     }
@@ -273,7 +276,7 @@ public class ShopManager : MonoBehaviour
 
         StopAllCoroutines();
         isRefreshing = false;
-        currentRefreshCost = Mathf.Max(0, savedRefreshCost);
+        currentRefreshCost = ClampRefreshCost(savedRefreshCost);
         currentOffers.Clear();
         purchasedBulletOffers.Clear();
         currentItemOffers.Clear();
@@ -354,11 +357,12 @@ public class ShopManager : MonoBehaviour
 
     private void Awake()
     {
+        EnforceRefreshCostRule();
         ResolveReferences();
         BindSlotButtons();
         BindItemSlotButtons();
         BindRefreshButton();
-        currentRefreshCost = Mathf.Max(0, initialRefreshCost);
+        currentRefreshCost = ClampRefreshCost(initialRefreshCost);
         ClearOffers();
 
         if (currencyManager != null)
@@ -405,7 +409,7 @@ public class ShopManager : MonoBehaviour
     public void OpenShop()
     {
         currencyManager?.FlushPendingMoney();
-        currentRefreshCost = Mathf.Max(0, initialRefreshCost);
+        currentRefreshCost = ClampRefreshCost(initialRefreshCost);
         ResetOfferButtonsForNewVisit();
         GenerateOffers();
         GenerateItemOffers();
@@ -444,7 +448,9 @@ public class ShopManager : MonoBehaviour
             return false;
         }
 
-        GameStatistics.RecordGoldSpent(currentRefreshCost);
+        int paidRefreshCost = currentRefreshCost;
+        GameStatistics.RecordGoldSpent(paidRefreshCost);
+        currentRefreshCost = CalculateNextRefreshCost(currentRefreshCost);
         StartCoroutine(RefreshOffersSequence());
         RefreshRefreshButton();
         return true;
@@ -485,10 +491,6 @@ public class ShopManager : MonoBehaviour
         ResetOfferButtonsForNewVisit();
         GenerateOffers();
         GenerateItemOffers();
-
-        long nextCost = (long)currentRefreshCost
-            + Mathf.Max(0, refreshCostIncrease);
-        currentRefreshCost = (int)Math.Min(int.MaxValue, nextCost);
         RefreshRefreshButton();
 
         Canvas.ForceUpdateCanvases();
@@ -673,6 +675,33 @@ public class ShopManager : MonoBehaviour
     {
         value = Mathf.Clamp01(value);
         return value * value * (3f - 2f * value);
+    }
+
+    internal static int ClampRefreshCost(int refreshCost)
+    {
+        return Mathf.Clamp(refreshCost, 0, MaximumRefreshCost);
+    }
+
+    internal static int CalculateNextRefreshCost(int currentRefreshCost)
+    {
+        return Mathf.Min(
+            MaximumRefreshCost,
+            ClampRefreshCost(currentRefreshCost) + RefreshCostIncrease);
+    }
+
+    private void EnforceRefreshCostRule()
+    {
+        // Keep the serialized fields compatible with existing scenes while
+        // making the runtime rule independent of Inspector overrides.
+        if (initialRefreshCost != InitialRefreshCost)
+        {
+            initialRefreshCost = InitialRefreshCost;
+        }
+
+        if (refreshCostIncrease != RefreshCostIncrease)
+        {
+            refreshCostIncrease = RefreshCostIncrease;
+        }
     }
 
     private void ResetOfferButtonsForNewVisit()
