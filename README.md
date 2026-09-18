@@ -1,7 +1,7 @@
 > [!WARNING]
 > 이 저장소는 심사 목적으로 공개되어 있습니다. <br>
 > 오픈소스 소프트웨어가 아니며, 코드와 에셋의 복제,수정,재배포,상업적 이용 및 다른 프로젝트에서의 사용을 금지합니다. <br>
-> Copyright © 2026 Bawky Studio. All rights reserved.
+> Copyright © 2026 Chicken Wind. All rights reserved.
 
 # LOADED
 
