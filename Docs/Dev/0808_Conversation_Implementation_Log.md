@@ -222,6 +222,11 @@
 5. 보고서가 열린 동안 아무 곳이나 클릭해서 상점으로 넘어갈 수 없다.
 6. `Button | Gain Gold`로 보너스 골드를 받은 뒤에만 상점 진행이 가능하다.
 
+`CombatReportRuntime`이 보고서 누적 상태를 소유하고 `StateManager`가 저장,
+종료와 보상 커밋 순서를 조정한다. `GameStartUI`의 버튼은 정산 확인 의도만
+전달하며 골드를 직접 변경하지 않는다. UI가 없거나 구성되지 않은 경우에는
+표현을 건너뛴 뒤 동일한 정산을 즉시 커밋한다.
+
 ### 결과 카운트업과 메달
 
 - `Layout | Combo Kill`, `Layout | Cylinder Kill`, `Layout | Executor`의 `Text | My Result`는 0부터 스테이지 결과까지 증가한다.
@@ -270,10 +275,15 @@
 - 버튼 자식 `Text | Amount`에는 최종 정산 금액을 표시한다.
 - 메달 스프라이트는 `bronzeMedalSprite`, `silverMedalSprite`, `goldMedalSprite` 직렬화 필드에 연결한다.
 - 정산 버튼의 클릭 리스너는 버튼을 표시하고 팝업 애니메이션을 시작하기 전에 등록해, 표시 직후의 첫 클릭도 정산으로 처리한다.
+- `BattleClearSettlement`은 보너스 커밋을 한 번만 허용한다. 정산 확인 직후
+  같은 프레임에 골드를 커밋하고 안정된 상태를 저장하므로 별도 세이브 필드나
+  버전 변경 없이 중복 수령을 방지한다.
 
 주요 코드:
 
+- `Assets/Scripts/Manager/CombatReportRuntime.cs`
 - `Assets/Scripts/Manager/GameStartUI.cs`
+- `Assets/Scripts/Manager/StateManager.cs`
 - `Assets/Scripts/Manager/GameStatistics.cs`
 - `Assets/Scripts/Common/CombatFeedbackController.cs`
 

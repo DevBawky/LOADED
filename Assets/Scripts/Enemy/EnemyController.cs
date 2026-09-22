@@ -118,8 +118,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private bool isInitialized;
     private readonly List<Vector3> movePath = new List<Vector3>();
     private readonly List<int> movePathTileIndices = new List<int>();
+    private readonly List<int> frontlineEnemyTileBuffer = new List<int>();
     private readonly List<EnemyController> attackTargetBuffer =
         new List<EnemyController>();
+    private readonly List<EnemySupportTargetCandidate<EnemyController>>
+        supportTargetBuffer =
+            new List<EnemySupportTargetCandidate<EnemyController>>();
     private EnemyHealthBarFeedback healthBarFeedback;
     private EnemyHealthTextFeedback healthTextFeedback;
     private BossHudController bossHud;
@@ -2277,31 +2281,20 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         out EnemyController selectedTarget,
         out EnemySupportType supportType)
     {
-        selectedTarget = null;
-        supportType = EnemySupportType.None;
-
         if (waveManager == null || playerMove == null)
         {
+            selectedTarget = null;
+            supportType = EnemySupportType.None;
             return false;
         }
 
-        float lowestHealthRatio = float.MaxValue;
-        int bestHealPlayerDistance = int.MaxValue;
-        int bestHealTileIndex = int.MaxValue;
+        supportTargetBuffer.Clear();
 
         foreach (EnemyController candidate in waveManager.ActiveEnemies)
         {
-            if (!IsValidSupportTarget(candidate)
-                || candidate.CurrentHealth >= candidate.MaxHealth)
-            {
-                continue;
-            }
+            bool isEligible = IsValidSupportTarget(candidate);
 
-            float healthRatio = candidate.MaxHealth <= 0
-                ? 1f
-                : (float)candidate.CurrentHealth / candidate.MaxHealth;
-
-            if (healthRatio > enemyData.SupportHealThreshold)
+            if (!isEligible)
             {
                 continue;
             }
@@ -2310,59 +2303,22 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 candidate,
                 out int playerDistance,
                 out int tileIndex);
-
-            if (healthRatio < lowestHealthRatio
-                || Mathf.Approximately(healthRatio, lowestHealthRatio)
-                && (playerDistance < bestHealPlayerDistance
-                    || playerDistance == bestHealPlayerDistance
-                    && tileIndex < bestHealTileIndex))
-            {
-                selectedTarget = candidate;
-                lowestHealthRatio = healthRatio;
-                bestHealPlayerDistance = playerDistance;
-                bestHealTileIndex = tileIndex;
-            }
+            supportTargetBuffer.Add(
+                new EnemySupportTargetCandidate<EnemyController>(
+                    candidate,
+                    true,
+                    candidate.CurrentHealth,
+                    candidate.MaxHealth,
+                    candidate.CurrentShield,
+                    playerDistance,
+                    tileIndex));
         }
 
-        if (selectedTarget != null)
-        {
-            supportType = EnemySupportType.Heal;
-            return true;
-        }
-
-        int bestShieldPlayerDistance = int.MaxValue;
-        int bestShieldTileIndex = int.MaxValue;
-
-        foreach (EnemyController candidate in waveManager.ActiveEnemies)
-        {
-            if (!IsValidSupportTarget(candidate)
-                || candidate.CurrentShield > 0)
-            {
-                continue;
-            }
-
-            GetSupportSortValues(
-                candidate,
-                out int playerDistance,
-                out int tileIndex);
-
-            if (playerDistance < bestShieldPlayerDistance
-                || playerDistance == bestShieldPlayerDistance
-                && tileIndex < bestShieldTileIndex)
-            {
-                selectedTarget = candidate;
-                bestShieldPlayerDistance = playerDistance;
-                bestShieldTileIndex = tileIndex;
-            }
-        }
-
-        if (selectedTarget == null)
-        {
-            return false;
-        }
-
-        supportType = EnemySupportType.Shield;
-        return true;
+        return EnemySupportTargetSelector.TrySelect(
+            supportTargetBuffer,
+            enemyData.SupportHealThreshold,
+            out selectedTarget,
+            out supportType);
     }
 
     private bool IsValidSupportTarget(EnemyController candidate)
@@ -2987,10 +2943,17 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private bool CanTakeFrontlineTurn()
     {
-        if (enemyData == null
-            || enemyData.BehaviorType != EnemyBehaviorType.Melee)
+        bool requiresFrontline = enemyData != null
+            && enemyData.BehaviorType == EnemyBehaviorType.Melee;
+
+        if (!requiresFrontline)
         {
-            return true;
+            return EnemyFrontlineTurnPolicy.CanTakeTurn(
+                false,
+                false,
+                0,
+                0,
+                null);
         }
 
         if (boardManager == null || playerMove == null || waveManager == null
@@ -3001,15 +2964,15 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 playerMove.transform.position,
                 out int playerTileIndex))
         {
-            return false;
+            return EnemyFrontlineTurnPolicy.CanTakeTurn(
+                true,
+                false,
+                0,
+                0,
+                null);
         }
 
-        int selfOffset = selfTileIndex - playerTileIndex;
-
-        if (selfOffset == 0)
-        {
-            return true;
-        }
+        frontlineEnemyTileBuffer.Clear();
 
         foreach (EnemyController otherEnemy in waveManager.ActiveEnemies)
         {
@@ -3022,18 +2985,15 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 continue;
             }
 
-            int otherOffset = otherTileIndex - playerTileIndex;
-            bool isOnSameSide = selfOffset * otherOffset > 0;
-            bool isCloserToPlayer =
-                Mathf.Abs(otherOffset) < Mathf.Abs(selfOffset);
-
-            if (isOnSameSide && isCloserToPlayer)
-            {
-                return false;
-            }
+            frontlineEnemyTileBuffer.Add(otherTileIndex);
         }
 
-        return true;
+        return EnemyFrontlineTurnPolicy.CanTakeTurn(
+            true,
+            true,
+            selfTileIndex,
+            playerTileIndex,
+            frontlineEnemyTileBuffer);
     }
 
     private bool IsFacing(int direction)

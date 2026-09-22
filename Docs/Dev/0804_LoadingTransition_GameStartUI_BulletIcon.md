@@ -153,10 +153,14 @@ Canvas _ Game Start
 ### 전투 종료 흐름
 
 1. 모든 적 처치 및 전투 행동 종료를 기다린다.
-2. 통계 수집을 종료하고 `Panel | Stage Report`를 즉시 표시한다.
-3. 일반 게임 HUD를 숨긴다.
-4. Stage Report 패널 클릭을 기다린다.
-5. 클릭하면 `StateManager`가 로딩 전환을 통해 상점으로 이동한다.
+2. `StateManager`가 `CombatReportRuntime`의 통계 수집을 종료하고 정산
+   스냅샷을 확정한다.
+3. 확정된 스냅샷으로 `Panel | Stage Report`를 즉시 표시한다.
+4. 일반 게임 HUD를 숨긴다.
+5. Stage Report 패널 클릭을 기다린다.
+6. 정산 확인이 끝나면 `StateManager`가 보너스 골드를 커밋하고 로딩
+   전환을 통해 다음 목적지로 이동한다. `GameStartUI`는 골드를 직접
+   변경하지 않는다.
 
 ## 스테이지 리포트
 
@@ -177,6 +181,11 @@ Canvas _ Game Start
 나눗셈 기준값이 0이면 평균값은 `0.0`으로 표시한다. 평균값은 소수점 첫째 자리까지 표시한다.
 
 현재 총 대미지 통계는 `PlayerShoot.DamageDealt`가 발생시키는 실제 적용 공격 피해를 기준으로 한다. 별도의 이벤트를 발생시키지 않는 환경 피해나 다른 시스템의 직접 피해를 통계에 포함하려면 해당 피해 경로에서도 통계 이벤트를 전달해야 한다.
+
+보고서 런타임 상태와 저장 캡처는 `CombatReportRuntime`이 담당한다.
+`GameStartUI`는 `BattleClearSettlement`과 `CombatReportSnapshot`을 렌더링하는
+표현 계층이며, UI가 누락되어도 `StateManager`가 같은 보너스를 한 번만
+지급한다. 기존 버전 3 저장 필드명은 그대로 유지한다.
 
 ### 수치 색상
 

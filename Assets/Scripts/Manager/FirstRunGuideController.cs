@@ -76,6 +76,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private Image inputBlocker;
     private RectTransform highlight;
     private Image highlightImage;
+    private FirstRunGuideHighlightPresenter highlightPresenter;
     private GameObject card;
     private TMP_Text cardStepText;
     private TMP_Text cardTitleText;
@@ -149,7 +150,6 @@ public sealed class FirstRunGuideController : MonoBehaviour
     private bool itemUsed;
     private bool tutorialStunItemGranted;
     private bool subscribed;
-    private readonly Vector3[] targetWorldCorners = new Vector3[4];
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void RegisterSceneBootstrap()
@@ -2301,132 +2301,10 @@ public sealed class FirstRunGuideController : MonoBehaviour
             activeSecondaryTarget = ResolveNamedTarget("Button | Move R");
         }
 
-        if (rootCanvas == null)
-        {
-            highlight.gameObject.SetActive(false);
-            return;
-        }
-
-        RectTransform canvasRect = rootCanvas.transform as RectTransform;
-        if (canvasRect == null)
-        {
-            highlight.gameObject.SetActive(false);
-            return;
-        }
-
-        Camera rootCamera = rootCanvas.renderMode == RenderMode.ScreenSpaceOverlay
-            ? null
-            : rootCanvas.worldCamera;
-        if (!TryGetHighlightScreenBounds(
-                out Vector2 screenMin,
-                out Vector2 screenMax))
-        {
-            highlight.gameObject.SetActive(false);
-            return;
-        }
-
-        if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                canvasRect,
-                screenMin,
-                rootCamera,
-                out Vector2 localMin)
-            || !RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                canvasRect,
-                screenMax,
-                rootCamera,
-                out Vector2 localMax))
-        {
-            highlight.gameObject.SetActive(false);
-            return;
-        }
-
-        const float padding = 12f;
-        highlight.gameObject.SetActive(true);
-        highlight.anchoredPosition = (localMin + localMax) * 0.5f;
-        highlight.sizeDelta = new Vector2(
-            Mathf.Abs(localMax.x - localMin.x) + padding * 2f,
-            Mathf.Abs(localMax.y - localMin.y) + padding * 2f);
-        float pulse = 0.05f + 0.14f
-            * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 5f));
-        Color color = highlightImage.color;
-        color.a = pulse;
-        highlightImage.color = color;
-    }
-
-    private bool TryGetHighlightScreenBounds(
-        out Vector2 screenMin,
-        out Vector2 screenMax)
-    {
-        screenMin = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
-        screenMax = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
-        bool hasBounds = false;
-
-        if (activeTarget != null && activeTarget.gameObject.activeInHierarchy)
-        {
-            activeTarget.GetWorldCorners(targetWorldCorners);
-            Camera targetCamera = GetCanvasCamera(activeTarget);
-            IncludeScreenPoint(
-                RectTransformUtility.WorldToScreenPoint(
-                    targetCamera,
-                    targetWorldCorners[0]),
-                ref screenMin,
-                ref screenMax);
-            IncludeScreenPoint(
-                RectTransformUtility.WorldToScreenPoint(
-                    targetCamera,
-                    targetWorldCorners[2]),
-                ref screenMin,
-                ref screenMax);
-            hasBounds = true;
-        }
-
-        if (activeSecondaryTarget != null
-            && activeSecondaryTarget.gameObject.activeInHierarchy)
-        {
-            activeSecondaryTarget.GetWorldCorners(targetWorldCorners);
-            Camera targetCamera = GetCanvasCamera(activeSecondaryTarget);
-            IncludeScreenPoint(
-                RectTransformUtility.WorldToScreenPoint(
-                    targetCamera,
-                    targetWorldCorners[0]),
-                ref screenMin,
-                ref screenMax);
-            IncludeScreenPoint(
-                RectTransformUtility.WorldToScreenPoint(
-                    targetCamera,
-                    targetWorldCorners[2]),
-                ref screenMin,
-                ref screenMax);
-            hasBounds = true;
-        }
-
-        return hasBounds;
-    }
-
-    private static void IncludeScreenPoint(
-        Vector2 point,
-        ref Vector2 minimum,
-        ref Vector2 maximum)
-    {
-        minimum = Vector2.Min(minimum, point);
-        maximum = Vector2.Max(maximum, point);
-    }
-
-    private static Camera GetCanvasCamera(RectTransform target)
-    {
-        Canvas canvas = target == null
-            ? null
-            : target.GetComponentInParent<Canvas>();
-        if (canvas == null)
-        {
-            return null;
-        }
-
-        return canvas.renderMode == RenderMode.ScreenSpaceOverlay
-            ? null
-            : canvas.worldCamera != null
-                ? canvas.worldCamera
-                : Camera.main;
+        highlightPresenter?.Present(
+            activeTarget,
+            activeSecondaryTarget,
+            Time.unscaledTime);
     }
 
     private void ResolveFont()
@@ -2500,6 +2378,10 @@ public sealed class FirstRunGuideController : MonoBehaviour
         Outline highlightOutline = highlight.gameObject.AddComponent<Outline>();
         highlightOutline.effectColor = new Color(0.05f, 0.82f, 1f, 1f);
         highlightOutline.effectDistance = new Vector2(4f, -4f);
+        highlightPresenter = new FirstRunGuideHighlightPresenter(
+            rootCanvas,
+            highlight,
+            highlightImage);
 
         card = CreateImage(
             "Panel | Guide Card",

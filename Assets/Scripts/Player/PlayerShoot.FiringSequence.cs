@@ -307,15 +307,25 @@ public partial class PlayerShoot
                 }
                 else
                 {
-                    float damageMultiplier = GetSpecialDamageMultiplier(
-                        firedBullet,
-                        resolvedBullet);
+                    BulletDynamicCombatContext damageContext =
+                        CreateDynamicCombatContext(
+                            firedBullet,
+                            resolvedBullet,
+                            firedBullet.ConsumeTemporaryDamageBonus(),
+                            0f);
+                    float damageMultiplier =
+                        BulletDynamicCombatRules.CalculateDamageMultiplier(
+                            firedBullet,
+                            resolvedBullet,
+                            damageContext);
                     damageMultiplier *= 1f + spreadDamageBonus;
                     activeCriticalDamageMultiplierBonus =
                         pendingCriticalDamageMultiplierBonus;
                     pendingCriticalDamageMultiplierBonus = 0f;
                     float shotCriticalDamageMultiplierBonus =
                         activeCriticalDamageMultiplierBonus;
+                    // Preserve the established order: damage uses pre-cost
+                    // health, while Coagulation critical chance uses post-cost health.
                     ApplyFleshForBoneCost(resolvedBullet);
                     bool isStackingShot = FindSpecialEffect(
                         resolvedBullet,
@@ -352,11 +362,18 @@ public partial class PlayerShoot
                         resolvedBullet,
                         BulletEffectType.ChainFire);
                     bool primerReusePending = false;
-                    float criticalChanceBonus =
+                    float temporaryCriticalChanceBonus =
                         firedBullet.ConsumeTemporaryCriticalChanceBonus();
-                    criticalChanceBonus += GetSpecialCriticalChanceBonus(
-                        firedBullet,
-                        resolvedBullet);
+                    BulletDynamicCombatContext criticalContext =
+                        CreateDynamicCombatContext(
+                            firedBullet,
+                            resolvedBullet,
+                            0f,
+                            temporaryCriticalChanceBonus);
+                    float criticalChanceBonus = BulletDynamicCombatRules
+                        .CalculateCriticalChanceBonus(
+                            resolvedBullet,
+                            criticalContext);
                     criticalChanceBonus += concentrationCriticalChanceBonus;
                     BulletEffectData shellEffect = FindSpecialEffect(
                         resolvedBullet,
@@ -1045,8 +1062,7 @@ public partial class PlayerShoot
     
                 float targetDamageMultiplier = GetTargetDamageMultiplier(
                     bullet,
-                    enemy,
-                    horizontalDirection);
+                    enemy);
                 targetDamageMultiplier *= (float)(relicManager == null
                     ? 1d
                     : relicManager.GetTargetConditionalDamageMultiplier(
@@ -1226,308 +1242,38 @@ public partial class PlayerShoot
             }
         }
     
-        private float GetSpecialDamageMultiplier(
+        private BulletDynamicCombatContext CreateDynamicCombatContext(
             BulletInstance firedBullet,
-            BulletInstance resolvedBullet)
+            BulletInstance resolvedBullet,
+            float temporaryDamageBonus,
+            float temporaryCriticalChanceBonus)
         {
-            float multiplier = 1f;
-            BulletEffectData seismometerEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Seismometer);
-
-            if (seismometerEffect != null)
-            {
-                multiplier *= 1f + firedBullet.AbilityStacks
-                    * Mathf.Max(0f, seismometerEffect.Amount) / 100f;
-            }
-
-            BulletEffectData highRollerEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.HighRoller);
-
-            if (highRollerEffect != null && playerHealth != null)
-            {
-                multiplier *=
-                    BulletEffectUtility.GetMissingHealthDamageMultiplier(
-                        playerHealth.CurrentHealth,
-                        playerHealth.MaxHealth,
-                        highRollerEffect.Amount);
-            }
-
-            BulletEffectData jackpotEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Jackpot);
-    
-            if (jackpotEffect != null && deckManager.LoadedBullets.Count == 0)
-            {
-                multiplier *= Mathf.Max(1f, jackpotEffect.Amount / 100f);
-            }
-    
-            BulletEffectData resonanceEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Resonance);
-    
-            if (resonanceEffect != null)
-            {
-                int otherResonanceCount = 0;
-    
-                foreach (BulletInstance loadedBullet in deckManager.LoadedBullets)
-                {
-                    if (FindSpecialEffect(
-                            loadedBullet,
-                            BulletEffectType.Resonance) != null)
-                    {
-                        otherResonanceCount++;
-                    }
-                }
-    
-                multiplier *= 1f
-                    + otherResonanceCount * resonanceEffect.Amount / 100f;
-            }
-    
-            BulletEffectData cloneEffect = FindSpecialEffect(
-                firedBullet,
-                BulletEffectType.ClonePreviousShot);
-    
-            if (cloneEffect != null && resolvedBullet != firedBullet)
-            {
-                multiplier *= Mathf.Max(1f, cloneEffect.Amount / 100f);
-            }
-    
-            multiplier *= 1f + firedBullet.ConsumeTemporaryDamageBonus();
-    
-            BulletEffectData gildedEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Gilded);
-    
-            if (gildedEffect != null && currencyManager != null)
-            {
-                int goldUnit = Mathf.Max(1, gildedEffect.StackCount);
-                multiplier *= 1f + currencyManager.CurrentMoney / goldUnit
-                    * gildedEffect.Amount / 100f;
-            }
-    
-            BulletEffectData heartEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Heart);
-    
-            if (heartEffect != null && playerHealth != null)
-            {
-                int healthUnit = Mathf.Max(1, heartEffect.StackCount);
-                multiplier *= 1f + playerHealth.MaxHealth / healthUnit
-                    * heartEffect.Amount / 100f;
-            }
-    
-            BulletEffectData loaderEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Loader);
-    
-            if (loaderEffect != null)
-            {
-                int emptyChambers = Mathf.Max(
-                    0,
-                    deckManager.MaxReloadAmount - initialLoadedBulletCount);
-                multiplier *= 1f
-                    + emptyChambers * loaderEffect.Amount / 100f;
-            }
-    
-            BulletEffectData chargeEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Charge);
-    
-            if (chargeEffect != null)
-            {
-                int charges = Mathf.Min(
+            deckManager.GetOwnedBullets(ownedBulletBuffer);
+            BulletOwnedCompositionSnapshot composition =
+                BulletOwnedCompositionSnapshot.Capture(
+                    firedBullet,
+                    deckManager.LoadedBullets,
+                    ownedBulletBuffer,
+                    ownedBulletTypeBuffer,
+                    ownedGradeCountBuffer);
+            return new BulletDynamicCombatContext(
+                new BulletCombatResourceSnapshot(
+                    currencyManager == null ? 0 : currencyManager.CurrentMoney,
+                    playerHealth == null ? 0 : playerHealth.CurrentHealth,
+                    playerHealth == null ? 0 : playerHealth.MaxHealth),
+                new BulletChamberSnapshot(
+                    initialLoadedBulletCount,
+                    deckManager.MaxReloadAmount,
+                    true,
+                    deckManager.LoadedBullets.Count == 0,
+                    resolvedBullet != firedBullet),
+                new BulletRuntimeCombatSnapshot(
+                    firedBullet.AbilityStacks,
+                    firedBullet.PermanentStacks,
                     firedBullet.ShotsObservedWhileLoaded,
-                    chargeEffect.StackCount);
-                multiplier *= 1f + charges * chargeEffect.Amount / 100f;
-            }
-    
-            BulletEffectData accumulatorEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Accumulator);
-    
-            if (accumulatorEffect != null)
-            {
-                multiplier *= 1f + firedBullet.AbilityStacks
-                    * accumulatorEffect.Amount / 100f;
-            }
-    
-            BulletEffectData devourerEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Devourer);
-    
-            if (devourerEffect != null)
-            {
-                multiplier *= 1f + firedBullet.PermanentStacks
-                    * devourerEffect.Amount / 100f;
-            }
-    
-            BulletEffectData legacyEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Legacy);
-    
-            if (legacyEffect != null)
-            {
-                multiplier *= 1f + firedBullet.PermanentStacks
-                    * legacyEffect.Amount / 100f;
-            }
-    
-            BulletEffectData collectionEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Collection);
-    
-            if (collectionEffect != null)
-            {
-                multiplier *= 1f + CountDistinctOwnedBulletTypes()
-                    * collectionEffect.Amount / 100f;
-            }
-    
-            BulletEffectData mixedGradeEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.MixedGrade);
-    
-            if (mixedGradeEffect != null)
-            {
-                int otherGradeCount = 0;
-    
-                foreach (BulletInstance loadedBullet in deckManager.LoadedBullets)
-                {
-                    if (loadedBullet != null
-                        && loadedBullet.Grade != firedBullet.Grade)
-                    {
-                        otherGradeCount++;
-                    }
-                }
-    
-                multiplier *= 1f + otherGradeCount
-                    * mixedGradeEffect.Amount / 100f;
-            }
-    
-            BulletEffectData masterpieceEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Masterpiece);
-    
-            if (masterpieceEffect != null)
-            {
-                multiplier *= 1f + CountOwnedBulletsByGrade(
-                        BulletGrade.Ace,
-                        BulletGrade.Legendary)
-                    * masterpieceEffect.Amount / 100f;
-            }
-    
-            BulletEffectData massProducedEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.MassProduced);
-    
-            if (massProducedEffect != null)
-            {
-                multiplier *= 1f + CountOwnedBulletsByGrade(
-                        BulletGrade.Normal,
-                        BulletGrade.Rare)
-                    * massProducedEffect.Amount / 100f;
-            }
-    
-            BulletEffectData monopolyEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Monopoly);
-    
-            if (monopolyEffect != null)
-            {
-                multiplier *= 1f + GetMostCommonOwnedGradeCount()
-                    * monopolyEffect.Amount / 100f;
-            }
-    
-            return multiplier;
-        }
-    
-        public int CountDistinctOwnedBulletTypes()
-        {
-            deckManager.GetOwnedBullets(ownedBulletBuffer);
-            ownedBulletTypeBuffer.Clear();
-    
-            foreach (BulletInstance bullet in ownedBulletBuffer)
-            {
-                if (bullet?.Data != null)
-                {
-                    ownedBulletTypeBuffer.Add(bullet.Data);
-                }
-            }
-    
-            return ownedBulletTypeBuffer.Count;
-        }
-    
-        public int CountOwnedBulletsByGrade(
-            BulletGrade first,
-            BulletGrade second)
-        {
-            deckManager.GetOwnedBullets(ownedBulletBuffer);
-            int count = 0;
-    
-            foreach (BulletInstance bullet in ownedBulletBuffer)
-            {
-                if (bullet != null
-                    && (bullet.Grade == first || bullet.Grade == second))
-                {
-                    count++;
-                }
-            }
-    
-            return count;
-        }
-    
-        public int GetMostCommonOwnedGradeCount()
-        {
-            deckManager.GetOwnedBullets(ownedBulletBuffer);
-            Array.Clear(ownedGradeCountBuffer, 0, ownedGradeCountBuffer.Length);
-    
-            foreach (BulletInstance bullet in ownedBulletBuffer)
-            {
-                if (bullet != null)
-                {
-                    int index = Mathf.Clamp((int)bullet.Grade, 0, 3);
-                    ownedGradeCountBuffer[index]++;
-                }
-            }
-    
-            return Mathf.Max(
-                ownedGradeCountBuffer[0],
-                ownedGradeCountBuffer[1],
-                ownedGradeCountBuffer[2],
-                ownedGradeCountBuffer[3]);
-        }
-    
-        private float GetSpecialCriticalChanceBonus(
-            BulletInstance firedBullet,
-            BulletInstance resolvedBullet)
-        {
-            float bonus = 0f;
-            BulletEffectData coagulationEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Coagulation);
-    
-            if (coagulationEffect != null && playerHealth != null
-                && playerHealth.MaxHealth > 0)
-            {
-                float missingPercent = 100f
-                    * (playerHealth.MaxHealth - playerHealth.CurrentHealth)
-                    / playerHealth.MaxHealth;
-                bonus += Mathf.Floor(
-                        missingPercent
-                        / Mathf.Max(1, coagulationEffect.StackCount))
-                    * coagulationEffect.Amount;
-            }
-    
-            BulletEffectData focusEffect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Focus);
-    
-            if (focusEffect != null)
-            {
-                bonus += firedBullet.AbilityStacks * focusEffect.Amount;
-            }
-    
-            return bonus;
+                    temporaryDamageBonus,
+                    temporaryCriticalChanceBonus),
+                composition);
         }
     
         private static int GetAvailableShellExtraShots(
@@ -1850,8 +1596,7 @@ public partial class PlayerShoot
                         enemy.IsExposed);
                 float targetDamageMultiplier = GetTargetDamageMultiplier(
                     bulletData,
-                    enemy,
-                    horizontalDirection);
+                    enemy);
                 targetDamageMultiplier *= (float)(relicManager == null
                     ? 1d
                     : relicManager.GetTargetConditionalDamageMultiplier(
@@ -2116,45 +1861,28 @@ public partial class PlayerShoot
     
         private float GetTargetDamageMultiplier(
             BulletInstance bullet,
-            EnemyController enemy,
-            int horizontalDirection)
+            EnemyController enemy)
         {
-            float multiplier = 1f;
-            BulletEffectData rangefinderEffect = FindSpecialEffect(
-                bullet,
-                BulletEffectType.Rangefinder);
-    
-            if (rangefinderEffect != null && boardManager.TryGetTileDistance(
-                    transform.position,
-                    enemy.transform.position,
-                    out int tileDistance))
+            int tileDistance = -1;
+
+            if (enemy != null && boardManager != null)
             {
-                multiplier *= 1f
-                    + tileDistance * rangefinderEffect.Amount / 100f;
-            }
-    
-            BulletEffectData judgmentEffect = FindSpecialEffect(
-                bullet,
-                BulletEffectType.Judgment);
-    
-            if (judgmentEffect != null)
-            {
-                multiplier *= 1f + enemy.TotalStatusStackCount
-                    * judgmentEffect.Amount / 100f;
+                if (boardManager.TryGetTileDistance(
+                        transform.position,
+                        enemy.transform.position,
+                        out int resolvedDistance))
+                {
+                    tileDistance = resolvedDistance;
+                }
             }
 
-            BulletEffectData assassinationEffect = FindSpecialEffect(
+            return BulletDynamicCombatRules.CalculateTargetDamageMultiplier(
                 bullet,
-                BulletEffectType.Assassination);
-
-            if (assassinationEffect != null && enemy != null
-                && enemiesHitThisTurn.Contains(enemy.GetInstanceID()))
-            {
-                multiplier *= 1f
-                    + Mathf.Max(0f, assassinationEffect.Amount) / 100f;
-            }
-    
-            return multiplier;
+                new BulletTargetDamageContext(
+                    tileDistance,
+                    enemy == null ? 0 : enemy.TotalStatusStackCount,
+                    enemy != null
+                    && enemiesHitThisTurn.Contains(enemy.GetInstanceID())));
         }
 
         private int GetShotRange(BulletInstance bullet)

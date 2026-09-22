@@ -66,6 +66,9 @@ public class StateManager : MonoBehaviour
     private bool suppressExitSave;
     private RunStartMode currentRunStartMode = RunStartMode.None;
     private int countBeforeCurrentBattle;
+    private PlayerShoot playerShoot;
+    private readonly CombatReportRuntime combatReportRuntime =
+        new CombatReportRuntime();
 
     public event Action StateChanged;
 
@@ -130,6 +133,8 @@ public class StateManager : MonoBehaviour
             FindObjectsInactive.Include);
         combatFeedback ??= FindFirstObjectByType<CombatFeedbackController>(
             FindObjectsInactive.Include);
+        playerShoot ??= FindFirstObjectByType<PlayerShoot>(
+            FindObjectsInactive.Include);
         if (relicManager == null)
         {
             relicManager = FindFirstObjectByType<RelicManager>(
@@ -187,6 +192,18 @@ public class StateManager : MonoBehaviour
                 HandleWebEnemyTurnCycleCompleted;
         }
 
+        if (playerShoot != null)
+        {
+            playerShoot.BulletFired += HandleReportBulletFired;
+            playerShoot.DamageDealt += HandleReportDamageDealt;
+        }
+
+        if (combatFeedback != null)
+        {
+            combatFeedback.DefeatPerformanceRecorded +=
+                HandleReportDefeatPerformanceRecorded;
+        }
+
         if (shopManager != null)
         {
             shopManager.OffersChanged += HandleWebShopStateChanged;
@@ -195,6 +212,7 @@ public class StateManager : MonoBehaviour
         if (playerHealth != null)
         {
             playerHealth.Defeated += HandlePlayerDefeated;
+            playerHealth.HealthChanged += HandleReportHealthChanged;
         }
 
         if (deckManager != null)
@@ -344,9 +362,7 @@ public class StateManager : MonoBehaviour
             cumulativeBattleTurnCount = CumulativeBattleCount,
             nextPushAvailableTurn = playerMove.NextPushAvailableTurn,
             playerStatusEffects = playerHealth.CaptureStatusRunState(),
-            combatReport = gameStartUI == null
-                ? new RunCombatReportSaveData()
-                : gameStartUI.CaptureRunState(),
+            combatReport = combatReportRuntime.CaptureRunState(),
             randomStateJson = JsonUtility.ToJson(UnityEngine.Random.state)
         };
         deckManager.CaptureRunState(
@@ -422,6 +438,7 @@ public class StateManager : MonoBehaviour
             saveData.maxHealth);
         playerHealth.RestoreStatusRunState(saveData.playerStatusEffects);
         currencyManager.RestoreRunMoney(saveData.money);
+        combatReportRuntime.Restore(saveData.combatReport);
         playerInventory.RestoreRunState(
             saveData.inventoryItemAssetNames,
             shopManager.ResolveSavedItem);
@@ -504,9 +521,12 @@ public class StateManager : MonoBehaviour
     {
         bool isFinalBossBattle = battle.IsBoss
             && !TryGetNextBattlePosition(out _, out _);
+        BattleClearSettlement settlement =
+            PrepareBattleClearSettlement(battle);
 
         if (gameStartUI != null)
         {
+            gameStartUI.ConfigureBattleClearSettlement(settlement);
             yield return gameStartUI.PlayBattleClear(
                 battle,
                 isFinalBossBattle);
@@ -515,6 +535,13 @@ public class StateManager : MonoBehaviour
         if (currentState != GameFlowState.BattleClear)
         {
             battleClearCoroutine = null;
+            yield break;
+        }
+
+        if (!CommitBattleClearSettlement(settlement))
+        {
+            battleClearCoroutine = null;
+            ShowRunComplete("CONFIGURATION ERROR");
             yield break;
         }
 
@@ -685,6 +712,18 @@ public class StateManager : MonoBehaviour
                 HandleWebEnemyTurnCycleCompleted;
         }
 
+        if (playerShoot != null)
+        {
+            playerShoot.BulletFired -= HandleReportBulletFired;
+            playerShoot.DamageDealt -= HandleReportDamageDealt;
+        }
+
+        if (combatFeedback != null)
+        {
+            combatFeedback.DefeatPerformanceRecorded -=
+                HandleReportDefeatPerformanceRecorded;
+        }
+
         if (shopManager != null)
         {
             shopManager.OffersChanged -= HandleWebShopStateChanged;
@@ -693,6 +732,7 @@ public class StateManager : MonoBehaviour
         if (playerHealth != null)
         {
             playerHealth.Defeated -= HandlePlayerDefeated;
+            playerHealth.HealthChanged -= HandleReportHealthChanged;
         }
 
         if (deckManager != null)
@@ -847,6 +887,16 @@ public class StateManager : MonoBehaviour
         bool beganBattle;
         bool restoringBattle = pendingRestoredRun != null;
 
+        if (!restoringBattle)
+        {
+            combatReportRuntime.Begin(
+                waveManager == null
+                    ? 0
+                    : waveManager.CurrentEnemyTurnCycle,
+                currencyManager == null ? 0 : currencyManager.CurrentMoney,
+                playerHealth == null ? 0 : playerHealth.CurrentHealth);
+        }
+
         if (pendingRestoredRun != null)
         {
             RunSaveData restoredRun = pendingRestoredRun;
@@ -880,7 +930,37 @@ public class StateManager : MonoBehaviour
 
     private void HandleWebEnemyTurnCycleCompleted(int _)
     {
+        combatReportRuntime.CompleteCount();
         RequestWebAutosave();
+    }
+
+    private void HandleReportBulletFired(BulletInstance bullet)
+    {
+        if (bullet != null)
+        {
+            combatReportRuntime.RecordShot();
+        }
+    }
+
+    private void HandleReportDamageDealt(int damage)
+    {
+        combatReportRuntime.RecordDamage(damage);
+    }
+
+    private void HandleReportHealthChanged(int currentHealth, int _)
+    {
+        combatReportRuntime.RecordHealthChanged(currentHealth);
+    }
+
+    private void HandleReportDefeatPerformanceRecorded(
+        int comboKills,
+        int cylinderKills,
+        float overkillPercent)
+    {
+        combatReportRuntime.RecordDefeatPerformance(
+            comboKills,
+            cylinderKills,
+            overkillPercent);
     }
 
     private void HandleWebShopStateChanged()
@@ -960,9 +1040,12 @@ public class StateManager : MonoBehaviour
         StateChanged?.Invoke();
         bool isFinalBossBattle = battle.IsBoss
             && !TryGetNextBattlePosition(out _, out _);
+        BattleClearSettlement settlement =
+            PrepareBattleClearSettlement(battle);
 
         if (gameStartUI != null)
         {
+            gameStartUI.ConfigureBattleClearSettlement(settlement);
             yield return gameStartUI.PlayBattleClear(
                 battle,
                 isFinalBossBattle);
@@ -971,6 +1054,13 @@ public class StateManager : MonoBehaviour
         if (currentState != GameFlowState.BattleClear)
         {
             battleClearCoroutine = null;
+            yield break;
+        }
+
+        if (!CommitBattleClearSettlement(settlement))
+        {
+            battleClearCoroutine = null;
+            ShowRunComplete("CONFIGURATION ERROR");
             yield break;
         }
 
@@ -988,6 +1078,25 @@ public class StateManager : MonoBehaviour
         {
             SceneManager.LoadScene("NodeMap");
         }
+    }
+
+    private BattleClearSettlement PrepareBattleClearSettlement(
+        BattleData battle)
+    {
+        currencyManager?.FlushPendingMoney();
+        CombatReportSnapshot report = combatReportRuntime.Complete(
+            waveManager == null ? 0 : waveManager.CurrentEnemyTurnCycle,
+            currencyManager == null ? 0 : currencyManager.CurrentMoney);
+        return BattleClearRewardCalculator.Calculate(report, battle);
+    }
+
+    private bool CommitBattleClearSettlement(
+        BattleClearSettlement settlement)
+    {
+        Func<int, bool> grantGold = currencyManager == null
+            ? null
+            : currencyManager.AddMoney;
+        return settlement != null && settlement.TryCommit(grantGold);
     }
 
     private void CompleteRunAndLoadEnding()
@@ -1037,8 +1146,12 @@ public class StateManager : MonoBehaviour
 
     private void HandleBulletsDepleted()
     {
-        if (currentState != GameFlowState.Battle
-            || waveManager != null && waveManager.IsBattleCompleted)
+        bool battleCompleted = waveManager != null
+            && waveManager.IsBattleCompleted;
+
+        if (!BattleOutcomeRules.ShouldFailFromBulletDepletion(
+                currentState,
+                battleCompleted))
         {
             return;
         }

@@ -1428,59 +1428,42 @@ public sealed class RelicManager : MonoBehaviour
         int currentHealth,
         out int survivingHealth)
     {
-        survivingHealth = 0;
+        List<RelicLethalDamageCandidate> candidates =
+            RelicLethalDamagePolicy.CaptureCandidates(ownedRelics);
 
-        if (incomingDamage < currentHealth || currentHealth <= 0)
+        if (!RelicLethalDamagePolicy.TryPrevent(
+                candidates,
+                incomingDamage,
+                currentHealth,
+                out RelicLethalDamageCandidate selectedCandidate,
+                out survivingHealth))
         {
             return false;
         }
 
-        List<RelicInstance> snapshot = new List<RelicInstance>(ownedRelics);
+        RelicInstance relic = selectedCandidate.Relic;
+        RelicEffectData effect = selectedCandidate.Effect;
+        RaiseCombatEvent(new RelicCombatEventContext(
+            RelicCombatEventType.LethalDamageIncoming,
+            amount: incomingDamage));
+        RelicTriggered?.Invoke(relic, effect);
 
-        foreach (RelicInstance relic in snapshot)
+        if (relic.Data.LifetimeType == RelicLifetimeType.Consumable
+            && relic.TryConsumeCharge() && relic.IsSpent)
         {
-            if (relic == null || relic.Data == null || relic.IsSpent)
+            int index = ownedRelics.IndexOf(relic);
+
+            if (index >= 0)
             {
-                continue;
-            }
-
-            foreach (RelicEffectData effect in relic.Data.Effects)
-            {
-                if (effect == null || effect.EffectType
-                    != RelicEffectType.PreventLethalDamage)
-                {
-                    continue;
-                }
-
-                survivingHealth = Mathf.Clamp(
-                    effect.SurvivingHealth,
-                    1,
-                    currentHealth);
-                RaiseCombatEvent(new RelicCombatEventContext(
-                    RelicCombatEventType.LethalDamageIncoming,
-                    amount: incomingDamage));
-                RelicTriggered?.Invoke(relic, effect);
-
-                if (relic.Data.LifetimeType == RelicLifetimeType.Consumable
-                    && relic.TryConsumeCharge() && relic.IsSpent)
-                {
-                    int index = ownedRelics.IndexOf(relic);
-
-                    if (index >= 0)
-                    {
-                        TryRemoveAt(index, RelicRemovalReason.Consumed);
-                    }
-                }
-                else
-                {
-                    InventoryChanged?.Invoke();
-                }
-
-                return true;
+                TryRemoveAt(index, RelicRemovalReason.Consumed);
             }
         }
+        else
+        {
+            InventoryChanged?.Invoke();
+        }
 
-        return false;
+        return true;
     }
 
     public void CaptureRunState(List<RunRelicSaveData> destination)

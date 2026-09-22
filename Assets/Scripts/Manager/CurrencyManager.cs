@@ -80,12 +80,12 @@ public class CurrencyManager : MonoBehaviour
 
         SoundManager.PlaySfx("SFX_GainGold");
         BindPresentation();
+        CommitMoney(amount);
 
         if (flyingGoldPrefab == null || moneyPanel == null
             || rootCanvasRect == null || Camera.main == null
             || !moneyPanel.gameObject.activeInHierarchy)
         {
-            CommitMoney(amount);
             return true;
         }
 
@@ -116,13 +116,7 @@ public class CurrencyManager : MonoBehaviour
 
         spawnedFlyingGold.Clear();
 
-        int amountToCommit = pendingAnimatedMoney;
         pendingAnimatedMoney = 0;
-
-        if (amountToCommit > 0)
-        {
-            CommitMoney(amountToCommit);
-        }
 
         if (moneyPanel != null && capturedMoneyPanelScale)
         {
@@ -303,7 +297,6 @@ public class CurrencyManager : MonoBehaviour
     private void CompleteFlyingCoin(GameObject coin)
     {
         pendingAnimatedMoney = Mathf.Max(0, pendingAnimatedMoney - 1);
-        CommitMoney(1);
 
         if (coin != null)
         {

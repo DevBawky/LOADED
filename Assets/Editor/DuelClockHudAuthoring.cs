@@ -19,19 +19,21 @@ public static class DuelClockHudAuthoring
     private const string HudRootName = "Layout | Duel Clock";
 
     private static readonly Color32 BackdropColor =
-        new Color32(18, 13, 25, 235);
+        new Color32(255, 255, 255, 255);
     private static readonly Color32 TitleColor =
         new Color32(247, 191, 62, 255);
     private static readonly Color32 PrimaryTextColor =
         new Color32(250, 245, 238, 255);
     private static readonly Color32 SecondaryTextColor =
-        new Color32(208, 199, 216, 255);
+        new Color32(201, 194, 211, 255);
     private static readonly Color32 BeatTextColor =
         new Color32(255, 226, 145, 255);
     private static readonly Color32 CompletedSpawnTextColor =
         new Color32(145, 148, 158, 255);
     private static readonly Color32 TrackColor =
-        new Color32(60, 43, 66, 230);
+        new Color32(48, 36, 56, 255);
+    private static readonly Color32 StatusPanelColor =
+        new Color32(42, 31, 49, 238);
     private static readonly Color32 FillStartColor =
         new Color32(247, 191, 62, 255);
     private static readonly Color32 FillEndColor =
@@ -135,11 +137,11 @@ public static class DuelClockHudAuthoring
         hudRoot.gameObject.SetActive(true);
 
         RectTransform rootRect = hudRoot as RectTransform;
-        rootRect.anchorMin = new Vector2(0.015f, 0.71f);
+        rootRect.anchorMin = new Vector2(0.5f, 1f);
         rootRect.anchorMax = rootRect.anchorMin;
-        rootRect.pivot = new Vector2(0f, 0.5f);
-        rootRect.anchoredPosition = Vector2.zero;
-        rootRect.sizeDelta = new Vector2(320f, 124f);
+        rootRect.pivot = new Vector2(0.5f, 1f);
+        rootRect.anchoredPosition = new Vector2(0f, -20f);
+        rootRect.sizeDelta = new Vector2(420f, 164f);
         rootRect.localScale = Vector3.one;
 
         Image backdrop = GetOrAddComponent<Image>(hudRoot.gameObject);
@@ -158,8 +160,8 @@ public static class DuelClockHudAuthoring
 
         VerticalLayoutGroup rootLayout =
             GetOrAddComponent<VerticalLayoutGroup>(hudRoot.gameObject);
-        rootLayout.padding = new RectOffset(14, 14, 10, 10);
-        rootLayout.spacing = 6f;
+        rootLayout.padding = new RectOffset(16, 16, 12, 12);
+        rootLayout.spacing = 8f;
         rootLayout.childAlignment = TextAnchor.UpperLeft;
         rootLayout.childControlWidth = true;
         rootLayout.childControlHeight = true;
@@ -169,35 +171,35 @@ public static class DuelClockHudAuthoring
         GameObject header = CreateLayoutRow(
             "Layout | Header",
             hudRoot,
-            25f,
+            30f,
             8f);
         TMP_Text titleText = CreateText(
             "Text | Title",
             header.transform,
             font,
             "DUEL CLOCK",
-            20f,
+            18f,
             FontStyles.Bold,
             TextAlignmentOptions.Left,
             TitleColor,
             1f,
             0f);
-        TMP_Text enemyCountText = CreateText(
-            "Text | Enemy Count",
+        TMP_Text progressText = CreateText(
+            "Text | Progress",
             header.transform,
             font,
-            "적 스폰까지 (0/5)",
-            16f,
+            "62%",
+            26f,
             FontStyles.Bold,
             TextAlignmentOptions.Right,
-            BeatTextColor,
+            PrimaryTextColor,
             0f,
-            150f);
+            92f);
 
         GameObject meter = CreateContainer(
             "Layout | Meter",
             hudRoot,
-            25f);
+            34f);
         Image track = CreateImage(
             "Image | Track",
             meter.transform,
@@ -207,7 +209,7 @@ public static class DuelClockHudAuthoring
             "Image | Progress Fill",
             meter.transform,
             FillStartColor);
-        Stretch(progressFill.rectTransform, 3f, 3f, 3f, 3f);
+        Stretch(progressFill.rectTransform, 4f, 4f, 4f, 4f);
         progressFill.type = Image.Type.Filled;
         progressFill.fillMethod = Image.FillMethod.Horizontal;
         progressFill.fillOrigin = (int)Image.OriginHorizontal.Left;
@@ -224,33 +226,63 @@ public static class DuelClockHudAuthoring
         markerRect.anchoredPosition = new Vector2(-2f, 0f);
         markerRect.sizeDelta = new Vector2(2f, -2f);
 
-        GameObject footer = CreateLayoutRow(
-            "Layout | Footer",
+        GameObject status = CreateLayoutRow(
+            "Layout | Status",
             hudRoot,
-            24f,
+            60f,
             8f);
-        TMP_Text progressText = CreateText(
-            "Text | Progress",
-            footer.transform,
+
+        GameObject remainingEnemyPanel = CreateStatusPanel(
+            "Panel | Remaining Enemies",
+            status.transform);
+        CreateText(
+            "Text | Remaining Enemy Label",
+            remainingEnemyPanel.transform,
             font,
-            "62%",
-            16f,
-            FontStyles.Bold,
-            TextAlignmentOptions.Left,
-            PrimaryTextColor,
-            0f,
-            84f);
-        TMP_Text actionPreviewText = CreateText(
-            "Text | Action Preview",
-            footer.transform,
-            font,
-            "남은 적 수: 5",
-            14f,
+            "남은 적",
+            12f,
             FontStyles.Normal,
-            TextAlignmentOptions.Right,
+            TextAlignmentOptions.Left,
             SecondaryTextColor,
             1f,
             0f);
+        TMP_Text actionPreviewText = CreateText(
+            "Text | Action Preview",
+            remainingEnemyPanel.transform,
+            font,
+            "5",
+            24f,
+            FontStyles.Bold,
+            TextAlignmentOptions.Right,
+            PrimaryTextColor,
+            0f,
+            56f);
+
+        GameObject nextSpawnPanel = CreateStatusPanel(
+            "Panel | Next Spawn",
+            status.transform);
+        CreateText(
+            "Text | Next Spawn Label",
+            nextSpawnPanel.transform,
+            font,
+            "다음 적",
+            12f,
+            FontStyles.Normal,
+            TextAlignmentOptions.Left,
+            SecondaryTextColor,
+            1f,
+            0f);
+        TMP_Text enemyCountText = CreateText(
+            "Text | Enemy Count",
+            nextSpawnPanel.transform,
+            font,
+            "5 COUNT",
+            20f,
+            FontStyles.Bold,
+            TextAlignmentOptions.Right,
+            BeatTextColor,
+            0f,
+            112f);
 
         DuelClockHUD hud = GetOrAddComponent<DuelClockHUD>(
             hudRoot.gameObject);
@@ -269,7 +301,7 @@ public static class DuelClockHudAuthoring
         serializedHud.FindProperty("beatFillLerpSpeed").floatValue = 28f;
         serializedHud.FindProperty("beatFullHoldDuration").floatValue =
             0.08f;
-        serializedHud.FindProperty("beatPulseDuration").floatValue = 0.36f;
+        serializedHud.FindProperty("beatPulseDuration").floatValue = 0.24f;
         serializedHud.FindProperty("beatPulseScale").floatValue = 1.12f;
         serializedHud.FindProperty("beatPulseColor").colorValue = TitleColor;
         serializedHud.FindProperty("titleText").objectReferenceValue =
@@ -299,19 +331,35 @@ public static class DuelClockHudAuthoring
             "authoredLayoutVersion");
         Transform header = FindDirectChild(hudRoot, "Layout | Header");
         Transform meter = FindDirectChild(hudRoot, "Layout | Meter");
-        Transform footer = FindDirectChild(hudRoot, "Layout | Footer");
+        Transform status = FindDirectChild(hudRoot, "Layout | Status");
+        Transform remainingEnemies = status == null
+            ? null
+            : FindDirectChild(status, "Panel | Remaining Enemies");
+        Transform nextSpawn = status == null
+            ? null
+            : FindDirectChild(status, "Panel | Next Spawn");
         return layoutVersion != null
             && layoutVersion.intValue == DuelClockHUD.CurrentLayoutVersion
             && header != null
             && meter != null
-            && footer != null
+            && status != null
+            && remainingEnemies != null
+            && nextSpawn != null
             && FindDirectChild(header, "Text | Title") != null
-            && FindDirectChild(header, "Text | Enemy Count") != null
+            && FindDirectChild(header, "Text | Progress") != null
             && FindDirectChild(meter, "Image | Track") != null
             && FindDirectChild(meter, "Image | Progress Fill") != null
             && FindDirectChild(meter, "Image | Beat Marker") != null
-            && FindDirectChild(footer, "Text | Progress") != null
-            && FindDirectChild(footer, "Text | Action Preview") != null;
+            && FindDirectChild(
+                remainingEnemies,
+                "Text | Remaining Enemy Label") != null
+            && FindDirectChild(
+                remainingEnemies,
+                "Text | Action Preview") != null
+            && FindDirectChild(
+                nextSpawn,
+                "Text | Next Spawn Label") != null
+            && FindDirectChild(nextSpawn, "Text | Enemy Count") != null;
     }
 
     private static int ReconcileBattleScene()
@@ -420,6 +468,40 @@ public static class DuelClockHudAuthoring
         element.preferredHeight = preferredHeight;
         element.flexibleWidth = 1f;
         return container;
+    }
+
+    private static GameObject CreateStatusPanel(
+        string objectName,
+        Transform parent)
+    {
+        GameObject panel = new GameObject(
+            objectName,
+            typeof(RectTransform),
+            typeof(LayoutElement));
+        panel.layer = 5;
+        panel.transform.SetParent(parent, false);
+
+        LayoutElement element = panel.GetComponent<LayoutElement>();
+        element.preferredHeight = 60f;
+        element.flexibleWidth = 1f;
+
+        Image image = panel.AddComponent<Image>();
+        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>(
+            "UI/Skin/UISprite.psd");
+        image.type = Image.Type.Sliced;
+        image.color = StatusPanelColor;
+        image.raycastTarget = false;
+
+        HorizontalLayoutGroup layout = panel.AddComponent<
+            HorizontalLayoutGroup>();
+        layout.padding = new RectOffset(10, 10, 7, 7);
+        layout.spacing = 6f;
+        layout.childAlignment = TextAnchor.MiddleLeft;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = true;
+        return panel;
     }
 
     private static TMP_Text CreateText(

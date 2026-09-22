@@ -8,7 +8,8 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class DuelClockHUD : MonoBehaviour
 {
-    internal const int CurrentLayoutVersion = 4;
+    internal const int CurrentLayoutVersion = 6;
+    internal const float MaximumBeatPulseDuration = 0.5f;
 
     [Header("State Source")]
     [SerializeField] private WaveManager waveManager;
@@ -25,7 +26,7 @@ public sealed class DuelClockHUD : MonoBehaviour
     [SerializeField, Min(0.01f)] private float fillLerpSpeed = 12f;
     [SerializeField, Min(0.01f)] private float beatFillLerpSpeed = 28f;
     [SerializeField, Min(0f)] private float beatFullHoldDuration = 0.08f;
-    [SerializeField, Min(0.01f)] private float beatPulseDuration = 0.36f;
+    [SerializeField, Min(0.01f)] private float beatPulseDuration = 0.24f;
     [SerializeField, Min(1f)] private float beatPulseScale = 1.12f;
     [SerializeField] private Color beatPulseColor =
         new Color32(247, 191, 62, 255);
@@ -243,10 +244,20 @@ public sealed class DuelClockHUD : MonoBehaviour
 
     internal static string FormatRemainingEnemyCount(long remainingCount)
     {
-        return $"남은 적 수: {Math.Max(0L, remainingCount)}";
+        return Math.Max(0L, remainingCount).ToString();
     }
 
     internal static string FormatNextWaveProgress(
+        int currentCount,
+        int enemyWaveCount)
+    {
+        int remainingCount = CalculateRemainingCountsUntilSpawn(
+            currentCount,
+            enemyWaveCount);
+        return $"{remainingCount} COUNT";
+    }
+
+    internal static int CalculateRemainingCountsUntilSpawn(
         int currentCount,
         int enemyWaveCount)
     {
@@ -255,12 +266,12 @@ public sealed class DuelClockHUD : MonoBehaviour
             currentCount,
             0,
             sanitizedTotal - 1);
-        return $"적 스폰까지 ({sanitizedCurrent}/{sanitizedTotal})";
+        return sanitizedTotal - sanitizedCurrent;
     }
 
     internal static string FormatAllEnemiesSpawned()
     {
-        return "모든 적 스폰됨";
+        return "완료";
     }
 
     internal static float CalculateBeatPulseStrength(float normalizedTime)
@@ -437,7 +448,10 @@ public sealed class DuelClockHUD : MonoBehaviour
         }
 
         float duration = IsFinite(beatPulseDuration)
-            ? Mathf.Max(0.01f, beatPulseDuration)
+            ? Mathf.Clamp(
+                beatPulseDuration,
+                0.01f,
+                MaximumBeatPulseDuration)
             : 0.01f;
         float deltaTime = IsFinite(unscaledDeltaTime)
             ? Mathf.Max(0f, unscaledDeltaTime)

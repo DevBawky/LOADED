@@ -122,29 +122,34 @@ Clock without owning or mutating combat state. Its recommended hierarchy is:
 Layout | Duel Clock
 |- Layout | Header
 |  |- Text | Title
-|  `- Text | Enemy Count
+|  `- Text | Progress
 |- Layout | Meter
 |  |- Image | Track
 |  |- Image | Progress Fill
 |  `- Image | Beat Marker
-`- Layout | Footer
-   |- Text | Progress
-   `- Text | Action Preview
+`- Layout | Status
+   |- Panel | Remaining Enemies
+   |  |- Text | Remaining Enemy Label
+   |  `- Text | Action Preview
+   `- Panel | Next Spawn
+      |- Text | Next Spawn Label
+      `- Text | Enemy Count
 ```
 
-The header identifies the system and shows the completed Beat count toward the
-next reinforcement, for example `적 스폰까지 (0/5)`. `BattleData`
-authors the interval and `DuelClockController` derives the current count from
-the already-saved cumulative Beat count. When the pool is empty, the label
-changes to gray `모든 적 스폰됨`. The footer shows whole clock progress as a
-percentage and the combined number of living and unspawned enemies. The HUD
-queries `WaveManager` and never owns or mutates competing combat state.
+The header pairs the system title with a large whole-number percentage. The
+meter is followed by two independent status cards: the combined number of
+living and unspawned enemies, and the remaining COUNTs until the next
+reinforcement, for example `5 COUNT` down to `1 COUNT`. `BattleData` authors
+the interval and `DuelClockController` derives the countdown from the already-
+saved cumulative Beat count. When the pool is empty, the next-spawn value
+changes to gray `완료`. The HUD queries `WaveManager` and never owns or mutates
+competing combat state.
 
 The meter follows ordinary progress with an unscaled-time exponential Lerp.
 Its fill color also interpolates from yellow at zero progress to red at 100
 percent, using the same displayed fill amount as the meter animation.
 When a commit crosses `100`, it rapidly Lerps to a full meter, briefly holds
-and pulses the complete `Layout | Duel Clock`, resets to zero, and rapidly
+and pulses the complete `Layout | Duel Clock` for `0.24` seconds, resets to zero, and rapidly
 Lerps to the preserved overflow. Multiple Beats queue the same visual sequence
 without delaying enemy resolution. The animation freezes for the game pause
 menu and an open first-run guide card, and remains presentation-only.
@@ -156,10 +161,10 @@ becomes available, and unsubscribes at matching lifecycle boundaries. Run
 root in `Canvas.prefab` and reconcile the Battle scene instance.
 
 The former `Turn N` run display now renders `COUNT N` from completed enemy
-cycles. The persistent combo window also consumes one of eight gauge cells on
-each `EnemyTurnCycleCompleted` event. A defeat during the resolving count
-refreshes the window without consuming that same count; otherwise the eighth
-count without another defeat expires the combo.
+cycles. The persistent combo window consumes one of eight gauge cells only
+when `EnemyTurnCycleCompleted` is published after the Duel Clock reaches 100%.
+A defeat during the resolving count refreshes the window without consuming
+that same count. Player actions do not consume combo gauge cells directly.
 
 ## Rule contract
 

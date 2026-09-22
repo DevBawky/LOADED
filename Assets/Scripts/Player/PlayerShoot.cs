@@ -630,23 +630,6 @@ public partial class PlayerShoot : MonoBehaviour
             previousResolvedBullet);
     }
 
-    private int CountDistinctOwnedBulletTypes()
-    {
-        return firingSequence.CountDistinctOwnedBulletTypes();
-    }
-
-    private int CountOwnedBulletsByGrade(
-        BulletGrade first,
-        BulletGrade second)
-    {
-        return firingSequence.CountOwnedBulletsByGrade(first, second);
-    }
-
-    private int GetMostCommonOwnedGradeCount()
-    {
-        return firingSequence.GetMostCommonOwnedGradeCount();
-    }
-
     private static BulletEffectData FindSpecialEffect(
         BulletInstance bullet,
         BulletEffectType effectType)

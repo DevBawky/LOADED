@@ -446,6 +446,56 @@ public sealed class RelicManagerTests
     }
 
     [Test]
+    public void LethalDamagePreview_DoesNotConsumeRelicAndTracksChargesLocally()
+    {
+        RelicData guard = CreateRelic(
+            "preview-last-chance",
+            RelicLifetimeType.Consumable,
+            RelicEffectType.PreventLethalDamage);
+        manager.TryAcquire(guard);
+        RelicLethalDamagePreviewState preview =
+            new RelicLethalDamagePreviewState(manager.OwnedRelics);
+
+        Assert.That(preview.TryPrevent(100, 30, out int health), Is.True);
+        Assert.That(health, Is.EqualTo(1));
+        Assert.That(preview.TryPrevent(100, 1, out _), Is.False);
+        Assert.That(manager.Count, Is.EqualTo(1));
+        Assert.That(manager.OwnedRelics[0].RemainingCharges, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void LethalDamagePolicy_PreservesAcquisitionOrderInRuntimeAndPreview()
+    {
+        RelicData firstGuard = CreateRelic(
+            "first-guard",
+            RelicLifetimeType.Consumable,
+            RelicEffectType.PreventLethalDamage,
+            survivingHealth: 2);
+        RelicData secondGuard = CreateRelic(
+            "second-guard",
+            RelicLifetimeType.Consumable,
+            RelicEffectType.PreventLethalDamage,
+            survivingHealth: 3);
+        manager.TryAcquire(firstGuard);
+        manager.TryAcquire(secondGuard);
+        RelicLethalDamagePreviewState preview =
+            new RelicLethalDamagePreviewState(manager.OwnedRelics);
+
+        Assert.That(
+            manager.TryPreventLethalDamage(100, 30, out int runtimeHealth),
+            Is.True);
+        Assert.That(runtimeHealth, Is.EqualTo(2));
+        Assert.That(preview.TryPrevent(100, 30, out int previewHealth), Is.True);
+        Assert.That(previewHealth, Is.EqualTo(2));
+        Assert.That(preview.TryPrevent(100, 30, out previewHealth), Is.True);
+        Assert.That(previewHealth, Is.EqualTo(3));
+        Assert.That(
+            manager.TryPreventLethalDamage(100, 30, out runtimeHealth),
+            Is.True);
+        Assert.That(runtimeHealth, Is.EqualTo(3));
+    }
+
+    [Test]
     public void MovementMultiplier_CountsNormalAndPositionSwapDistance()
     {
         RelicData movementRelic = CreateRelic(
@@ -1034,7 +1084,8 @@ public sealed class RelicManagerTests
         RelicLifetimeType lifetime = RelicLifetimeType.RunPersistent,
         RelicEffectType effectType = RelicEffectType.None,
         double amount = 1.1d,
-        RelicMovementStackReset reset = RelicMovementStackReset.AfterShot)
+        RelicMovementStackReset reset = RelicMovementStackReset.AfterShot,
+        int survivingHealth = 1)
     {
         RelicData relic = ScriptableObject.CreateInstance<RelicData>();
         relic.name = id;
@@ -1063,7 +1114,8 @@ public sealed class RelicManagerTests
                     effectType == RelicEffectType.MovementDamageMultiplier
                         ? amount
                         : 1.1d;
-            effect.FindPropertyRelative("survivingHealth").intValue = 1;
+            effect.FindPropertyRelative("survivingHealth").intValue =
+                survivingHealth;
             effect.FindPropertyRelative("movementSources").intValue =
                 (int)(PlayerMovementSource.NormalMove
                     | PlayerMovementSource.BulletPositionSwap);

@@ -1,3 +1,4 @@
+using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -170,7 +171,7 @@ public class DeckManagerTests
     }
 
     [Test]
-    public void CombatGuideExplainsDuelClockAndEightCountCombo()
+    public void CombatGuideExplainsDuelClockAndEightCellCombo()
     {
         FirstRunGuideContent.GuidePage[] pages =
             FirstRunGuideContent.CombatSystemPages;
@@ -184,8 +185,9 @@ public class DeckManagerTests
         Assert.That(
             System.Array.Exists(
                 pages,
-                page => page.Title.Contains("8 COUNT")
-                    && page.Description.Contains("8 COUNT")),
+                page => page.Title.Contains("8칸")
+                    && page.Description.Contains("100%")
+                    && page.Description.Contains("COUNT가 완료")),
             Is.True);
     }
 
@@ -646,8 +648,19 @@ public sealed class EnemyDamageNumberDisplayTests
 
 public sealed class ComboFeedbackProgressionTests
 {
+    private static void InvokeLifecycleMethod(
+        CombatFeedbackController feedback,
+        string methodName)
+    {
+        MethodInfo method = typeof(CombatFeedbackController).GetMethod(
+            methodName,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        method.Invoke(feedback, null);
+    }
+
     [Test]
-    public void ComboExpiresAfterEightCountsWithoutAnotherDefeat()
+    public void ComboExpiresAfterEightDuelClockCompletionsWithoutAnotherDefeat()
     {
         int remainingCounts = 8;
 
@@ -660,6 +673,38 @@ public sealed class ComboFeedbackProgressionTests
         }
 
         Assert.That(remainingCounts, Is.Zero);
+    }
+
+    [Test]
+    public void SuccessfulPlayerActionDoesNotConsumeCombo()
+    {
+        GameObject playerObject = new GameObject("Combo Player Test");
+        CombatFeedbackController feedback = null;
+
+        try
+        {
+            PlayerMove playerMove = playerObject.AddComponent<PlayerMove>();
+            feedback = playerObject.AddComponent<
+                CombatFeedbackController>();
+            InvokeLifecycleMethod(feedback, "OnEnable");
+            feedback.RestoreRunState(new RunSaveData
+            {
+                comboCount = 1,
+                comboTurnsRemaining = 1
+            });
+
+            playerMove.Wait();
+
+            Assert.That(feedback.ComboCount, Is.EqualTo(1));
+        }
+        finally
+        {
+            if (feedback != null)
+            {
+                InvokeLifecycleMethod(feedback, "OnDisable");
+            }
+            Object.DestroyImmediate(playerObject);
+        }
     }
 
     [Test]

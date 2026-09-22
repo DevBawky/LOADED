@@ -22,28 +22,63 @@
 | 기존 진입점 | 현재 책임 | 분리된 협력 객체 |
 |---|---|---|
 | `SoundManager` | 음원 재생, 소스/볼륨, 사용자 설정 | `SoundtrackDirector`, `UiButtonFeedbackInstaller`, `UiButtonAudioFeedback`, `UiButtonSpriteHoverScale` |
-| `PlayerShoot` | Unity 생명주기, 입력 게이트, 공개 전투 진입점 | `PlayerShootInputReader`, `PlayerShotRangePreview`, `BulletShotFeedbackView`, `PlayerAttackDamageCalculator`, `FiringSequenceController`, `DamagePreviewController`, `BulletEffectUtility` |
-| `EnemyController` | 적 상태와 턴 행동 조정 | `EnemyRunStateSerializer`, `EnemyTelegraphPresenter` |
+| `PlayerShoot` | Unity 생명주기, 입력 게이트, 공개 전투 진입점 | `PlayerShootInputReader`, `PlayerShotRangePreview`, `BulletShotFeedbackView`, `PlayerAttackDamageCalculator`, `FiringSequenceController`, `DamagePreviewController`, `BulletEffectUtility`, `BulletDynamicCombatRules` |
+| `EnemyController` | 적 상태와 턴 행동 조정 | `EnemyRunStateSerializer`, `EnemyTelegraphPresenter`, `EnemySupportTargetSelector`, `EnemyFrontlineTurnPolicy` |
 | `NodeMapSystem` | 맵 화면 상태와 노드 선택 조정 | `NodeMapGenerator`, `NodeMapSaveSystem`, `NodeMapModels` |
 | `GameStatistics` | 현재 런 통계 집계 | `RunDataModels`, `RunSaveSystem` |
 | `EventDefinition` | authored event content | `EventRunContext`, `EventSelector` |
 | `EventSceneController` | 이벤트 씬 생명주기, 상호작용, 효과·저장·이동 조정 | `EventChoiceAvailabilityEvaluator`, `EventChoiceAvailabilityContext`, `EventChoiceTextFormatter`, `EventChoiceButtonPresenter`, `EventResultPresenter`, `EventRuntimeRules` |
 | `RelicData` | authored relic content | `RelicInstance` |
-| `FirstRunGuideController` | 튜토리얼 진행과 UI 조정 | immutable `FirstRunGuideContent` |
+| `FirstRunGuideController` | 튜토리얼 진행, 입력 잠금과 대상 선택 조정 | immutable `FirstRunGuideContent`, `FirstRunGuideHighlightPresenter` |
 | `PlayerCylinderUI` | 실린더 표시, 드래그, 애니메이션 | `CylinderBulletEffectPolicy` |
 | `ShopManager` | 구매 흐름, 오퍼 UI, 새로고침 연출 | `ShopOfferGenerator` |
 | `CombatPresentation` | 총구·기본 명중 표현과 공개 연출 진입점 | `CombatImpactSignaturePresenter` |
+| `StateManager` | 전투 생명주기, 정산 커밋과 씬 전환 순서 조정 | `CombatReportRuntime`, `BattleClearRewardCalculator`, `BattleClearSettlement` |
 
 `PlayerShoot`의 발사 실행과 데미지 미리보기는 같은 효과 분류와 계산기를
 공유한다. 따라서 미리보기만 별도 규칙을 복제해 실제 발사 결과와 달라지는
 경로를 줄였다. `PlayerShoot`의 기존 이벤트와 공개 메서드는 facade에 남겨
 호출자 호환성을 유지한다.
 
+골드·체력·약실·스택·보유 탄환 구성에 따라 달라지는 피해 및 치명타 보너스와
+사거리·상태이상·선행 명중에 따른 대상별 배율은 plain C#
+`BulletDynamicCombatRules`가 계산한다. 실제 발사, 확정 피해 미리보기,
+런타임 툴팁은 각자의 현재 상태를 불변 값 컨텍스트로 캡처해 같은 규칙에
+전달한다. 임시 보너스 소비, RNG, 탄환 이동과 이벤트 순서는 계속
+`PlayerShoot`과 `BulletInstance`의 기존 소유 경계에 남는다.
+
+`DamagePreviewController`는 실제 객체를 바꾸지 않는 가상 보유 탄환 목록을,
+plain C# `PlayerCombatPreviewResources`는 가상 골드·현재/최대 체력을 소유한다.
+체력 비용과 확정 탄환 파괴를 순서대로 반영하고,
+`RelicLethalDamagePreviewState`는 죽음 방지 충전만 복제해 실제 유물 상태나
+이벤트를 소비하지 않는다. 런타임 툴팁은 대기열 전체를 시뮬레이션하는 예측값이
+아니라 현재 탄환 상태의 설명이며, 발사 결과 오버레이가 순차 예측의 권위다.
+확정 흡혈·최대 체력 증가·골드 획득도 명중별 가상 자원에 커밋한 뒤 후속 탄환
+컨텍스트를 만들므로 플레이어 자원 기반 효과가 실제 객체 변경 없이 이어진다.
+`CurrencyManager.AddMoneyFromWorld`는 권위 골드를 호출 시점에 즉시 커밋하고
+비행 코인은 표시만 담당한다. 따라서 HUD·카메라·프리팹 활성 여부와 관계없이
+후속 도금탄, 소비, 저장이 같은 골드 상태를 본다.
+
 `CombatPresentation`은 기존 직렬화 필드와 `PlayImpact` 공개 진입점을
 유지한다. 새 상황별 시그니처의 절차적 오브젝트 수명과 애니메이션은 plain
 C# `CombatImpactSignaturePresenter`가 소유하고, facade가 캡처한 적 스냅샷과
 표현 등급만 전달한다. 이 협력 객체는 게임 판정, 시간 배율, 저장 상태를
 소유하지 않는다.
+
+`FirstRunGuideController`는 가이드 진행 상태, PlayerPrefs 완료 키, 입력 잠금과
+강조할 대상 선택을 계속 소유한다. plain C# `FirstRunGuideHighlightPresenter`는
+선택된 하나 또는 두 UI 대상의 화면 범위를 합성하고, 가이드 Canvas 좌표로
+변환해 패딩과 펄스 알파를 적용한다. 강조 대상이 없거나 비활성화된 경우에는
+표시만 숨기며 가이드 진행이나 게임 입력 상태를 변경하지 않는다.
+
+전투 보고서의 누적 피해, COUNT 경계, 체력 변화, 발사 수와 처치 성과는
+plain C# `CombatReportRuntime`이 소유한다. `StateManager`가 전투 시작·복원,
+이벤트 전달, 저장 캡처와 전투 종료를 조정하고, `BattleClearRewardCalculator`가
+동일 스냅샷에서 메달과 보너스 골드를 결정한다. `GameStartUI`는 전달받은
+정산 결과를 표시하고 확인 의도만 반환한다. 실제 골드 커밋은 UI 코루틴이
+끝난 직후 `StateManager`가 수행하므로 UI가 없거나 구성되지 않아도 결과가
+달라지지 않으며, `BattleClearSettlement`이 같은 보너스의 중복 커밋을 막는다.
+버전 3의 `RunCombatReportSaveData` 필드와 저장 키는 변경하지 않았다.
 
 `EventSceneController`는 매니저가 소유한 현재 자원과 선택 대상 상태를
 `EventChoiceAvailabilityContext`로 캡처한다. 선택지 요구 조건, 대상 수와
@@ -75,10 +110,15 @@ C# `CombatImpactSignaturePresenter`가 소유하고, facade가 캡처한 적 스
 현재 검증을 깨지 않고 즉시 분리할 필요는 없지만 다음 경계는 기능 개발과
 함께 단계적으로 추출할 가치가 있다.
 
-- `EnemyController`: Melee/Gunner/Thrower/BigBarrel/Porter 턴 결정을 행동
-  전략으로 분리. 적 행동별 PlayMode 테스트를 먼저 추가한다.
-- `FirstRunGuideController`: 런타임 UI 생성과 영상/하이라이트 표현을
-  presenter로 분리. 씬 오브젝트 이름 기반 연결을 테스트로 고정한 뒤 진행한다.
+- `EnemyController`: Porter의 지원 대상 선택과 Melee의 전열 우선순위
+  결정은 각각 `EnemySupportTargetSelector`, `EnemyFrontlineTurnPolicy`로
+  분리했다. 남은 Melee/Gunner/Thrower/BigBarrel 턴 결정을 행동 전략으로
+  분리하려면 적 행동별 PlayMode 테스트를 먼저 추가한다. 현재 런타임의
+  전열 제한은 Melee에만 적용되지만 `0727_EnemyAI.md`는 Gunner도 포함하므로,
+  Gunner 적용 여부는 리팩터링이 아닌 별도 게임 규칙 변경으로 결정한다.
+- `FirstRunGuideController`: 하이라이트 좌표와 펄스 표현은
+  `FirstRunGuideHighlightPresenter`로 분리했다. 남은 런타임 UI 생성과 영상
+  표현은 씬 오브젝트 이름 기반 연결을 테스트로 고정한 뒤 단계적으로 분리한다.
 - `RelicManager`: 효과 타입별 이벤트 처리를 독립 handler로 분리. 현재의
   18개 유물 회귀 테스트를 효과별로 확장한 뒤 작은 묶음부터 이동한다.
 

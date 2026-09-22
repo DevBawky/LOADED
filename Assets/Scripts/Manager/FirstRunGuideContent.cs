@@ -126,8 +126,8 @@ internal static class FirstRunGuideContent
             null,
             TargetKind.Cylinder),
         new GuidePage(
-            "콤보와 8 COUNT",
-            "적을 처치하면 <color=#FFD05A><b>콤보 게이지 8칸</b></color>이 충전됩니다.\n적 처치 없이 COUNT가 진행될 때마다 한 칸씩 줄어듭니다.\n<color=#FF5757><b>8 COUNT 안에 추가 적을 처치</b></color>하면 게이지가 다시 8칸이 되고 콤보가 이어집니다.",
+            "콤보와 8칸 게이지",
+            "적을 처치하면 <color=#FFD05A><b>콤보 게이지 8칸</b></color>이 충전됩니다.\nDUEL CLOCK이 100%에 도달해 <color=#FF5757><b>COUNT가 완료</b></color>될 때마다 한 칸씩 줄어듭니다.\n게이지가 사라지기 전에 추가 적을 처치하면 다시 8칸이 되고 콤보가 이어집니다.",
             null,
             "Image | Combo Timer BG"),
         new GuidePage(

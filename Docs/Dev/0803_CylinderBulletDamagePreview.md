@@ -184,6 +184,29 @@ HP_Bar
 | `Assets/Scripts/Enemy/EnemyHealthBarFeedback.cs` | `HP_Value` 기반 오버레이 생성과 구간 데이터 설정 |
 | `Assets/Shaders/EnemyHealthBarImpact.shader` | 여러 피해 구간의 색상, 경계, 강조 애니메이션 렌더링 |
 
+## 계산 규칙 공유
+
+확정 피해 미리보기는 실제 발사와 동일한 `BulletDynamicCombatRules`를 사용한다.
+골드·체력·빈 약실·탄환 스택·보유 탄환 구성에 따른 동적 피해 및 치명타 보너스와
+사거리·상태이상·선행 명중 대상 배율을 별도 구현하지 않는다. 미리보기는 상태를
+복제한 뒤 불변 컨텍스트로 계산기에 전달하며, 규칙 계산 자체는 탄환 상태를
+소비하거나 RNG를 사용하지 않는다.
+
+미리보기는 `PlayerCombatPreviewResources`의 별도 골드·현재/최대 체력과
+별도의 보유 탄환 목록을 진행 상태로 유지한다.
+`FleshForBone` 비용은 피해 배율 스냅샷 뒤, 응고 치명타와 체력 조건 유물 판정
+앞에서 적용한다. 죽음 방지 유물은 `RelicLethalDamagePreviewState`가 남은 충전
+횟수만 복제해 판정하므로 실제 유물 충전이나 이벤트를 소비하지 않는다. 확정
+자가 파괴와 화약 주머니 파괴는 프리뷰 보유 목록에서 제거한 뒤 후속 탄환의
+Collection·등급 구성 계열 배율을 계산한다.
+
+확정 `LifeSteal`, `IncreaseMaxHealth`, `GainGold` 플레이어 효과도 명중별 실제
+적용 순서로 가상 현재 체력·최대 체력·골드에 반영한다. 따라서 뒤 탄환의
+HighRoller·Coagulation·Heart·Gilded 및 체력 조건 유물은 진행된 프리뷰 상태를
+사용한다. 이 가상 자원 전이는 실제 체력, 골드, 유물 이벤트를 변경하지 않는다.
+실제 `AddMoneyFromWorld`도 골드를 즉시 커밋하고 코인 비행은 표현만 수행하므로,
+후속 도금탄이 보는 골드 시점이 프리뷰와 동일하다.
+
 ## 검증
 
 ### 자동 검증

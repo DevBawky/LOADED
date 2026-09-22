@@ -71,6 +71,8 @@ public sealed class GameStartUI : MonoBehaviour
     [SerializeField] private Canvas gameplayCanvas;
     [SerializeField] private CinemachineCamera cinemachineCamera;
     [SerializeField] private Transform playerTrackingTarget;
+    // Retained to preserve existing scene and prefab serialization. Combat
+    // report collection no longer reads these references.
     [SerializeField] private PlayerShoot playerShoot;
     [SerializeField] private PlayerMove playerMove;
     [SerializeField] private PlayerHealth playerHealth;
@@ -96,35 +98,13 @@ public sealed class GameStartUI : MonoBehaviour
     [SerializeField] private Color summaryValueColor = new Color(0.45f, 1f, 0.55f, 1f);
     [SerializeField] private Color goldValueColor = new Color(1f, 0.88f, 0.1f, 1f);
 
-    private bool isCollectingReport;
-    private int cumulativeDamage;
-    private int highestCumulativeDamage;
-    private int currentCountDamage;
-    private int highestSingleDamage;
-    private int damageTaken;
-    private int healingReceived;
-    private int totalShots;
-    private int startingCount;
-    private int startingGold;
-    private int stageEarnedGold;
-    private int stageMaxCombo;
-    private int stageMaxCylinderKills;
-    private float stageMaxOverkillPercent;
-    private int comboBronzeThreshold = int.MaxValue;
-    private int comboSilverThreshold = int.MaxValue;
-    private int comboGoldThreshold = int.MaxValue;
-    private int comboMedalScore;
-    private int cylinderMedalScore;
-    private int executorMedalScore;
-    private int totalMedalScore;
-    private int bonusGold;
-    private float bonusGoldRate;
-    private int lastPlayerHealth;
+    private CombatReportSnapshot reportSnapshot;
+    private BattleClearSettlement battleClearSettlement;
+    private bool hasConfiguredSettlement;
     private bool clickReceived;
     private Button pendingClickButton;
     private UnityAction pendingClickAction;
-    private bool reportEventsSubscribed;
-    private bool bonusClaimed;
+    private bool settlementConfirmed;
 
     public bool IsConfigured => stageNoticePanel != null
         && stageNoticeButton != null
@@ -156,12 +136,6 @@ public sealed class GameStartUI : MonoBehaviour
         && gameplayCanvas != null
         && cinemachineCamera != null
         && playerTrackingTarget != null
-        && playerShoot != null
-        && playerMove != null
-        && playerHealth != null
-        && waveManager != null
-        && currencyManager != null
-        && combatFeedback != null
         && IsGameplayCanvasSeparate();
 
     private void Awake()
@@ -173,8 +147,6 @@ public sealed class GameStartUI : MonoBehaviour
     public void PrepareForUse()
     {
         FindChildReferences();
-        ResolveGameplayReferences();
-        SubscribeToReportEvents();
     }
 
     public void PrepareRestoredBattle(
@@ -182,24 +154,25 @@ public sealed class GameStartUI : MonoBehaviour
         BattleData battleData)
     {
         FindChildReferences();
-        ResolveGameplayReferences();
-        ConfigureComboMedalCriteria(battleData);
+        reportSnapshot = CombatReportSnapshot.Create(state, 0, 0);
+        hasConfiguredSettlement = false;
+        ConfigureMedalCriteria(
+            BattleClearRewardCalculator.Calculate(
+                reportSnapshot,
+                battleData));
         ResetVisualState();
         SetGameplayReady();
-        RestoreRunState(state);
         gameObject.SetActive(false);
     }
 
     private void OnDestroy()
     {
         CancelPendingClick();
-        UnsubscribeFromReportEvents();
     }
 
     private void Reset()
     {
         FindChildReferences();
-        ResolveGameplayReferences();
         ResetVisualState();
     }
 
@@ -221,14 +194,12 @@ public sealed class GameStartUI : MonoBehaviour
         Action onFightStarted)
     {
         FindChildReferences();
-        ResolveGameplayReferences();
 
         if (!IsConfigured)
         {
             Debug.LogError(
                 "Game Start UI notice, report, gameplay, and player references must be assigned.",
                 this);
-            BeginReportCollection();
             SetGameplayReady();
             onFightStarted?.Invoke();
             ResetAndHide();
@@ -237,7 +208,10 @@ public sealed class GameStartUI : MonoBehaviour
 
         ResetVisualState();
         SetBattleText(stageData, battleData);
-        ConfigureComboMedalCriteria(battleData);
+        ConfigureMedalCriteria(
+            BattleClearRewardCalculator.Calculate(
+                default,
+                battleData));
         stageNoticeClickText.text = "클릭하여 전투 시작";
 
         SetGameplayCanvasActive(false);
@@ -250,7 +224,6 @@ public sealed class GameStartUI : MonoBehaviour
         stageNoticePanel.SetActive(false);
         SetTextAlpha(fightText, 1f);
         fightText.gameObject.SetActive(true);
-        BeginReportCollection();
         SetGameplayReady();
         onFightStarted?.Invoke();
 
@@ -266,8 +239,14 @@ public sealed class GameStartUI : MonoBehaviour
         bool isFinalBossBattle = false)
     {
         FindChildReferences();
-        ResolveGameplayReferences();
-        EndReportCollection();
+
+        if (!hasConfiguredSettlement)
+        {
+            ConfigureBattleClearSettlement(
+                BattleClearRewardCalculator.Calculate(
+                    reportSnapshot,
+                    battleData));
+        }
 
         if (!IsConfigured)
         {
@@ -281,7 +260,7 @@ public sealed class GameStartUI : MonoBehaviour
 
         ResetVisualState();
         SetBattleReport(battleData);
-        ConfigureComboMedalCriteria(battleData);
+        ConfigureMedalCriteria(battleClearSettlement);
         PrepareStageResult();
         if (stageReportClickText != null)
         {
@@ -316,6 +295,16 @@ public sealed class GameStartUI : MonoBehaviour
         stageReportPanel.SetActive(false);
         gameObject.SetActive(false);
         SetGameplayCanvasActive(true);
+        hasConfiguredSettlement = false;
+    }
+
+    internal void ConfigureBattleClearSettlement(
+        BattleClearSettlement settlement)
+    {
+        battleClearSettlement = settlement
+            ?? BattleClearRewardCalculator.Calculate(default, 0);
+        reportSnapshot = battleClearSettlement.Report;
+        hasConfiguredSettlement = true;
     }
 
     public void ResetAndHide()
@@ -437,18 +426,6 @@ public sealed class GameStartUI : MonoBehaviour
         fightText ??= FindComponent<TMP_Text>(transform, "Text | Fight");
     }
 
-    private void ResolveGameplayReferences()
-    {
-        playerShoot ??= FindSceneObject<PlayerShoot>();
-        playerMove ??= FindSceneObject<PlayerMove>();
-        playerHealth ??= FindSceneObject<PlayerHealth>();
-        waveManager ??= FindSceneObject<WaveManager>();
-        currencyManager ??= FindSceneObject<CurrencyManager>();
-        combatFeedback ??= playerShoot == null
-            ? FindSceneObject<CombatFeedbackController>()
-            : playerShoot.GetComponent<CombatFeedbackController>();
-    }
-
     private IEnumerator WaitForPanelClick(Button button, TMP_Text clickText)
     {
         CancelPendingClick();
@@ -491,231 +468,6 @@ public sealed class GameStartUI : MonoBehaviour
         clickReceived = false;
     }
 
-    private void BeginReportCollection()
-    {
-        cumulativeDamage = 0;
-        highestCumulativeDamage = 0;
-        currentCountDamage = 0;
-        highestSingleDamage = 0;
-        damageTaken = 0;
-        healingReceived = 0;
-        totalShots = 0;
-        stageEarnedGold = 0;
-        stageMaxCombo = 0;
-        stageMaxCylinderKills = 0;
-        stageMaxOverkillPercent = 0f;
-        startingCount = waveManager == null
-            ? 0
-            : waveManager.CurrentEnemyTurnCycle;
-        startingGold = currencyManager == null ? 0 : currencyManager.CurrentMoney;
-        lastPlayerHealth = playerHealth == null ? 0 : playerHealth.CurrentHealth;
-        isCollectingReport = true;
-    }
-
-    public RunCombatReportSaveData CaptureRunState()
-    {
-        return new RunCombatReportSaveData
-        {
-            cumulativeDamage = cumulativeDamage,
-            highestCumulativeDamage = highestCumulativeDamage,
-            // Legacy version 3 field names remain unchanged. These values
-            // now represent completed enemy COUNT boundaries.
-            currentTurnDamage = currentCountDamage,
-            highestSingleDamage = highestSingleDamage,
-            damageTaken = damageTaken,
-            healingReceived = healingReceived,
-            totalShots = totalShots,
-            startingTurnCount = startingCount,
-            startingGold = startingGold,
-            stageMaxCombo = stageMaxCombo,
-            stageMaxCylinderKills = stageMaxCylinderKills,
-            stageMaxOverkillPercent = stageMaxOverkillPercent,
-            lastPlayerHealth = lastPlayerHealth
-        };
-    }
-
-    public void RestoreRunState(RunCombatReportSaveData state)
-    {
-        if (state == null)
-        {
-            return;
-        }
-
-        cumulativeDamage = Mathf.Max(0, state.cumulativeDamage);
-        highestCumulativeDamage = Mathf.Max(
-            0,
-            state.highestCumulativeDamage);
-        currentCountDamage = Mathf.Max(0, state.currentTurnDamage);
-        highestSingleDamage = Mathf.Max(0, state.highestSingleDamage);
-        damageTaken = Mathf.Max(0, state.damageTaken);
-        healingReceived = Mathf.Max(0, state.healingReceived);
-        totalShots = Mathf.Max(0, state.totalShots);
-        startingCount = Mathf.Max(0, state.startingTurnCount);
-        startingGold = Mathf.Max(0, state.startingGold);
-        stageMaxCombo = Mathf.Max(0, state.stageMaxCombo);
-        stageMaxCylinderKills = Mathf.Max(
-            0,
-            state.stageMaxCylinderKills);
-        stageMaxOverkillPercent = Mathf.Max(
-            0f,
-            state.stageMaxOverkillPercent);
-        lastPlayerHealth = Mathf.Max(0, state.lastPlayerHealth);
-        isCollectingReport = true;
-    }
-
-    private void EndReportCollection()
-    {
-        CommitCurrentCountDamage();
-        currencyManager?.FlushPendingMoney();
-        stageEarnedGold = currencyManager == null
-            ? 0
-            : Mathf.Max(0, currencyManager.CurrentMoney - startingGold);
-        isCollectingReport = false;
-    }
-
-    private void SubscribeToReportEvents()
-    {
-        if (reportEventsSubscribed)
-        {
-            return;
-        }
-
-        if (playerShoot != null)
-        {
-            playerShoot.BulletFired += HandleBulletFired;
-            playerShoot.DamageDealt += HandleDamageDealt;
-        }
-
-        if (playerHealth != null)
-        {
-            playerHealth.HealthChanged += HandlePlayerHealthChanged;
-        }
-
-        if (waveManager != null)
-        {
-            waveManager.EnemyTurnCycleCompleted += HandleCountCompleted;
-        }
-
-        if (combatFeedback != null)
-        {
-            combatFeedback.DefeatPerformanceRecorded +=
-                HandleDefeatPerformanceRecorded;
-        }
-
-        reportEventsSubscribed = true;
-    }
-
-    private void UnsubscribeFromReportEvents()
-    {
-        if (!reportEventsSubscribed)
-        {
-            return;
-        }
-
-        if (playerShoot != null)
-        {
-            playerShoot.BulletFired -= HandleBulletFired;
-            playerShoot.DamageDealt -= HandleDamageDealt;
-        }
-
-        if (playerHealth != null)
-        {
-            playerHealth.HealthChanged -= HandlePlayerHealthChanged;
-        }
-
-        if (waveManager != null)
-        {
-            waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
-        }
-
-        if (combatFeedback != null)
-        {
-            combatFeedback.DefeatPerformanceRecorded -=
-                HandleDefeatPerformanceRecorded;
-        }
-
-        reportEventsSubscribed = false;
-    }
-
-    private void HandleBulletFired(BulletInstance bullet)
-    {
-        if (!isCollectingReport || bullet == null)
-        {
-            return;
-        }
-
-        totalShots++;
-    }
-
-    private void HandleDamageDealt(int damage)
-    {
-        if (!isCollectingReport || damage <= 0)
-        {
-            return;
-        }
-
-        cumulativeDamage += damage;
-        currentCountDamage += damage;
-        highestSingleDamage = Mathf.Max(highestSingleDamage, damage);
-    }
-
-    private void HandleCountCompleted(int _)
-    {
-        if (!isCollectingReport)
-        {
-            return;
-        }
-
-        CommitCurrentCountDamage();
-    }
-
-    private void HandleDefeatPerformanceRecorded(
-        int comboKills,
-        int cylinderKills,
-        float overkillPercent)
-    {
-        if (!isCollectingReport)
-        {
-            return;
-        }
-
-        stageMaxCombo = Mathf.Max(stageMaxCombo, comboKills);
-        stageMaxCylinderKills = Mathf.Max(
-            stageMaxCylinderKills,
-            cylinderKills);
-        stageMaxOverkillPercent = Mathf.Max(
-            stageMaxOverkillPercent,
-            overkillPercent);
-    }
-
-    private void CommitCurrentCountDamage()
-    {
-        highestCumulativeDamage = Mathf.Max(
-            highestCumulativeDamage,
-            currentCountDamage);
-        currentCountDamage = 0;
-    }
-
-    private void HandlePlayerHealthChanged(int currentHealth, int maximumHealth)
-    {
-        if (!isCollectingReport)
-        {
-            lastPlayerHealth = currentHealth;
-            return;
-        }
-
-        if (currentHealth < lastPlayerHealth)
-        {
-            damageTaken += lastPlayerHealth - currentHealth;
-        }
-        else if (currentHealth > lastPlayerHealth)
-        {
-            healingReceived += currentHealth - lastPlayerHealth;
-        }
-
-        lastPlayerHealth = currentHealth;
-    }
-
     private void SetBattleText(
         StageData stageData,
         BattleData battleData)
@@ -733,127 +485,70 @@ public sealed class GameStartUI : MonoBehaviour
         stageReportTitleText.text = battleData == null
             ? "STAGE REPORT"
             : battleData.ClearNoticeTitle;
-
-        int battleCounts = waveManager == null
-            ? 0
-            : Mathf.Max(
-                0,
-                waveManager.CurrentEnemyTurnCycle - startingCount);
-        float averageDamagePerCount = battleCounts <= 0
-            ? 0f
-            : (float)cumulativeDamage / battleCounts;
-        float averageDamagePerShot = totalShots <= 0
-            ? 0f
-            : (float)cumulativeDamage / totalShots;
+        CombatReportSnapshot report = battleClearSettlement.Report;
 
         stageReportBodyText.richText = true;
 
-        StringBuilder report = new StringBuilder();
-        report.Append("총 대미지: ")
-            .AppendLine(Colorize(cumulativeDamage.ToString("N0"), damageValueColor));
-        report.Append("최고 누적 대미지: ")
-            .AppendLine(Colorize(highestCumulativeDamage.ToString("N0"), damageValueColor));
-        report.Append("최고 한 방 대미지: ")
-            .AppendLine(Colorize(highestSingleDamage.ToString("N0"), damageValueColor));
-        report.Append("입은 피해: ")
-            .AppendLine(Colorize(damageTaken.ToString("N0"), damageTakenValueColor));
-        report.Append("회복량: ")
-            .AppendLine(Colorize(healingReceived.ToString("N0"), summaryValueColor));
-        report.Append("완료 COUNT: ")
-            .AppendLine(Colorize(battleCounts.ToString("N0"), summaryValueColor));
-        report.Append("총 발사 수: ")
-            .AppendLine(Colorize(totalShots.ToString("N0"), summaryValueColor));
-        report.Append("COUNT 당 평균 대미지: ")
-            .AppendLine(Colorize(averageDamagePerCount.ToString("N1"), damageValueColor));
-        report.Append("평균 발 당 대미지: ")
-            .AppendLine(Colorize(averageDamagePerShot.ToString("N1"), damageValueColor));
-        report.Append("획득한 골드: ")
-            .Append(Colorize($"$ {stageEarnedGold:N0}", goldValueColor));
-        stageReportBodyText.text = report.ToString();
+        StringBuilder builder = new StringBuilder();
+        builder.Append("총 대미지: ")
+            .AppendLine(Colorize(
+                report.CumulativeDamage.ToString("N0"),
+                damageValueColor));
+        builder.Append("최고 누적 대미지: ")
+            .AppendLine(Colorize(
+                report.HighestCumulativeDamage.ToString("N0"),
+                damageValueColor));
+        builder.Append("최고 한 방 대미지: ")
+            .AppendLine(Colorize(
+                report.HighestSingleDamage.ToString("N0"),
+                damageValueColor));
+        builder.Append("입은 피해: ")
+            .AppendLine(Colorize(
+                report.DamageTaken.ToString("N0"),
+                damageTakenValueColor));
+        builder.Append("회복량: ")
+            .AppendLine(Colorize(
+                report.HealingReceived.ToString("N0"),
+                summaryValueColor));
+        builder.Append("완료 COUNT: ")
+            .AppendLine(Colorize(
+                report.CompletedCount.ToString("N0"),
+                summaryValueColor));
+        builder.Append("총 발사 수: ")
+            .AppendLine(Colorize(
+                report.TotalShots.ToString("N0"),
+                summaryValueColor));
+        builder.Append("COUNT 당 평균 대미지: ")
+            .AppendLine(Colorize(
+                report.AverageDamagePerCount.ToString("N1"),
+                damageValueColor));
+        builder.Append("평균 발 당 대미지: ")
+            .AppendLine(Colorize(
+                report.AverageDamagePerShot.ToString("N1"),
+                damageValueColor));
+        builder.Append("획득한 골드: ")
+            .Append(Colorize(
+                $"$ {report.StageEarnedGold:N0}",
+                goldValueColor));
+        stageReportBodyText.text = builder.ToString();
     }
 
-    private void ConfigureComboMedalCriteria(BattleData battleData)
+    private void ConfigureMedalCriteria(BattleClearSettlement settlement)
     {
-        int totalEnemyCount = GetTotalEnemyCount(battleData);
-
-        if (totalEnemyCount <= 0)
-        {
-            comboBronzeThreshold = int.MaxValue;
-            comboSilverThreshold = int.MaxValue;
-            comboGoldThreshold = int.MaxValue;
-        }
-        else
-        {
-            comboBronzeThreshold = GetPercentageThreshold(
-                totalEnemyCount,
-                25);
-            comboSilverThreshold = GetPercentageThreshold(
-                totalEnemyCount,
-                50);
-            comboGoldThreshold = GetPercentageThreshold(
-                totalEnemyCount,
-                70);
-        }
+        settlement ??= BattleClearRewardCalculator.Calculate(default, 0);
 
         SetComboCriteriaText(
             comboBronzeCriteriaText,
-            comboBronzeThreshold);
+            settlement.ComboBronzeThreshold);
         SetComboCriteriaText(
             comboSilverCriteriaText,
-            comboSilverThreshold);
+            settlement.ComboSilverThreshold);
         SetComboCriteriaText(
             comboGoldCriteriaText,
-            comboGoldThreshold);
+            settlement.ComboGoldThreshold);
         SetExecutorCriteriaText(executorBronzeCriteriaText, 25f);
         SetExecutorCriteriaText(executorSilverCriteriaText, 75f);
         SetExecutorCriteriaText(executorGoldCriteriaText, 150f);
-    }
-
-    private static int GetTotalEnemyCount(BattleData battleData)
-    {
-        if (battleData == null || battleData.Waves == null)
-        {
-            return 0;
-        }
-
-        long totalEnemyCount = 0;
-
-        foreach (EnemyWave wave in battleData.Waves)
-        {
-            if (wave == null || wave.Enemies == null)
-            {
-                continue;
-            }
-
-            foreach (EnemyWaveEntry entry in wave.Enemies)
-            {
-                if (entry == null || entry.EnemyData == null
-                    || entry.Count <= 0)
-                {
-                    continue;
-                }
-
-                totalEnemyCount += entry.Count;
-
-                if (totalEnemyCount >= int.MaxValue)
-                {
-                    return int.MaxValue;
-                }
-            }
-        }
-
-        return (int)totalEnemyCount;
-    }
-
-    private static int GetPercentageThreshold(
-        int totalEnemyCount,
-        int percentage)
-    {
-        long scaledCount = (long)Mathf.Max(0, totalEnemyCount)
-            * Mathf.Clamp(percentage, 0, 100);
-        return Mathf.Max(1, (int)Math.Min(
-            int.MaxValue,
-            (scaledCount + 99L) / 100L));
     }
 
     private static void SetComboCriteriaText(
@@ -882,17 +577,8 @@ public sealed class GameStartUI : MonoBehaviour
 
     private void PrepareStageResult()
     {
-        comboMedalScore = GetComboMedalScore(stageMaxCombo);
-        cylinderMedalScore = GetCylinderMedalScore(stageMaxCylinderKills);
-        executorMedalScore = GetExecutorMedalScore(stageMaxOverkillPercent);
-        totalMedalScore = comboMedalScore
-            + cylinderMedalScore
-            + executorMedalScore;
-        bonusGoldRate = GetBonusGoldRate(totalMedalScore);
-        bonusGold = Mathf.Max(
-            0,
-            Mathf.FloorToInt(stageEarnedGold * bonusGoldRate));
-        bonusClaimed = false;
+        BattleClearSettlement settlement = battleClearSettlement;
+        settlementConfirmed = false;
 
         comboKillResultText.text = "0";
         cylinderKillResultText.text = "0";
@@ -902,7 +588,7 @@ public sealed class GameStartUI : MonoBehaviour
         PrepareMedalImage(executorMedalImage);
         bonusResultText.text = string.Empty;
         bonusResultText.gameObject.SetActive(false);
-        gainGoldAmountText.text = $"정산: $ {bonusGold:N0}";
+        gainGoldAmountText.text = $"정산: $ {settlement.BonusGold:N0}";
         gainGoldButton.interactable = false;
         gainGoldButton.gameObject.SetActive(false);
     }
@@ -911,23 +597,33 @@ public sealed class GameStartUI : MonoBehaviour
     {
         yield return AnimateResultValues();
 
-        yield return RevealMedal(comboMedalImage, comboMedalScore);
+        BattleClearSettlement settlement = battleClearSettlement;
+        CombatReportSnapshot report = settlement.Report;
+
+        yield return RevealMedal(
+            comboMedalImage,
+            settlement.ComboMedalScore);
         yield return WaitForDuration(medalRevealInterval);
-        yield return RevealMedal(cylinderMedalImage, cylinderMedalScore);
+        yield return RevealMedal(
+            cylinderMedalImage,
+            settlement.CylinderMedalScore);
         yield return WaitForDuration(medalRevealInterval);
-        yield return RevealMedal(executorMedalImage, executorMedalScore);
+        yield return RevealMedal(
+            executorMedalImage,
+            settlement.ExecutorMedalScore);
 
         bonusResultText.gameObject.SetActive(true);
         bonusResultText.richText = true;
-        int bonusPercent = Mathf.RoundToInt(bonusGoldRate * 100f);
+        int bonusPercent = Mathf.RoundToInt(
+            settlement.BonusGoldRate * 100f);
         string bonusColor = bonusPercent > 0 ? "#55FF66" : "#A8A8A8";
         bonusResultText.text =
             $"정산 보너스: <color={bonusColor}>추가 골드 +{bonusPercent}%</color> "
-            + $"(메달 총점 <color=orange>{totalMedalScore}</color>/9)\n"
-            + $"<color=#FFE21A>($ {stageEarnedGold:N0} × {bonusPercent}% = "
-            + $"$ {bonusGold:N0})</color>";
+            + $"(메달 총점 <color=orange>{settlement.TotalMedalScore}</color>/9)\n"
+            + $"<color=#FFE21A>($ {report.StageEarnedGold:N0} × {bonusPercent}% = "
+            + $"$ {settlement.BonusGold:N0})</color>";
 
-        gainGoldAmountText.text = $"정산: $ {bonusGold:N0}";
+        gainGoldAmountText.text = $"정산: $ {settlement.BonusGold:N0}";
         gainGoldButton.gameObject.SetActive(true);
         gainGoldButton.interactable = true;
         yield return AnimatePopup(
@@ -937,6 +633,7 @@ public sealed class GameStartUI : MonoBehaviour
 
     private IEnumerator AnimateResultValues()
     {
+        CombatReportSnapshot report = battleClearSettlement.Report;
         float duration = Mathf.Max(0.01f, resultCountDuration);
         float elapsed = 0f;
 
@@ -947,17 +644,19 @@ public sealed class GameStartUI : MonoBehaviour
             float progress = Mathf.Clamp01(elapsed / duration);
             float eased = 1f - Mathf.Pow(1f - progress, 3f);
             comboKillResultText.text = Mathf.RoundToInt(
-                stageMaxCombo * eased).ToString("N0");
+                report.StageMaxCombo * eased).ToString("N0");
             cylinderKillResultText.text = Mathf.RoundToInt(
-                stageMaxCylinderKills * eased).ToString("N0");
-            executorResultText.text =
-                $"{GetDisplayedOverkillPercent(stageMaxOverkillPercent * eased)}%";
+                report.StageMaxCylinderKills * eased).ToString("N0");
+            int displayedOverkillPercent = GetDisplayedOverkillPercent(
+                report.StageMaxOverkillPercent * eased);
+            executorResultText.text = $"{displayedOverkillPercent}%";
         }
 
-        comboKillResultText.text = stageMaxCombo.ToString("N0");
-        cylinderKillResultText.text = stageMaxCylinderKills.ToString("N0");
+        comboKillResultText.text = report.StageMaxCombo.ToString("N0");
+        cylinderKillResultText.text =
+            report.StageMaxCylinderKills.ToString("N0");
         executorResultText.text =
-            $"{GetDisplayedOverkillPercent(stageMaxOverkillPercent)}%";
+            $"{GetDisplayedOverkillPercent(report.StageMaxOverkillPercent)}%";
     }
 
     private static int GetDisplayedOverkillPercent(float overkillPercent)
@@ -1049,15 +748,15 @@ public sealed class GameStartUI : MonoBehaviour
 
     private IEnumerator WaitForGoldClaim()
     {
-        bonusClaimed = false;
-        UnityAction claimAction = ClaimBonusGold;
+        settlementConfirmed = false;
+        UnityAction claimAction = ConfirmSettlement;
         gainGoldButton.onClick.AddListener(claimAction);
 
         // Register the claim before the button becomes visible and
         // interactable so a click during its popup animation is not lost.
         yield return RevealStageResult();
 
-        while (!bonusClaimed)
+        while (!settlementConfirmed)
         {
             yield return null;
         }
@@ -1065,71 +764,16 @@ public sealed class GameStartUI : MonoBehaviour
         gainGoldButton.onClick.RemoveListener(claimAction);
     }
 
-    private void ClaimBonusGold()
+    private void ConfirmSettlement()
     {
-        if (bonusClaimed || gainGoldButton == null
+        if (settlementConfirmed || gainGoldButton == null
             || !gainGoldButton.interactable)
         {
             return;
         }
 
-        bonusClaimed = true;
+        settlementConfirmed = true;
         gainGoldButton.interactable = false;
-
-        if (bonusGold > 0)
-        {
-            currencyManager?.AddMoney(bonusGold);
-        }
-    }
-
-    private int GetComboMedalScore(int comboKills)
-    {
-        if (comboGoldThreshold == int.MaxValue)
-        {
-            return 0;
-        }
-
-        return comboKills >= comboGoldThreshold
-            ? 3
-            : comboKills >= comboSilverThreshold
-                ? 2
-                : comboKills >= comboBronzeThreshold ? 1 : 0;
-    }
-
-    private static int GetCylinderMedalScore(int cylinderKills)
-    {
-        return cylinderKills >= 4 ? 3 : cylinderKills >= 3 ? 2 : cylinderKills >= 2 ? 1 : 0;
-    }
-
-    private static int GetExecutorMedalScore(float overkillPercent)
-    {
-        const float thresholdTolerance = 0.0001f;
-        float inclusivePercent = overkillPercent + thresholdTolerance;
-        return inclusivePercent >= 150f
-            ? 3
-            : inclusivePercent >= 75f
-                ? 2
-                : inclusivePercent >= 25f ? 1 : 0;
-    }
-
-    private static float GetBonusGoldRate(int score)
-    {
-        if (score >= 9)
-        {
-            return 0.3f;
-        }
-
-        if (score >= 6)
-        {
-            return 0.2f;
-        }
-
-        if (score >= 3)
-        {
-            return 0.1f;
-        }
-
-        return score >= 1 ? 0.05f : 0f;
     }
 
     private Sprite GetMedalSprite(int medalScore)
@@ -1335,14 +979,6 @@ public sealed class GameStartUI : MonoBehaviour
     {
         CanvasGroup group = target.GetComponent<CanvasGroup>();
         return group != null ? group : target.AddComponent<CanvasGroup>();
-    }
-
-    private static T FindSceneObject<T>() where T : UnityEngine.Object
-    {
-        T[] objects = FindObjectsByType<T>(
-            FindObjectsInactive.Include,
-            FindObjectsSortMode.None);
-        return objects.Length == 0 ? null : objects[0];
     }
 
     private static void SetTextAlpha(TMP_Text text, float alpha)

@@ -15,7 +15,7 @@ public sealed class DuelClockHudFormattingTests
     {
         Assert.That(
             DuelClockHUD.FormatRemainingEnemyCount(3),
-            Is.EqualTo("남은 적 수: 3"));
+            Is.EqualTo("3"));
     }
 
     [Test]
@@ -23,7 +23,10 @@ public sealed class DuelClockHudFormattingTests
     {
         Assert.That(
             DuelClockHUD.FormatNextWaveProgress(0, 5),
-            Is.EqualTo("적 스폰까지 (0/5)"));
+            Is.EqualTo("5 COUNT"));
+        Assert.That(
+            DuelClockHUD.FormatNextWaveProgress(4, 5),
+            Is.EqualTo("1 COUNT"));
     }
 
     [Test]
@@ -31,7 +34,7 @@ public sealed class DuelClockHudFormattingTests
     {
         Assert.That(
             DuelClockHUD.FormatAllEnemiesSpawned(),
-            Is.EqualTo("모든 적 스폰됨"));
+            Is.EqualTo("완료"));
     }
 
     [Test]
@@ -620,17 +623,22 @@ public sealed class DuelClockHudAssetTests
 
         Transform header = FindDirectChild(hudRoot, "Layout | Header");
         Transform meter = FindDirectChild(hudRoot, "Layout | Meter");
-        Transform footer = FindDirectChild(hudRoot, "Layout | Footer");
+        Transform status = FindDirectChild(hudRoot, "Layout | Status");
+        Transform remainingEnemyPanel = FindDirectChild(
+            status,
+            "Panel | Remaining Enemies");
+        Transform nextSpawnPanel = FindDirectChild(
+            status,
+            "Panel | Next Spawn");
         Assert.That(header, Is.Not.Null);
         Assert.That(meter, Is.Not.Null);
-        Assert.That(footer, Is.Not.Null);
+        Assert.That(status, Is.Not.Null);
+        Assert.That(remainingEnemyPanel, Is.Not.Null);
+        Assert.That(nextSpawnPanel, Is.Not.Null);
         Assert.That(FindDirectChild(header, "Text | Title")
             ?.GetComponent<TMP_Text>(), Is.Not.Null);
-        TMP_Text nextWaveText = FindDirectChild(
-            header,
-            "Text | Enemy Count")?.GetComponent<TMP_Text>();
-        Assert.That(nextWaveText, Is.Not.Null);
-        Assert.That(nextWaveText.text, Is.EqualTo("적 스폰까지 (0/5)"));
+        Assert.That(FindDirectChild(header, "Text | Progress")
+            ?.GetComponent<TMP_Text>(), Is.Not.Null);
         Assert.That(FindDirectChild(meter, "Image | Track")
             ?.GetComponent<Image>(), Is.Not.Null);
         Image fill = FindDirectChild(meter, "Image | Progress Fill")
@@ -639,13 +647,20 @@ public sealed class DuelClockHudAssetTests
         Assert.That(fill.type, Is.EqualTo(Image.Type.Filled));
         Assert.That(FindDirectChild(meter, "Image | Beat Marker")
             ?.GetComponent<Image>(), Is.Not.Null);
-        Assert.That(FindDirectChild(footer, "Text | Progress")
-            ?.GetComponent<TMP_Text>(), Is.Not.Null);
         TMP_Text remainingEnemyText = FindDirectChild(
-            footer,
+            remainingEnemyPanel,
             "Text | Action Preview")?.GetComponent<TMP_Text>();
         Assert.That(remainingEnemyText, Is.Not.Null);
-        Assert.That(remainingEnemyText.text, Is.EqualTo("남은 적 수: 5"));
+        Assert.That(remainingEnemyText.text, Is.EqualTo("5"));
+        TMP_Text nextWaveText = FindDirectChild(
+            nextSpawnPanel,
+            "Text | Enemy Count")?.GetComponent<TMP_Text>();
+        Assert.That(nextWaveText, Is.Not.Null);
+        Assert.That(nextWaveText.text, Is.EqualTo("5 COUNT"));
+        Assert.That((hudRoot as RectTransform).sizeDelta.x,
+            Is.GreaterThanOrEqualTo(400f));
+        Assert.That(hudRoot.GetComponent<Image>().color,
+            Is.EqualTo(Color.white));
 
         SerializedObject serializedHud = new SerializedObject(
             hudRoot.GetComponent<DuelClockHUD>());
@@ -654,9 +669,11 @@ public sealed class DuelClockHudAssetTests
         Assert.That(serializedHud.FindProperty("progressFill")
             .objectReferenceValue, Is.Not.Null);
         Assert.That(serializedHud.FindProperty("progressStartColor")
-            .colorValue, Is.EqualTo(new Color32(247, 191, 62, 255)));
+            .colorValue,
+            Is.EqualTo((Color)new Color32(247, 191, 62, 255)));
         Assert.That(serializedHud.FindProperty("progressEndColor")
-            .colorValue, Is.EqualTo(new Color32(231, 77, 42, 255)));
+            .colorValue,
+            Is.EqualTo((Color)new Color32(231, 77, 42, 255)));
         Assert.That(serializedHud.FindProperty("titleText")
             .objectReferenceValue, Is.Not.Null);
         Assert.That(serializedHud.FindProperty("enemyCountText")
@@ -668,7 +685,12 @@ public sealed class DuelClockHudAssetTests
         Assert.That(serializedHud.FindProperty("beatFullHoldDuration")
             .floatValue, Is.GreaterThanOrEqualTo(0f));
         Assert.That(serializedHud.FindProperty("beatPulseDuration")
-            .floatValue, Is.GreaterThan(0f));
+            .floatValue,
+            Is.EqualTo(0.24f).Within(0.0001f));
+        Assert.That(serializedHud.FindProperty("beatPulseDuration")
+            .floatValue,
+            Is.LessThanOrEqualTo(
+                DuelClockHUD.MaximumBeatPulseDuration));
         Assert.That(serializedHud.FindProperty("beatPulseScale")
             .floatValue, Is.GreaterThanOrEqualTo(1.1f));
         Assert.That(serializedHud.FindProperty("progressText")

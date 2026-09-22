@@ -1665,6 +1665,13 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void HandleCountCompleted(int _)
     {
+        bool preserveRefreshedCombo = comboResetDuringCurrentCount;
+        comboResetDuringCurrentCount = false;
+        ConsumeComboCount(preserveRefreshedCombo);
+    }
+
+    private void ConsumeComboCount(bool preserveRefreshedCombo)
+    {
         if (comboCount <= 0 || comboCountsRemaining <= 0)
         {
             return;
@@ -1673,8 +1680,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         int previousRemaining = comboCountsRemaining;
         comboCountsRemaining = CalculateRemainingComboCounts(
             comboCountsRemaining,
-            comboResetDuringCurrentCount);
-        comboResetDuringCurrentCount = false;
+            preserveRefreshedCombo);
 
         if (comboCountsRemaining == previousRemaining)
         {

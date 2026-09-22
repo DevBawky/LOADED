@@ -1,0 +1,16 @@
+
+[mcp_servers.unity]
+command = "C:\\Users\\user\\AppData\\Local\\Unity\\bin\\unity.exe"
+args = ["mcp","--project-path","C:\\Users\\user\\Desktop\\LOADED"]
+
+[sandbox_workspace_write]
+network_access = true
+
+[features.network_proxy]
+enabled = true
+allow_local_binding = false
+
+[features.network_proxy.domains]
+localhost = "allow"
+"127.0.0.1" = "allow"
+"::1" = "allow"
