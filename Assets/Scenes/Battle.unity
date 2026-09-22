@@ -1834,6 +1834,18 @@ PrefabInstance:
       propertyPath: statusIconParent
       value: 
       objectReference: {fileID: 3662194472197295084}
+    - target: {fileID: 700000000000000020, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: defeatImpactParticleSpawnScale
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000020, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: normalImpactParticleSpawnScale
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 700000000000000020, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
+      propertyPath: criticalImpactParticleSpawnScale
+      value: 3.5
+      objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: comboGoldPerKill
       value: 2

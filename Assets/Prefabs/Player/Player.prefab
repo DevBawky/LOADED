@@ -334,6 +334,7 @@ MonoBehaviour:
   pushVisualTransform: {fileID: 4964929205706624946}
   combatFeedback: {fileID: 0}
   relicManager: {fileID: 0}
+  instantActionCooldown: 0.16
   pushCollisionDamageRatio: 0.2
   pushFlightDuration: 0.1
   pushCollisionImpactRatio: 0.5
@@ -443,6 +444,13 @@ MonoBehaviour:
   criticalSparkCount: 9
   devastatingSparkCount: 14
   impactStreakCount: 4
+  normalImpactParticlePrefab: {fileID: 8452006044999910740, guid: d23b58ddcc753be48a822c93d87019b4, type: 3}
+  criticalImpactParticlePrefab: {fileID: 6686630256629800593, guid: 47e52827336d18040a4b2db5e9a3c206, type: 3}
+  defeatImpactParticlePrefab: {fileID: 6673745007230433088, guid: 8f951594effb66e41af6eba56268622f, type: 3}
+  impactParticleDensity: 1
+  normalImpactParticleSpawnScale: 1
+  criticalImpactParticleSpawnScale: 1
+  defeatImpactParticleSpawnScale: 1
   normalSnapDuration: 0.09
   criticalPrecisionDuration: 0.14
   devastatingCompressionDuration: 0.18

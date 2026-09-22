@@ -860,6 +860,95 @@ public sealed class CombatImpactTierUtilityTests
 
 public sealed class CombatPresentationSignatureTests
 {
+    [TestCase("Assets/Prefabs/VFX/VFX_EnemyHit.prefab", 2)]
+    [TestCase("Assets/Prefabs/VFX/VFX_EnemyCriticalHit.prefab", 3)]
+    [TestCase("Assets/Prefabs/VFX/VFX_EnemyDefeat.prefab", 3)]
+    public void ImpactParticlePrefab_EmitsEveryConfiguredLayer(
+        string prefabPath,
+        int expectedLayerCount)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            prefabPath);
+        Assert.That(prefab, Is.Not.Null);
+        GameObject instance = Object.Instantiate(prefab);
+
+        try
+        {
+            CombatImpactParticleEffect effect =
+                instance.GetComponent<CombatImpactParticleEffect>();
+            Assert.That(effect, Is.Not.Null);
+            ParticleSystem[] systems =
+                instance.GetComponentsInChildren<ParticleSystem>(true);
+            Assert.That(systems, Has.Length.EqualTo(expectedLayerCount));
+
+            effect.Play(
+                Color.red,
+                Color.gray,
+                new Color(0.72f, 0.35f, 0.12f, 1f),
+                1,
+                1f,
+                0,
+                10);
+
+            foreach (ParticleSystem system in systems)
+            {
+                Assert.That(system.particleCount, Is.GreaterThan(0));
+                Assert.That(
+                    system.main.scalingMode,
+                    Is.EqualTo(ParticleSystemScalingMode.Hierarchy));
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+        }
+    }
+
+    [TestCase(6, 1f, 6)]
+    [TestCase(6, 0.5f, 3)]
+    [TestCase(1, 0.1f, 1)]
+    [TestCase(6, 0f, 0)]
+    public void ImpactParticleEmissionCount_RespectsDensity(
+        int baseCount,
+        float density,
+        int expected)
+    {
+        Assert.That(
+            CombatImpactParticleEffect.ResolveEmissionCount(
+                baseCount,
+                density),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase(CombatImpactTier.Normal, 0.8f)]
+    [TestCase(CombatImpactTier.Critical, 1.1f)]
+    [TestCase(CombatImpactTier.Devastating, 1.1f)]
+    [TestCase(CombatImpactTier.Defeat, 1.4f)]
+    public void ImpactParticleSpawnScale_UsesTierSpecificSetting(
+        CombatImpactTier impactTier,
+        float expected)
+    {
+        float scale = CombatPresentation.ResolveImpactParticleSpawnScale(
+            impactTier,
+            0.8f,
+            1.1f,
+            1.4f);
+
+        Assert.That(scale, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void ImpactParticleSpawnScale_ClampsNonPositiveValues()
+    {
+        float scale = CombatPresentation.ResolveImpactParticleSpawnScale(
+            CombatImpactTier.Normal,
+            0f,
+            1f,
+            1f);
+
+        Assert.That(scale, Is.EqualTo(0.01f));
+    }
+
     [Test]
     public void EnemySnapshot_PositionOnlyCaptureRemainsValid()
     {

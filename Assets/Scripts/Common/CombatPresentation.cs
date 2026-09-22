@@ -95,6 +95,19 @@ public sealed class CombatPresentation : MonoBehaviour
     [Range(0, 12)]
     [SerializeField] private int impactStreakCount = 4;
 
+    [Header("Impact Particles")]
+    [SerializeField] private CombatImpactParticleEffect normalImpactParticlePrefab;
+    [SerializeField] private CombatImpactParticleEffect criticalImpactParticlePrefab;
+    [SerializeField] private CombatImpactParticleEffect defeatImpactParticlePrefab;
+    [Range(0f, 2f)]
+    [SerializeField] private float impactParticleDensity = 1f;
+    [Min(0.01f)]
+    [SerializeField] private float normalImpactParticleSpawnScale = 1f;
+    [Min(0.01f)]
+    [SerializeField] private float criticalImpactParticleSpawnScale = 1f;
+    [Min(0.01f)]
+    [SerializeField] private float defeatImpactParticleSpawnScale = 1f;
+
     [Header("Impact Signatures")]
     [Min(0.05f)]
     [SerializeField] private float normalSnapDuration = 0.09f;
@@ -182,6 +195,23 @@ public sealed class CombatPresentation : MonoBehaviour
         waveColor = Color.Lerp(waveColor, Color.white, 0.12f);
         waveColor.a = 1f;
         return waveColor;
+    }
+
+    internal static float ResolveImpactParticleSpawnScale(
+        CombatImpactTier impactTier,
+        float normalScale,
+        float criticalScale,
+        float defeatScale)
+    {
+        float scale = impactTier switch
+        {
+            CombatImpactTier.Normal => normalScale,
+            CombatImpactTier.Critical => criticalScale,
+            CombatImpactTier.Devastating => criticalScale,
+            CombatImpactTier.Defeat => defeatScale,
+            _ => normalScale
+        };
+        return Mathf.Max(0.01f, scale);
     }
 
     private void Awake()
@@ -392,6 +422,12 @@ public sealed class CombatPresentation : MonoBehaviour
             sparkCount,
             snapshot.SortingLayerId,
             snapshot.SortingOrder + 2,
+            impactTier,
+            impactMultiplier);
+        SpawnImpactParticles(
+            snapshot,
+            horizontalDirection,
+            accent,
             impactTier,
             impactMultiplier);
 
@@ -1070,6 +1106,72 @@ public sealed class CombatPresentation : MonoBehaviour
                 velocity,
                 Random.Range(0.12f, 0.22f) * tierScale));
         }
+    }
+
+    private void SpawnImpactParticles(
+        EnemySnapshot snapshot,
+        int horizontalDirection,
+        Color accent,
+        CombatImpactTier impactTier,
+        float feedbackMultiplier)
+    {
+        CombatImpactParticleEffect prefab = impactTier switch
+        {
+            CombatImpactTier.Normal => normalImpactParticlePrefab,
+            CombatImpactTier.Critical => criticalImpactParticlePrefab,
+            CombatImpactTier.Devastating => criticalImpactParticlePrefab,
+            CombatImpactTier.Defeat => defeatImpactParticlePrefab,
+            _ => null
+        };
+
+        if (prefab == null)
+        {
+            return;
+        }
+
+        float tierMultiplier = impactTier switch
+        {
+            CombatImpactTier.Devastating => 1.2f,
+            CombatImpactTier.Defeat => Mathf.Max(0f, feedbackMultiplier),
+            _ => 1f
+        };
+        float density = ScaledIntensity
+            * impactParticleDensity
+            * CombatAccessibilitySettings.ParticleDensityMultiplier
+            * tierMultiplier;
+
+        if (density <= 0f)
+        {
+            return;
+        }
+
+        CombatImpactParticleEffect effect = Instantiate(
+            prefab,
+            snapshot.Position,
+            Quaternion.identity);
+        float spawnScale = ResolveImpactParticleSpawnScale(
+            impactTier,
+            normalImpactParticleSpawnScale,
+            criticalImpactParticleSpawnScale,
+            defeatImpactParticleSpawnScale);
+        effect.transform.localScale = prefab.transform.localScale * spawnScale;
+        GameObject effectObject = effect.gameObject;
+        effectObject.name = prefab.gameObject.name;
+        spawnedEffects.Add(effectObject);
+        effect.Play(
+            accent,
+            snapshot.Color,
+            defeatDustColor,
+            horizontalDirection,
+            density,
+            snapshot.SortingLayerId,
+            snapshot.SortingOrder + 3,
+            HandleImpactParticleCompleted);
+    }
+
+    private void HandleImpactParticleCompleted(GameObject effect)
+    {
+        spawnedEffects.Remove(effect);
     }
 
     private IEnumerator AnimateFlashRoot(

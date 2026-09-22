@@ -29,13 +29,18 @@
 
 - 적 스프라이트의 흰색/탄환색 잔상 플래시
 - 탄환 진행 방향으로 튀는 불꽃과 먼지 조각
+- `VFX_EnemyHit` Particle System의 짧은 탄환색 스파크와 먼지
 - 일반 명중과 치명타에 서로 다른 길이의 히트 스톱
+
+치명타는 `VFX_EnemyCriticalHit`을 사용한다. 일반 명중보다 긴 금빛
+파편과 원형 파열 링을 추가해 파티클 수뿐 아니라 실루엣으로도 구분한다.
 
 ### 처치
 
 - 일반 명중보다 긴 히트 스톱
 - 적 스프라이트를 복제한 처치 잔상이 뒤로 밀리고 들리면서 회전 및 소멸
 - 일반 명중보다 많은 탄환색 불꽃과 갈색 사막 먼지
+- `VFX_EnemyDefeat` Particle System의 적 실루엣 파편, 불씨, 먼지 구름
 - 강한 전체 화면 플래시
 - 직접 피해뿐 아니라 치명타 조건부 효과 등 직접 피해 전에 발생한 처치도 처리
 
@@ -99,6 +104,20 @@ Player 프리팹의 `Combat Presentation` 컴포넌트:
 - `Critical Hit Stop Duration`: 치명타 정지 시간
 - `Hit Flash Duration`: 적 잔상 플래시 시간
 - `Hit Spark Count`: 일반 명중 파편 수
+
+`Combat Presentation > Impact Particles`:
+
+- `Normal Impact Particle Prefab`: 일반 피해용 파티클 프리팹
+- `Critical Impact Particle Prefab`: 치명타와 대형 피해용 파티클 프리팹
+- `Defeat Impact Particle Prefab`: 처치용 파티클 프리팹
+- `Impact Particle Density`: 세 프리팹의 공통 방출량 배율
+- `Normal Impact Particle Spawn Scale`: 일반 피해 파티클의 균일 크기 배율
+- `Critical Impact Particle Spawn Scale`: 치명타와 대형 피해 파티클의 균일 크기 배율
+- `Defeat Impact Particle Spawn Scale`: 처치 파티클의 균일 크기 배율
+
+파티클은 피격 위치에 독립적으로 생성되며 적이 제거되어도 남는다. 전투
+연출 접근성 설정의 파티클 밀도와 일시정지를 따르고, 게임의 피해·처치
+판정에는 관여하지 않는다.
 
 `Combat Presentation > Defeat`:
 
