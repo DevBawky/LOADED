@@ -822,8 +822,12 @@ public class WaveManager : MonoBehaviour
     {
         if (combatPacingMode == CombatPacingMode.DuelClock)
         {
-            DuelClockBeatsCommitted?.Invoke(beatCount);
-            QueueEnemyTurnCycles(beatCount);
+            long queuedBeatCount = QueueEnemyTurnCycles(beatCount);
+
+            if (queuedBeatCount > 0)
+            {
+                DuelClockBeatsCommitted?.Invoke(queuedBeatCount);
+            }
         }
     }
 
@@ -832,17 +836,29 @@ public class WaveManager : MonoBehaviour
         HandleDuelClockBeatsCommitted(beatCount);
     }
 
-    private void QueueEnemyTurnCycles(long cycleCount)
+    private long QueueEnemyTurnCycles(long cycleCount)
     {
         if (cycleCount <= 0 || isBattleCompleted || !ValidateReferences()
             || playerHealth.IsDefeated)
         {
-            return;
+            return 0L;
+        }
+
+        if (combatPacingMode == CombatPacingMode.DuelClock)
+        {
+            cycleCount = Math.Min(
+                cycleCount,
+                Math.Max(0L, 1L - pendingEnemyTurnCycles));
         }
 
         if (cycleCount > long.MaxValue - pendingEnemyTurnCycles)
         {
             cycleCount = long.MaxValue - pendingEnemyTurnCycles;
+        }
+
+        if (cycleCount <= 0)
+        {
+            return 0L;
         }
 
         pendingEnemyTurnCycles += cycleCount;
@@ -851,6 +867,8 @@ public class WaveManager : MonoBehaviour
         {
             enemyTurnCoroutine = StartCoroutine(ResolveEnemyTurnCycles());
         }
+
+        return cycleCount;
     }
 
     private IEnumerator ResolveEnemyTurnCycles()
@@ -879,6 +897,7 @@ public class WaveManager : MonoBehaviour
 
             if (usesDuelClock)
             {
+                duelClockController?.HandleEnemyCycleStarted();
                 playerMove.ProcessDuelClockStatusBeat();
             }
 

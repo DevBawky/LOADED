@@ -98,7 +98,7 @@ public sealed class DuelClockHUD : MonoBehaviour
                 beatFullHoldDuration,
                 unscaledDeltaTime,
                 clockController != null
-                    && clockController.ShouldHoldCompletedShootBeat);
+                    && clockController.HasReservedBeat);
             progressFill.fillAmount = frame.FillAmount;
             UpdateProgressFillColor(frame.FillAmount);
             UpdateProgressText(frame.FillAmount);

@@ -7,6 +7,7 @@ using UnityEngine.Serialization;
 
 public class PlayerMove : MonoBehaviour
 {
+    internal const float DefaultInstantActionCooldown = 0.16f;
     private const string KickAnimationStateName = "Kick";
     private static readonly int KickAnimationStateHash =
         Animator.StringToHash(KickAnimationStateName);
@@ -18,6 +19,12 @@ public class PlayerMove : MonoBehaviour
     [SerializeField] private Transform pushVisualTransform;
     [SerializeField] private CombatFeedbackController combatFeedback;
     [SerializeField] private RelicManager relicManager;
+
+    [Header("Action Timing")]
+    [Min(0f)]
+    [Tooltip("대기와 재장전 사이에 적용하는 최소 입력 간격입니다.")]
+    [SerializeField] private float instantActionCooldown =
+        DefaultInstantActionCooldown;
 
     [Header("Push")]
     [Range(0f, 1f)]
@@ -61,6 +68,7 @@ public class PlayerMove : MonoBehaviour
     private bool isEnemyTurnResolving;
     private bool isInputLocked;
     private bool isDuelClockActive;
+    private float nextInstantActionAllowedAt;
     private bool isPushVisualDisplaced;
     private EnemyController forcedMoveReservationOwner;
     private Vector3 pushVisualRestLocalPosition;
@@ -85,6 +93,9 @@ public class PlayerMove : MonoBehaviour
     public bool IsInputLocked => isInputLocked;
     public bool IsStunned => statusEffects != null && statusEffects.IsStunned;
     public bool CanStartAction => CanPerformAction();
+    internal bool CanStartInstantAction => CanPerformInstantAction();
+    internal float InstantActionCooldown =>
+        Mathf.Max(0f, instantActionCooldown);
     public int RemainingPushCooldownTurns => Mathf.Max(
         0,
         nextPushAvailableTurn - TurnCount);
@@ -134,6 +145,7 @@ public class PlayerMove : MonoBehaviour
         isShooting = false;
         isActing = false;
         isEnemyTurnResolving = false;
+        nextInstantActionAllowedAt = 0f;
         RestorePushVisualPosition();
         TurnCountChanged?.Invoke(TurnCount);
         PositionChanged?.Invoke();
@@ -187,6 +199,7 @@ public class PlayerMove : MonoBehaviour
         RestorePushVisualPosition();
         isActing = false;
         isEnemyTurnResolving = false;
+        nextInstantActionAllowedAt = 0f;
     }
 
     private void Update()
@@ -296,11 +309,12 @@ public class PlayerMove : MonoBehaviour
 
     public void Wait()
     {
-        if (!CanPerformAction())
+        if (!CanPerformInstantAction())
         {
             return;
         }
 
+        RecordInstantActionStarted();
         BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Wait);
         CompleteTurn();
     }
@@ -349,7 +363,6 @@ public class PlayerMove : MonoBehaviour
 
             if (moveDirection == facingDirection && CanPush)
             {
-                NotifyMoveStarted(direction);
                 StartCoroutine(PushRoutine(
                     adjacentEnemy,
                     direction));
@@ -395,6 +408,7 @@ public class PlayerMove : MonoBehaviour
             yield break;
         }
 
+        NotifyMoveStarted(direction);
         yield return ExecuteEnemyPush(pushPlan, true);
 
         nextPushAvailableTurn = TurnCount
@@ -1101,6 +1115,36 @@ public class PlayerMove : MonoBehaviour
                 isDuelClockActive,
                 isEnemyTurnResolving)
             && (!isDuelClockActive || !IsStunned);
+    }
+
+    private bool CanPerformInstantAction()
+    {
+        return CanPerformAction()
+            && HasInstantActionCooldownElapsed(
+                Time.unscaledTime,
+                nextInstantActionAllowedAt);
+    }
+
+    internal void RecordInstantActionStarted()
+    {
+        nextInstantActionAllowedAt = CalculateNextInstantActionAllowedAt(
+            Time.unscaledTime,
+            InstantActionCooldown);
+    }
+
+    internal static float CalculateNextInstantActionAllowedAt(
+        float currentTime,
+        float cooldownDuration)
+    {
+        return Mathf.Max(0f, currentTime)
+            + Mathf.Max(0f, cooldownDuration);
+    }
+
+    internal static bool HasInstantActionCooldownElapsed(
+        float currentTime,
+        float nextAllowedTime)
+    {
+        return currentTime >= nextAllowedTime;
     }
 
     internal static bool ShouldBlockActionForEnemyResolution(

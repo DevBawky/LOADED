@@ -64,6 +64,11 @@ internal sealed class EnemyThrownProjectileFlight
 
     private Vector3 CalculatePosition()
     {
+        if (IsComplete)
+        {
+            return targetPosition;
+        }
+
         float progress = duration <= 0f
             ? 1f
             : Mathf.Clamp01(elapsedTime / duration);

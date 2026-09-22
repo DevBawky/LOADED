@@ -442,7 +442,7 @@ public partial class PlayerShoot : MonoBehaviour
             return;
         }
 
-        if (!playerMove.CanStartAction)
+        if (!playerMove.CanStartInstantAction)
         {
             return;
         }
@@ -451,6 +451,7 @@ public partial class PlayerShoot : MonoBehaviour
 
         if (deckManager.TryReload(out BulletInstance loadedBullet))
         {
+            playerMove.RecordInstantActionStarted();
             BehaviourActionStarted?.Invoke(PlayerBehaviourAction.Reload);
             SoundManager.PlaySfx("SFX_Player_Reload");
             combatPresentation?.PlayReload(loadedBullet, cylinderUI);

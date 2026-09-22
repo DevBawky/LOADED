@@ -17,7 +17,7 @@ public sealed class DuelClockController : MonoBehaviour
     private double paidActionProgress;
     private int enemyWaveCount = 5;
     private bool shootProgressCommitted;
-    private bool shootCompletedBeat;
+    private bool hasReservedBeat;
     private bool playerActionPending;
     private bool paidActionProgressSuppressed;
     private bool subscribedToCombatEvents;
@@ -27,16 +27,16 @@ public sealed class DuelClockController : MonoBehaviour
 
     public bool IsActive => pacingMode == CombatPacingMode.DuelClock;
     public CombatPacingMode PacingMode => pacingMode;
-    public double Progress => state.Snapshot.Progress;
+    public double Progress => hasReservedBeat
+        ? DuelClockState.CycleLength
+        : state.Snapshot.Progress;
     public long CumulativeBeats => state.Snapshot.CumulativeBeats;
     public int EnemyWaveCount => enemyWaveCount;
     public int EnemyWaveProgress => IsActive
         ? (int)(CumulativeBeats % enemyWaveCount)
         : 0;
     internal DuelClockSnapshot Snapshot => state.Snapshot;
-    internal bool ShouldHoldCompletedShootBeat =>
-        IsActive && shootCompletedBeat
-        && playerShoot != null && playerShoot.IsFiring;
+    internal bool HasReservedBeat => IsActive && hasReservedBeat;
 
     internal void Initialize(
         PlayerMove assignedPlayerMove,
@@ -57,6 +57,7 @@ public sealed class DuelClockController : MonoBehaviour
     {
         ConfigureSettings(battleData, configuredMode);
         state = new DuelClockState();
+        hasReservedBeat = false;
         ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(IsActive);
         StateChanged?.Invoke();
@@ -73,6 +74,7 @@ public sealed class DuelClockController : MonoBehaviour
                 saveData.duelClockProgress,
                 saveData.duelClockCumulativeBeats)
             : new DuelClockState();
+        hasReservedBeat = false;
         ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(IsActive);
         StateChanged?.Invoke();
@@ -101,7 +103,8 @@ public sealed class DuelClockController : MonoBehaviour
 
     internal DuelClockAdvanceResult PreviewPaidAction()
     {
-        return state.Preview(IsActive ? paidActionProgress : 0d);
+        return state.Preview(
+            IsActive && !hasReservedBeat ? paidActionProgress : 0d);
     }
 
     internal DuelClockAdvanceResult PreviewFreeAction()
@@ -135,6 +138,7 @@ public sealed class DuelClockController : MonoBehaviour
         paidActionProgress = 0d;
         enemyWaveCount = 5;
         state = new DuelClockState();
+        hasReservedBeat = false;
         ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(false);
         StateChanged?.Invoke();
@@ -176,12 +180,8 @@ public sealed class DuelClockController : MonoBehaviour
 
         if (IsActive && action == PlayerBehaviourAction.Shoot)
         {
-            long cumulativeBeatsBeforeShoot = CumulativeBeats;
             shootProgressCommitted = TryCommitProgress(
-                paidActionProgress,
-                stopAtNextBeat: true);
-            shootCompletedBeat = shootProgressCommitted
-                && CumulativeBeats > cumulativeBeatsBeforeShoot;
+                paidActionProgress);
         }
     }
 
@@ -235,17 +235,29 @@ public sealed class DuelClockController : MonoBehaviour
         return Math.Max(0d, multiplier);
     }
 
-    private bool TryCommitProgress(
-        double addedProgress,
-        bool stopAtNextBeat = false)
+    internal void HandleEnemyCycleStarted()
     {
+        if (!hasReservedBeat)
+        {
+            return;
+        }
+
+        hasReservedBeat = false;
+        StateChanged?.Invoke();
+    }
+
+    private bool TryCommitProgress(double addedProgress)
+    {
+        if (hasReservedBeat)
+        {
+            return false;
+        }
+
         DuelClockAdvanceResult result;
 
         try
         {
-            result = stopAtNextBeat
-                ? state.CommitUntilNextBeat(addedProgress)
-                : state.Commit(addedProgress);
+            result = state.CommitUntilNextBeat(addedProgress);
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -254,6 +266,11 @@ public sealed class DuelClockController : MonoBehaviour
         catch (OverflowException)
         {
             return false;
+        }
+
+        if (result.TriggeredBeatCount > 0)
+        {
+            hasReservedBeat = true;
         }
 
         StateChanged?.Invoke();
@@ -395,7 +412,6 @@ public sealed class DuelClockController : MonoBehaviour
     private void ResetPlayerActionTracking()
     {
         shootProgressCommitted = false;
-        shootCompletedBeat = false;
         playerActionPending = false;
         paidActionProgressSuppressed = false;
     }

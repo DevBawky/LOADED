@@ -70,11 +70,11 @@ percentage points added per real-time second, so `4` fills an empty clock in
 charging while leaving paid-action progress available. All-battle authoring
 preserves intentionally tuned per-battle charge and interval values. Natural
 charging pauses for the full `PlayerShoot` firing sequence and resumes after
-the cylinder has finished resolving. Shooting progress stops at the next
-`100` boundary: it commits that Beat immediately but discards any excess
-paid-action progress. The HUD holds the completed meter at `100%` for the
-rest of the firing sequence, then returns to zero and follows natural charging
-without carryover.
+the cylinder has finished resolving. Every progress source stops at the next
+`100` boundary and reserves exactly one enemy Beat. The HUD holds the completed
+meter at `100%` until that enemy cycle starts. Additional natural time and
+player actions do not create hidden progress or another queued cycle while the
+reservation is held.
 
 Set `Combat Pacing > Duel Clock Enemy Wave Count` to change the reinforcement
 interval and HUD denominator. A value of `5` displays completed Beats as
@@ -148,10 +148,10 @@ competing combat state.
 The meter follows ordinary progress with an unscaled-time exponential Lerp.
 Its fill color also interpolates from yellow at zero progress to red at 100
 percent, using the same displayed fill amount as the meter animation.
-When a commit crosses `100`, it rapidly Lerps to a full meter, briefly holds
-and pulses the complete `Layout | Duel Clock` for `0.2` seconds, resets to zero, and rapidly
-Lerps to the preserved overflow. Multiple Beats queue the same visual sequence
-without delaying enemy resolution. The animation freezes for the game pause
+When a commit crosses `100`, it rapidly Lerps to a full meter, holds while the
+single next enemy cycle is reserved, and pulses the complete
+`Layout | Duel Clock` for `0.2` seconds. It resets to zero when that cycle
+starts. The animation freezes for the game pause
 menu and an open first-run guide card, and remains presentation-only.
 `DuelClockHUD` hides itself in
 Legacy battles, never blocks raycasts, binds after the runtime-added controller
@@ -162,18 +162,22 @@ root in `Canvas.prefab` and reconcile the Battle scene instance.
 
 The former `Turn N` run display now renders `COUNT N` from completed enemy
 cycles. The persistent combo window starts consuming one of eight gauge cells
-as soon as the Duel Clock commits a Beat at 100%. Multiple committed Beats are
-presented sequentially at `0.1`-second intervals instead of waiting for enemy
-turn resolution. Player actions do not consume combo gauge cells directly.
+as soon as the Duel Clock commits a Beat at 100%, using its existing
+`0.1`-second drain timing instead of waiting for enemy turn resolution. Player
+actions do not consume combo gauge cells directly.
 Legacy pacing retains its enemy-cycle-completion countdown.
 
 ## Rule contract
 
-- Progress is always normalized to `[0, 100)`.
+- The underlying `DuelClockState` progress is always normalized to `[0, 100)`;
+  the controller presents `100` while one completed Beat is reserved.
 - Reaching exactly `100` produces one beat and resets progress to `0`.
-- Overflow is preserved for ordinary commits, and one commit may produce
-  multiple beats. Shooting is capped at the next Beat and discards its
-  overflow.
+- `DuelClockState.Commit` retains its normalized overflow arithmetic, while the
+  runtime controller uses `CommitUntilNextBeat` for every progress source.
+  Runtime overflow is discarded and at most one Beat can be reserved.
+- While a Beat is reserved, the presented progress is `100` and further
+  progress commits are ignored. The underlying normalized state resumes from
+  `0` when `WaveManager` starts that enemy cycle.
 - `Preview` performs the same calculation as `Commit` without changing state.
 - Progress inputs must be finite and nonnegative.
 - Restored progress is normalized, adding every completed cycle to the saved
@@ -193,8 +197,12 @@ active Duel Clock controller, player, and wave references are valid and the
 battle is not complete. `GamePauseController` and an open first-run guide card
 pause it. A `PlayerShoot` cylinder firing sequence also pauses natural progress
 from the moment the sequence starts until its gameplay settlement completes.
-Loading transitions, input locks, player motion, enemy resolution, tooltips,
-reload punch, and other presentation continue clock progress.
+Enemy resolution does not pause natural progress. The clock can therefore fill
+during enemy presentation and reserve one following cycle. Once that
+reservation reaches `100`, further natural and paid progress is held until the
+reserved cycle starts; no additional cycle debt is accumulated. Loading
+transitions, input locks, player motion, tooltips, reload punch, and other
+presentation continue clock progress until that reservation limit is reached.
 Natural progress uses unscaled frame time, so hit stop and slow motion do not
 pause or slow the clock. Presentation never gates action completion or beat
 dispatch.
@@ -234,17 +242,28 @@ count state.
 
 ## Enemy-cycle ordering
 
-`WaveManager` queues every triggered beat in one resolver coroutine. Shooting
+`WaveManager` resolves committed beats in one resolver coroutine. Shooting
 locks the firing sequence before it commits paid-action progress. Therefore a
 Beat that reaches `100` from that shot may enter the resolver queue immediately,
 but enemy execution waits until the complete cylinder sequence settles. The
 ordering contract is player firing first, then queued enemy attacks. Natural
-progress pauses for the same firing interval. New beats that arrive during
-enemy resolution also join that queue. In Duel Clock mode,
+progress pauses for the same firing interval. During an active enemy cycle,
+natural or paid progress may reserve one following cycle. `WaveManager` keeps
+at most one pending Duel Clock cycle in addition to the cycle currently being
+resolved. In Duel Clock mode,
 `IsResolvingTurn` remains true for save/exit settlement but no longer blocks a
 new player action after the action that preceded the beat has settled. Legacy
 mode retains its enemy-turn input lock. Tooltip, explicit input-lock, and reload
-presentation state do not delay the resolver. Each beat:
+presentation state do not delay the resolver. There is no fixed interval
+between consecutive Duel Clock enemy cycles. The resolver only waits for an
+already-running player action to settle before starting the next enemy cycle.
+There is no Duel Clock-specific player input barrier. Only successful wait and
+reload actions share the authored `PlayerMove > Instant Action Cooldown`, which
+defaults to `0.16` seconds. Movement, rotation, and shooting retain their own
+execution gates, so movement remains immediately available for the dodge system.
+Actions performed while the meter is already reserved at `100` do not advance
+the clock. When the reserved cycle starts, the meter resets to `0` and can fill
+again while that cycle is resolving. Each beat:
 
 1. processes one COUNT of player status effects, including one stun stack when
    present;
