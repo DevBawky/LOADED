@@ -686,7 +686,7 @@ public sealed class DuelClockHudAssetTests
             .floatValue, Is.GreaterThanOrEqualTo(0f));
         Assert.That(serializedHud.FindProperty("beatPulseDuration")
             .floatValue,
-            Is.EqualTo(0.24f).Within(0.0001f));
+            Is.EqualTo(0.2f).Within(0.0001f));
         Assert.That(serializedHud.FindProperty("beatPulseDuration")
             .floatValue,
             Is.LessThanOrEqualTo(

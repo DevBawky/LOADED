@@ -12448,7 +12448,7 @@ MonoBehaviour:
   fillLerpSpeed: 12
   beatFillLerpSpeed: 28
   beatFullHoldDuration: 0.08
-  beatPulseDuration: 0.24
+  beatPulseDuration: 0.2
   beatPulseScale: 1.12
   beatPulseColor: {r: 0.96862745, g: 0.7490196, b: 0.24313726, a: 1}
   titleText: {fileID: 4880890641264312607}

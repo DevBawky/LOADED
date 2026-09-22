@@ -648,6 +648,9 @@ public sealed class EnemyDamageNumberDisplayTests
 
 public sealed class ComboFeedbackProgressionTests
 {
+    private const string PlayerPrefabPath =
+        "Assets/Prefabs/Player/Player.prefab";
+
     private static void InvokeLifecycleMethod(
         CombatFeedbackController feedback,
         string methodName)
@@ -705,6 +708,23 @@ public sealed class ComboFeedbackProgressionTests
             }
             Object.DestroyImmediate(playerObject);
         }
+    }
+
+    [Test]
+    public void PlayerPrefabUsesTenthSecondComboDrainInterval()
+    {
+        GameObject playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            PlayerPrefabPath);
+        Assert.That(playerPrefab, Is.Not.Null);
+
+        CombatFeedbackController feedback = playerPrefab
+            .GetComponent<CombatFeedbackController>();
+        Assert.That(feedback, Is.Not.Null);
+
+        SerializedObject serializedFeedback = new SerializedObject(feedback);
+        Assert.That(serializedFeedback.FindProperty("countDrainDuration")
+            .floatValue,
+            Is.EqualTo(0.1f).Within(0.0001f));
     }
 
     [Test]

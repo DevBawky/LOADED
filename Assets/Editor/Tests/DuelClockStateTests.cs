@@ -1589,6 +1589,30 @@ public sealed class WaveManagerPacingDispatchTests
     }
 
     [Test]
+    public void DuelClockBeatNotificationPrecedesEnemyCycleCompletion()
+    {
+        CreateWaveSetup(
+            CombatPacingMode.DuelClock,
+            out WaveManager waveManager,
+            out _);
+        List<string> notifications = new List<string>();
+        waveManager.DuelClockBeatsCommitted +=
+            count => notifications.Add($"beat:{count}");
+        waveManager.EnemyTurnCycleCompleted +=
+            cycle => notifications.Add($"cycle:{cycle}");
+
+        waveManager.QueueDuelClockBeats(1);
+
+        Assert.That(notifications, Is.EqualTo(new[] { "beat:1" }));
+
+        DrainEnemyTurnResolver(waveManager);
+
+        Assert.That(
+            notifications,
+            Is.EqualTo(new[] { "beat:1", "cycle:1" }));
+    }
+
+    [Test]
     public void ShootingBeatsAndPaidCompletionShareResolverQueue()
     {
         CreateWaveSetup(

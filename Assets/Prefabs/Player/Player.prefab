@@ -470,7 +470,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CombatFeedbackController
   comboCountLimit: 8
-  countDrainDuration: 0.2
+  countDrainDuration: 0.1
   comboLowColor: {r: 1, g: 1, b: 1, a: 1}
   comboMidColor: {r: 1, g: 0.42, b: 0.12, a: 1}
   comboCriticalColor: {r: 1, g: 0.18, b: 0.08, a: 1}
@@ -611,10 +611,12 @@ MonoBehaviour:
   poisonSprite: {fileID: 21300000, guid: 17d546df5d530844cafa77fb15c602bb, type: 3}
   stunSprite: {fileID: 21300000, guid: 221949c029d7b6e47876c56ac35ee7e9, type: 3}
   weaknessSprite: {fileID: 21300000, guid: a16ebab303ff4064eb40d38facb2016c, type: 3}
+  exposedSprite: {fileID: 0}
   markStacks: 0
   poisonStacks: 0
   stunStacks: 0
   weaknessStacks: 0
+  isExposed: 0
 --- !u!95 &4868757420946430006
 Animator:
   serializedVersion: 7

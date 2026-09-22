@@ -26,7 +26,7 @@ public sealed class DuelClockHUD : MonoBehaviour
     [SerializeField, Min(0.01f)] private float fillLerpSpeed = 12f;
     [SerializeField, Min(0.01f)] private float beatFillLerpSpeed = 28f;
     [SerializeField, Min(0f)] private float beatFullHoldDuration = 0.08f;
-    [SerializeField, Min(0.01f)] private float beatPulseDuration = 0.24f;
+    [SerializeField, Min(0.01f)] private float beatPulseDuration = 0.2f;
     [SerializeField, Min(1f)] private float beatPulseScale = 1.12f;
     [SerializeField] private Color beatPulseColor =
         new Color32(247, 191, 62, 255);

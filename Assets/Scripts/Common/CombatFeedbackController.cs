@@ -107,7 +107,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     [SerializeField] private int comboCountLimit = 8;
     [Min(0.01f)]
     [FormerlySerializedAs("turnDrainDuration")]
-    [SerializeField] private float countDrainDuration = 0.2f;
+    [SerializeField] private float countDrainDuration = 0.1f;
     [SerializeField] private Color comboLowColor = Color.white;
     [FormerlySerializedAs("comboHighColor")]
     [SerializeField] private Color comboMidColor =
@@ -314,6 +314,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private PlayerMove playerMove;
     private WaveManager waveManager;
     private Coroutine countDrainCoroutine;
+    private Coroutine countDrainSequenceCoroutine;
+    private long pendingComboCountDrains;
 
     private Volume cameraVolume;
     private ChromaticAberration chromaticAberration;
@@ -473,6 +475,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         if (waveManager != null)
         {
+            waveManager.DuelClockBeatsCommitted -=
+                HandleDuelClockBeatsCommitted;
+            waveManager.DuelClockBeatsCommitted +=
+                HandleDuelClockBeatsCommitted;
             waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
             waveManager.EnemyTurnCycleCompleted += HandleCountCompleted;
         }
@@ -509,6 +515,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         if (waveManager != null)
         {
+            waveManager.DuelClockBeatsCommitted -=
+                HandleDuelClockBeatsCommitted;
             waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
         }
 
@@ -1665,16 +1673,98 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void HandleCountCompleted(int _)
     {
+        if (waveManager != null
+            && waveManager.PacingMode == CombatPacingMode.DuelClock)
+        {
+            comboResetDuringCurrentCount = false;
+            return;
+        }
+
         bool preserveRefreshedCombo = comboResetDuringCurrentCount;
         comboResetDuringCurrentCount = false;
         ConsumeComboCount(preserveRefreshedCombo);
     }
 
-    private void ConsumeComboCount(bool preserveRefreshedCombo)
+    private void HandleDuelClockBeatsCommitted(long beatCount)
+    {
+        comboResetDuringCurrentCount = false;
+        QueueComboCountDrains(beatCount);
+    }
+
+    private void QueueComboCountDrains(long beatCount)
+    {
+        if (beatCount <= 0 || comboCount <= 0
+            || comboCountsRemaining <= 0)
+        {
+            return;
+        }
+
+        long availableDrains = System.Math.Max(
+            0L,
+            (long)comboCountsRemaining - pendingComboCountDrains);
+        pendingComboCountDrains += System.Math.Min(
+            beatCount,
+            availableDrains);
+
+        if (pendingComboCountDrains > 0
+            && countDrainSequenceCoroutine == null)
+        {
+            countDrainSequenceCoroutine = StartCoroutine(
+                DrainQueuedComboCounts());
+        }
+    }
+
+    private IEnumerator DrainQueuedComboCounts()
+    {
+        while (pendingComboCountDrains > 0
+               && comboCount > 0
+               && comboCountsRemaining > 0)
+        {
+            pendingComboCountDrains--;
+            ConsumeComboCount(
+                preserveRefreshedCombo: false,
+                stopActiveAnimation: false);
+
+            if (countDrainCoroutine != null)
+            {
+                while (countDrainCoroutine != null)
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                yield return WaitForCountDrainInterval();
+            }
+        }
+
+        pendingComboCountDrains = 0L;
+        countDrainSequenceCoroutine = null;
+    }
+
+    private IEnumerator WaitForCountDrainInterval()
+    {
+        float duration = Mathf.Max(0.01f, countDrainDuration);
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsed += Time.unscaledDeltaTime;
+            }
+        }
+    }
+
+    private bool ConsumeComboCount(
+        bool preserveRefreshedCombo,
+        bool stopActiveAnimation = true)
     {
         if (comboCount <= 0 || comboCountsRemaining <= 0)
         {
-            return;
+            return false;
         }
 
         int previousRemaining = comboCountsRemaining;
@@ -1685,14 +1775,17 @@ public sealed class CombatFeedbackController : MonoBehaviour
         if (comboCountsRemaining == previousRemaining)
         {
             RefreshComboCountValues();
-            return;
+            return false;
         }
 
         int drainedIndex = Mathf.Clamp(
             comboCountsRemaining,
             0,
             Mathf.Max(0, comboCountValues.Count - 1));
-        StopCountDrainAnimation();
+        if (stopActiveAnimation)
+        {
+            StopCountDrainAnimation();
+        }
 
         if (comboCountValues.Count == 0)
         {
@@ -1701,12 +1794,13 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 ExpireCombo();
             }
 
-            return;
+            return false;
         }
 
         countDrainCoroutine = StartCoroutine(DrainComboCount(
             comboCountValues[drainedIndex],
             comboCountsRemaining <= 0));
+        return true;
     }
 
     internal static int CalculateRemainingComboCounts(
@@ -1763,13 +1857,19 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void StopCountDrainAnimation()
     {
-        if (countDrainCoroutine == null)
+        pendingComboCountDrains = 0L;
+
+        if (countDrainSequenceCoroutine != null)
         {
-            return;
+            StopCoroutine(countDrainSequenceCoroutine);
+            countDrainSequenceCoroutine = null;
         }
 
-        StopCoroutine(countDrainCoroutine);
-        countDrainCoroutine = null;
+        if (countDrainCoroutine != null)
+        {
+            StopCoroutine(countDrainCoroutine);
+            countDrainCoroutine = null;
+        }
     }
 
     private void ExpireCombo()

@@ -301,7 +301,7 @@ public static class DuelClockHudAuthoring
         serializedHud.FindProperty("beatFillLerpSpeed").floatValue = 28f;
         serializedHud.FindProperty("beatFullHoldDuration").floatValue =
             0.08f;
-        serializedHud.FindProperty("beatPulseDuration").floatValue = 0.24f;
+        serializedHud.FindProperty("beatPulseDuration").floatValue = 0.2f;
         serializedHud.FindProperty("beatPulseScale").floatValue = 1.12f;
         serializedHud.FindProperty("beatPulseColor").colorValue = TitleColor;
         serializedHud.FindProperty("titleText").objectReferenceValue =

@@ -149,7 +149,7 @@ The meter follows ordinary progress with an unscaled-time exponential Lerp.
 Its fill color also interpolates from yellow at zero progress to red at 100
 percent, using the same displayed fill amount as the meter animation.
 When a commit crosses `100`, it rapidly Lerps to a full meter, briefly holds
-and pulses the complete `Layout | Duel Clock` for `0.24` seconds, resets to zero, and rapidly
+and pulses the complete `Layout | Duel Clock` for `0.2` seconds, resets to zero, and rapidly
 Lerps to the preserved overflow. Multiple Beats queue the same visual sequence
 without delaying enemy resolution. The animation freezes for the game pause
 menu and an open first-run guide card, and remains presentation-only.
@@ -161,10 +161,11 @@ becomes available, and unsubscribes at matching lifecycle boundaries. Run
 root in `Canvas.prefab` and reconcile the Battle scene instance.
 
 The former `Turn N` run display now renders `COUNT N` from completed enemy
-cycles. The persistent combo window consumes one of eight gauge cells only
-when `EnemyTurnCycleCompleted` is published after the Duel Clock reaches 100%.
-A defeat during the resolving count refreshes the window without consuming
-that same count. Player actions do not consume combo gauge cells directly.
+cycles. The persistent combo window starts consuming one of eight gauge cells
+as soon as the Duel Clock commits a Beat at 100%. Multiple committed Beats are
+presented sequentially at `0.1`-second intervals instead of waiting for enemy
+turn resolution. Player actions do not consume combo gauge cells directly.
+Legacy pacing retains its enemy-cycle-completion countdown.
 
 ## Rule contract
 

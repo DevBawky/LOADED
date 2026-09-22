@@ -110,6 +110,7 @@ public class WaveManager : MonoBehaviour
     public event Action StateChanged;
     public event Action BattleCompleted;
     public event Action BattleFailed;
+    public event Action<long> DuelClockBeatsCommitted;
     public event Action<int> EnemyTurnCycleCompleted;
     public event Action<EnemyController> EnemyDefeated;
     // TODO: A future persistent unlock service can subscribe and add
@@ -821,6 +822,7 @@ public class WaveManager : MonoBehaviour
     {
         if (combatPacingMode == CombatPacingMode.DuelClock)
         {
+            DuelClockBeatsCommitted?.Invoke(beatCount);
             QueueEnemyTurnCycles(beatCount);
         }
     }
