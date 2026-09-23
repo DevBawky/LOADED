@@ -163,7 +163,7 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.Move,
             "이동",
-            "<color=#FF5757><b>A/D 키</b></color> 또는 <color=#FF5757><b>이동 버튼 클릭</b></color>으로 한 칸 이동합니다.\n이동은 <color=#FFD05A><b>DUEL CLOCK을 충전</b></color>하며, 100%에 도달하면 적이 행동합니다.",
+            "<color=#FF5757><b>WASD 키</b></color>로 상하좌우 한 칸씩 이동합니다. A/D는 전장을 따라 이동하고 W/S는 레인을 바꿉니다.\n이동은 <color=#FFD05A><b>DUEL CLOCK을 충전</b></color>하며, 100%에 도달하면 적이 행동합니다.",
             "한 칸 이동",
             "Videos/Movement.mp4",
             null,
@@ -171,14 +171,14 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.Rotate,
             "회전",
-            "<color=#FF5757><b>W 키</b></color>, <color=#FF5757><b>마우스 휠 클릭</b></color> 또는 <color=#FF5757><b>회전 버튼 클릭</b></color>으로 방향을 바꿉니다.\n탄환은 <color=#FFD05A><b>바라보는 방향</b></color>으로 발사됩니다.",
+            "<color=#FF5757><b>Q 키</b></color>, <color=#FF5757><b>마우스 휠 클릭</b></color> 또는 <color=#FF5757><b>회전 버튼 클릭</b></color>으로 방향을 바꿉니다.\n탄환은 <color=#FFD05A><b>바라보는 방향</b></color>으로 발사됩니다.",
             "한 번 회전",
             "Videos/Rotate.mp4",
             "Button | Rotate"),
         new GuideStepDefinition(
             CombatStep.Wait,
             "대기",
-            "<color=#FF5757><b>S 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 제자리에서 DUEL CLOCK을 충전합니다.",
+            "<color=#FF5757><b>E 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 제자리에서 DUEL CLOCK을 충전합니다.",
             "한 번 대기",
             "Videos/Wait.mp4",
             "Button | Wait"),

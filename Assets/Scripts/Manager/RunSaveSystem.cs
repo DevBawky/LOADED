@@ -61,6 +61,7 @@ public static class RunSaveSystem
             0,
             saveData.cumulativeBattleTurnCount);
         saveData.playerTurnCount = 0;
+        saveData.playerLaneIndex = 0;
         saveData.nextPushAvailableTurn = 0;
         saveData.currentWaveIndex = 0;
         saveData.remainingSpawnTurns = 0;
@@ -241,6 +242,7 @@ public static class RunSaveSystem
         saveData.nextCycleAcquisitionOrders ??= new List<int>();
         saveData.inventoryItemAssetNames ??= new List<string>();
         saveData.relics ??= new List<RunRelicSaveData>();
+        saveData.playerLaneIndex = Mathf.Max(0, saveData.playerLaneIndex);
         saveData.playerTurnCount = Mathf.Max(0, saveData.playerTurnCount);
         saveData.cumulativeBattleTurnCount = Mathf.Max(
             0,

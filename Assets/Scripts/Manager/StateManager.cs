@@ -355,6 +355,7 @@ public class StateManager : MonoBehaviour
                 ? 0
                 : shopManager.CurrentRefreshCost,
             playerTileIndex = playerTileIndex,
+            playerLaneIndex = playerMove.CurrentLaneIndex,
             playerFacingRight = playerMove.transform.localScale.x >= 0f,
             playerTurnCount = playerMove.TurnCount,
             // The legacy JSON field name is preserved for version 3 save
@@ -495,6 +496,7 @@ public class StateManager : MonoBehaviour
             || battle.TilePrefab == null
             || !boardManager.ConfigureBoard(
                 battle.BoardCount,
+                CurrentStage.LaneCount,
                 battle.TilePrefab)
             || !RestorePlayerRuntime(restoredRun))
         {
@@ -569,6 +571,7 @@ public class StateManager : MonoBehaviour
             || battle.TilePrefab == null
             || !boardManager.ConfigureBoard(
                 battle.BoardCount,
+                CurrentStage.LaneCount,
                 battle.TilePrefab)
             || !RestorePlayerRuntime(restoredRun))
         {
@@ -600,8 +603,19 @@ public class StateManager : MonoBehaviour
 
     private bool RestorePlayerRuntime(RunSaveData saveData)
     {
-        if (saveData == null || !boardManager.TryGetTilePosition(
+        if (saveData == null)
+        {
+            return false;
+        }
+
+        int laneIndex = Mathf.Clamp(
+            saveData.playerLaneIndex,
+            0,
+            Mathf.Max(0, boardManager.LaneCount - 1));
+
+        if (!boardManager.TryGetTilePosition(
                 saveData.playerTileIndex,
+                laneIndex,
                 out Vector3 playerPosition))
         {
             return false;
@@ -612,7 +626,8 @@ public class StateManager : MonoBehaviour
             playerPosition,
             saveData.playerFacingRight,
             saveData.playerTurnCount,
-            saveData.nextPushAvailableTurn);
+            saveData.nextPushAvailableTurn,
+            laneIndex);
         playerHealth.RestoreStatusRunState(saveData.playerStatusEffects);
         return true;
     }
@@ -837,6 +852,7 @@ public class StateManager : MonoBehaviour
             || battle.TilePrefab == null
             || !boardManager.ConfigureBoard(
                 battle.BoardCount,
+                CurrentStage.LaneCount,
                 battle.TilePrefab))
         {
             ShowRunComplete("CONFIGURATION ERROR");
@@ -1348,10 +1364,12 @@ public class StateManager : MonoBehaviour
 
         if (boardManager.TryGetTilePosition(
                 centerTileIndex,
+                0,
                 out Vector3 centerTilePosition))
         {
             playerMove.transform.position = centerTilePosition
                 + playerSpawnOffset;
+            playerMove.SetLaneIndex(0);
         }
     }
 

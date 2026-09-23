@@ -159,6 +159,7 @@ public sealed class RunSaveData
     public List<string> inventoryItemAssetNames = new List<string>();
     public List<RunRelicSaveData> relics = new List<RunRelicSaveData>();
     public int playerTileIndex;
+    public int playerLaneIndex;
     public bool playerFacingRight;
     public int playerTurnCount;
     public int cumulativeBattleTurnCount;

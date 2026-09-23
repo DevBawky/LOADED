@@ -147,3 +147,7 @@ loaded.guide.first_run_started.v1 (legacy)
 - `Assets/Scripts/Player/PlayerCylinderUI.cs`
 - `Assets/Scripts/Enemy/EnemyActionTooltipTrigger.cs`
 - `Assets/Scripts/Item/PlayerInventory.cs`
+
+## 후속 변경: 전투 조작 키
+
+이동 안내는 `WASD` 상하좌우 조작을 설명하고, 회전은 `Q`, 대기는 `E`로 표기한다. 상하 레인 이동도 왼우 이동과 같이 첫 이동 미션을 완료할 수 있다.

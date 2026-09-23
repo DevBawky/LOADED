@@ -19,15 +19,36 @@ public readonly struct PlayerMovementContext
         int endTileIndex,
         int distance,
         PlayerMovementSource source)
+        : this(
+            startTileIndex,
+            0,
+            endTileIndex,
+            0,
+            distance,
+            source)
+    {
+    }
+
+    public PlayerMovementContext(
+        int startTileIndex,
+        int startLaneIndex,
+        int endTileIndex,
+        int endLaneIndex,
+        int distance,
+        PlayerMovementSource source)
     {
         StartTileIndex = startTileIndex;
+        StartLaneIndex = Math.Max(0, startLaneIndex);
         EndTileIndex = endTileIndex;
+        EndLaneIndex = Math.Max(0, endLaneIndex);
         Distance = Math.Max(0, distance);
         Source = source;
     }
 
     public int StartTileIndex { get; }
+    public int StartLaneIndex { get; }
     public int EndTileIndex { get; }
+    public int EndLaneIndex { get; }
     public int Distance { get; }
     public PlayerMovementSource Source { get; }
 }

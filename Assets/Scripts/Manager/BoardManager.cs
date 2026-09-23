@@ -6,7 +6,10 @@ public class BoardManager : MonoBehaviour
 {
     [Header("Board Settings")]
     [SerializeField, Min(1)] private int boardCount = 1;
+    [SerializeField, Min(1)] private int laneCount =
+        StageData.DefaultLaneCount;
     [SerializeField, Min(0.01f)] private float boardDistance = 1f;
+    [SerializeField, Min(0.01f)] private float laneDistance = 0.92f;
 
     [Header("References")]
     [SerializeField] private BoardTile tilePrefab;
@@ -17,19 +20,38 @@ public class BoardManager : MonoBehaviour
     private readonly List<BoardTile> spawnedTiles = new List<BoardTile>();
 
     public int BoardCount => boardCount;
+    public int LaneCount => laneCount;
+    public int TotalTileCount => boardCount * laneCount;
     public float BoardDistance => boardDistance;
+    public float LaneDistance => laneDistance;
 
-    public bool ConfigureBoard(int configuredBoardCount, BoardTile configuredTilePrefab)
+    public bool ConfigureBoard(
+        int configuredBoardCount,
+        BoardTile configuredTilePrefab)
     {
-        if (configuredBoardCount <= 0 || configuredTilePrefab == null)
+        return ConfigureBoard(
+            configuredBoardCount,
+            laneCount,
+            configuredTilePrefab);
+    }
+
+    public bool ConfigureBoard(
+        int configuredBoardCount,
+        int configuredLaneCount,
+        BoardTile configuredTilePrefab)
+    {
+        if (configuredBoardCount <= 0 || configuredLaneCount <= 0
+            || configuredTilePrefab == null)
         {
             Debug.LogError(
-                "Board Count must be greater than zero and Tile Prefab must be assigned.",
+                "Board Count and Lane Count must be greater than zero, "
+                + "and Tile Prefab must be assigned.",
                 this);
             return false;
         }
 
         boardCount = configuredBoardCount;
+        laneCount = configuredLaneCount;
         tilePrefab = configuredTilePrefab;
         RegenerateBoard();
         return isGenerated;
@@ -37,28 +59,65 @@ public class BoardManager : MonoBehaviour
 
     public bool SetTileWarningActive(int tileIndex, bool isActive)
     {
-        if (tileIndex < 0 || tileIndex >= spawnedTiles.Count
-            || spawnedTiles[tileIndex] == null)
+        if (tileIndex < 0 || tileIndex >= boardCount)
         {
             return false;
         }
 
-        spawnedTiles[tileIndex].SetWarningActive(isActive);
+        bool changedAny = false;
+
+        for (int laneIndex = 0; laneIndex < laneCount; laneIndex++)
+        {
+            changedAny |= SetTileWarningActive(
+                tileIndex,
+                laneIndex,
+                isActive);
+        }
+
+        return changedAny;
+    }
+
+    public bool SetTileWarningActive(
+        int tileIndex,
+        int laneIndex,
+        bool isActive)
+    {
+        int spawnedTileIndex = GetSpawnedTileIndex(tileIndex, laneIndex);
+
+        if (spawnedTileIndex < 0 || spawnedTileIndex >= spawnedTiles.Count
+            || spawnedTiles[spawnedTileIndex] == null)
+        {
+            return false;
+        }
+
+        spawnedTiles[spawnedTileIndex].SetWarningActive(isActive);
         return true;
     }
 
     public bool TryGetTilePosition(int tileIndex, out Vector3 worldPosition)
     {
+        return TryGetTilePosition(tileIndex, 0, out worldPosition);
+    }
+
+    public bool TryGetTilePosition(
+        int tileIndex,
+        int laneIndex,
+        out Vector3 worldPosition)
+    {
         worldPosition = Vector3.zero;
 
-        if (tileParent == null || boardCount <= 0 || boardDistance <= 0f
-            || tileIndex < 0 || tileIndex >= boardCount)
+        if (tileParent == null || boardCount <= 0 || laneCount <= 0
+            || boardDistance <= 0f || laneDistance <= 0f
+            || tileIndex < 0 || tileIndex >= boardCount
+            || laneIndex < 0 || laneIndex >= laneCount)
         {
             return false;
         }
 
         float positionX = GetStartOffset() + boardDistance * tileIndex;
-        worldPosition = tileParent.TransformPoint(new Vector3(positionX, 0f, 0f));
+        float positionY = GetLaneStartOffset() + laneDistance * laneIndex;
+        worldPosition = tileParent.TransformPoint(
+            new Vector3(positionX, positionY, 0f));
         return true;
     }
 
@@ -134,6 +193,35 @@ public class BoardManager : MonoBehaviour
         return true;
     }
 
+    public bool TryGetAdjacentLanePosition(
+        int tileIndex,
+        int currentLaneIndex,
+        int direction,
+        out int targetLaneIndex,
+        out Vector3 targetWorldPosition)
+    {
+        targetLaneIndex = currentLaneIndex;
+        targetWorldPosition = Vector3.zero;
+
+        if (direction == 0)
+        {
+            return false;
+        }
+
+        targetLaneIndex += direction > 0 ? 1 : -1;
+
+        if (!TryGetTilePosition(
+                tileIndex,
+                targetLaneIndex,
+                out targetWorldPosition))
+        {
+            targetLaneIndex = currentLaneIndex;
+            return false;
+        }
+
+        return true;
+    }
+
     public bool TryGetRangedTilePosition(
         Vector3 currentWorldPosition,
         int direction,
@@ -166,8 +254,8 @@ public class BoardManager : MonoBehaviour
         }
 
         float targetPositionX = startOffset + boardDistance * targetIndex;
-        targetWorldPosition = tileParent.TransformPoint(
-            new Vector3(targetPositionX, 0f, 0f));
+        currentLocalPosition.x = targetPositionX;
+        targetWorldPosition = tileParent.TransformPoint(currentLocalPosition);
         return true;
     }
 
@@ -195,6 +283,18 @@ public class BoardManager : MonoBehaviour
             return;
         }
 
+        if (laneCount <= 0)
+        {
+            Debug.LogError("Lane Count는 0보다 커야 합니다.", this);
+            return;
+        }
+
+        if (laneDistance <= 0f)
+        {
+            Debug.LogError("Lane Distance는 0보다 커야 합니다.", this);
+            return;
+        }
+
         if (tilePrefab == null || tileParent == null)
         {
             Debug.LogError("Tile Prefab and Tile Parent must be assigned.", this);
@@ -204,16 +304,22 @@ public class BoardManager : MonoBehaviour
         isGenerated = true;
         spawnedTiles.Clear();
         float startOffset = GetStartOffset();
+        float laneStartOffset = GetLaneStartOffset();
 
-        for (int index = 0; index < boardCount; index++)
+        for (int laneIndex = 0; laneIndex < laneCount; laneIndex++)
         {
-            float positionX = startOffset + boardDistance * index;
-            BoardTile tile = Instantiate(tilePrefab, tileParent);
+            float positionY = laneStartOffset + laneDistance * laneIndex;
 
-            tile.transform.SetLocalPositionAndRotation(
-                new Vector3(positionX, 0f, 0f),
-                Quaternion.identity);
-            spawnedTiles.Add(tile);
+            for (int tileIndex = 0; tileIndex < boardCount; tileIndex++)
+            {
+                float positionX = startOffset + boardDistance * tileIndex;
+                BoardTile tile = Instantiate(tilePrefab, tileParent);
+
+                tile.transform.SetLocalPositionAndRotation(
+                    new Vector3(positionX, positionY, 0f),
+                    Quaternion.identity);
+                spawnedTiles.Add(tile);
+            }
         }
     }
 
@@ -238,5 +344,21 @@ public class BoardManager : MonoBehaviour
     private float GetStartOffset()
     {
         return -(boardCount - 1) * boardDistance * 0.5f;
+    }
+
+    private float GetLaneStartOffset()
+    {
+        return -(laneCount - 1) * laneDistance * 0.5f;
+    }
+
+    private int GetSpawnedTileIndex(int tileIndex, int laneIndex)
+    {
+        if (tileIndex < 0 || tileIndex >= boardCount
+            || laneIndex < 0 || laneIndex >= laneCount)
+        {
+            return -1;
+        }
+
+        return laneIndex * boardCount + tileIndex;
     }
 }

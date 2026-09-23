@@ -68,6 +68,7 @@ public class PlayerMove : MonoBehaviour
     private bool isEnemyTurnResolving;
     private bool isInputLocked;
     private bool isDuelClockActive;
+    private int currentLaneIndex;
     private float nextInstantActionAllowedAt;
     private bool isPushVisualDisplaced;
     private EnemyController forcedMoveReservationOwner;
@@ -102,6 +103,7 @@ public class PlayerMove : MonoBehaviour
     public int NextPushAvailableTurn => Mathf.Max(
         0,
         nextPushAvailableTurn);
+    public int CurrentLaneIndex => currentLaneIndex;
     public bool CanPush => RemainingPushCooldownTurns == 0;
     public float PushCollisionDamageRatio =>
         Mathf.Clamp01(pushCollisionDamageRatio);
@@ -130,9 +132,11 @@ public class PlayerMove : MonoBehaviour
         Vector3 worldPosition,
         bool facingRight,
         int savedTurnCount,
-        int savedNextPushAvailableTurn)
+        int savedNextPushAvailableTurn,
+        int savedLaneIndex = 0)
     {
         transform.position = worldPosition;
+        SetLaneIndex(savedLaneIndex);
         Vector3 localScale = transform.localScale;
         float scaleMagnitude = Mathf.Abs(localScale.x);
         localScale.x = Mathf.Max(0.0001f, scaleMagnitude)
@@ -227,11 +231,23 @@ public class PlayerMove : MonoBehaviour
 
             if (keyboard.wKey.wasPressedThisFrame)
             {
-                Rotate();
+                MoveUp();
                 return;
             }
 
             if (keyboard.sKey.wasPressedThisFrame)
+            {
+                MoveDown();
+                return;
+            }
+
+            if (keyboard.qKey.wasPressedThisFrame)
+            {
+                Rotate();
+                return;
+            }
+
+            if (keyboard.eKey.wasPressedThisFrame)
             {
                 Wait();
                 return;
@@ -275,6 +291,27 @@ public class PlayerMove : MonoBehaviour
         }
 
         Move(1);
+    }
+
+    public void MoveUp()
+    {
+        MoveVertical(1);
+    }
+
+    public void MoveDown()
+    {
+        MoveVertical(-1);
+    }
+
+    public void SetLaneIndex(int laneIndex)
+    {
+        int maximumLaneIndex = boardManager == null
+            ? Mathf.Max(0, laneIndex)
+            : Mathf.Max(0, boardManager.LaneCount - 1);
+        currentLaneIndex = Mathf.Clamp(
+            laneIndex,
+            0,
+            maximumLaneIndex);
     }
 
     public void Rotate()
@@ -349,7 +386,9 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        if (waveManager.TryGetEnemyAtTile(
+        bool usesEnemyLane = currentLaneIndex == 0;
+
+        if (usesEnemyLane && waveManager.TryGetEnemyAtTile(
                 targetTileIndex,
                 out EnemyController adjacentEnemy))
         {
@@ -371,9 +410,12 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        if (waveManager.IsTileReservedForSpawn(targetTileIndex)
-            || waveManager.IsTileReservedForMovement(targetTileIndex)
-            || !waveManager.TryReserveMovementTile(this, targetTileIndex))
+        if (usesEnemyLane
+            && (waveManager.IsTileReservedForSpawn(targetTileIndex)
+                || waveManager.IsTileReservedForMovement(targetTileIndex)
+                || !waveManager.TryReserveMovementTile(
+                    this,
+                    targetTileIndex)))
         {
             return;
         }
@@ -382,7 +424,67 @@ public class PlayerMove : MonoBehaviour
         StartCoroutine(MoveRoutine(
             targetPosition,
             currentTileIndex,
-            targetTileIndex));
+            currentLaneIndex,
+            targetTileIndex,
+            currentLaneIndex));
+    }
+
+    private void MoveVertical(int direction)
+    {
+        if (!CanPerformAction())
+        {
+            return;
+        }
+
+        if (boardManager == null || waveManager == null || actorMotion == null)
+        {
+            Debug.LogError(
+                "Board Manager and Actor Motion must be assigned, and Wave Manager must initialize Player Move.",
+                this);
+            return;
+        }
+
+        if (!boardManager.TryGetTileIndex(
+                transform.position,
+                out int currentTileIndex)
+            || !boardManager.TryGetTilePosition(
+                currentTileIndex,
+                currentLaneIndex,
+                out Vector3 currentLanePosition)
+            || !boardManager.TryGetAdjacentLanePosition(
+                currentTileIndex,
+                currentLaneIndex,
+                direction,
+                out int targetLaneIndex,
+                out Vector3 targetLanePosition))
+        {
+            return;
+        }
+
+        if (targetLaneIndex == 0
+            && (waveManager.TryGetEnemyAtTile(
+                    currentTileIndex,
+                    out _)
+                || waveManager.IsTileReservedForSpawn(currentTileIndex)
+                || waveManager.IsTileReservedForMovement(currentTileIndex)
+                || !waveManager.TryReserveMovementTile(
+                    this,
+                    currentTileIndex)))
+        {
+            return;
+        }
+
+        Vector3 positionOffset = transform.position - currentLanePosition;
+        Vector3 targetPosition = targetLanePosition + positionOffset;
+        BehaviourActionStarted?.Invoke(direction > 0
+            ? PlayerBehaviourAction.MoveUp
+            : PlayerBehaviourAction.MoveDown);
+        StartCoroutine(MoveRoutine(
+            targetPosition,
+            currentTileIndex,
+            currentLaneIndex,
+            currentTileIndex,
+            targetLaneIndex));
     }
 
     private void NotifyMoveStarted(int direction)
@@ -966,7 +1068,9 @@ public class PlayerMove : MonoBehaviour
     private IEnumerator MoveRoutine(
         Vector3 targetPosition,
         int startTileIndex,
-        int endTileIndex)
+        int startLaneIndex,
+        int endTileIndex,
+        int endLaneIndex)
     {
         isActing = true;
         SoundManager.PlaySfx("SFX_Move");
@@ -978,9 +1082,12 @@ public class PlayerMove : MonoBehaviour
         {
             waveManager?.ReleaseMovementTiles(this);
         }
+        currentLaneIndex = endLaneIndex;
         NotifyPlayerMoved(
             startTileIndex,
+            startLaneIndex,
             endTileIndex,
+            endLaneIndex,
             PlayerMovementSource.NormalMove);
         PositionChanged?.Invoke();
         relicManager ??= FindFirstObjectByType<RelicManager>(
@@ -999,7 +1106,23 @@ public class PlayerMove : MonoBehaviour
         int endTileIndex,
         PlayerMovementSource source)
     {
-        int distance = Math.Abs(endTileIndex - startTileIndex);
+        NotifyPlayerMoved(
+            startTileIndex,
+            currentLaneIndex,
+            endTileIndex,
+            currentLaneIndex,
+            source);
+    }
+
+    private void NotifyPlayerMoved(
+        int startTileIndex,
+        int startLaneIndex,
+        int endTileIndex,
+        int endLaneIndex,
+        PlayerMovementSource source)
+    {
+        int distance = Math.Abs(endTileIndex - startTileIndex)
+            + Math.Abs(endLaneIndex - startLaneIndex);
 
         if (distance <= 0 || source == PlayerMovementSource.None)
         {
@@ -1008,7 +1131,9 @@ public class PlayerMove : MonoBehaviour
 
         PlayerMoved?.Invoke(new PlayerMovementContext(
             startTileIndex,
+            startLaneIndex,
             endTileIndex,
+            endLaneIndex,
             distance,
             source));
     }

@@ -1709,6 +1709,8 @@ public sealed class FirstRunGuideController : MonoBehaviour
         {
             case PlayerBehaviourAction.MoveLeft:
             case PlayerBehaviourAction.MoveRight:
+            case PlayerBehaviourAction.MoveUp:
+            case PlayerBehaviourAction.MoveDown:
                 moved = true;
                 break;
             case PlayerBehaviourAction.Rotate:

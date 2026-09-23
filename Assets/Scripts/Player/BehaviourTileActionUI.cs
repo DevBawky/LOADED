@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.SceneManagement;
@@ -13,7 +14,9 @@ public enum PlayerBehaviourAction
     Rotate = 2,
     Wait = 3,
     Reload = 4,
-    Shoot = 5
+    Shoot = 5,
+    MoveUp = 6,
+    MoveDown = 7
 }
 
 [DisallowMultipleComponent]
@@ -120,6 +123,8 @@ public sealed class BehaviourTileActionUI : MonoBehaviour
 
         foreach (Button button in GetComponentsInChildren<Button>(true))
         {
+            UpdateShortcutLabel(button);
+
             if (!TryGetAction(
                     button.name,
                     out PlayerBehaviourAction actionType,
@@ -143,6 +148,40 @@ public sealed class BehaviourTileActionUI : MonoBehaviour
             if (rect != null)
             {
                 restScales[rect] = rect.localScale;
+            }
+        }
+    }
+
+    private static void UpdateShortcutLabel(Button button)
+    {
+        string expectedText = button.name switch
+        {
+            RotateButtonName => "W",
+            WaitButtonName => "S",
+            _ => null
+        };
+        string replacementText = button.name switch
+        {
+            RotateButtonName => "Q",
+            WaitButtonName => "E",
+            _ => null
+        };
+
+        if (expectedText == null)
+        {
+            return;
+        }
+
+        foreach (TMP_Text label in button.GetComponentsInChildren<TMP_Text>(
+                     true))
+        {
+            if (label.text == expectedText
+                || label.text.StartsWith(
+                    expectedText + " ",
+                    StringComparison.Ordinal))
+            {
+                label.text = replacementText
+                    + label.text.Substring(expectedText.Length);
             }
         }
     }

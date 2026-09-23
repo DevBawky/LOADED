@@ -112,3 +112,18 @@ Tile을 단순히 일정한 간격으로 생성하는 것만 요청하면 한쪽
 특히 홀수와 짝수의 배치 결과, 월드 좌표와 로컬 좌표 중 어떤 기준을 사용할지, 기존 Inspector 참조를 유지해야 하는지를 프롬프트에 구체적으로 포함하는 것이 중요했다.
 
 다음 프롬프트에서는 코드 구현뿐만 아니라 실제로 확인할 테스트 조건과 기대 결과도 처음부터 함께 작성해야 한다.
+
+## Multi-lane extension (260923)
+
+`StageData`가 스테이지 공통 `LaneCount`를 소유하며 기본값은 2다.
+`BattleData.BoardCount`는 레인 하나의 가로 타일 수를 계속 의미한다.
+`StateManager`는 전투 보드를 구성할 때 현재 스테이지의 레인 수를
+`BoardManager`에 전달한다.
+
+`BoardManager`는 `BoardCount * LaneCount`개의 단일 타일 프리팹을 생성한다.
+가로 타일은 기존처럼 X축 중앙 정렬을 유지하고, 레인은 Y축에서
+`LaneDistance` 간격으로 중앙 정렬한다. 기존 가로 전투 시스템과의 호환을 위해
+레인을 지정하지 않는 위치 조회는 이전처럼 보드 중심 Y 좌표를 반환하며,
+새로운 `TryGetTilePosition(tileIndex, laneIndex, out position)` 오버로드가 실제
+레인 위치를 제공한다. 상하 이동과 적의 레인 추적은 이 좌표 API를 사용하는
+후속 단계에서 구현한다.
