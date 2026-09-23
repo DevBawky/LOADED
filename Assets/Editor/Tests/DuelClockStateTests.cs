@@ -1436,6 +1436,27 @@ public sealed class WaveManagerMovementReservationTests
     }
 
     [Test]
+    public void SameTileInDifferentLanesCanBeReservedIndependently()
+    {
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave Manager");
+        BoxCollider2D lowerOwner = CreateComponent<BoxCollider2D>("Lower Owner");
+        BoxCollider2D upperOwner = CreateComponent<BoxCollider2D>("Upper Owner");
+
+        Assert.That(
+            waveManager.TryReserveMovementTile(lowerOwner, 4, 0),
+            Is.True);
+        Assert.That(
+            waveManager.TryReserveMovementTile(upperOwner, 4, 1),
+            Is.True);
+        Assert.That(
+            waveManager.IsTileReservedForMovement(4, 0, upperOwner),
+            Is.True);
+        Assert.That(
+            waveManager.IsTileReservedForMovement(4, 1, lowerOwner),
+            Is.True);
+    }
+
+    [Test]
     public void SwapReservationClaimsBothDestinationsTogether()
     {
         WaveManager waveManager = CreateComponent<WaveManager>("Wave Manager");

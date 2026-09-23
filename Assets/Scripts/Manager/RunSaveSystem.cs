@@ -256,6 +256,30 @@ public static class RunSaveSystem
         saveData.reservedSpawnTileIndices ??= new List<int>();
         saveData.enemies ??= new List<RunEnemySaveData>();
         saveData.bombs ??= new List<RunBombSaveData>();
+
+        foreach (RunEnemySaveData enemy in saveData.enemies)
+        {
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            enemy.laneIndex = Mathf.Max(0, enemy.laneIndex);
+            enemy.preparedTargetLaneIndex = Mathf.Max(
+                0,
+                enemy.preparedTargetLaneIndex);
+            enemy.preparedBigBarrelLaneIndex = Mathf.Max(
+                0,
+                enemy.preparedBigBarrelLaneIndex);
+        }
+
+        foreach (RunBombSaveData bomb in saveData.bombs)
+        {
+            if (bomb != null)
+            {
+                bomb.laneIndex = Mathf.Max(0, bomb.laneIndex);
+            }
+        }
         saveData.droppedItems ??= new List<RunDroppedItemSaveData>();
         saveData.combatReport ??= new RunCombatReportSaveData();
         saveData.shop ??= new RunShopSaveData();

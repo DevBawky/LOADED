@@ -1318,6 +1318,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
 
             if (waveManager.TryGetEnemyAtTile(
                     targetTileIndex,
+                    playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                     out EnemyController _))
             {
                 canMove |= direction == facingDirection && playerMove.CanPush;

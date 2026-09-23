@@ -94,6 +94,7 @@ internal sealed class EnemyThrownAttackRuntime
     private readonly EnemyThrownProjectileFlight flight;
     private readonly GameObject projectile;
     private readonly int targetTileIndex;
+    private readonly int targetLaneIndex;
     private readonly Vector3 targetPosition;
     private readonly int attackDamage;
     private readonly GameObject explosionVfxPrefab;
@@ -110,6 +111,7 @@ internal sealed class EnemyThrownAttackRuntime
         EnemyThrownProjectileFlight flight,
         GameObject projectile,
         int targetTileIndex,
+        int targetLaneIndex,
         Vector3 targetPosition,
         int attackDamage,
         GameObject explosionVfxPrefab,
@@ -125,6 +127,7 @@ internal sealed class EnemyThrownAttackRuntime
         this.flight = flight;
         this.projectile = projectile;
         this.targetTileIndex = targetTileIndex;
+        this.targetLaneIndex = targetLaneIndex;
         this.targetPosition = targetPosition;
         this.attackDamage = Mathf.Max(0, attackDamage);
         this.explosionVfxPrefab = explosionVfxPrefab;
@@ -291,7 +294,8 @@ internal sealed class EnemyThrownAttackRuntime
             && playerMove != null && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
                 out int playerTileIndex)
-            && playerTileIndex == targetTileIndex;
+            && playerTileIndex == targetTileIndex
+            && playerMove.CurrentLaneIndex == targetLaneIndex;
     }
 
     private void ResolveImpact(bool playerDodged)
@@ -319,6 +323,7 @@ internal sealed class EnemyThrownAttackRuntime
         {
             waveManager.TryGetEnemyAtTile(
                 targetTileIndex,
+                targetLaneIndex,
                 out enemyTarget);
         }
 

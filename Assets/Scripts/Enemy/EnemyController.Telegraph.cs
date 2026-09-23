@@ -22,6 +22,11 @@ public partial class EnemyController
         private bool isAttackPrepared => owner.isAttackPrepared;
         private int preparedTargetTileIndex =>
             owner.preparedTargetTileIndex;
+        private int preparedTargetLaneIndex =>
+            owner.preparedTargetLaneIndex;
+        private int currentLaneIndex => owner.currentLaneIndex;
+        private int preparedBigBarrelLaneIndex =>
+            owner.preparedBigBarrelLaneIndex;
         private Vector3 preparedTargetPosition =>
             owner.preparedTargetPosition;
         private List<int> preparedShotgunTileIndices =>
@@ -157,6 +162,7 @@ public partial class EnemyController
             if (endTileIndex == attackerTileIndex
                 || !boardManager.TryGetTilePosition(
                     endTileIndex,
+                    currentLaneIndex,
                     out Vector3 endPosition))
             {
                 return false;
@@ -260,6 +266,7 @@ public partial class EnemyController
                     boardManager,
                     tileIndex,
                     tileIndex,
+                    preparedBigBarrelLaneIndex,
                     enemyData.BigBarrel.ShotgunTelegraphMaterial,
                     color,
                     enemyData.TelegraphVerticalOffset * 0.5f,

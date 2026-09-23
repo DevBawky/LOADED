@@ -84,3 +84,65 @@ public sealed class EnemyFrontlineTurnPolicyTests
             Is.True);
     }
 }
+
+public sealed class EnemyLanePursuitPolicyTests
+{
+    [Test]
+    public void SelectsClosestEnemyOnEachSide()
+    {
+        EnemyLanePursuitCandidate[] candidates =
+        {
+            new EnemyLanePursuitCandidate(10, 1, 0),
+            new EnemyLanePursuitCandidate(20, 3, 0),
+            new EnemyLanePursuitCandidate(30, 7, 0),
+            new EnemyLanePursuitCandidate(40, 9, 0)
+        };
+
+        Assert.That(
+            EnemyLanePursuitPolicy.ShouldPursueLane(20, 5, 1, candidates),
+            Is.True);
+        Assert.That(
+            EnemyLanePursuitPolicy.ShouldPursueLane(30, 5, 1, candidates),
+            Is.True);
+        Assert.That(
+            EnemyLanePursuitPolicy.ShouldPursueLane(10, 5, 1, candidates),
+            Is.False);
+        Assert.That(
+            EnemyLanePursuitPolicy.ShouldPursueLane(40, 5, 1, candidates),
+            Is.False);
+    }
+
+    [Test]
+    public void EqualDistancePrefersEnemyAlreadyOnPlayerLane()
+    {
+        EnemyLanePursuitCandidate[] candidates =
+        {
+            new EnemyLanePursuitCandidate(10, 3, 0),
+            new EnemyLanePursuitCandidate(20, 3, 1)
+        };
+
+        Assert.That(
+            EnemyLanePursuitPolicy.ShouldPursueLane(10, 5, 1, candidates),
+            Is.False);
+        Assert.That(
+            EnemyLanePursuitPolicy.ShouldPursueLane(20, 5, 1, candidates),
+            Is.True);
+    }
+
+    [Test]
+    public void EqualPriorityUsesStableCandidateOrder()
+    {
+        EnemyLanePursuitCandidate[] candidates =
+        {
+            new EnemyLanePursuitCandidate(10, 3, 0),
+            new EnemyLanePursuitCandidate(20, 3, 0)
+        };
+
+        Assert.That(
+            EnemyLanePursuitPolicy.ShouldPursueLane(10, 5, 1, candidates),
+            Is.True);
+        Assert.That(
+            EnemyLanePursuitPolicy.ShouldPursueLane(20, 5, 1, candidates),
+            Is.False);
+    }
+}

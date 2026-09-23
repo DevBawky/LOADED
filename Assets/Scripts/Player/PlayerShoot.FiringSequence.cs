@@ -920,6 +920,7 @@ public partial class PlayerShoot
     
             waveManager.GetEnemiesInDirection(
                 transform.position,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 horizontalDirection,
                 GetShotRange(bullet),
                 targetBuffer);
@@ -2089,6 +2090,7 @@ public partial class PlayerShoot
                     || targetTileIndex >= boardManager.BoardCount
                     || !waveManager.TryGetEnemyAtTile(
                         targetTileIndex,
+                        playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                         out EnemyController targetEnemy)
                     || targetEnemy == null || targetEnemy.CurrentHealth <= 0)
                 {

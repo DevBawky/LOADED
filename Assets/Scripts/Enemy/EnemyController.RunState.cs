@@ -69,6 +69,24 @@ public partial class EnemyController
             set => owner.preparedTargetTileIndex = value;
         }
 
+        private int currentLaneIndex
+        {
+            get => owner.currentLaneIndex;
+            set => owner.currentLaneIndex = value;
+        }
+
+        private int preparedTargetLaneIndex
+        {
+            get => owner.preparedTargetLaneIndex;
+            set => owner.preparedTargetLaneIndex = value;
+        }
+
+        private int preparedBigBarrelLaneIndex
+        {
+            get => owner.preparedBigBarrelLaneIndex;
+            set => owner.preparedBigBarrelLaneIndex = value;
+        }
+
         private Vector3 preparedTargetPosition
         {
             get => owner.preparedTargetPosition;
@@ -142,6 +160,7 @@ public partial class EnemyController
             {
                 enemyAssetName = enemyData == null ? string.Empty : enemyData.name,
                 tileIndex = tileIndex,
+                laneIndex = currentLaneIndex,
                 facingRight = transform.localScale.x >= 0f,
                 currentHealth = currentHealth,
                 currentShield = currentShield,
@@ -151,12 +170,14 @@ public partial class EnemyController
                 isAttackPrepared = isAttackPrepared,
                 isRetreating = isRetreating,
                 preparedTargetTileIndex = preparedTargetTileIndex,
+                preparedTargetLaneIndex = preparedTargetLaneIndex,
                 preparedSupportType = (int)preparedSupportType,
                 lastTurnAction = (int)lastTurnAction,
                 bigBarrelStep = (int)bigBarrelStep,
                 isBigBarrelPhaseTwo = isBigBarrelPhaseTwo,
                 bigBarrelActionUsesPhaseTwo = bigBarrelActionUsesPhaseTwo,
                 preparedBigBarrelFuse = preparedBigBarrelFuse,
+                preparedBigBarrelLaneIndex = preparedBigBarrelLaneIndex,
                 bigBarrelReloadTurnsRemaining = bigBarrelReloadTurnsRemaining,
                 statusEffects = statusEffects == null
                     ? new RunStatusEffectSaveData()
@@ -224,10 +245,23 @@ public partial class EnemyController
             isQueueCreated = state.isQueueCreated;
             isAttackPrepared = state.isAttackPrepared;
             isRetreating = state.isRetreating;
+            currentLaneIndex = boardManager == null
+                ? Mathf.Max(0, state.laneIndex)
+                : Mathf.Clamp(
+                    state.laneIndex,
+                    0,
+                    boardManager.LaneCount - 1);
             preparedTargetTileIndex = state.preparedTargetTileIndex;
+            preparedTargetLaneIndex = boardManager == null
+                ? Mathf.Max(0, state.preparedTargetLaneIndex)
+                : Mathf.Clamp(
+                    state.preparedTargetLaneIndex,
+                    0,
+                    boardManager.LaneCount - 1);
             preparedTargetPosition = boardManager != null
                 && boardManager.TryGetTilePosition(
                     preparedTargetTileIndex,
+                    preparedTargetLaneIndex,
                     out Vector3 targetPosition)
                         ? targetPosition
                         : Vector3.zero;
@@ -250,6 +284,12 @@ public partial class EnemyController
             isBigBarrelPhaseTwo = state.isBigBarrelPhaseTwo;
             bigBarrelActionUsesPhaseTwo = state.bigBarrelActionUsesPhaseTwo;
             preparedBigBarrelFuse = Mathf.Max(0, state.preparedBigBarrelFuse);
+            preparedBigBarrelLaneIndex = boardManager == null
+                ? Mathf.Max(0, state.preparedBigBarrelLaneIndex)
+                : Mathf.Clamp(
+                    state.preparedBigBarrelLaneIndex,
+                    0,
+                    boardManager.LaneCount - 1);
             bigBarrelReloadTurnsRemaining = Mathf.Max(
                 0,
                 state.bigBarrelReloadTurnsRemaining);
@@ -292,6 +332,7 @@ public partial class EnemyController
             RefreshHealthUI();
             ApplyCanvasOrientation();
             RefreshAttackTelegraph();
+            owner.SetPreparedTargetWarning(isAttackPrepared);
         }
     
         private EnemyActionData ResolveSavedAction(string assetName)

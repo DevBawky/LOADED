@@ -58,6 +58,7 @@ public sealed class RunEnemySaveData
 {
     public string enemyAssetName;
     public int tileIndex;
+    public int laneIndex;
     public bool facingRight;
     public int currentHealth;
     public int currentShield;
@@ -68,6 +69,7 @@ public sealed class RunEnemySaveData
     public bool isAttackPrepared;
     public bool isRetreating;
     public int preparedTargetTileIndex;
+    public int preparedTargetLaneIndex;
     public int preparedSupportTargetIndex = -1;
     public int preparedSupportType;
     public int lastTurnAction;
@@ -75,6 +77,7 @@ public sealed class RunEnemySaveData
     public bool isBigBarrelPhaseTwo;
     public bool bigBarrelActionUsesPhaseTwo;
     public int preparedBigBarrelFuse;
+    public int preparedBigBarrelLaneIndex;
     public int bigBarrelReloadTurnsRemaining;
     public List<int> preparedBombTargetTileIndices = new List<int>();
     public List<int> preparedShotgunTileIndices = new List<int>();
@@ -87,6 +90,7 @@ public sealed class RunBombSaveData
 {
     public string sourceEnemyAssetName;
     public int tileIndex;
+    public int laneIndex;
     public int remainingFuse;
     public int createdTurnCycle;
 }

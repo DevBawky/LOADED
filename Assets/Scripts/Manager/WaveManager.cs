@@ -433,6 +433,7 @@ public class WaveManager : MonoBehaviour
                 || !TrySpawnEnemy(
                     enemyData,
                     savedEnemy.tileIndex,
+                    savedEnemy.laneIndex,
                     out _))
             {
                 ResetBattleRuntime();
@@ -540,12 +541,30 @@ public class WaveManager : MonoBehaviour
 
     public bool IsTileOccupied(int tileIndex, EnemyController ignoredEnemy = null)
     {
-        return TryGetEnemyAtTile(tileIndex, out _, ignoredEnemy);
+        return IsTileOccupied(tileIndex, 0, ignoredEnemy);
+    }
+
+    public bool IsTileOccupied(
+        int tileIndex,
+        int laneIndex,
+        EnemyController ignoredEnemy = null)
+    {
+        return TryGetEnemyAtTile(
+            tileIndex,
+            laneIndex,
+            out _,
+            ignoredEnemy);
     }
 
     private bool IsPlayerAtTile(int tileIndex)
     {
+        return IsPlayerAtTile(tileIndex, 0);
+    }
+
+    private bool IsPlayerAtTile(int tileIndex, int laneIndex)
+    {
         return playerMove != null && boardManager != null
+            && playerMove.CurrentLaneIndex == laneIndex
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
                 out int playerTileIndex)
@@ -556,9 +575,17 @@ public class WaveManager : MonoBehaviour
         int tileIndex,
         Component ignoredOwner = null)
     {
+        return IsTileReservedForMovement(tileIndex, 0, ignoredOwner);
+    }
+
+    public bool IsTileReservedForMovement(
+        int tileIndex,
+        int laneIndex,
+        Component ignoredOwner = null)
+    {
         RemoveStaleMovementReservations();
         return movementTileReservations.TryGetValue(
-                tileIndex,
+                GetBoardCellKey(tileIndex, laneIndex),
                 out Component owner)
             && owner != ignoredOwner;
     }
@@ -585,12 +612,28 @@ public class WaveManager : MonoBehaviour
 
     internal bool TryReserveMovementTile(Component owner, int tileIndex)
     {
-        return TryReserveMovementTiles(owner, new[] { tileIndex });
+        return TryReserveMovementTile(owner, tileIndex, 0);
+    }
+
+    internal bool TryReserveMovementTile(
+        Component owner,
+        int tileIndex,
+        int laneIndex)
+    {
+        return TryReserveMovementTiles(owner, new[] { tileIndex }, laneIndex);
     }
 
     internal bool TryReserveMovementTiles(
         Component owner,
         IReadOnlyList<int> tileIndices)
+    {
+        return TryReserveMovementTiles(owner, tileIndices, 0);
+    }
+
+    internal bool TryReserveMovementTiles(
+        Component owner,
+        IReadOnlyList<int> tileIndices,
+        int laneIndex)
     {
         if (owner == null || tileIndices == null || tileIndices.Count == 0)
         {
@@ -602,10 +645,11 @@ public class WaveManager : MonoBehaviour
         for (int index = 0; index < tileIndices.Count; index++)
         {
             int tileIndex = tileIndices[index];
+            int cellKey = GetBoardCellKey(tileIndex, laneIndex);
 
-            if (tileIndex < 0
+            if (cellKey < 0
                 || movementTileReservations.TryGetValue(
-                    tileIndex,
+                    cellKey,
                     out Component reservedOwner)
                 && reservedOwner != owner)
             {
@@ -617,7 +661,8 @@ public class WaveManager : MonoBehaviour
 
         for (int index = 0; index < tileIndices.Count; index++)
         {
-            movementTileReservations[tileIndices[index]] = owner;
+            movementTileReservations[
+                GetBoardCellKey(tileIndices[index], laneIndex)] = owner;
         }
 
         return true;
@@ -629,19 +674,43 @@ public class WaveManager : MonoBehaviour
         Component secondOwner,
         int secondTargetTileIndex)
     {
+        return TryReserveMovementSwap(
+            firstOwner,
+            firstTargetTileIndex,
+            0,
+            secondOwner,
+            secondTargetTileIndex,
+            0);
+    }
+
+    internal bool TryReserveMovementSwap(
+        Component firstOwner,
+        int firstTargetTileIndex,
+        int firstTargetLaneIndex,
+        Component secondOwner,
+        int secondTargetTileIndex,
+        int secondTargetLaneIndex)
+    {
+        int firstCellKey = GetBoardCellKey(
+            firstTargetTileIndex,
+            firstTargetLaneIndex);
+        int secondCellKey = GetBoardCellKey(
+            secondTargetTileIndex,
+            secondTargetLaneIndex);
+
         if (firstOwner == null || secondOwner == null
             || firstOwner == secondOwner
-            || firstTargetTileIndex < 0 || secondTargetTileIndex < 0
-            || firstTargetTileIndex == secondTargetTileIndex)
+            || firstCellKey < 0 || secondCellKey < 0
+            || firstCellKey == secondCellKey)
         {
             return false;
         }
 
         RemoveStaleMovementReservations();
 
-        if (IsReservedByAnotherOwner(firstTargetTileIndex, firstOwner, secondOwner)
+        if (IsReservedByAnotherOwner(firstCellKey, firstOwner, secondOwner)
             || IsReservedByAnotherOwner(
-                secondTargetTileIndex,
+                secondCellKey,
                 firstOwner,
                 secondOwner))
         {
@@ -650,8 +719,8 @@ public class WaveManager : MonoBehaviour
 
         ReleaseMovementTiles(firstOwner);
         ReleaseMovementTiles(secondOwner);
-        movementTileReservations[firstTargetTileIndex] = firstOwner;
-        movementTileReservations[secondTargetTileIndex] = secondOwner;
+        movementTileReservations[firstCellKey] = firstOwner;
+        movementTileReservations[secondCellKey] = secondOwner;
         return true;
     }
 
@@ -730,6 +799,19 @@ public class WaveManager : MonoBehaviour
         out EnemyController foundEnemy,
         EnemyController ignoredEnemy = null)
     {
+        return TryGetEnemyAtTile(
+            tileIndex,
+            0,
+            out foundEnemy,
+            ignoredEnemy);
+    }
+
+    public bool TryGetEnemyAtTile(
+        int tileIndex,
+        int laneIndex,
+        out EnemyController foundEnemy,
+        EnemyController ignoredEnemy = null)
+    {
         foundEnemy = null;
 
         foreach (EnemyController enemy in activeEnemies)
@@ -739,7 +821,10 @@ public class WaveManager : MonoBehaviour
                 continue;
             }
 
-            if (boardManager.TryGetTileIndex(enemy.transform.position, out int enemyIndex)
+            if (enemy.CurrentLaneIndex == laneIndex
+                && boardManager.TryGetTileIndex(
+                    enemy.transform.position,
+                    out int enemyIndex)
                 && enemyIndex == tileIndex)
             {
                 foundEnemy = enemy;
@@ -757,6 +842,21 @@ public class WaveManager : MonoBehaviour
 
     public void GetEnemiesInDirection(
         Vector3 originWorldPosition,
+        int direction,
+        int maxRange,
+        List<EnemyController> results)
+    {
+        GetEnemiesInDirection(
+            originWorldPosition,
+            0,
+            direction,
+            maxRange,
+            results);
+    }
+
+    public void GetEnemiesInDirection(
+        Vector3 originWorldPosition,
+        int laneIndex,
         int direction,
         int maxRange,
         List<EnemyController> results)
@@ -780,6 +880,7 @@ public class WaveManager : MonoBehaviour
         foreach (EnemyController enemy in activeEnemies)
         {
             if (enemy == null || enemy.CurrentHealth <= 0
+                || enemy.CurrentLaneIndex != laneIndex
                 || !boardManager.TryGetTileIndex(
                     enemy.transform.position,
                     out int enemyIndex))
@@ -804,6 +905,22 @@ public class WaveManager : MonoBehaviour
         {
             results.Add(targetData.Enemy);
         }
+    }
+
+    private int GetBoardCellKey(int tileIndex, int laneIndex)
+    {
+        if (tileIndex < 0 || laneIndex < 0
+            || boardManager != null
+            && (tileIndex >= boardManager.BoardCount
+                || laneIndex >= boardManager.LaneCount))
+        {
+            return -1;
+        }
+
+        int laneStride = boardManager == null
+            ? 1000000
+            : boardManager.BoardCount;
+        return laneIndex * laneStride + tileIndex;
     }
 
     private void HandlePlayerTurnCompleted()
@@ -1228,17 +1345,31 @@ public class WaveManager : MonoBehaviour
         int spawnTileIndex,
         out EnemyController spawnedEnemy)
     {
+        return TrySpawnEnemy(
+            enemyData,
+            spawnTileIndex,
+            0,
+            out spawnedEnemy);
+    }
+
+    private bool TrySpawnEnemy(
+        EnemyData enemyData,
+        int spawnTileIndex,
+        int spawnLaneIndex,
+        out EnemyController spawnedEnemy)
+    {
         spawnedEnemy = null;
 
         if (enemyData == null || enemyPrefabTemplate == null
             || CalculateAvailableEnemySlots(
                 GetLivingEnemyCount(),
                 maximumActiveEnemyCount) <= 0
-            || IsPlayerAtTile(spawnTileIndex)
-            || IsTileOccupied(spawnTileIndex)
-            || IsTileReservedForMovement(spawnTileIndex)
+            || IsPlayerAtTile(spawnTileIndex, spawnLaneIndex)
+            || IsTileOccupied(spawnTileIndex, spawnLaneIndex)
+            || IsTileReservedForMovement(spawnTileIndex, spawnLaneIndex)
             || !boardManager.TryGetTilePosition(
                 spawnTileIndex,
+                spawnLaneIndex,
                 out Vector3 spawnPosition))
         {
             return false;
@@ -1257,7 +1388,8 @@ public class WaveManager : MonoBehaviour
                 boardManager,
                 playerMove,
                 playerHealth,
-                this))
+                this,
+                spawnLaneIndex))
         {
             Destroy(enemy.gameObject);
             return false;

@@ -386,10 +386,9 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        bool usesEnemyLane = currentLaneIndex == 0;
-
-        if (usesEnemyLane && waveManager.TryGetEnemyAtTile(
+        if (waveManager.TryGetEnemyAtTile(
                 targetTileIndex,
+                currentLaneIndex,
                 out EnemyController adjacentEnemy))
         {
             if (waveManager.HasMovementReservation(adjacentEnemy))
@@ -410,12 +409,15 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        if (usesEnemyLane
-            && (waveManager.IsTileReservedForSpawn(targetTileIndex)
-                || waveManager.IsTileReservedForMovement(targetTileIndex)
+        if ((currentLaneIndex == 0
+                && waveManager.IsTileReservedForSpawn(targetTileIndex)
+            || waveManager.IsTileReservedForMovement(
+                targetTileIndex,
+                currentLaneIndex)
                 || !waveManager.TryReserveMovementTile(
                     this,
-                    targetTileIndex)))
+                    targetTileIndex,
+                    currentLaneIndex)))
         {
             return;
         }
@@ -461,15 +463,19 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        if (targetLaneIndex == 0
-            && (waveManager.TryGetEnemyAtTile(
+        if (waveManager.TryGetEnemyAtTile(
                     currentTileIndex,
+                    targetLaneIndex,
                     out _)
-                || waveManager.IsTileReservedForSpawn(currentTileIndex)
-                || waveManager.IsTileReservedForMovement(currentTileIndex)
+                || targetLaneIndex == 0
+                    && waveManager.IsTileReservedForSpawn(currentTileIndex)
+                || waveManager.IsTileReservedForMovement(
+                    currentTileIndex,
+                    targetLaneIndex)
                 || !waveManager.TryReserveMovementTile(
                     this,
-                    currentTileIndex)))
+                    currentTileIndex,
+                    targetLaneIndex))
         {
             return;
         }
@@ -542,6 +548,7 @@ public class PlayerMove : MonoBehaviour
     public IEnumerator SwapPositionWithEnemy(EnemyController enemy)
     {
         if (enemy == null || enemy.CurrentHealth <= 0
+            || enemy.CurrentLaneIndex != currentLaneIndex
             || boardManager == null || actorMotion == null
             || waveManager == null
             || waveManager.HasMovementReservation(enemy)
@@ -554,15 +561,19 @@ public class PlayerMove : MonoBehaviour
             || playerTileIndex == enemyTileIndex
             || !boardManager.TryGetTilePosition(
                 playerTileIndex,
+                currentLaneIndex,
                 out Vector3 playerTilePosition)
             || !boardManager.TryGetTilePosition(
                 enemyTileIndex,
+                currentLaneIndex,
                 out Vector3 enemyTilePosition)
             || !waveManager.TryReserveMovementSwap(
                 this,
                 enemyTileIndex,
+                currentLaneIndex,
                 enemy,
-                playerTileIndex))
+                playerTileIndex,
+                currentLaneIndex))
         {
             yield break;
         }
@@ -625,9 +636,14 @@ public class PlayerMove : MonoBehaviour
 
             if (candidateIndex < 0 || candidateIndex >= boardManager.BoardCount
                 || waveManager != null
-                && (waveManager.IsTileOccupied(candidateIndex)
-                    || waveManager.IsTileReservedForMovement(candidateIndex)
-                    || waveManager.IsTileReservedForSpawn(candidateIndex)))
+                && (waveManager.IsTileOccupied(
+                        candidateIndex,
+                        currentLaneIndex)
+                    || waveManager.IsTileReservedForMovement(
+                        candidateIndex,
+                        currentLaneIndex)
+                    || currentLaneIndex == 0
+                        && waveManager.IsTileReservedForSpawn(candidateIndex)))
             {
                 break;
             }
@@ -638,11 +654,13 @@ public class PlayerMove : MonoBehaviour
 
         if (endTileIndex == startTileIndex || !boardManager.TryGetTilePosition(
                 endTileIndex,
+                currentLaneIndex,
                 out Vector3 targetPosition)
             || waveManager != null
             && !waveManager.TryReserveMovementTiles(
                 this,
-                movementReservationTileBuffer))
+                movementReservationTileBuffer,
+                currentLaneIndex))
         {
             yield break;
         }
@@ -994,24 +1012,30 @@ public class PlayerMove : MonoBehaviour
 
             if (waveManager.TryGetEnemyAtTile(
                     tileIndex,
+                    pushedEnemy.CurrentLaneIndex,
                     out collidedEnemy,
                     pushedEnemy))
             {
                 break;
             }
 
-            if (waveManager.IsTileOccupied(tileIndex, pushedEnemy))
+            if (waveManager.IsTileOccupied(
+                    tileIndex,
+                    pushedEnemy.CurrentLaneIndex,
+                    pushedEnemy))
             {
                 break;
             }
 
-            if (tileIndex == playerTileIndex)
+            if (tileIndex == playerTileIndex
+                && pushedEnemy.CurrentLaneIndex == currentLaneIndex)
             {
                 break;
             }
 
             if (waveManager.IsTileReservedForMovement(
                     tileIndex,
+                    pushedEnemy.CurrentLaneIndex,
                     pushedEnemy))
             {
                 break;
@@ -1019,6 +1043,7 @@ public class PlayerMove : MonoBehaviour
 
             if (!boardManager.TryGetTilePosition(
                     tileIndex,
+                    pushedEnemy.CurrentLaneIndex,
                     out Vector3 tilePosition))
             {
                 return false;
@@ -1207,9 +1232,13 @@ public class PlayerMove : MonoBehaviour
             movementReservationTileBuffer.Add(tileIndex);
         }
 
+        int laneIndex = owner is EnemyController enemy
+            ? enemy.CurrentLaneIndex
+            : currentLaneIndex;
         return waveManager.TryReserveMovementTiles(
             owner,
-            movementReservationTileBuffer);
+            movementReservationTileBuffer,
+            laneIndex);
     }
 
     public bool TryConsumeDuelClockStunBeat()

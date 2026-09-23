@@ -22,6 +22,7 @@ internal sealed class PlayerShotRangePreview
     private readonly BoardManager boardManager;
     private readonly WaveManager waveManager;
     private readonly RelicManager relicManager;
+    private readonly PlayerMove playerMove;
     private readonly List<EnemyController> targets =
         new List<EnemyController>();
 
@@ -42,6 +43,7 @@ internal sealed class PlayerShotRangePreview
         this.boardManager = boardManager;
         this.waveManager = waveManager;
         this.relicManager = relicManager;
+        playerMove = owner == null ? null : owner.GetComponent<PlayerMove>();
     }
 
     public bool Show(
@@ -128,6 +130,7 @@ internal sealed class PlayerShotRangePreview
 
         if (boardManager.TryGetTilePosition(
                 playerTileIndex,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 out startPosition))
         {
             startPosition.y += 0.15f;
@@ -146,9 +149,11 @@ internal sealed class PlayerShotRangePreview
         if (otherLine == null
             || !boardManager.TryGetTilePosition(
                 0,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 out Vector3 leftEndPosition)
             || !boardManager.TryGetTilePosition(
                 boardManager.BoardCount - 1,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 out Vector3 rightEndPosition))
         {
             Hide();
@@ -186,6 +191,7 @@ internal sealed class PlayerShotRangePreview
         if (endTileIndex == playerTileIndex
             || !boardManager.TryGetTilePosition(
                 endTileIndex,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 out Vector3 endPosition))
         {
             Hide();
@@ -196,6 +202,7 @@ internal sealed class PlayerShotRangePreview
         targets.Clear();
         waveManager?.GetEnemiesInDirection(
             owner.position,
+            playerMove == null ? 0 : playerMove.CurrentLaneIndex,
             direction,
             shotRange,
             targets);

@@ -13,6 +13,7 @@ public class BossBomb : MonoBehaviour
 
     [Header("Runtime State")]
     [SerializeField] private int tileIndex = -1;
+    [SerializeField] private int laneIndex;
     [SerializeField] private int remainingFuse;
     [SerializeField] private bool isExploding;
 
@@ -24,6 +25,7 @@ public class BossBomb : MonoBehaviour
     private Color baseRangeColor = new Color(1f, 0.45f, 0f, 0.65f);
 
     public int TileIndex => tileIndex;
+    public int LaneIndex => laneIndex;
     public int RemainingFuse => remainingFuse;
     public int CreatedTurnCycle => createdTurnCycle;
     public bool IsExploding => isExploding;
@@ -36,6 +38,23 @@ public class BossBomb : MonoBehaviour
         int fuseTurns,
         int turnCycle)
     {
+        return Initialize(
+            assignedManager,
+            assignedSourceData,
+            assignedTileIndex,
+            0,
+            fuseTurns,
+            turnCycle);
+    }
+
+    public bool Initialize(
+        BossBombManager assignedManager,
+        EnemyData assignedSourceData,
+        int assignedTileIndex,
+        int assignedLaneIndex,
+        int fuseTurns,
+        int turnCycle)
+    {
         if (assignedManager == null || assignedSourceData == null
             || assignedTileIndex < 0)
         {
@@ -45,6 +64,7 @@ public class BossBomb : MonoBehaviour
         manager = assignedManager;
         sourceData = assignedSourceData;
         tileIndex = assignedTileIndex;
+        laneIndex = Mathf.Max(0, assignedLaneIndex);
         remainingFuse = Mathf.Clamp(fuseTurns, 1, 3);
         createdTurnCycle = turnCycle;
         isExploding = false;
@@ -207,6 +227,7 @@ public class BossBomb : MonoBehaviour
             manager.BoardManager,
             tileIndex - settings.BombExplosionRadius,
             tileIndex + settings.BombExplosionRadius,
+            laneIndex,
             settings.BombTelegraphMaterial,
             baseRangeColor,
             sourceData.TelegraphVerticalOffset * 0.5f,

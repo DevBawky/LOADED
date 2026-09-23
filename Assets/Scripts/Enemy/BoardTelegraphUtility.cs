@@ -13,6 +13,31 @@ public static class BoardTelegraphUtility
         float verticalOffset,
         int sortingOrder)
     {
+        return CreateTileRange(
+            parent,
+            objectName,
+            boardManager,
+            firstTileIndex,
+            lastTileIndex,
+            0,
+            material,
+            color,
+            verticalOffset,
+            sortingOrder);
+    }
+
+    public static LineRenderer CreateTileRange(
+        Transform parent,
+        string objectName,
+        BoardManager boardManager,
+        int firstTileIndex,
+        int lastTileIndex,
+        int laneIndex,
+        Material material,
+        Color color,
+        float verticalOffset,
+        int sortingOrder)
+    {
         if (parent == null || boardManager == null)
         {
             return null;
@@ -29,9 +54,11 @@ public static class BoardTelegraphUtility
 
         if (!boardManager.TryGetTilePosition(
                 minimumIndex,
+                laneIndex,
                 out Vector3 startPosition)
             || !boardManager.TryGetTilePosition(
                 maximumIndex,
+                laneIndex,
                 out Vector3 endPosition))
         {
             return null;
@@ -54,8 +81,14 @@ public static class BoardTelegraphUtility
         float tileLength = boardManager.BoardDistance;
 
         if (boardManager.BoardCount > 1
-            && boardManager.TryGetTilePosition(0, out Vector3 firstPosition)
-            && boardManager.TryGetTilePosition(1, out Vector3 secondPosition))
+            && boardManager.TryGetTilePosition(
+                0,
+                laneIndex,
+                out Vector3 firstPosition)
+            && boardManager.TryGetTilePosition(
+                1,
+                laneIndex,
+                out Vector3 secondPosition))
         {
             Vector3 tileStep = secondPosition - firstPosition;
 

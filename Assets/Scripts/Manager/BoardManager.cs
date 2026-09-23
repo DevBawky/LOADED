@@ -18,6 +18,9 @@ public class BoardManager : MonoBehaviour
 
     private bool isGenerated;
     private readonly List<BoardTile> spawnedTiles = new List<BoardTile>();
+    private readonly HashSet<int> persistentWarningCells = new HashSet<int>();
+    private readonly Dictionary<int, HashSet<int>> warningOwnerIdsByCell =
+        new Dictionary<int, HashSet<int>>();
 
     public int BoardCount => boardCount;
     public int LaneCount => laneCount;
@@ -90,8 +93,95 @@ public class BoardManager : MonoBehaviour
             return false;
         }
 
-        spawnedTiles[spawnedTileIndex].SetWarningActive(isActive);
+        if (isActive)
+        {
+            persistentWarningCells.Add(spawnedTileIndex);
+        }
+        else
+        {
+            persistentWarningCells.Remove(spawnedTileIndex);
+        }
+
+        RefreshTileWarning(spawnedTileIndex);
         return true;
+    }
+
+    public bool SetTileWarningActive(
+        int tileIndex,
+        int laneIndex,
+        Component owner,
+        bool isActive)
+    {
+        if (owner == null)
+        {
+            return false;
+        }
+
+        int spawnedTileIndex = GetSpawnedTileIndex(tileIndex, laneIndex);
+
+        if (spawnedTileIndex < 0 || spawnedTileIndex >= spawnedTiles.Count
+            || spawnedTiles[spawnedTileIndex] == null)
+        {
+            return false;
+        }
+
+        if (!warningOwnerIdsByCell.TryGetValue(
+                spawnedTileIndex,
+                out HashSet<int> ownerIds))
+        {
+            ownerIds = new HashSet<int>();
+            warningOwnerIdsByCell.Add(spawnedTileIndex, ownerIds);
+        }
+
+        if (isActive)
+        {
+            ownerIds.Add(owner.GetInstanceID());
+        }
+        else
+        {
+            ownerIds.Remove(owner.GetInstanceID());
+
+            if (ownerIds.Count == 0)
+            {
+                warningOwnerIdsByCell.Remove(spawnedTileIndex);
+            }
+        }
+
+        RefreshTileWarning(spawnedTileIndex);
+        return true;
+    }
+
+    public void ReleaseTileWarnings(Component owner)
+    {
+        if (owner == null)
+        {
+            return;
+        }
+
+        int ownerId = owner.GetInstanceID();
+        List<int> changedCells = new List<int>();
+
+        foreach (KeyValuePair<int, HashSet<int>> warningOwners
+                 in warningOwnerIdsByCell)
+        {
+            if (warningOwners.Value.Remove(ownerId))
+            {
+                changedCells.Add(warningOwners.Key);
+            }
+        }
+
+        foreach (int cellIndex in changedCells)
+        {
+            if (warningOwnerIdsByCell.TryGetValue(
+                    cellIndex,
+                    out HashSet<int> ownerIds)
+                && ownerIds.Count == 0)
+            {
+                warningOwnerIdsByCell.Remove(cellIndex);
+            }
+
+            RefreshTileWarning(cellIndex);
+        }
     }
 
     public bool TryGetTilePosition(int tileIndex, out Vector3 worldPosition)
@@ -337,8 +427,26 @@ public class BoardManager : MonoBehaviour
         }
 
         spawnedTiles.Clear();
+        persistentWarningCells.Clear();
+        warningOwnerIdsByCell.Clear();
         isGenerated = false;
         GenerateBoard();
+    }
+
+    private void RefreshTileWarning(int spawnedTileIndex)
+    {
+        if (spawnedTileIndex < 0 || spawnedTileIndex >= spawnedTiles.Count
+            || spawnedTiles[spawnedTileIndex] == null)
+        {
+            return;
+        }
+
+        bool hasOwner = warningOwnerIdsByCell.TryGetValue(
+                spawnedTileIndex,
+                out HashSet<int> ownerIds)
+            && ownerIds.Count > 0;
+        spawnedTiles[spawnedTileIndex].SetWarningActive(
+            persistentWarningCells.Contains(spawnedTileIndex) || hasOwner);
     }
 
     private float GetStartOffset()
