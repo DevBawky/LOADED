@@ -247,9 +247,12 @@ public class BossBombManager : MonoBehaviour
                 continue;
             }
 
-            if (Mathf.Abs(tileIndex - bomb.TileIndex)
-                    <= bomb.SourceData.BigBarrel.BombExplosionRadius
-                && bomb.LaneIndex == laneIndex)
+            if (IsCellInExplosionRange(
+                    bomb.TileIndex,
+                    bomb.LaneIndex,
+                    tileIndex,
+                    laneIndex,
+                    bomb.SourceData.BigBarrel.BombExplosionRadius))
             {
                 return true;
             }
@@ -469,6 +472,7 @@ public class BossBombManager : MonoBehaviour
         return new EnemyPlayerDodgeWindowState(
             true,
             playerTileIndex,
+            playerMove.CurrentLaneIndex,
             playerMove.transform.position);
     }
 
@@ -478,11 +482,15 @@ public class BossBombManager : MonoBehaviour
         int radius)
     {
         return boardManager != null && playerMove != null
-            && playerMove.CurrentLaneIndex == laneIndex
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
                 out int playerTileIndex)
-            && Mathf.Abs(playerTileIndex - centerTile) <= radius;
+            && IsCellInExplosionRange(
+                centerTile,
+                laneIndex,
+                playerTileIndex,
+                playerMove.CurrentLaneIndex,
+                radius);
     }
 
     private bool TryConfirmPlayerDodge(
@@ -507,6 +515,7 @@ public class BossBombManager : MonoBehaviour
                 dodgeState,
                 playerIsThreatened,
                 currentPlayerTileIndex,
+                playerMove.CurrentLaneIndex,
                 playerMove.transform.position,
                 out int movementDirection))
         {
@@ -527,12 +536,14 @@ public class BossBombManager : MonoBehaviour
         ref EnemyPlayerDodgeResolution resolution)
     {
         int currentPlayerTileIndex = -1;
+        int currentPlayerLaneIndex = -1;
         Vector3 currentPlayerPosition = playerMove == null
             ? dodgeState.PlayerPosition
             : playerMove.transform.position;
 
         if (boardManager != null && playerMove != null)
         {
+            currentPlayerLaneIndex = playerMove.CurrentLaneIndex;
             boardManager.TryGetTileIndex(
                 currentPlayerPosition,
                 out currentPlayerTileIndex);
@@ -542,6 +553,7 @@ public class BossBombManager : MonoBehaviour
                 dodgeState,
                 playerIsThreatened,
                 currentPlayerTileIndex,
+                currentPlayerLaneIndex,
                 currentPlayerPosition,
                 out int movementDirection))
         {
@@ -639,8 +651,12 @@ public class BossBombManager : MonoBehaviour
         {
             if (otherBomb == null || otherBomb == explodingBomb
                 || otherBomb.IsExploding
-                || otherBomb.LaneIndex != laneIndex
-                || Mathf.Abs(otherBomb.TileIndex - centerTile) > radius
+                || !IsCellInExplosionRange(
+                    centerTile,
+                    laneIndex,
+                    otherBomb.TileIndex,
+                    otherBomb.LaneIndex,
+                    radius)
                 || !queuedDetonations.Add(otherBomb))
             {
                 continue;
@@ -660,11 +676,15 @@ public class BossBombManager : MonoBehaviour
         BigBarrelSettings settings = sourceData.BigBarrel;
 
         if (!playerDodged && playerMove != null && playerHealth != null
-            && playerMove.CurrentLaneIndex == laneIndex
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
                 out int playerTile)
-            && Mathf.Abs(playerTile - centerTile) <= radius)
+            && IsCellInExplosionRange(
+                centerTile,
+                laneIndex,
+                playerTile,
+                playerMove.CurrentLaneIndex,
+                radius))
         {
             playerHealth.ApplyDamage(settings.BombDamage);
         }
@@ -677,11 +697,15 @@ public class BossBombManager : MonoBehaviour
             foreach (EnemyController enemy in enemies)
             {
                 if (enemy == null || enemy.CurrentHealth <= 0
-                    || enemy.CurrentLaneIndex != laneIndex
                     || !boardManager.TryGetTileIndex(
                         enemy.transform.position,
                         out int enemyTile)
-                    || Mathf.Abs(enemyTile - centerTile) > radius)
+                    || !IsCellInExplosionRange(
+                        centerTile,
+                        laneIndex,
+                        enemyTile,
+                        enemy.CurrentLaneIndex,
+                        radius))
                 {
                     continue;
                 }
@@ -692,6 +716,21 @@ public class BossBombManager : MonoBehaviour
             }
         }
 
+    }
+
+    internal static bool IsCellInExplosionRange(
+        int centerTileIndex,
+        int explosionLaneIndex,
+        int targetTileIndex,
+        int targetLaneIndex,
+        int radius)
+    {
+        return centerTileIndex >= 0
+            && targetTileIndex >= 0
+            && explosionLaneIndex >= 0
+            && targetLaneIndex == explosionLaneIndex
+            && Mathf.Abs(targetTileIndex - centerTileIndex)
+                <= Mathf.Max(0, radius);
     }
 
     private void RemoveBomb(BossBomb bomb)

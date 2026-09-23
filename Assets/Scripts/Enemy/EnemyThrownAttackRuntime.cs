@@ -217,6 +217,7 @@ internal sealed class EnemyThrownAttackRuntime
         return new EnemyPlayerDodgeWindowState(
             true,
             playerTileIndex,
+            playerMove.CurrentLaneIndex,
             playerMove.transform.position);
     }
 
@@ -232,6 +233,7 @@ internal sealed class EnemyThrownAttackRuntime
                 dodgeState,
                 IsPlayerInTargetTile(),
                 currentPlayerTileIndex,
+                playerMove.CurrentLaneIndex,
                 playerMove.transform.position,
                 out int movementDirection))
         {
@@ -248,12 +250,14 @@ internal sealed class EnemyThrownAttackRuntime
         ref EnemyPlayerDodgeResolution resolution)
     {
         int currentPlayerTileIndex = -1;
+        int currentPlayerLaneIndex = -1;
         Vector3 currentPlayerPosition = playerMove == null
             ? dodgeState.PlayerPosition
             : playerMove.transform.position;
 
         if (boardManager != null && playerMove != null)
         {
+            currentPlayerLaneIndex = playerMove.CurrentLaneIndex;
             boardManager.TryGetTileIndex(
                 currentPlayerPosition,
                 out currentPlayerTileIndex);
@@ -263,6 +267,7 @@ internal sealed class EnemyThrownAttackRuntime
                 dodgeState,
                 IsPlayerInTargetTile(),
                 currentPlayerTileIndex,
+                currentPlayerLaneIndex,
                 currentPlayerPosition,
                 out int movementDirection))
         {

@@ -19,22 +19,14 @@ public sealed class DuelClockHudFormattingTests
     }
 
     [Test]
-    public void NextWaveProgressUsesAuthoredInterval()
+    public void SpawnGaugeLabelShowsMaximumEnemyState()
     {
         Assert.That(
-            DuelClockHUD.FormatNextWaveProgress(0, 5),
-            Is.EqualTo("5 COUNT"));
+            DuelClockHUD.FormatSpawnGaugeLabel(false),
+            Is.EqualTo("ENEMY SPAWN"));
         Assert.That(
-            DuelClockHUD.FormatNextWaveProgress(4, 5),
-            Is.EqualTo("1 COUNT"));
-    }
-
-    [Test]
-    public void ExhaustedPoolUsesCompletedSpawnFormat()
-    {
-        Assert.That(
-            DuelClockHUD.FormatAllEnemiesSpawned(),
-            Is.EqualTo("완료"));
+            DuelClockHUD.FormatSpawnGaugeLabel(true),
+            Is.EqualTo("MAX ENEMIES"));
     }
 
     [Test]
@@ -275,16 +267,16 @@ public sealed class WaveManagerEnemyProgressTests
     }
 
     [Test]
-    public void DuelClockSpawnsOnlyAtIntervalBelowActiveEnemyLimit()
+    public void SpawnGaugeCyclesQueueOnlyRemainingEnemies()
     {
-        Assert.That(WaveManager.ShouldSpawnDuelClockEnemy(
-            4, 5, 3, 3, 4), Is.False);
-        Assert.That(WaveManager.ShouldSpawnDuelClockEnemy(
-            5, 5, 3, 3, 4), Is.True);
-        Assert.That(WaveManager.ShouldSpawnDuelClockEnemy(
-            5, 5, 3, 4, 4), Is.False);
-        Assert.That(WaveManager.ShouldSpawnDuelClockEnemy(
-            10, 5, 0, 1, 2), Is.False);
+        Assert.That(WaveManager.CalculatePendingDuelClockSpawns(
+            0, 3, 1), Is.EqualTo(1));
+        Assert.That(WaveManager.CalculatePendingDuelClockSpawns(
+            1, 3, 5), Is.EqualTo(3));
+        Assert.That(WaveManager.CalculatePendingDuelClockSpawns(
+            4, 3, 1), Is.EqualTo(3));
+        Assert.That(WaveManager.CalculatePendingDuelClockSpawns(
+            0, 0, 10), Is.Zero);
     }
 
     [Test]
@@ -603,80 +595,31 @@ public sealed class DuelClockHudAssetTests
         "Assets/Scenes/Battle.unity";
 
     [Test]
-    public void CanvasPrefabContainsRecommendedDuelClockHierarchy()
+    public void CanvasPrefabContainsOneWiredDuelClockHud()
     {
         GameObject canvas = AssetDatabase.LoadAssetAtPath<GameObject>(
             CanvasPrefabPath);
         Assert.That(canvas, Is.Not.Null);
-        Transform floating = FindDescendant(
-            canvas.transform,
-            "Panel | Floating");
-        Transform hudRoot = FindDirectChild(
-            floating,
-            "Layout | Duel Clock");
+        DuelClockHUD[] huds = canvas.GetComponentsInChildren<DuelClockHUD>(
+            true);
+        Assert.That(huds, Has.Length.EqualTo(1));
 
-        Assert.That(floating, Is.Not.Null);
-        Assert.That(hudRoot, Is.Not.Null);
-        Assert.That(hudRoot.GetComponent<DuelClockHUD>(), Is.Not.Null);
-        Assert.That(hudRoot.GetComponent<CanvasGroup>(), Is.Not.Null);
-        Assert.That(hudRoot.GetComponent<VerticalLayoutGroup>(), Is.Not.Null);
+        DuelClockHUD hud = huds[0];
+        Assert.That(hud.GetComponent<CanvasGroup>(), Is.Not.Null);
 
-        Transform header = FindDirectChild(hudRoot, "Layout | Header");
-        Transform meter = FindDirectChild(hudRoot, "Layout | Meter");
-        Transform status = FindDirectChild(hudRoot, "Layout | Status");
-        Transform remainingEnemyPanel = FindDirectChild(
-            status,
-            "Panel | Remaining Enemies");
-        Transform nextSpawnPanel = FindDirectChild(
-            status,
-            "Panel | Next Spawn");
-        Assert.That(header, Is.Not.Null);
-        Assert.That(meter, Is.Not.Null);
-        Assert.That(status, Is.Not.Null);
-        Assert.That(remainingEnemyPanel, Is.Not.Null);
-        Assert.That(nextSpawnPanel, Is.Not.Null);
-        Assert.That(FindDirectChild(header, "Text | Title")
-            ?.GetComponent<TMP_Text>(), Is.Not.Null);
-        Assert.That(FindDirectChild(header, "Text | Progress")
-            ?.GetComponent<TMP_Text>(), Is.Not.Null);
-        Assert.That(FindDirectChild(meter, "Image | Track")
-            ?.GetComponent<Image>(), Is.Not.Null);
-        Image fill = FindDirectChild(meter, "Image | Progress Fill")
-            ?.GetComponent<Image>();
-        Assert.That(fill, Is.Not.Null);
-        Assert.That(fill.type, Is.EqualTo(Image.Type.Filled));
-        Assert.That(FindDirectChild(meter, "Image | Beat Marker")
-            ?.GetComponent<Image>(), Is.Not.Null);
-        TMP_Text remainingEnemyText = FindDirectChild(
-            remainingEnemyPanel,
-            "Text | Action Preview")?.GetComponent<TMP_Text>();
-        Assert.That(remainingEnemyText, Is.Not.Null);
-        Assert.That(remainingEnemyText.text, Is.EqualTo("5"));
-        TMP_Text nextWaveText = FindDirectChild(
-            nextSpawnPanel,
-            "Text | Enemy Count")?.GetComponent<TMP_Text>();
-        Assert.That(nextWaveText, Is.Not.Null);
-        Assert.That(nextWaveText.text, Is.EqualTo("5 COUNT"));
-        Assert.That((hudRoot as RectTransform).sizeDelta.x,
-            Is.GreaterThanOrEqualTo(400f));
-        Assert.That(hudRoot.GetComponent<Image>().color,
-            Is.EqualTo(Color.white));
-
-        SerializedObject serializedHud = new SerializedObject(
-            hudRoot.GetComponent<DuelClockHUD>());
+        SerializedObject serializedHud = new SerializedObject(hud);
         Assert.That(serializedHud.FindProperty("canvasGroup")
             .objectReferenceValue, Is.Not.Null);
-        Assert.That(serializedHud.FindProperty("progressFill")
-            .objectReferenceValue, Is.Not.Null);
-        Assert.That(serializedHud.FindProperty("progressStartColor")
-            .colorValue,
-            Is.EqualTo((Color)new Color32(247, 191, 62, 255)));
-        Assert.That(serializedHud.FindProperty("progressEndColor")
-            .colorValue,
-            Is.EqualTo((Color)new Color32(231, 77, 42, 255)));
+        Image progressFill = serializedHud.FindProperty("progressFill")
+            .objectReferenceValue as Image;
+        Assert.That(progressFill, Is.Not.Null);
+        Assert.That(progressFill.type, Is.EqualTo(Image.Type.Filled));
+        Image spawnProgressFill = serializedHud
+            .FindProperty("spawnProgressFill")
+            .objectReferenceValue as Image;
+        Assert.That(spawnProgressFill, Is.Not.Null);
+        Assert.That(spawnProgressFill.type, Is.EqualTo(Image.Type.Filled));
         Assert.That(serializedHud.FindProperty("titleText")
-            .objectReferenceValue, Is.Not.Null);
-        Assert.That(serializedHud.FindProperty("enemyCountText")
             .objectReferenceValue, Is.Not.Null);
         Assert.That(serializedHud.FindProperty("fillLerpSpeed").floatValue,
             Is.GreaterThan(0f));
@@ -695,7 +638,9 @@ public sealed class DuelClockHudAssetTests
             .floatValue, Is.GreaterThanOrEqualTo(1.1f));
         Assert.That(serializedHud.FindProperty("progressText")
             .objectReferenceValue, Is.Not.Null);
-        Assert.That(serializedHud.FindProperty("actionPreviewText")
+        Assert.That(serializedHud.FindProperty("spawnGaugeLabelText")
+            .objectReferenceValue, Is.Not.Null);
+        Assert.That(serializedHud.FindProperty("unspawnedEnemyCountText")
             .objectReferenceValue, Is.Not.Null);
     }
 
@@ -708,41 +653,15 @@ public sealed class DuelClockHudAssetTests
 
         try
         {
-            int namedRootCount = 0;
             int configuredRootCount = 0;
 
             foreach (GameObject sceneRoot in scene.GetRootGameObjects())
             {
-                Transform floating = FindDescendant(
-                    sceneRoot.transform,
-                    "Panel | Floating");
-
-                if (floating == null)
-                {
-                    continue;
-                }
-
-                for (int index = 0;
-                     index < floating.childCount;
-                     index++)
-                {
-                    Transform child = floating.GetChild(index);
-
-                    if (child.name != "Layout | Duel Clock")
-                    {
-                        continue;
-                    }
-
-                    namedRootCount++;
-
-                    if (child.GetComponent<DuelClockHUD>() != null)
-                    {
-                        configuredRootCount++;
-                    }
-                }
+                configuredRootCount += sceneRoot
+                    .GetComponentsInChildren<DuelClockHUD>(true)
+                    .Length;
             }
 
-            Assert.That(namedRootCount, Is.EqualTo(1));
             Assert.That(configuredRootCount, Is.EqualTo(1));
         }
         finally
@@ -751,54 +670,4 @@ public sealed class DuelClockHudAssetTests
         }
     }
 
-    private static Transform FindDescendant(
-        Transform root,
-        string objectName)
-    {
-        if (root == null)
-        {
-            return null;
-        }
-
-        if (root.name == objectName)
-        {
-            return root;
-        }
-
-        for (int index = 0; index < root.childCount; index++)
-        {
-            Transform found = FindDescendant(
-                root.GetChild(index),
-                objectName);
-
-            if (found != null)
-            {
-                return found;
-            }
-        }
-
-        return null;
-    }
-
-    private static Transform FindDirectChild(
-        Transform parent,
-        string objectName)
-    {
-        if (parent == null)
-        {
-            return null;
-        }
-
-        for (int index = 0; index < parent.childCount; index++)
-        {
-            Transform child = parent.GetChild(index);
-
-            if (child.name == objectName)
-            {
-                return child;
-            }
-        }
-
-        return null;
-    }
 }

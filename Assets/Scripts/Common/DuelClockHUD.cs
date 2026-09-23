@@ -8,13 +8,10 @@ using UnityEngine.UI;
 [DisallowMultipleComponent]
 public sealed class DuelClockHUD : MonoBehaviour
 {
-    internal const int CurrentLayoutVersion = 6;
     internal const float MaximumBeatPulseDuration = 0.5f;
 
     [Header("State Source")]
     [SerializeField] private WaveManager waveManager;
-
-    [SerializeField, HideInInspector] private int authoredLayoutVersion;
 
     [Header("View")]
     [SerializeField] private CanvasGroup canvasGroup;
@@ -23,6 +20,11 @@ public sealed class DuelClockHUD : MonoBehaviour
         new Color32(247, 191, 62, 255);
     [SerializeField] private Color progressEndColor =
         new Color32(231, 77, 42, 255);
+    [SerializeField] private Image spawnProgressFill;
+    [SerializeField] private Color spawnProgressStartColor =
+        new Color32(99, 205, 235, 255);
+    [SerializeField] private Color spawnProgressEndColor =
+        new Color32(75, 128, 230, 255);
     [SerializeField, Min(0.01f)] private float fillLerpSpeed = 12f;
     [SerializeField, Min(0.01f)] private float beatFillLerpSpeed = 28f;
     [SerializeField, Min(0f)] private float beatFullHoldDuration = 0.08f;
@@ -31,14 +33,14 @@ public sealed class DuelClockHUD : MonoBehaviour
     [SerializeField] private Color beatPulseColor =
         new Color32(247, 191, 62, 255);
     [SerializeField] private TMP_Text titleText;
-    [FormerlySerializedAs("beatCountText")]
-    [SerializeField] private TMP_Text enemyCountText;
-    [SerializeField] private Color allEnemiesSpawnedTextColor =
-        new Color32(145, 148, 158, 255);
     [SerializeField] private TMP_Text progressText;
-    [SerializeField] private TMP_Text actionPreviewText;
+    [SerializeField] private TMP_Text spawnGaugeLabelText;
+    [FormerlySerializedAs("actionPreviewText")]
+    [SerializeField] private TMP_Text unspawnedEnemyCountText;
 
     private readonly DuelClockFillAnimation fillAnimation =
+        new DuelClockFillAnimation();
+    private readonly DuelClockFillAnimation spawnFillAnimation =
         new DuelClockFillAnimation();
     private DuelClockController clockController;
     private Coroutine delayedBindRoutine;
@@ -47,10 +49,7 @@ public sealed class DuelClockHUD : MonoBehaviour
     private Vector3 baseHudScale = Vector3.one;
     private int displayedProgress = int.MinValue;
     private long displayedRemainingEnemyCount = long.MinValue;
-    private int displayedNextWaveProgress = int.MinValue;
-    private int displayedEnemyWaveCount = int.MinValue;
-    private bool displayedAllEnemiesSpawned;
-    private Color activeEnemyCountTextColor = Color.white;
+    private bool? displayedEnemyLimitReached;
     private float pulseElapsed;
     private bool pulseActive;
     private bool enemyProgressDirty = true;
@@ -58,11 +57,6 @@ public sealed class DuelClockHUD : MonoBehaviour
     private void Awake()
     {
         canvasGroup ??= GetComponent<CanvasGroup>();
-
-        if (enemyCountText != null)
-        {
-            activeEnemyCountTextColor = enemyCountText.color;
-        }
 
         CachePulseView();
         ResolveWaveManager();
@@ -109,6 +103,22 @@ public sealed class DuelClockHUD : MonoBehaviour
             }
         }
 
+        if (spawnProgressFill != null
+            && spawnFillAnimation.IsInitialized)
+        {
+            DuelClockFillFrame spawnFrame = spawnFillAnimation.Advance(
+                spawnProgressFill.fillAmount,
+                fillLerpSpeed,
+                beatFillLerpSpeed,
+                beatFullHoldDuration,
+                unscaledDeltaTime);
+            spawnProgressFill.fillAmount = spawnFrame.FillAmount;
+            spawnProgressFill.color = EvaluateProgressColor(
+                spawnFrame.FillAmount,
+                spawnProgressStartColor,
+                spawnProgressEndColor);
+        }
+
         UpdateBeatPulse(unscaledDeltaTime);
     }
 
@@ -123,6 +133,7 @@ public sealed class DuelClockHUD : MonoBehaviour
         UnsubscribeFromWaveManager();
         BindClockController(null);
         fillAnimation.Clear();
+        spawnFillAnimation.Clear();
         ResetPulseVisual();
     }
 
@@ -195,6 +206,7 @@ public sealed class DuelClockHUD : MonoBehaviour
         if (!visible)
         {
             fillAnimation.Clear();
+            spawnFillAnimation.Clear();
             ResetPulseVisual();
             return;
         }
@@ -223,6 +235,32 @@ public sealed class DuelClockHUD : MonoBehaviour
                 clockController.CumulativeBeats);
         }
 
+        float normalizedSpawnProgress = Mathf.Clamp01(
+            (float)(clockController.SpawnProgress
+                / DuelClockState.CycleLength));
+
+        if (!spawnFillAnimation.IsInitialized)
+        {
+            spawnFillAnimation.Reset(
+                normalizedSpawnProgress,
+                clockController.CumulativeSpawnCycles);
+
+            if (spawnProgressFill != null)
+            {
+                spawnProgressFill.fillAmount = normalizedSpawnProgress;
+                spawnProgressFill.color = EvaluateProgressColor(
+                    normalizedSpawnProgress,
+                    spawnProgressStartColor,
+                    spawnProgressEndColor);
+            }
+        }
+        else
+        {
+            spawnFillAnimation.Observe(
+                normalizedSpawnProgress,
+                clockController.CumulativeSpawnCycles);
+        }
+
         if (titleText != null && titleText.text != "DUEL CLOCK")
         {
             titleText.text = "DUEL CLOCK";
@@ -234,7 +272,6 @@ public sealed class DuelClockHUD : MonoBehaviour
         }
 
         RefreshEnemyProgress();
-        RefreshNextWaveProgress();
     }
 
     internal static string FormatProgressPercentage(int wholeProgress)
@@ -247,31 +284,9 @@ public sealed class DuelClockHUD : MonoBehaviour
         return Math.Max(0L, remainingCount).ToString();
     }
 
-    internal static string FormatNextWaveProgress(
-        int currentCount,
-        int enemyWaveCount)
+    internal static string FormatSpawnGaugeLabel(bool isEnemyLimitReached)
     {
-        int remainingCount = CalculateRemainingCountsUntilSpawn(
-            currentCount,
-            enemyWaveCount);
-        return $"{remainingCount} COUNT";
-    }
-
-    internal static int CalculateRemainingCountsUntilSpawn(
-        int currentCount,
-        int enemyWaveCount)
-    {
-        int sanitizedTotal = Mathf.Max(1, enemyWaveCount);
-        int sanitizedCurrent = Mathf.Clamp(
-            currentCount,
-            0,
-            sanitizedTotal - 1);
-        return sanitizedTotal - sanitizedCurrent;
-    }
-
-    internal static string FormatAllEnemiesSpawned()
-    {
-        return "완료";
+        return isEnemyLimitReached ? "MAX ENEMIES" : "ENEMY SPAWN";
     }
 
     internal static float CalculateBeatPulseStrength(float normalizedTime)
@@ -341,18 +356,28 @@ public sealed class DuelClockHUD : MonoBehaviour
             return;
         }
 
-        EnemyBattleProgress progress = waveManager == null
-            ? new EnemyBattleProgress(0L, 0L)
-            : waveManager.EnemyProgress;
+        long remainingCount = waveManager == null
+            ? 0L
+            : waveManager.RemainingUnspawnedEnemyCount;
+        bool isEnemyLimitReached = waveManager != null
+            && waveManager.IsActiveEnemyLimitReached;
 
-        if (actionPreviewText != null
-            && displayedRemainingEnemyCount != progress.RemainingCount)
+        if (spawnGaugeLabelText != null
+            && displayedEnemyLimitReached != isEnemyLimitReached)
         {
-            actionPreviewText.text = FormatRemainingEnemyCount(
-                progress.RemainingCount);
+            spawnGaugeLabelText.text = FormatSpawnGaugeLabel(
+                isEnemyLimitReached);
         }
 
-        displayedRemainingEnemyCount = progress.RemainingCount;
+        if (unspawnedEnemyCountText != null
+            && displayedRemainingEnemyCount != remainingCount)
+        {
+            unspawnedEnemyCountText.text = FormatRemainingEnemyCount(
+                remainingCount);
+        }
+
+        displayedRemainingEnemyCount = remainingCount;
+        displayedEnemyLimitReached = isEnemyLimitReached;
         enemyProgressDirty = false;
     }
 
@@ -380,38 +405,6 @@ public sealed class DuelClockHUD : MonoBehaviour
                 progressStartColor,
                 progressEndColor);
         }
-    }
-
-    private void RefreshNextWaveProgress()
-    {
-        if (clockController == null)
-        {
-            return;
-        }
-
-        int nextWaveProgress = clockController.EnemyWaveProgress;
-        int enemyWaveCount = clockController.EnemyWaveCount;
-        bool allEnemiesSpawned = waveManager == null
-            || !waveManager.HasRemainingEnemiesToSpawn;
-
-        if (enemyCountText != null
-            && (displayedNextWaveProgress != nextWaveProgress
-                || displayedEnemyWaveCount != enemyWaveCount
-                || displayedAllEnemiesSpawned != allEnemiesSpawned))
-        {
-            enemyCountText.text = allEnemiesSpawned
-                ? FormatAllEnemiesSpawned()
-                : FormatNextWaveProgress(
-                    nextWaveProgress,
-                    enemyWaveCount);
-            enemyCountText.color = allEnemiesSpawned
-                ? allEnemiesSpawnedTextColor
-                : activeEnemyCountTextColor;
-        }
-
-        displayedNextWaveProgress = nextWaveProgress;
-        displayedEnemyWaveCount = enemyWaveCount;
-        displayedAllEnemiesSpawned = allEnemiesSpawned;
     }
 
     private void CachePulseView()
@@ -542,11 +535,10 @@ public sealed class DuelClockHUD : MonoBehaviour
     {
         displayedProgress = int.MinValue;
         displayedRemainingEnemyCount = long.MinValue;
-        displayedNextWaveProgress = int.MinValue;
-        displayedEnemyWaveCount = int.MinValue;
-        displayedAllEnemiesSpawned = false;
+        displayedEnemyLimitReached = null;
         enemyProgressDirty = true;
         fillAnimation.Clear();
+        spawnFillAnimation.Clear();
         ResetPulseVisual();
     }
 }

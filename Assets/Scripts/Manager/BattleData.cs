@@ -104,8 +104,9 @@ public class BattleData : ScriptableObject
     [Min(0f)]
     [Tooltip("Duel Clock charge committed when one paid player action completes.")]
     [SerializeField] private float duelClockPaidActionProgress = 45f;
+    [HideInInspector]
     [Min(1)]
-    [Tooltip("Completed Duel Clock beats between single-enemy reinforcements.")]
+    [Tooltip("Legacy reinforcement interval retained for serialized asset compatibility. The spawn gauge now controls reinforcements.")]
     [SerializeField] private int duelClockEnemyWaveCount = 5;
     [Min(1)]
     [Tooltip("Total enemies spawned during this Duel Clock battle.")]
@@ -141,8 +142,6 @@ public class BattleData : ScriptableObject
         Mathf.Max(0f, duelClockNaturalProgressPerSecond);
     public float DuelClockPaidActionProgress =>
         Mathf.Max(0f, duelClockPaidActionProgress);
-    public int DuelClockEnemyWaveCount =>
-        Mathf.Max(1, duelClockEnemyWaveCount);
     public int DuelClockEnemySpawnCount =>
         Mathf.Max(1, duelClockEnemySpawnCount);
     public IReadOnlyList<DuelClockEnemySpawnEntry>

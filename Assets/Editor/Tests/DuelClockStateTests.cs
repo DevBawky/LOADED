@@ -201,8 +201,6 @@ public sealed class BattleDataCombatPacingTests
             Is.EqualTo(4f));
         Assert.That(battleData.DuelClockPaidActionProgress,
             Is.EqualTo(45f));
-        Assert.That(battleData.DuelClockEnemyWaveCount,
-            Is.EqualTo(5));
         Assert.That(DuelClockState.CycleLength, Is.EqualTo(100d));
     }
 }
@@ -239,6 +237,24 @@ public sealed class WaveManagerActiveEnemyLimitTests
                 livingEnemyCount,
                 configuredMaximumEnemyCount),
             Is.EqualTo(expectedSlots));
+    }
+
+    [TestCase(false, 0, false, false)]
+    [TestCase(true, 2, false, false)]
+    [TestCase(true, 0, false, true)]
+    [TestCase(true, 2, true, true)]
+    public void SpawnGaugePausesForCapacityOrExhaustedConfiguredPool(
+        bool poolConfigured,
+        int remainingSpawnCount,
+        bool enemyLimitReached,
+        bool expectedPaused)
+    {
+        Assert.That(
+            WaveManager.ShouldPauseSpawnGauge(
+                poolConfigured,
+                remainingSpawnCount,
+                enemyLimitReached),
+            Is.EqualTo(expectedPaused));
     }
 }
 
@@ -374,7 +390,70 @@ public sealed class DuelClockControllerTests
 
         Assert.That(waveManager.ActiveEnemies, Is.Empty);
         Assert.That(advanced, Is.True);
-        Assert.That(controller.Progress, Is.EqualTo(7.6d).Within(0.0001d));
+        Assert.That(controller.Progress,
+            Is.EqualTo(10.26d).Within(0.0001d));
+        Assert.That(controller.SpawnProgress,
+            Is.EqualTo(5.13d).Within(0.0001d));
+    }
+
+    [Test]
+    public void ActiveEnemyLimitPausesOnlySpawnGaugeUntilCapacityReturns()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(4f, 45f);
+        System.Reflection.FieldInfo maximumEnemyCountField =
+            typeof(WaveManager).GetField(
+                "maximumActiveEnemyCount",
+                System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic);
+        Assert.That(maximumEnemyCountField, Is.Not.Null);
+        maximumEnemyCountField.SetValue(waveManager, 0);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+
+        Assert.That(waveManager.IsActiveEnemyLimitReached, Is.True);
+        Assert.That(controller.TryAdvanceNaturalTime(1d), Is.True);
+        Assert.That(controller.Progress,
+            Is.EqualTo(10.26d).Within(0.0001d));
+        Assert.That(controller.SpawnProgress, Is.Zero);
+
+        maximumEnemyCountField.SetValue(waveManager, 1);
+
+        Assert.That(waveManager.IsActiveEnemyLimitReached, Is.False);
+        Assert.That(controller.TryAdvanceNaturalTime(1d), Is.True);
+        Assert.That(controller.Progress,
+            Is.EqualTo(20.52d).Within(0.0001d));
+        Assert.That(controller.SpawnProgress,
+            Is.EqualTo(5.13d).Within(0.0001d));
+    }
+
+    [Test]
+    public void ExhaustedEnemyPoolKeepsSpawnGaugeAtZero()
+    {
+        PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
+        WaveManager waveManager = CreateComponent<WaveManager>("Wave");
+        DuelClockController controller =
+            waveManager.gameObject.AddComponent<DuelClockController>();
+        BattleData battle = CreateDuelBattle(4f, 45f);
+        System.Reflection.FieldInfo poolConfiguredField =
+            typeof(WaveManager).GetField(
+                "isDuelClockEnemyPoolConfigured",
+                System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic);
+        Assert.That(poolConfiguredField, Is.Not.Null);
+        poolConfiguredField.SetValue(waveManager, true);
+        controller.Initialize(playerMove, waveManager);
+        controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
+
+        Assert.That(waveManager.IsDuelClockEnemySpawnPoolExhausted, Is.True);
+        Assert.That(waveManager.IsSpawnGaugePaused, Is.True);
+        Assert.That(controller.TryAdvanceNaturalTime(1d), Is.True);
+        Assert.That(controller.Progress,
+            Is.EqualTo(10.26d).Within(0.0001d));
+        Assert.That(controller.SpawnProgress, Is.Zero);
     }
 
     [Test]
@@ -402,7 +481,7 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
-    public void ReservedBeatIgnoresAdditionalNaturalAndPlayerProgress()
+    public void ReservedBeatStopsOnlyAdditionalMainClockProgress()
     {
         PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
         WaveManager waveManager = CreateComponent<WaveManager>("Wave");
@@ -416,7 +495,7 @@ public sealed class DuelClockControllerTests
         controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
 
         Assert.That(controller.TryAdvanceNaturalTime(1d), Is.True);
-        Assert.That(controller.TryAdvanceNaturalTime(10d), Is.False);
+        Assert.That(controller.TryAdvanceNaturalTime(10d), Is.True);
         controller.HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
         playerMove.CompleteTurn();
 
@@ -424,6 +503,8 @@ public sealed class DuelClockControllerTests
             Is.EqualTo(DuelClockState.CycleLength));
         Assert.That(controller.CumulativeBeats, Is.EqualTo(1));
         Assert.That(committedBeats, Is.EqualTo(1));
+        Assert.That(controller.CumulativeSpawnCycles,
+            Is.GreaterThan(1));
     }
 
     [TestCase(0, 1.9d)]
@@ -443,32 +524,33 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
-    public void EnemyWaveProgressWrapsAtAuthoredBeatCount()
+    public void SpawnGaugeCompletesOnceForEveryTwoClockCycles()
     {
         PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
         WaveManager waveManager = CreateComponent<WaveManager>("Wave");
         DuelClockController controller =
             waveManager.gameObject.AddComponent<DuelClockController>();
-        BattleData battle = CreateDuelBattle(0f, 100f, 5);
+        BattleData battle = CreateDuelBattle(0f, 100f);
+        long committedSpawnCycles = 0L;
+        controller.SpawnCyclesCommitted += cycleCount =>
+            committedSpawnCycles += cycleCount;
         controller.Initialize(playerMove, waveManager);
         controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
 
-        for (int actionIndex = 0; actionIndex < 4; actionIndex++)
-        {
-            controller.HandlePlayerActionStarted(
-                PlayerBehaviourAction.Wait);
-            playerMove.CompleteTurn();
-            controller.HandleEnemyCycleStarted();
-        }
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
+        playerMove.CompleteTurn();
+        controller.HandleEnemyCycleStarted();
 
-        Assert.That(controller.EnemyWaveProgress, Is.EqualTo(4));
-        Assert.That(controller.EnemyWaveCount, Is.EqualTo(5));
+        Assert.That(controller.SpawnProgress, Is.EqualTo(50d));
+        Assert.That(controller.CumulativeSpawnCycles, Is.Zero);
 
         controller.HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
         playerMove.CompleteTurn();
 
-        Assert.That(controller.EnemyWaveProgress, Is.Zero);
-        Assert.That(controller.CumulativeBeats, Is.EqualTo(5));
+        Assert.That(controller.SpawnProgress, Is.Zero);
+        Assert.That(controller.CumulativeSpawnCycles, Is.EqualTo(1));
+        Assert.That(committedSpawnCycles, Is.EqualTo(1));
+        Assert.That(controller.CumulativeBeats, Is.EqualTo(2));
     }
 
     [Test]
@@ -493,6 +575,10 @@ public sealed class DuelClockControllerTests
             Is.EqualTo(snapshot.Progress));
         Assert.That(saveData.duelClockCumulativeBeats,
             Is.EqualTo(snapshot.CumulativeBeats));
+        Assert.That(saveData.duelClockSpawnProgress,
+            Is.EqualTo(controller.SpawnProgress));
+        Assert.That(saveData.duelClockCumulativeSpawns,
+            Is.EqualTo(controller.CumulativeSpawnCycles));
     }
 
     [Test]
@@ -511,11 +597,11 @@ public sealed class DuelClockControllerTests
 
         Assert.That(preview.AddedProgress, Is.Zero);
         Assert.That(preview.Before.Progress,
-            Is.EqualTo(7.6d).Within(0.0001d));
+            Is.EqualTo(10.26d).Within(0.0001d));
         Assert.That(preview.After.Progress,
-            Is.EqualTo(7.6d).Within(0.0001d));
+            Is.EqualTo(10.26d).Within(0.0001d));
         Assert.That(controller.Progress,
-            Is.EqualTo(7.6d).Within(0.0001d));
+            Is.EqualTo(10.26d).Within(0.0001d));
     }
 
     [Test]
@@ -528,7 +614,9 @@ public sealed class DuelClockControllerTests
         BattleData battle = CreateDuelBattle(4f, 45f);
         controller.Initialize(playerMove, waveManager);
         controller.ConfigureFresh(battle, CombatPacingMode.DuelClock);
-        controller.TryAdvanceNaturalTime(12.5d);
+        controller.TryAdvanceNaturalTime(
+            95d / (4d * 1.9d
+                * DuelClockController.NaturalProgressSpeedMultiplier));
 
         bool firstApplied = controller.ApplyEnemyDefeat();
         bool secondApplied = controller.ApplyEnemyDefeat();
@@ -539,6 +627,8 @@ public sealed class DuelClockControllerTests
         Assert.That(thirdApplied, Is.True);
         Assert.That(controller.Progress,
             Is.EqualTo(61.25d).Within(0.0001d));
+        Assert.That(controller.SpawnProgress,
+            Is.EqualTo(47.5d).Within(0.0001d));
         Assert.That(controller.CumulativeBeats, Is.Zero);
         Assert.That(DuelClockController.CalculateEnemyDefeatReduction(45d),
             Is.EqualTo(11.25d));
@@ -668,7 +758,7 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
-    public void ReservedShootBeatIgnoresProgressUntilEnemyCycleStarts()
+    public void SpawnGaugeKeepsChargingDuringShootAndReservedBeat()
     {
         PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
         PlayerShoot playerShoot =
@@ -702,11 +792,13 @@ public sealed class DuelClockControllerTests
         bool advancedAfterCycleStarted =
             controller.TryAdvanceNaturalTime(1d);
 
-        Assert.That(advancedDuringShoot, Is.False);
-        Assert.That(advancedWhileReserved, Is.False);
+        Assert.That(advancedDuringShoot, Is.True);
+        Assert.That(advancedWhileReserved, Is.True);
         Assert.That(advancedAfterCycleStarted, Is.True);
         Assert.That(controller.Progress,
-            Is.EqualTo(7.6d).Within(0.0001d));
+            Is.EqualTo(10.26d).Within(0.0001d));
+        Assert.That(controller.SpawnProgress,
+            Is.EqualTo(25.39d).Within(0.0001d));
         Assert.That(controller.CumulativeBeats, Is.EqualTo(1));
     }
 
@@ -802,7 +894,7 @@ public sealed class DuelClockControllerTests
         playerMove.CompleteTurn();
 
         Assert.That(controller.Progress,
-            Is.EqualTo(7.6d).Within(0.0001d));
+            Is.EqualTo(10.26d).Within(0.0001d));
         Assert.That(controller.CumulativeBeats, Is.Zero);
     }
 
@@ -915,6 +1007,19 @@ public sealed class DuelClockControllerTests
     }
 
     [Test]
+    public void SpawnGaugeNaturalPolicyKeepsPlayerActionsIndependent()
+    {
+        Assert.That(DuelClockController.ShouldAdvanceSpawnGaugeNaturally(
+            true, true, false, true, true, false), Is.True);
+        Assert.That(DuelClockController.ShouldAdvanceSpawnGaugeNaturally(
+            true, true, true, true, true, false), Is.False);
+        Assert.That(DuelClockController.ShouldAdvanceSpawnGaugeNaturally(
+            true, true, false, true, true, false, true), Is.False);
+        Assert.That(DuelClockController.ShouldAdvanceSpawnGaugeNaturally(
+            true, true, false, true, true, true), Is.False);
+    }
+
+    [Test]
     public void PlayerBusyFlagsDoNotPauseNaturalClock()
     {
         PlayerMove playerMove = CreateComponent<PlayerMove>("Player");
@@ -954,7 +1059,7 @@ public sealed class DuelClockControllerTests
         Assert.That(advancedWhileEnemyResolving, Is.True);
         Assert.That(advancedWhileActing, Is.True);
         Assert.That(controller.Progress,
-            Is.EqualTo(30.4d).Within(0.0001d));
+            Is.EqualTo(41.04d).Within(0.0001d));
     }
 
     [Test]
@@ -979,7 +1084,7 @@ public sealed class DuelClockControllerTests
         Assert.That(playerMove.CanStartAction, Is.False);
         Assert.That(advanced, Is.True);
         Assert.That(controller.Progress,
-            Is.EqualTo(7.6d).Within(0.0001d));
+            Is.EqualTo(10.26d).Within(0.0001d));
     }
 
     [Test]
@@ -1020,15 +1125,14 @@ public sealed class DuelClockControllerTests
         Assert.That(controller.IsActive, Is.True);
         Assert.That(controller.Progress, Is.EqualTo(75d));
         Assert.That(controller.CumulativeBeats, Is.EqualTo(3));
-        Assert.That(controller.EnemyWaveProgress, Is.EqualTo(3));
-        Assert.That(controller.EnemyWaveCount, Is.EqualTo(5));
+        Assert.That(controller.SpawnProgress, Is.Zero);
+        Assert.That(controller.CumulativeSpawnCycles, Is.Zero);
         Assert.That(playerMove.CanStartAction, Is.True);
     }
 
     private BattleData CreateDuelBattle(
         float naturalProgress,
-        float paidProgress,
-        int enemyWaveCount = 5)
+        float paidProgress)
     {
         BattleData battle = CreateAsset<BattleData>();
         SerializedObject serializedBattle = new SerializedObject(battle);
@@ -1038,8 +1142,6 @@ public sealed class DuelClockControllerTests
             .floatValue = naturalProgress;
         serializedBattle.FindProperty("duelClockPaidActionProgress")
             .floatValue = paidProgress;
-        serializedBattle.FindProperty("duelClockEnemyWaveCount")
-            .intValue = enemyWaveCount;
         serializedBattle.ApplyModifiedPropertiesWithoutUndo();
         return battle;
     }
@@ -1232,16 +1334,38 @@ public sealed class EnemyPlayerDodgeWindowStateTests
             new EnemyPlayerDodgeWindowState(
                 true,
                 4,
+                0,
                 new Vector3(4f, 0f, 0f));
 
         bool dodged = state.TryResolveDodge(
             false,
             5,
+            0,
             new Vector3(5f, 0f, 0f),
             out int movementDirection);
 
         Assert.That(dodged, Is.True);
         Assert.That(movementDirection, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void ThreatenedPlayerChangingLaneResolvesDodge()
+    {
+        EnemyPlayerDodgeWindowState state =
+            new EnemyPlayerDodgeWindowState(
+                true,
+                4,
+                0,
+                new Vector3(4f, -0.46f, 0f));
+
+        bool dodged = state.TryResolveDodge(
+            false,
+            4,
+            1,
+            new Vector3(4f, 0.46f, 0f),
+            out _);
+
+        Assert.That(dodged, Is.True);
     }
 
     [TestCase(false, false, 5)]
@@ -1256,11 +1380,13 @@ public sealed class EnemyPlayerDodgeWindowStateTests
             new EnemyPlayerDodgeWindowState(
                 playerWasThreatened,
                 4,
+                0,
                 new Vector3(4f, 0f, 0f));
 
         Assert.That(state.TryResolveDodge(
             playerIsThreatened,
             currentTileIndex,
+            0,
             new Vector3(currentTileIndex, 0f, 0f),
             out _), Is.False);
     }
@@ -1272,6 +1398,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
             new EnemyPlayerDodgeWindowState(
                 true,
                 4,
+                0,
                 new Vector3(4f, 0f, 0f));
         EnemyPlayerDodgeResolution resolution = default;
 
@@ -1279,6 +1406,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
             windowState,
             false,
             5,
+            0,
             new Vector3(5f, 0f, 0f),
             out int movementDirection);
 
@@ -1291,6 +1419,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
                 windowState,
                 true,
                 4,
+                0,
                 new Vector3(4f, 0f, 0f),
                 out _),
             Is.False,
@@ -1305,6 +1434,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
             new EnemyPlayerDodgeWindowState(
                 true,
                 4,
+                0,
                 new Vector3(4f, 0f, 0f));
         EnemyPlayerDodgeResolution resolution = default;
 
@@ -1313,6 +1443,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
                 windowState,
                 true,
                 4,
+                0,
                 new Vector3(4f, 0f, 0f),
                 out _),
             Is.False);
@@ -1322,6 +1453,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
                 windowState,
                 true,
                 4,
+                0,
                 new Vector3(4f, 0f, 0f),
                 out _),
             Is.False);
@@ -1336,6 +1468,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
             new EnemyPlayerDodgeWindowState(
                 true,
                 4,
+                0,
                 new Vector3(4f, 0f, 0f));
         EnemyPlayerDodgeResolution resolution = default;
 
@@ -1344,6 +1477,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
                 windowState,
                 true,
                 4,
+                0,
                 new Vector3(4.4f, 0f, 0f),
                 out _),
             Is.False);
@@ -1353,6 +1487,7 @@ public sealed class EnemyPlayerDodgeWindowStateTests
                 windowState,
                 false,
                 5,
+                0,
                 new Vector3(4.6f, 0f, 0f),
                 out int movementDirection),
             Is.True);
@@ -1785,7 +1920,7 @@ public sealed class WaveManagerPacingDispatchTests
         Assert.That(controller.TryAdvanceNaturalTime(1d), Is.True);
         Assert.That(controller.HasReservedBeat, Is.True);
         Assert.That(waveManager.PendingEnemyTurnCycles, Is.EqualTo(1));
-        Assert.That(controller.TryAdvanceNaturalTime(1d), Is.False);
+        Assert.That(controller.TryAdvanceNaturalTime(1d), Is.True);
 
         DrainEnemyTurnResolver(waveManager);
 
@@ -1831,7 +1966,9 @@ public sealed class WaveManagerPacingDispatchTests
 
         Assert.That(playerShoot.IsFiring, Is.True);
         Assert.That(playerMove.IsShooting, Is.True);
-        Assert.That(naturalTimeAdvancedDuringFiring, Is.False);
+        Assert.That(naturalTimeAdvancedDuringFiring, Is.True);
+        Assert.That(controller.SpawnProgress,
+            Is.EqualTo(15.13d).Within(0.0001d));
         Assert.That(waveManager.PendingEnemyTurnCycles, Is.EqualTo(1));
         Assert.That(waveManager.CurrentEnemyTurnCycle, Is.Zero);
 
@@ -2015,7 +2152,9 @@ public sealed class DuelClockSaveDataTests
         {
             combatPacingMode = (int)CombatPacingMode.DuelClock,
             duelClockProgress = 72.5d,
-            duelClockCumulativeBeats = 12
+            duelClockCumulativeBeats = 12,
+            duelClockSpawnProgress = 36.25d,
+            duelClockCumulativeSpawns = 4
         };
 
         RunSaveData restored = JsonUtility.FromJson<RunSaveData>(
@@ -2026,6 +2165,8 @@ public sealed class DuelClockSaveDataTests
             Is.EqualTo((int)CombatPacingMode.DuelClock));
         Assert.That(restored.duelClockProgress, Is.EqualTo(72.5d));
         Assert.That(restored.duelClockCumulativeBeats, Is.EqualTo(12));
+        Assert.That(restored.duelClockSpawnProgress, Is.EqualTo(36.25d));
+        Assert.That(restored.duelClockCumulativeSpawns, Is.EqualTo(4));
     }
 
     [Test]
@@ -2081,7 +2222,7 @@ public sealed class DuelClockSaveDataTests
     }
 
     [Test]
-    public void DeprecatedPendingEnemySpawnsNormalizeToZero()
+    public void PendingEnemySpawnsSurviveNormalization()
     {
         RunSaveData source = new RunSaveData
         {
@@ -2097,7 +2238,7 @@ public sealed class DuelClockSaveDataTests
         RunSaveSystem.NormalizeSaveData(restored);
 
         Assert.That(restored.duelClockSpawnPoolInitialized, Is.True);
-        Assert.That(restored.duelClockPendingEnemySpawns, Is.Zero);
+        Assert.That(restored.duelClockPendingEnemySpawns, Is.EqualTo(1));
         Assert.That(restored.duelClockRemainingEnemyAssetNames,
             Is.EqualTo(new[] { "Melee", "Gunner" }));
     }
@@ -2175,6 +2316,8 @@ public sealed class DuelClockSaveDataTests
             Is.EqualTo((int)CombatPacingMode.Legacy));
         Assert.That(saveData.duelClockProgress, Is.Zero);
         Assert.That(saveData.duelClockCumulativeBeats, Is.Zero);
+        Assert.That(saveData.duelClockSpawnProgress, Is.Zero);
+        Assert.That(saveData.duelClockCumulativeSpawns, Is.Zero);
         Assert.That(saveData.duelClockSpawnPoolInitialized, Is.False);
         Assert.That(saveData.duelClockRemainingEnemyAssetNames, Is.Empty);
         Assert.That(saveData.duelClockPendingEnemySpawns, Is.Zero);

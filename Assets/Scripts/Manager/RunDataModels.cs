@@ -171,6 +171,8 @@ public sealed class RunSaveData
     public int combatPacingMode = (int)CombatPacingMode.Legacy;
     public double duelClockProgress;
     public long duelClockCumulativeBeats;
+    public double duelClockSpawnProgress;
+    public long duelClockCumulativeSpawns;
     public bool duelClockSpawnPoolInitialized;
     public List<string> duelClockRemainingEnemyAssetNames =
         new List<string>();

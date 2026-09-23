@@ -206,20 +206,24 @@ internal readonly struct EnemyPlayerDodgeWindowState
     public EnemyPlayerDodgeWindowState(
         bool playerWasThreatened,
         int playerTileIndex,
+        int playerLaneIndex,
         Vector3 playerPosition)
     {
         PlayerWasThreatened = playerWasThreatened;
         PlayerTileIndex = playerTileIndex;
+        PlayerLaneIndex = playerLaneIndex;
         PlayerPosition = playerPosition;
     }
 
     public bool PlayerWasThreatened { get; }
     public int PlayerTileIndex { get; }
+    public int PlayerLaneIndex { get; }
     public Vector3 PlayerPosition { get; }
 
     public bool TryResolveDodge(
         bool playerIsThreatened,
         int currentPlayerTileIndex,
+        int currentPlayerLaneIndex,
         Vector3 currentPlayerPosition,
         out int movementDirection)
     {
@@ -228,13 +232,19 @@ internal readonly struct EnemyPlayerDodgeWindowState
         if (!PlayerWasThreatened || playerIsThreatened
             || PlayerTileIndex < 0
             || currentPlayerTileIndex < 0
-            || currentPlayerTileIndex == PlayerTileIndex)
+            || PlayerLaneIndex < 0
+            || currentPlayerLaneIndex < 0
+            || (currentPlayerTileIndex == PlayerTileIndex
+                && currentPlayerLaneIndex == PlayerLaneIndex))
         {
             return false;
         }
 
-        movementDirection = Math.Sign(
-            currentPlayerTileIndex - PlayerTileIndex);
+        if (currentPlayerTileIndex != PlayerTileIndex)
+        {
+            movementDirection = Math.Sign(
+                currentPlayerTileIndex - PlayerTileIndex);
+        }
 
         if (movementDirection == 0)
         {
@@ -256,6 +266,7 @@ internal struct EnemyPlayerDodgeResolution
         EnemyPlayerDodgeWindowState windowState,
         bool playerIsThreatened,
         int currentPlayerTileIndex,
+        int currentPlayerLaneIndex,
         Vector3 currentPlayerPosition,
         out int movementDirection)
     {
@@ -264,6 +275,7 @@ internal struct EnemyPlayerDodgeResolution
         if (IsResolved || !windowState.TryResolveDodge(
                 playerIsThreatened,
                 currentPlayerTileIndex,
+                currentPlayerLaneIndex,
                 currentPlayerPosition,
                 out movementDirection))
         {
@@ -279,6 +291,7 @@ internal struct EnemyPlayerDodgeResolution
         EnemyPlayerDodgeWindowState windowState,
         bool playerIsThreatened,
         int currentPlayerTileIndex,
+        int currentPlayerLaneIndex,
         Vector3 currentPlayerPosition,
         out int movementDirection)
     {
@@ -293,6 +306,7 @@ internal struct EnemyPlayerDodgeResolution
         PlayerDodged = windowState.TryResolveDodge(
             playerIsThreatened,
             currentPlayerTileIndex,
+            currentPlayerLaneIndex,
             currentPlayerPosition,
             out movementDirection);
         return PlayerDodged;

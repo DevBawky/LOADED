@@ -1098,6 +1098,7 @@ public class PlayerMove : MonoBehaviour
         int endLaneIndex)
     {
         isActing = true;
+        currentLaneIndex = endLaneIndex;
         SoundManager.PlaySfx("SFX_Move");
         try
         {
@@ -1107,7 +1108,6 @@ public class PlayerMove : MonoBehaviour
         {
             waveManager?.ReleaseMovementTiles(this);
         }
-        currentLaneIndex = endLaneIndex;
         NotifyPlayerMoved(
             startTileIndex,
             startLaneIndex,

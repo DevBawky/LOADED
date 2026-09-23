@@ -176,6 +176,82 @@ public class BoardManagerTests
     }
 
     [Test]
+    public void ApprovedLaneMoveCommitsDestinationLaneBeforeVisualMotionCompletes()
+    {
+        GameObject playerObject = new GameObject("PlayerMoveLaneCommitTest");
+
+        try
+        {
+            ActorMotion actorMotion = playerObject.AddComponent<ActorMotion>();
+            PlayerMove playerMove = playerObject.AddComponent<PlayerMove>();
+            SerializedObject serializedPlayerMove = new SerializedObject(playerMove);
+            serializedPlayerMove.FindProperty("actorMotion").objectReferenceValue = actorMotion;
+            serializedPlayerMove.ApplyModifiedPropertiesWithoutUndo();
+
+            playerMove.SetLaneIndex(0);
+
+            System.Reflection.MethodInfo moveRoutineMethod = typeof(PlayerMove).GetMethod(
+                "MoveRoutine",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(moveRoutineMethod, Is.Not.Null);
+
+            System.Collections.IEnumerator moveRoutine = moveRoutineMethod.Invoke(
+                playerMove,
+                new object[] { Vector3.up, 2, 0, 2, 1 }) as System.Collections.IEnumerator;
+            Assert.That(moveRoutine, Is.Not.Null);
+            Assert.That(moveRoutine.MoveNext(), Is.True);
+            Assert.That(playerMove.CurrentLaneIndex, Is.EqualTo(1));
+
+            (moveRoutine as System.IDisposable)?.Dispose();
+        }
+        finally
+        {
+            Object.DestroyImmediate(playerObject);
+        }
+    }
+
+    [Test]
+    public void BigBarrelExplosionRangeRejectsTargetsInAnotherLane()
+    {
+        Assert.That(
+            BossBombManager.IsCellInExplosionRange(3, 1, 4, 1, 1),
+            Is.True);
+        Assert.That(
+            BossBombManager.IsCellInExplosionRange(3, 1, 3, 0, 1),
+            Is.False);
+        Assert.That(
+            BossBombManager.IsCellInExplosionRange(3, 1, 5, 1, 1),
+            Is.False);
+    }
+
+    [Test]
+    public void BigBarrelBombTargetSelectionCanChooseEitherLane()
+    {
+        Random.State previousState = Random.state;
+
+        try
+        {
+            Random.InitState(20260923);
+            HashSet<int> selectedLanes = new HashSet<int>();
+
+            for (int selectionIndex = 0;
+                 selectionIndex < 32;
+                 selectionIndex++)
+            {
+                selectedLanes.Add(
+                    EnemyController.SelectBigBarrelBombTargetLane(
+                        new[] { 0, 1 }));
+            }
+
+            Assert.That(selectedLanes, Is.EquivalentTo(new[] { 0, 1 }));
+        }
+        finally
+        {
+            Random.state = previousState;
+        }
+    }
+
+    [Test]
     public void DirectionalEnemyQuery_ReturnsOnlyRequestedLane()
     {
         GameObject boardObject = new GameObject("Board Manager");

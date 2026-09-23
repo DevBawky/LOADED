@@ -1404,8 +1404,6 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private void CaptureBigBarrelBombTargets()
     {
         preparedBombTargetTileIndices.Clear();
-        preparedBigBarrelLaneIndex = currentLaneIndex;
-        List<int> candidates = new List<int>();
 
         if (!boardManager.TryGetTileIndex(
                 transform.position,
@@ -1414,15 +1412,45 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
+        List<int> availableLanes = new List<int>();
+
+        for (int laneIndex = 0;
+             laneIndex < boardManager.LaneCount;
+             laneIndex++)
+        {
+            for (int tileIndex = 0;
+                 tileIndex < boardManager.BoardCount;
+                 tileIndex++)
+            {
+                if (IsAvailableBigBarrelBombTarget(
+                        tileIndex,
+                        laneIndex,
+                        bossTileIndex))
+                {
+                    availableLanes.Add(laneIndex);
+                    break;
+                }
+            }
+        }
+
+        preparedBigBarrelLaneIndex = SelectBigBarrelBombTargetLane(
+            availableLanes);
+
+        if (preparedBigBarrelLaneIndex < 0)
+        {
+            return;
+        }
+
+        List<int> candidates = new List<int>();
+
         for (int tileIndex = 0;
              tileIndex < boardManager.BoardCount;
              tileIndex++)
         {
-            if (tileIndex != bossTileIndex
-                && (waveManager.BombManager == null
-                    || !waveManager.BombManager.HasBombAtTile(
-                        tileIndex,
-                        preparedBigBarrelLaneIndex)))
+            if (IsAvailableBigBarrelBombTarget(
+                    tileIndex,
+                    preparedBigBarrelLaneIndex,
+                    bossTileIndex))
             {
                 candidates.Add(tileIndex);
             }
@@ -1437,6 +1465,30 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             preparedBombTargetTileIndices.Add(candidates[candidateIndex]);
             candidates.RemoveAt(candidateIndex);
         }
+    }
+
+    private bool IsAvailableBigBarrelBombTarget(
+        int tileIndex,
+        int laneIndex,
+        int bossTileIndex)
+    {
+        return (tileIndex != bossTileIndex
+                || laneIndex != currentLaneIndex)
+            && (waveManager.BombManager == null
+                || !waveManager.BombManager.HasBombAtTile(
+                    tileIndex,
+                    laneIndex));
+    }
+
+    internal static int SelectBigBarrelBombTargetLane(
+        IReadOnlyList<int> availableLaneIndices)
+    {
+        return availableLaneIndices == null
+            || availableLaneIndices.Count == 0
+                ? -1
+                : availableLaneIndices[UnityEngine.Random.Range(
+                    0,
+                    availableLaneIndices.Count)];
     }
 
     private void CaptureBigBarrelShotgunTargets()
@@ -2284,6 +2336,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return new EnemyPlayerDodgeWindowState(
             true,
             playerTileIndex,
+            playerMove.CurrentLaneIndex,
             playerMove.transform.position);
     }
 
@@ -2308,6 +2361,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 dodgeState,
                 playerIsThreatened,
                 currentPlayerTileIndex,
+                playerMove.CurrentLaneIndex,
                 playerMove.transform.position,
                 out int movementDirection))
         {
@@ -2324,12 +2378,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         ref EnemyPlayerDodgeResolution resolution)
     {
         int currentPlayerTileIndex = -1;
+        int currentPlayerLaneIndex = -1;
         Vector3 currentPlayerPosition = playerMove == null
             ? dodgeState.PlayerPosition
             : playerMove.transform.position;
 
         if (boardManager != null && playerMove != null)
         {
+            currentPlayerLaneIndex = playerMove.CurrentLaneIndex;
             boardManager.TryGetTileIndex(
                 currentPlayerPosition,
                 out currentPlayerTileIndex);
@@ -2339,6 +2395,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 dodgeState,
                 playerIsThreatened,
                 currentPlayerTileIndex,
+                currentPlayerLaneIndex,
                 currentPlayerPosition,
                 out int movementDirection))
         {

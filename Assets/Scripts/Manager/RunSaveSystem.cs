@@ -332,6 +332,8 @@ public static class RunSaveSystem
         saveData.combatPacingMode = (int)CombatPacingMode.Legacy;
         saveData.duelClockProgress = 0d;
         saveData.duelClockCumulativeBeats = 0;
+        saveData.duelClockSpawnProgress = 0d;
+        saveData.duelClockCumulativeSpawns = 0;
         saveData.duelClockSpawnPoolInitialized = false;
         saveData.duelClockRemainingEnemyAssetNames ??=
             new List<string>();
@@ -380,30 +382,44 @@ public static class RunSaveSystem
                 0,
                 saveData.duelClockEnemyMissedSpawnCounts[index]);
         }
-        saveData.duelClockPendingEnemySpawns = 0;
+        saveData.duelClockPendingEnemySpawns = Mathf.Max(
+            0,
+            saveData.duelClockPendingEnemySpawns);
 
         if (!saveData.duelClockSpawnPoolInitialized)
         {
             saveData.duelClockRemainingEnemyAssetNames.Clear();
         }
 
+        NormalizeDuelClockState(
+            ref saveData.duelClockProgress,
+            ref saveData.duelClockCumulativeBeats);
+        NormalizeDuelClockState(
+            ref saveData.duelClockSpawnProgress,
+            ref saveData.duelClockCumulativeSpawns);
+    }
+
+    private static void NormalizeDuelClockState(
+        ref double progress,
+        ref long cumulativeCycles)
+    {
         try
         {
             DuelClockSnapshot normalized = DuelClockState.Restore(
-                saveData.duelClockProgress,
-                saveData.duelClockCumulativeBeats).Snapshot;
-            saveData.duelClockProgress = normalized.Progress;
-            saveData.duelClockCumulativeBeats = normalized.CumulativeBeats;
+                progress,
+                cumulativeCycles).Snapshot;
+            progress = normalized.Progress;
+            cumulativeCycles = normalized.CumulativeBeats;
         }
         catch (ArgumentOutOfRangeException)
         {
-            saveData.duelClockProgress = 0d;
-            saveData.duelClockCumulativeBeats = 0;
+            progress = 0d;
+            cumulativeCycles = 0;
         }
         catch (OverflowException)
         {
-            saveData.duelClockProgress = 0d;
-            saveData.duelClockCumulativeBeats = 0;
+            progress = 0d;
+            cumulativeCycles = 0;
         }
     }
 }
