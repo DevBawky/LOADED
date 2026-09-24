@@ -440,6 +440,45 @@ public class BoardManagerTests
     }
 
     [Test]
+    public void EnemyHudChangesSidesWithoutAccumulatingLaneOffsets()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/Enemy/Enemy.prefab");
+        GameObject enemyObject = Object.Instantiate(prefab);
+        try
+        {
+            EnemyActionQueueUI ui = enemyObject.GetComponent<EnemyActionQueueUI>();
+            RectTransform health = enemyObject.transform.Find("Canvas/Panel | HP_BG") as RectTransform;
+            RectTransform queue = enemyObject.transform.Find("Canvas/Image | Queue") as RectTransform;
+            RectTransform ready = enemyObject.transform.Find("Canvas/Image | Queue Ready") as RectTransform;
+            Vector3 authoredHealthPosition = health.localPosition;
+            Vector3 authoredQueuePosition = queue.localPosition;
+            ui.ApplyLaneLayout(0);
+            Vector3 lowerHealth = health.localPosition;
+            Vector3 lowerQueue = queue.localPosition;
+            Assert.That(lowerHealth.y, Is.EqualTo(authoredQueuePosition.y));
+            Assert.That(lowerQueue.y + queue.rect.height * 0.5f,
+                Is.LessThan(lowerHealth.y - health.rect.height * 0.5f));
+            ui.ApplyLaneLayout(1);
+            Vector3 upperHealth = health.localPosition;
+            Vector3 upperQueue = queue.localPosition;
+            Assert.That(upperHealth, Is.EqualTo(authoredHealthPosition));
+            Assert.That(upperQueue.y - queue.rect.height * 0.5f,
+                Is.GreaterThan(upperHealth.y + health.rect.height * 0.5f));
+            ui.ApplyLaneLayout(1);
+            Assert.That(queue.localPosition, Is.EqualTo(upperQueue));
+            ui.ApplyLaneLayout(0);
+            Assert.That(health.localPosition, Is.EqualTo(lowerHealth));
+            Assert.That(queue.localPosition, Is.EqualTo(lowerQueue));
+            Assert.That(ready.anchoredPosition, Is.EqualTo(queue.anchoredPosition));
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemyObject);
+        }
+    }
+
+    [Test]
     public void SpawnLaneSelectionPrefersTheLeastPopulatedLane()
     {
         Assert.That(

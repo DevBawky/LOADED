@@ -175,7 +175,8 @@ public class PlayerCylinderUI : MonoBehaviour
 
     public void PlayReloadPresentation(Color accentColor, float intensity = 1f)
     {
-        if (cylinderTransform == null || reloadPunchDuration <= 0f)
+        if (!isActiveAndEnabled || cylinderTransform == null
+            || !cylinderTransform.gameObject.activeInHierarchy || reloadPunchDuration <= 0f)
         {
             return;
         }
@@ -867,7 +868,8 @@ public class PlayerCylinderUI : MonoBehaviour
         StartCylinderRotation(
             targetAngle,
             animateRotation,
-            loadedCount == 0);
+            loadedCount == 0,
+            loadedCount > previousCount);
     }
 
     private float GetStableCylinderAngle(int loadedCount)
@@ -997,7 +999,8 @@ public class PlayerCylinderUI : MonoBehaviour
     private void StartCylinderRotation(
         float targetAngle,
         bool animateRotation,
-        bool hideWhenComplete)
+        bool hideWhenComplete,
+        bool isReload = false)
     {
         float previousTargetAngle = cylinderTargetAngle;
 
@@ -1027,13 +1030,15 @@ public class PlayerCylinderUI : MonoBehaviour
             RotateCylinder(
                 previousTargetAngle,
                 targetAngle,
-                hideWhenComplete));
+                hideWhenComplete,
+                isReload));
     }
 
     private IEnumerator RotateCylinder(
         float previousTargetAngle,
         float targetAngle,
-        bool hideWhenComplete)
+        bool hideWhenComplete,
+        bool isReload)
     {
         float startAngle = previousTargetAngle + Mathf.DeltaAngle(
             previousTargetAngle,
@@ -1049,9 +1054,15 @@ public class PlayerCylinderUI : MonoBehaviour
                 continue;
             }
 
-            elapsedTime += Time.deltaTime;
+            elapsedTime += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsedTime / rotationDuration);
             float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
+            if (isReload)
+            {
+                float remaining = progress - 1f;
+                smoothProgress = 1f + 2.2f * remaining * remaining * remaining
+                    + 1.2f * remaining * remaining;
+            }
             SetCylinderAngle(Mathf.LerpUnclamped(
                 startAngle,
                 targetAngle,
@@ -1142,10 +1153,17 @@ public class PlayerCylinderUI : MonoBehaviour
     private IEnumerator ReloadPunchRoutine(Color accentColor, float intensity)
     {
         float elapsed = 0f;
+        float settleElapsed = 0f;
+        bool settled = false;
+        int loadedCountAtStart = deckManager == null ? 0 : deckManager.LoadedBullets.Count;
+        bool fullCylinder = deckManager != null
+            && deckManager.LoadedBullets.Count >= Mathf.Max(1, deckManager.MaxReloadAmount);
+        float strength = Mathf.Clamp01(intensity * CombatAccessibilitySettings.PresentationIntensity);
+        float settleDuration = fullCylinder ? 0.2f : 0.12f;
         float peakScale = Mathf.Lerp(
             1f,
             reloadPunchScale,
-            Mathf.Clamp01(intensity));
+            strength);
         Image newestBulletImage = displayedBulletCount <= 0
             || displayedBulletCount > bulletImages.Count
                 ? null
@@ -1155,21 +1173,40 @@ public class PlayerCylinderUI : MonoBehaviour
             : newestBulletImage.color;
         accentColor.a = 1f;
 
-        while (elapsed < reloadPunchDuration)
+        while (!settled || settleElapsed < settleDuration)
         {
             yield return null;
+            if (cylinderTransform == null || !cylinderTransform.gameObject.activeInHierarchy
+                || deckManager != null && deckManager.LoadedBullets.Count != loadedCountAtStart)
+            {
+                break;
+            }
+            if (GamePauseController.IsPaused) continue;
             elapsed += Time.unscaledDeltaTime;
+            if (!settled && rotationCoroutine == null)
+            {
+                settled = true;
+                SoundManager.PlayReloadSettle(fullCylinder);
+            }
+            if (settled) settleElapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsed / reloadPunchDuration);
-            float pulse = Mathf.Sin(progress * Mathf.PI);
-            float scale = Mathf.Lerp(1f, peakScale, pulse);
-            cylinderTransform.localScale = cylinderRestScale * scale;
+            float insertion = Mathf.Sin(progress * Mathf.PI) * (1f - progress);
+            float settleProgress = Mathf.Clamp01(settleElapsed / settleDuration);
+            float lockPulse = settled ? Mathf.Sin(settleProgress * Mathf.PI) * (1f - settleProgress) : 0f;
+            float pulse = Mathf.Max(insertion, lockPulse);
+            float scale = 1f + (peakScale - 1f) * insertion
+                + lockPulse * strength * (fullCylinder ? 0.16f : 0.07f);
+            float compression = Mathf.Sin(Mathf.Clamp01(progress / 0.3f) * Mathf.PI) * 0.06f * strength;
+            cylinderTransform.localScale = Vector3.Scale(cylinderRestScale,
+                new Vector3(scale + compression, scale - compression, 1f));
 
             if (newestBulletImage != null)
             {
                 newestBulletImage.color = Color.Lerp(
                     originalBulletColor,
-                    Color.Lerp(Color.white, accentColor, 0.45f),
-                    pulse);
+                    fullCylinder && settled ? new Color(1f, 0.83f, 0.35f)
+                        : Color.Lerp(Color.white, accentColor, 0.45f),
+                    pulse * Mathf.Clamp01(CombatAccessibilitySettings.FlashMultiplier));
             }
         }
 

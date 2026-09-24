@@ -3,6 +3,24 @@ using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 
+public sealed class PlayerShootInputReaderTests
+{
+    [TestCase(true, false, 1)]
+    [TestCase(false, true, 2)]
+    [TestCase(false, false, 0)]
+    public void KeyboardReloadExecutesOnKeyPress(
+        bool reloadPressed,
+        bool shootPressed,
+        int expected)
+    {
+        Assert.That(
+            PlayerShootInputReader.ResolveKeyboardAction(
+                reloadPressed,
+                shootPressed),
+            Is.EqualTo((PlayerShootInputAction)expected));
+    }
+}
+
 public class DeckManagerTests
 {
     private GameObject gameObject;

@@ -3295,6 +3295,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             yield break;
         }
 
+        bool changesLane = currentLaneIndex != targetLaneIndex;
+        if (changesLane)
+        {
+            actionQueueUI?.ApplyLaneLayout(targetLaneIndex, true);
+        }
+
         try
         {
             yield return actorMotion.MoveAlongPath(path);

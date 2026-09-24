@@ -132,6 +132,15 @@ public sealed class SoundManager : MonoBehaviour
 
     public static void PlayFire() => PlaySfx("SFX_Player_Shoot");
     public static void PlayReload() => PlaySfx("SFX_Player_Reload");
+    internal static void PlayReloadSettle(bool fullCylinder)
+    {
+        SoundManager manager = Instance;
+        if (GamePauseController.IsPaused || manager.clipLibrary == null
+            || !manager.clipLibrary.TryGetFixedSfx("SFX_Player_Reload", out AudioClip clip,
+                out float volume, out UnityEngine.Audio.AudioMixerGroup mixerGroup)) return;
+        manager.PlayOneShot(clip, fullCylinder ? 0.78f : 1.18f,
+            volume * (fullCylinder ? 0.42f : 0.2f), mixerGroup);
+    }
     public static void PlayHit() => PlaySfx("SFX_Player_Hit");
 
     public static void PlaySfx(string id)

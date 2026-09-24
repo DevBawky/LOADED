@@ -20,14 +20,13 @@ internal static class PlayerShootInputReader
 
         if (keyboard != null)
         {
-            if (keyboard.rKey.wasPressedThisFrame)
-            {
-                return PlayerShootInputAction.Reload;
-            }
+            PlayerShootInputAction keyboardAction = ResolveKeyboardAction(
+                keyboard.rKey.wasPressedThisFrame,
+                keyboard.spaceKey.wasPressedThisFrame);
 
-            if (keyboard.spaceKey.wasPressedThisFrame)
+            if (keyboardAction != PlayerShootInputAction.None)
             {
-                return PlayerShootInputAction.Shoot;
+                return keyboardAction;
             }
         }
 
@@ -39,5 +38,19 @@ internal static class PlayerShootInputReader
                 || !eventSystem.IsPointerOverGameObject())
                     ? PlayerShootInputAction.Shoot
                     : PlayerShootInputAction.None;
+    }
+
+    internal static PlayerShootInputAction ResolveKeyboardAction(
+        bool reloadPressed,
+        bool shootPressed)
+    {
+        if (reloadPressed)
+        {
+            return PlayerShootInputAction.Reload;
+        }
+
+        return shootPressed
+            ? PlayerShootInputAction.Shoot
+            : PlayerShootInputAction.None;
     }
 }
