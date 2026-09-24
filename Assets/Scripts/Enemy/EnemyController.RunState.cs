@@ -155,7 +155,7 @@ public partial class EnemyController
         public RunEnemySaveData Capture(
             IReadOnlyList<EnemyController> allEnemies)
         {
-            boardManager.TryGetTileIndex(transform.position, out int tileIndex);
+            boardManager.TryGetTileIndex(transform.position, currentLaneIndex, out int tileIndex);
             RunEnemySaveData state = new RunEnemySaveData
             {
                 enemyAssetName = enemyData == null ? string.Empty : enemyData.name,
@@ -331,6 +331,7 @@ public partial class EnemyController
             RefreshShieldIndicator();
             RefreshHealthUI();
             ApplyCanvasOrientation();
+            owner.ApplyLaneSortingOrder();
             RefreshAttackTelegraph();
             owner.SetPreparedTargetWarning(isAttackPrepared);
         }

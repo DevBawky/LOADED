@@ -140,6 +140,12 @@ internal sealed class EnemyThrownAttackRuntime
     {
         try
         {
+            if (boardManager != null && projectile != null)
+            {
+                boardManager.SetTileWarningActive(targetTileIndex,
+                    targetLaneIndex, projectile.transform, true);
+            }
+
             EnemyPlayerDodgeWindowState dodgeState = default;
             EnemyPlayerDodgeResolution dodgeResolution = default;
             bool dodgeWindowStarted = false;
@@ -152,6 +158,10 @@ internal sealed class EnemyThrownAttackRuntime
                 }
 
                 dodgeWindowStarted = true;
+                if (boardManager != null && projectile != null)
+                {
+                    boardManager.SetWarningUrgent(projectile.transform, true);
+                }
                 dodgeState = CapturePlayerDodgeWindow();
             }
 
@@ -197,9 +207,17 @@ internal sealed class EnemyThrownAttackRuntime
                 dodgeState,
                 ref dodgeResolution);
             ResolveImpact(dodgeResolution.PlayerDodged);
+            if (boardManager != null && projectile != null)
+            {
+                boardManager.CompleteTileWarnings(projectile.transform);
+            }
         }
         finally
         {
+            if (boardManager != null && projectile != null)
+            {
+                boardManager.ReleaseTileWarnings(projectile.transform);
+            }
             IsComplete = true;
         }
     }
@@ -209,6 +227,7 @@ internal sealed class EnemyThrownAttackRuntime
         if (!IsPlayerInTargetTile() || boardManager == null
             || playerMove == null || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return default;
@@ -228,6 +247,7 @@ internal sealed class EnemyThrownAttackRuntime
         if (boardManager == null || playerMove == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int currentPlayerTileIndex)
             || !resolution.TryConfirmBeforeImpact(
                 dodgeState,
@@ -260,6 +280,7 @@ internal sealed class EnemyThrownAttackRuntime
             currentPlayerLaneIndex = playerMove.CurrentLaneIndex;
             boardManager.TryGetTileIndex(
                 currentPlayerPosition,
+                currentPlayerLaneIndex,
                 out currentPlayerTileIndex);
         }
 
@@ -298,6 +319,7 @@ internal sealed class EnemyThrownAttackRuntime
         return targetTileIndex >= 0 && boardManager != null
             && playerMove != null && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex)
             && playerTileIndex == targetTileIndex
             && playerMove.CurrentLaneIndex == targetLaneIndex;

@@ -34,6 +34,12 @@ Shader "Loaded/Kill Impact Fullscreen"
             float _KillImpactRgbSplit;
             float _KillImpactRadialZoom;
             float _KillImpactTear;
+            float _FinalDefeatInversion;
+
+            half3 ApplyFinalDefeatInversion(half3 color)
+            {
+                return lerp(color, 1.0 - saturate(color), saturate(_FinalDefeatInversion));
+            }
 
             float Hash11(float value)
             {
@@ -61,7 +67,8 @@ Shader "Loaded/Kill Impact Fullscreen"
 
                 if (strength <= 0.0001)
                 {
-                    return SampleScene(uv);
+                    half4 scene = SampleScene(uv);
+                    return half4(ApplyFinalDefeatInversion(scene.rgb), scene.a);
                 }
 
                 float aspect = max(0.25, _KillImpactAspect);
@@ -542,7 +549,7 @@ Shader "Loaded/Kill Impact Fullscreen"
                 float edge = smoothstep(0.42, 0.96, length(uv * 2.0 - 1.0));
                 color *= 1.0 - edge * edgeStyle * 0.05;
 
-                return half4(color, baseSample.a);
+                return half4(ApplyFinalDefeatInversion(color), baseSample.a);
             }
             ENDHLSL
         }

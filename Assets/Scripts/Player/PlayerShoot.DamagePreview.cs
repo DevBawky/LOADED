@@ -40,6 +40,7 @@ public partial class PlayerShoot
             new HashSet<BulletData>();
         private readonly int[] previewOwnedGradeCountBuffer = new int[4];
         private int previewPlayerTileIndex = -1;
+        private int previewPlayerLaneIndex;
         private float previewCriticalDamageMultiplierBonus;
         private PlayerCombatPreviewResources previewResources;
 
@@ -118,9 +119,13 @@ public partial class PlayerShoot
             deckManager.GetOwnedBullets(previewOwnedBullets);
             previewPlayerTileIndex = boardManager.TryGetTileIndex(
                 transform.position,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 out int playerTileIndex)
                     ? playerTileIndex
                     : -1;
+            previewPlayerLaneIndex = playerMove == null
+                ? 0
+                : playerMove.CurrentLaneIndex;
     
             foreach (EnemyController enemy in waveManager.ActiveEnemies)
             {
@@ -133,6 +138,7 @@ public partial class PlayerShoot
     
                     if (boardManager.TryGetTileIndex(
                             enemy.transform.position,
+                            enemy.CurrentLaneIndex,
                             out int enemyTileIndex))
                     {
                         state.TileIndex = enemyTileIndex;
@@ -771,6 +777,10 @@ public partial class PlayerShoot
                      in damagePreviewStates.Values)
             {
                 if (state.Enemy == null || state.RemainingHealth <= 0
+                    || !CanPlayerEffectTargetLane(
+                        previewPlayerLaneIndex,
+                        state.LaneIndex,
+                        false)
                     || state.TileIndex < 0)
                 {
                     continue;
@@ -971,6 +981,10 @@ public partial class PlayerShoot
                 {
                     if (targetState == sourceState
                         || targetState.RemainingHealth <= 0
+                        || !CanPlayerEffectTargetLane(
+                            sourceState.LaneIndex,
+                            targetState.LaneIndex,
+                            false)
                         || targetState.TileIndex != targetTileIndex)
                     {
                         continue;
@@ -1099,6 +1113,10 @@ public partial class PlayerShoot
             {
                 if (candidate == sourceState || candidate.Enemy == null
                     || candidate.RemainingHealth <= 0
+                    || !CanPlayerEffectTargetLane(
+                        sourceState.LaneIndex,
+                        candidate.LaneIndex,
+                        false)
                     || candidate.TileIndex < 0)
                 {
                     continue;
@@ -1336,6 +1354,7 @@ public partial class PlayerShoot
                          in damagePreviewStates.Values)
                 {
                     if (state != pushedState && state.RemainingHealth > 0
+                        && state.LaneIndex == pushedState.LaneIndex
                         && state.TileIndex == nextTileIndex)
                     {
                         collidedState = state;

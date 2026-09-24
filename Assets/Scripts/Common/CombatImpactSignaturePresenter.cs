@@ -131,18 +131,19 @@ internal sealed class CombatImpactSignaturePresenter
 
         if (signature.UsesDefeatSilhouette)
         {
+            float overkillMultiplier = 1f + Mathf.Clamp01(snapshot.OverkillStrength) * 0.75f;
             SpawnDefeatSilhouette(
                 snapshot,
                 horizontalDirection,
                 accent,
-                feedbackMultiplier,
+                feedbackMultiplier * overkillMultiplier,
                 wasFinalEnemy,
                 settings);
             SpawnDefeatAfterimages(
                 snapshot,
                 horizontalDirection,
                 accent,
-                feedbackMultiplier,
+                feedbackMultiplier * overkillMultiplier,
                 settings.DefeatSilhouetteHoldDuration
                     * (wasFinalEnemy
                         ? settings.FinalDefeatDurationMultiplier
@@ -190,29 +191,47 @@ internal sealed class CombatImpactSignaturePresenter
 
         int direction = NormalizeDirection(horizontalDirection);
         GameObject root = CreateRoot("Normal Impact Snap", snapshot.Position);
-        List<SpriteRenderer> renderers = new List<SpriteRenderer>(3);
+        List<SpriteRenderer> renderers = new List<SpriteRenderer>(4);
+
+        Color lineColor = Color.Lerp(accent, Color.white, 0.7f);
+        lineColor.a = 0.86f * strength;
+        SpriteRenderer throughLine = CreateSprite(
+            "Directional Through Line",
+            root.transform,
+            lineColor,
+            snapshot.SortingLayerId,
+            snapshot.SortingOrder + 4);
+        throughLine.transform.localPosition = new Vector3(
+            direction * 0.025f * settings.Intensity,
+            0f,
+            0f);
+        throughLine.transform.localScale = new Vector3(
+            0.4f * settings.Intensity,
+            0.016f * settings.Intensity,
+            1f);
+        renderers.Add(throughLine);
 
         for (int markIndex = 0; markIndex < 2; markIndex++)
         {
             float verticalDirection = markIndex == 0 ? 1f : -1f;
-            Color markColor = Color.Lerp(accent, Color.white, 0.56f);
-            markColor.a = 0.74f * strength;
+            Color markColor = Color.Lerp(accent, Color.white, 0.4f);
+            markColor.a = 0.68f * strength;
             SpriteRenderer mark = CreateSprite(
-                "Forward Snap Mark",
+                "Trailing Impact Mark",
                 root.transform,
                 markColor,
                 snapshot.SortingLayerId,
                 snapshot.SortingOrder + 4);
             mark.transform.localPosition = new Vector3(
-                -direction * 0.07f * settings.Intensity,
-                verticalDirection * 0.045f * settings.Intensity,
+                -direction * 0.15f * settings.Intensity,
+                verticalDirection * 0.035f * settings.Intensity,
                 0f);
             mark.transform.localRotation = Quaternion.Euler(
                 0f,
                 0f,
-                verticalDirection * direction * 24f);
+                verticalDirection * direction * 32f);
             mark.transform.localScale = new Vector3(
-                0.13f * settings.Intensity,
+                0.11f * settings.Intensity,
                 0.012f * settings.Intensity,
                 1f);
             renderers.Add(mark);
@@ -228,7 +247,7 @@ internal sealed class CombatImpactSignaturePresenter
             snapshot.SortingOrder + 5);
         core.transform.localRotation = Quaternion.Euler(0f, 0f, 45f);
         core.transform.localScale = Vector3.one
-            * 0.055f * settings.Intensity;
+            * 0.07f * settings.Intensity;
         renderers.Add(core);
 
         coroutineHost.StartCoroutine(AnimateSnapAccent(
@@ -275,11 +294,11 @@ internal sealed class CombatImpactSignaturePresenter
                 visibleFrameCount);
             float progress = Mathf.Clamp01(elapsed / duration);
             float snap = 1f - Mathf.Pow(1f - progress, 3f);
-            float release = 1f - Mathf.SmoothStep(0.18f, 1f, progress);
+            float release = 1f - Mathf.SmoothStep(0.28f, 1f, progress);
             root.transform.position = startPosition
-                + Vector3.right * horizontalDirection * 0.085f * snap;
+                + Vector3.right * horizontalDirection * 0.06f * snap;
             root.transform.localScale = Vector3.one
-                * Mathf.Lerp(0.62f, 1.28f, snap);
+                * Mathf.Lerp(0.78f, 1.12f, snap);
             ApplyAlpha(renderers, startColors, release);
         }
 

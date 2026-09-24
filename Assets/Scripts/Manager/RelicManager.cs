@@ -1732,6 +1732,7 @@ public sealed class RelicManager : MonoBehaviour
         bool hasSourceTile = boardManager != null
             && boardManager.TryGetTileIndex(
                 defeatedEnemy.transform.position,
+                defeatedEnemy.CurrentLaneIndex,
                 out sourceTile);
 
         foreach (EnemyController candidate in activeEnemies)
@@ -1746,9 +1747,12 @@ public sealed class RelicManager : MonoBehaviour
 
             if (hasSourceTile && boardManager.TryGetTileIndex(
                     candidate.transform.position,
+                    candidate.CurrentLaneIndex,
                     out int candidateTile))
             {
-                distance = Math.Abs(candidateTile - sourceTile);
+                distance = Math.Abs(
+                    boardManager.GetColumnIndex(candidateTile, candidate.CurrentLaneIndex)
+                    - boardManager.GetColumnIndex(sourceTile, defeatedEnemy.CurrentLaneIndex));
             }
             else
             {

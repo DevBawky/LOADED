@@ -20,9 +20,8 @@ public class BossBomb : MonoBehaviour
     private BossBombManager manager;
     private EnemyData sourceData;
     private int createdTurnCycle;
-    private LineRenderer explosionRangeLine;
+    private bool hasRangeWarning;
     private Color baseBombColor = Color.white;
-    private Color baseRangeColor = new Color(1f, 0.45f, 0f, 0.65f);
 
     public int TileIndex => tileIndex;
     public int LaneIndex => laneIndex;
@@ -102,7 +101,7 @@ public class BossBomb : MonoBehaviour
         remainingFuse = Mathf.Max(0, remainingFuse - 1);
         RefreshFuseText();
 
-        if (remainingFuse == 1 && explosionRangeLine == null)
+        if (remainingFuse == 1 && !hasRangeWarning)
         {
             CreateExplosionRangeTelegraph();
         }
@@ -121,7 +120,11 @@ public class BossBomb : MonoBehaviour
         }
 
         isExploding = true;
-        DisposeVisuals();
+        CreateExplosionRangeTelegraph();
+        if (manager != null && manager.BoardManager != null)
+        {
+            manager.BoardManager.SetWarningUrgent(this, true);
+        }
 
         if (bombRenderer != null)
         {
@@ -138,11 +141,23 @@ public class BossBomb : MonoBehaviour
 
     public void DisposeVisuals()
     {
-        if (explosionRangeLine != null)
+        if (manager != null && manager.BoardManager != null)
         {
-            explosionRangeLine.gameObject.SetActive(false);
-            Destroy(explosionRangeLine.gameObject);
-            explosionRangeLine = null;
+            manager.BoardManager.ReleaseTileWarnings(this);
+        }
+        hasRangeWarning = false;
+    }
+
+    private void OnDisable()
+    {
+        DisposeVisuals();
+    }
+
+    private void OnEnable()
+    {
+        if (manager != null && sourceData != null && !isExploding)
+        {
+            CreateExplosionRangeTelegraph();
         }
     }
 
@@ -215,23 +230,21 @@ public class BossBomb : MonoBehaviour
 
     private void CreateExplosionRangeTelegraph()
     {
-        if (explosionRangeLine != null || remainingFuse != 1)
+        if (hasRangeWarning || (remainingFuse != 1 && !isExploding) || manager == null
+            || manager.BoardManager == null || sourceData == null)
         {
             return;
         }
 
-        BigBarrelSettings settings = sourceData.BigBarrel;
-        explosionRangeLine = BoardTelegraphUtility.CreateTileRange(
-            transform,
-            "Line | Bomb Explosion Range",
-            manager.BoardManager,
-            tileIndex - settings.BombExplosionRadius,
-            tileIndex + settings.BombExplosionRadius,
-            laneIndex,
-            settings.BombTelegraphMaterial,
-            baseRangeColor,
-            sourceData.TelegraphVerticalOffset * 0.5f,
-            sourceData.TelegraphSortingOrder - 2);
+        BoardManager board = manager.BoardManager;
+        int radius = sourceData.BigBarrel.BombExplosionRadius;
+        int firstTile = Mathf.Max(0, tileIndex - radius);
+        int lastTile = Mathf.Min(board.BoardCount - 1, tileIndex + radius);
+        for (int tile = firstTile; tile <= lastTile; tile++)
+        {
+            board.SetTileWarningActive(tile, laneIndex, this, true);
+        }
+        hasRangeWarning = true;
     }
 
     private void RefreshFuseText()
@@ -249,14 +262,6 @@ public class BossBomb : MonoBehaviour
             Color color = baseBombColor;
             color.a *= alpha;
             bombRenderer.color = color;
-        }
-
-        if (explosionRangeLine != null)
-        {
-            Color color = baseRangeColor;
-            color.a *= alpha;
-            explosionRangeLine.startColor = color;
-            explosionRangeLine.endColor = color;
         }
     }
 }

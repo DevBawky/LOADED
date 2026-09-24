@@ -291,11 +291,13 @@ again while that cycle is resolving. Each beat:
    available. A request completed alongside a Duel Clock Beat waits until that
    Beat ends so the new enemy joins the following snapshot.
 
-`WaveManager.MaximumActiveEnemyCount` is calculated for each battle by rounding
-`BattleData.BoardCount * 0.35` to the nearest integer, with a minimum of one.
-This yields capacities of two, four, and five enemies for board counts seven,
-eleven, and thirteen respectively. Spawn-tile selection and the final spawn
-commit both enforce the current battle's result. A scheduled reinforcement is
+`WaveManager.MaximumActiveEnemyCount` is calculated at battle start and restore
+as `floor(BoardManager.TotalTileCount * 0.40)`. Total tiles include every lane
+(`BoardCount * LaneCount`), excluding missing cells outside the staggered board.
+For example, 5 x 2, 7 x 2, and 8 x 2 boards allow four, five, and six living
+enemies respectively. Rounding down keeps occupancy at or below 40%; fewer
+than three total tiles provide no enemy slots and cannot start a combat battle.
+Spawn-tile selection and the final spawn commit both enforce this result. A scheduled reinforcement is
 deferred while that capacity is full or no spawn tile is available. Deferred
 reinforcements do not consume the authored pool or RNG. When a
 defeat leaves no living enemy while the pool still has a remaining spawn, one

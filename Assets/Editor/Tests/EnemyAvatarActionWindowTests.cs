@@ -43,6 +43,107 @@ public sealed class EnemyAvatarActionWindowTests
 
 public sealed class CombatFeedbackDodgeTests
 {
+    [TestCase(10, 10, 0, 0f)]
+    [TestCase(15, 10, 0, 0.5f)]
+    [TestCase(20, 10, 0, 1f)]
+    [TestCase(1000, 1, 0, 1f)]
+    [TestCase(15, 10, 5, 0f)]
+    [TestCase(20, 10, 5, 0.5f)]
+    [TestCase(100, -1, 0, 0f)]
+    [TestCase(int.MaxValue, int.MaxValue, int.MaxValue, 0f)]
+    public void OverkillUsesRemainingHealthExcludesShieldsAndCapsStrength(
+        int damage, int health, int shield, float expected)
+    {
+        Assert.That(CombatPresentation.CalculateOverkillStrength(damage, health, shield),
+            Is.EqualTo(expected).Within(0.0001f));
+    }
+
+    [TestCase(0.5f)]
+    [TestCase(1f)]
+    [TestCase(0f)]
+    public void FinalDefeatKeepsExactSpeedAndInversionUntilRecovery(float intensity)
+    {
+        const System.Reflection.BindingFlags flags =
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        var settings = typeof(CombatAccessibilitySettings);
+        var staticFlags = System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic;
+        var intensityField = settings.GetField("presentationIntensity", staticFlags);
+        var loadedField = settings.GetField("hasLoadedPresentationIntensity", staticFlags);
+        object previousIntensity = intensityField.GetValue(null);
+        object previousLoaded = loadedField.GetValue(null);
+        float previousScale = Time.timeScale;
+        float previousInversion = Shader.GetGlobalFloat("_FinalDefeatInversion");
+        var root = new GameObject("Final Defeat Feedback Test");
+        try
+        {
+            intensityField.SetValue(null, intensity);
+            loadedField.SetValue(null, true);
+            Time.timeScale = 0.8f;
+            Shader.SetGlobalFloat("_FinalDefeatInversion", 0f);
+            var feedback = root.AddComponent<CombatFeedbackController>();
+            var type = typeof(CombatFeedbackController);
+            object Read(string name) => type.GetField(name, flags).GetValue(feedback);
+            void Write(string name, object value) => type.GetField(name, flags).SetValue(feedback, value);
+            void Invoke(string name, params object[] args) => type.GetMethod(name, flags).Invoke(feedback, args);
+
+            Invoke("HandleFinalEnemyDefeated", new object[] { null });
+            feedback.StopAllCoroutines();
+            if (intensity == 0f)
+            {
+                Assert.That(feedback.IsFinalDefeatPresentationActive, Is.False);
+                Assert.That(Time.timeScale, Is.EqualTo(0.8f));
+                Assert.That(Shader.GetGlobalFloat("_FinalDefeatInversion"), Is.Zero);
+                return;
+            }
+
+            Assert.That(feedback.IsFinalDefeatPresentationActive, Is.True);
+            Assert.That((float)Read("slowMotionTargetScale"), Is.EqualTo(0.05f).Within(0.0001f));
+            Assert.That(Shader.GetGlobalFloat("_FinalDefeatInversion"), Is.EqualTo(0.3f).Within(0.0001f));
+            Invoke("StartSlowMotion", 1f, 0.4f, 0.09f, 0.18f, 1f);
+            Invoke("StartDodgeSlowMotion");
+            Write("hitStopRemaining", 0f);
+            feedback.RequestHitStop(1f);
+            Assert.That((float)Read("hitStopRemaining"), Is.Zero);
+
+            var routine = (System.Collections.IEnumerator)type.GetMethod("TimeEffectRoutine", flags).Invoke(feedback, null);
+            Assert.That(routine.MoveNext(), Is.True);
+            foreach (float elapsed in new[] { 0.25f, 0.499f, 0.56f })
+            {
+                Write("slowMotionElapsed", elapsed - Time.unscaledDeltaTime);
+                Assert.That(routine.MoveNext(), Is.True);
+                if (elapsed < 0.5f)
+                    Assert.That(Time.timeScale, Is.EqualTo(0.05f).Within(0.0001f));
+                else
+                    Assert.That(Time.timeScale, Is.InRange(0.65f, 0.8f));
+                Assert.That(Shader.GetGlobalFloat("_FinalDefeatInversion"), Is.InRange(0.0001f, 0.3f));
+            }
+            Write("slowMotionElapsed", 0.63f);
+            Assert.That(routine.MoveNext(), Is.False);
+            Assert.That(Time.timeScale, Is.EqualTo(0.8f));
+            Assert.That(feedback.IsFinalDefeatPresentationActive, Is.False);
+            Assert.That(Shader.GetGlobalFloat("_FinalDefeatInversion"), Is.Zero);
+
+            Invoke("HandleFinalEnemyDefeated", new object[] { null });
+            feedback.CancelPresentationForPause();
+            Assert.That(Time.timeScale, Is.EqualTo(0.8f));
+            Assert.That(Shader.GetGlobalFloat("_FinalDefeatInversion"), Is.Zero);
+            Invoke("HandleFinalEnemyDefeated", new object[] { null });
+            // EditMode does not dispatch this MonoBehaviour's runtime lifecycle.
+            Invoke("OnDisable");
+            Assert.That(Time.timeScale, Is.EqualTo(0.8f));
+            Assert.That(Shader.GetGlobalFloat("_FinalDefeatInversion"), Is.Zero);
+        }
+        finally
+        {
+            root.GetComponent<CombatFeedbackController>()?.CancelPresentationForPause();
+            UnityEngine.Object.DestroyImmediate(root);
+            Time.timeScale = previousScale;
+            Shader.SetGlobalFloat("_FinalDefeatInversion", previousInversion);
+            intensityField.SetValue(null, previousIntensity);
+            loadedField.SetValue(null, previousLoaded);
+        }
+    }
+
     private const string SoundLibraryPath =
         "Assets/Resources/Sound/SoundClipLibrary.asset";
     private const string PlayerPrefabPath =

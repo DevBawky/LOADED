@@ -144,6 +144,12 @@ public class RewardManager : MonoBehaviour
 
     public bool SpawnEnemyDrop(EnemyData enemyData, Vector3 defeatedPosition)
     {
+        return SpawnEnemyDrop(enemyData, defeatedPosition, 0);
+    }
+
+    public bool SpawnEnemyDrop(EnemyData enemyData, Vector3 defeatedPosition,
+        int defeatedLaneIndex)
+    {
         if (enemyData == null)
         {
             return false;
@@ -170,6 +176,7 @@ public class RewardManager : MonoBehaviour
             || playerInventory == null || playerMove == null
             || !boardManager.TryGetTileIndex(
                 defeatedPosition,
+                defeatedLaneIndex,
                 out int tileIndex)
             || !boardManager.TryGetTilePosition(
                 tileIndex,
@@ -417,6 +424,9 @@ public class DroppedItemPickup : MonoBehaviour
             || boardManager == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                // Legacy item drops land on lane zero; collect by their
+                // physical column, including when the player is in another lane.
+                0,
                 out int playerTileIndex)
             || playerTileIndex != tileIndex)
         {

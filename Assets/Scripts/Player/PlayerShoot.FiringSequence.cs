@@ -827,7 +827,8 @@ public partial class PlayerShoot
                 bulletData,
                 horizontalDirection,
                 isCritical,
-                damageMultiplier);
+                damageMultiplier,
+                reachesBulletBlocker);
             yield return ApplyEyeOfTheStormDamage(
                 bulletData,
                 horizontalDirection);
@@ -967,6 +968,7 @@ public partial class PlayerShoot
             if (blocker == null || boardManager == null
                 || !boardManager.TryGetTileIndex(
                     transform.position,
+                    playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                     out int originIndex))
             {
                 return;
@@ -981,6 +983,7 @@ public partial class PlayerShoot
     
                 if (target == null || !boardManager.TryGetTileIndex(
                         target.transform.position,
+                        target.CurrentLaneIndex,
                         out int targetIndex)
                     || (targetIndex - originIndex) * direction >= blockerDistance)
                 {
@@ -1541,7 +1544,8 @@ public partial class PlayerShoot
             BulletInstance bulletData,
             int horizontalDirection,
             bool isCritical,
-            float damageMultiplier)
+            float damageMultiplier,
+            bool reachesBulletBlocker)
         {
             if (bulletData == null || hitBuffer.Count == 0)
             {
@@ -1583,9 +1587,16 @@ public partial class PlayerShoot
                     combatPresentation == null
                         ? default
                         : combatPresentation.CaptureEnemy(enemy);
+                if (!IsBoardWideShot(bulletData)
+                    && (hitIndex < shotTargets.Count - 1 || reachesBulletBlocker))
+                {
+                    combatPresentation?.PlayPenetration(enemySnapshot, horizontalDirection,
+                        bulletData, hitIndex + 1);
+                }
                 int sourceTileIndex = -1;
                 boardManager.TryGetTileIndex(
                     enemy.transform.position,
+                    enemy.CurrentLaneIndex,
                     out sourceTileIndex);
                 int healthBeforeHit = enemy.CurrentHealth;
                 int targetMaxHealth = enemy.MaxHealth;
@@ -1679,6 +1690,8 @@ public partial class PlayerShoot
                 }
 
                 int reportedDamage = enemy.PredictAttackDamage(attackDamage);
+                int shieldBeforeHit = enemy.CurrentShield;
+                int healthAtImpact = enemy.CurrentHealth;
                 int appliedDamage = enemy.ApplyAttackDamage(
                     attackDamage,
                     targetIsCritical);
@@ -1704,7 +1717,8 @@ public partial class PlayerShoot
                         reportedDamage,
                         targetMaxHealth,
                         targetIsCritical,
-                        healthBeforeHit);
+                        healthAtImpact,
+                        shieldBeforeHit);
                     PlayDefeatImpact(
                         enemySnapshot,
                         horizontalDirection,
@@ -1742,6 +1756,7 @@ public partial class PlayerShoot
                 yield return ApplyClosedCircuitDamageTransfer(
                     bulletData,
                     sourceTileIndex,
+                    enemy.CurrentLaneIndex,
                     horizontalDirection,
                     reportedDamage,
                     processedDefeatIds);
@@ -1919,7 +1934,8 @@ public partial class PlayerShoot
             int appliedDamage,
             int targetMaxHealth,
             bool wasCritical,
-            int targetHealthBeforeDamage)
+            int targetHealthBeforeDamage,
+            int targetShieldBeforeDamage = 0)
         {
             return combatFeedback == null
                 ? default
@@ -1932,7 +1948,9 @@ public partial class PlayerShoot
                     waveManager != null
                         && waveManager.ActiveEnemies.Count <= 1,
                     GetCurrentCylinderBuild(),
-                    targetHealthBeforeDamage);
+                    targetHealthBeforeDamage,
+                    true,
+                    targetShieldBeforeDamage);
         }
 
         private void PlayDefeatImpact(
@@ -1944,6 +1962,7 @@ public partial class PlayerShoot
             float feedbackMultiplier = cue.FeedbackMultiplier > 0f
                 ? cue.FeedbackMultiplier
                 : 1f;
+            snapshot.OverkillStrength = cue.OverkillStrength;
             combatPresentation?.PlayImpact(
                 snapshot,
                 horizontalDirection,
@@ -2007,7 +2026,8 @@ public partial class PlayerShoot
                         reportedDamage,
                         targetMaxHealth,
                         false,
-                        healthBeforeDamage);
+                        healthBeforeDamage,
+                        enemy.LastDamageAbsorbed);
                     PlayDefeatImpact(
                         snapshot,
                         horizontalDirection,
@@ -2136,7 +2156,8 @@ public partial class PlayerShoot
                         reportedDamage,
                         targetMaxHealth,
                         false,
-                        healthBeforeTransfer);
+                        healthBeforeTransfer,
+                        targetEnemy.LastDamageAbsorbed);
                     PlayDefeatImpact(
                         targetSnapshot,
                         horizontalDirection,
@@ -2176,6 +2197,7 @@ public partial class PlayerShoot
         private IEnumerator ApplyClosedCircuitDamageTransfer(
             BulletInstance bullet,
             int sourceTileIndex,
+            int sourceLaneIndex,
             int horizontalDirection,
             int sourceDamage,
             HashSet<int> processedDefeatIds)
@@ -2196,8 +2218,13 @@ public partial class PlayerShoot
             foreach (EnemyController candidate in waveManager.ActiveEnemies)
             {
                 if (candidate == null || candidate.CurrentHealth <= 0
+                    || !CanPlayerEffectTargetLane(
+                        sourceLaneIndex,
+                        candidate.CurrentLaneIndex,
+                        false)
                     || !boardManager.TryGetTileIndex(
                         candidate.transform.position,
+                        candidate.CurrentLaneIndex,
                         out int candidateTile))
                 {
                     continue;
@@ -2250,7 +2277,8 @@ public partial class PlayerShoot
                         reportedDamage,
                         targetMaxHealth,
                         false,
-                        healthBeforeDamage);
+                        healthBeforeDamage,
+                        target.LastDamageAbsorbed);
                 PlayDefeatImpact(
                     snapshot,
                     horizontalDirection,

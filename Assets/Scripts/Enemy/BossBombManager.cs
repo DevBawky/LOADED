@@ -285,6 +285,10 @@ public class BossBombManager : MonoBehaviour
         queuedDetonations.Clear();
         isProcessingDetonations = false;
         pendingExplosionResolutions = 0;
+        foreach (BossBomb bomb in activeBombs)
+        {
+            bomb?.DisposeVisuals();
+        }
     }
 
     public void ClearAll()
@@ -451,6 +455,7 @@ public class BossBombManager : MonoBehaviour
 
         if (!bombsPaused && bomb != null && activeBombs.Contains(bomb))
         {
+            boardManager?.CompleteTileWarnings(bomb);
             RemoveBomb(bomb);
         }
     }
@@ -464,6 +469,7 @@ public class BossBombManager : MonoBehaviour
             || boardManager == null || playerMove == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return default;
@@ -484,6 +490,7 @@ public class BossBombManager : MonoBehaviour
         return boardManager != null && playerMove != null
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex)
             && IsCellInExplosionRange(
                 centerTile,
@@ -506,6 +513,7 @@ public class BossBombManager : MonoBehaviour
 
         if (!boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int currentPlayerTileIndex))
         {
             return false;
@@ -546,6 +554,7 @@ public class BossBombManager : MonoBehaviour
             currentPlayerLaneIndex = playerMove.CurrentLaneIndex;
             boardManager.TryGetTileIndex(
                 currentPlayerPosition,
+                currentPlayerLaneIndex,
                 out currentPlayerTileIndex);
         }
 
@@ -678,6 +687,7 @@ public class BossBombManager : MonoBehaviour
         if (!playerDodged && playerMove != null && playerHealth != null
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTile)
             && IsCellInExplosionRange(
                 centerTile,
@@ -699,6 +709,7 @@ public class BossBombManager : MonoBehaviour
                 if (enemy == null || enemy.CurrentHealth <= 0
                     || !boardManager.TryGetTileIndex(
                         enemy.transform.position,
+                        enemy.CurrentLaneIndex,
                         out int enemyTile)
                     || !IsCellInExplosionRange(
                         centerTile,

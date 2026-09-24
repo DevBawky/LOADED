@@ -1298,6 +1298,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (playerMove == null || boardManager == null || waveManager == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return false;
@@ -1326,7 +1327,9 @@ public sealed class FirstRunGuideController : MonoBehaviour
                 continue;
             }
 
-            if (!waveManager.IsTileReservedForSpawn(targetTileIndex))
+            if (!waveManager.IsTileReservedForSpawn(
+                    targetTileIndex,
+                    playerMove == null ? 0 : playerMove.CurrentLaneIndex))
             {
                 canMove = true;
             }
@@ -1513,6 +1516,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (playerMove == null || boardManager == null || waveManager == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return false;
@@ -1524,6 +1528,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             if (enemy == null || enemy.CurrentHealth <= 0
                 || !boardManager.TryGetTileIndex(
                     enemy.transform.position,
+                    enemy.CurrentLaneIndex,
                     out int enemyTileIndex))
             {
                 continue;
@@ -1547,6 +1552,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         if (playerMove == null || boardManager == null || waveManager == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return false;
@@ -1557,6 +1563,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
             if (enemy == null || enemy.CurrentHealth <= 0
                 || !boardManager.TryGetTileIndex(
                     enemy.transform.position,
+                    enemy.CurrentLaneIndex,
                     out int enemyTileIndex))
             {
                 continue;

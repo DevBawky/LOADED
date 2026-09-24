@@ -30,6 +30,19 @@ public sealed class NamedSfxClip
         Mathf.Min(minPitch, maxPitch),
         Mathf.Max(minPitch, maxPitch));
 
+    internal AudioClip FirstClip
+    {
+        get
+        {
+            if (clip != null) return clip;
+            if (variants != null)
+            {
+                foreach (AudioClip variant in variants) if (variant != null) return variant;
+            }
+            return null;
+        }
+    }
+
     public AudioClip GetRandomClip()
     {
         int validClipCount = clip == null ? 0 : 1;
@@ -137,6 +150,18 @@ public sealed class SoundClipLibrary : ScriptableObject
         out float pitch,
         out AudioMixerGroup mixerGroup)
     {
+        return TryGetSfx(id, true, out clip, out volume, out pitch, out mixerGroup);
+    }
+
+    internal bool TryGetFixedSfx(string id, out AudioClip clip,
+        out float volume, out AudioMixerGroup mixerGroup)
+    {
+        return TryGetSfx(id, false, out clip, out volume, out _, out mixerGroup);
+    }
+
+    private bool TryGetSfx(string id, bool randomize,
+        out AudioClip clip, out float volume, out float pitch, out AudioMixerGroup mixerGroup)
+    {
         clip = null;
         volume = 1f;
         pitch = 1f;
@@ -154,9 +179,9 @@ public sealed class SoundClipLibrary : ScriptableObject
                 && string.Equals(entry.Id, normalizedId,
                     StringComparison.OrdinalIgnoreCase))
             {
-                clip = entry.GetRandomClip();
+                clip = randomize ? entry.GetRandomClip() : entry.FirstClip;
                 volume = entry.Volume;
-                pitch = entry.RandomPitch;
+                pitch = randomize ? entry.RandomPitch : 1f;
                 mixerGroup = GetSfxMixerGroup(entry.Category);
                 return clip != null;
             }

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 [DisallowMultipleComponent]
@@ -33,6 +34,7 @@ public sealed class CombatPresentation : MonoBehaviour
         public int SortingLayerId;
         public int SortingOrder;
         public bool Captured;
+        public float OverkillStrength;
 
         public bool IsValid => Captured || Sprite != null;
         public bool HasSprite => Sprite != null;
@@ -148,6 +150,44 @@ public sealed class CombatPresentation : MonoBehaviour
 
     private float ScaledIntensity => Mathf.Max(0f, intensity);
 
+    internal void PlayPenetration(EnemySnapshot snapshot, int horizontalDirection,
+        BulletInstance bullet, int penetrationIndex)
+    {
+        if (!isActiveAndEnabled || !presentationEnabled || !snapshot.IsValid
+            || GamePauseController.IsPaused || ScaledIntensity <= 0f)
+        {
+            return;
+        }
+        EnsureRuntimeResources();
+        SoundManager.PlayPenetrationAccent(penetrationIndex);
+        float strength = Mathf.Clamp01(CombatAccessibilitySettings.FlashMultiplier * ScaledIntensity);
+        if (strength <= 0f) return;
+        int direction = horizontalDirection < 0 ? -1 : 1;
+        Color accent = GetAccentColor(bullet);
+        for (int i = 0; i < 2; i++)
+        {
+            Color color = i == 0 ? accent : Color.Lerp(accent, Color.white, 0.8f);
+            color.a = strength * (i == 0 ? 0.7f : 0.95f);
+            GameObject streak = CreateSpriteObject("Penetration Exit Streak", null,
+                color, snapshot.SortingOrder + 6 + i);
+            var renderer = streak.GetComponent<SpriteRenderer>();
+            renderer.sortingLayerID = snapshot.SortingLayerId;
+            streak.transform.position = snapshot.Position + Vector3.right * (direction * 0.28f);
+            streak.transform.localScale = new Vector3(i == 0 ? 0.85f : 0.65f,
+                i == 0 ? 0.045f : 0.014f, 1f);
+            StartCoroutine(AnimateOpticalMote(streak, renderer,
+                new Vector2(direction * 3.5f, 0f), 0.16f));
+        }
+    }
+
+    internal static float CalculateOverkillStrength(int damage, int healthBeforeDamage,
+        int shieldBeforeDamage = 0)
+    {
+        if (healthBeforeDamage <= 0) return 0f;
+        long excess = (long)damage - healthBeforeDamage - Mathf.Max(0, shieldBeforeDamage);
+        return Mathf.Clamp01((float)excess / healthBeforeDamage);
+    }
+
     internal static ImpactSignature ResolveImpactSignature(
         CombatImpactTier impactTier,
         bool wasFinalEnemy)
@@ -254,12 +294,19 @@ public sealed class CombatPresentation : MonoBehaviour
             return default;
         }
 
+        SortingGroup sortingGroup = enemy.GetComponent<SortingGroup>();
         EnemySnapshot snapshot = new EnemySnapshot
         {
             Position = enemy.transform.position,
             Rotation = enemy.transform.rotation,
             Scale = Vector3.one,
             Color = Color.white,
+            SortingLayerId = sortingGroup == null
+                ? 0
+                : sortingGroup.sortingLayerID,
+            SortingOrder = sortingGroup == null
+                ? 0
+                : sortingGroup.sortingOrder,
             Captured = true
         };
         SpriteRenderer renderer = FindSnapshotRenderer(enemy);
@@ -275,8 +322,13 @@ public sealed class CombatPresentation : MonoBehaviour
         snapshot.Rotation = renderer.transform.rotation;
         snapshot.Scale = renderer.transform.lossyScale;
         snapshot.Color = renderer.color;
-        snapshot.SortingLayerId = renderer.sortingLayerID;
-        snapshot.SortingOrder = renderer.sortingOrder;
+
+        if (sortingGroup == null)
+        {
+            snapshot.SortingLayerId = renderer.sortingLayerID;
+            snapshot.SortingOrder = renderer.sortingOrder;
+        }
+
         return snapshot;
     }
 
@@ -430,16 +482,6 @@ public sealed class CombatPresentation : MonoBehaviour
             accent,
             impactTier,
             impactMultiplier);
-
-        if (impactTier == CombatImpactTier.Normal)
-        {
-            SpawnNormalOpticalGlints(
-                snapshot.Position,
-                horizontalDirection,
-                accent,
-                snapshot.SortingLayerId,
-                snapshot.SortingOrder + 3);
-        }
 
         if (impactTier >= CombatImpactTier.Critical)
         {
@@ -993,61 +1035,6 @@ public sealed class CombatPresentation : MonoBehaviour
                 isDefeated
                     ? Random.Range(0.24f, 0.4f)
                     : Random.Range(0.13f, 0.25f)));
-        }
-    }
-
-    private void SpawnNormalOpticalGlints(
-        Vector3 position,
-        int horizontalDirection,
-        Color accent,
-        int sortingLayerId,
-        int sortingOrder)
-    {
-        int direction = horizontalDirection == 0 ? 1 : horizontalDirection;
-        int glintCount = Mathf.Max(
-            3,
-            Mathf.RoundToInt(
-                4f * CombatAccessibilitySettings.ParticleDensityMultiplier));
-        Color warmGlint = Color.Lerp(
-            new Color(1f, 0.76f, 0.34f, 0.86f),
-            accent,
-            0.36f);
-
-        for (int glintIndex = 0; glintIndex < glintCount; glintIndex++)
-        {
-            float angle = 360f * glintIndex / glintCount
-                + Random.Range(-24f, 24f);
-            Vector2 radial = Quaternion.Euler(0f, 0f, angle)
-                * Vector2.right;
-            Color color = Color.Lerp(
-                warmGlint,
-                Color.white,
-                Random.Range(0.04f, 0.18f));
-            color.a = Random.Range(0.46f, 0.82f);
-            GameObject glint = CreateSpriteObject(
-                "Local Lens Glint",
-                null,
-                color,
-                sortingOrder);
-            SpriteRenderer renderer = glint.GetComponent<SpriteRenderer>();
-            renderer.sortingLayerID = sortingLayerId;
-            glint.transform.position = position
-                + (Vector3)(radial * Random.Range(0.025f, 0.11f));
-            glint.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
-                angle + Random.Range(-12f, 12f));
-            glint.transform.localScale = new Vector3(
-                Random.Range(0.055f, 0.13f),
-                Random.Range(0.006f, 0.016f),
-                1f) * Mathf.Lerp(0.85f, 1.2f, ScaledIntensity * 0.5f);
-            Vector2 velocity = radial * Random.Range(0.22f, 0.52f)
-                + Vector2.right * direction * 0.16f;
-            StartCoroutine(AnimateOpticalMote(
-                glint,
-                renderer,
-                velocity,
-                Random.Range(0.13f, 0.22f)));
         }
     }
 

@@ -327,6 +327,7 @@ public class StateManager : MonoBehaviour
 
         bool hasPlayerTile = boardManager.TryGetTileIndex(
             playerMove.transform.position,
+            playerMove.CurrentLaneIndex,
             out int playerTileIndex);
 
         if (isBattle && !hasPlayerTile)
@@ -1039,6 +1040,20 @@ public class StateManager : MonoBehaviour
                    || playerMove.IsEnemyTurnResolving))
         {
             yield return null;
+        }
+
+        // Let the final reward and finishing beat settle before hiding the battle panel.
+        // This is bounded presentation time; balances and victory are already committed.
+        float rewardWait = 0f;
+        while ((currencyManager != null && currencyManager.IsRewardPresentationActive
+                || combatFeedback != null && combatFeedback.IsFinalDefeatPresentationActive)
+               && rewardWait < 1.25f && currentState == GameFlowState.Battle)
+        {
+            yield return null;
+            if (!GamePauseController.IsPaused)
+            {
+                rewardWait += Time.unscaledDeltaTime;
+            }
         }
 
         if (currentState != GameFlowState.Battle

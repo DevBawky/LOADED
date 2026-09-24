@@ -17,6 +17,8 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private Transform tileParent;
 
     private bool isGenerated;
+    private Component focusedWarningOwner;
+    private readonly HashSet<int> urgentWarningOwners = new HashSet<int>();
     private readonly List<BoardTile> spawnedTiles = new List<BoardTile>();
     private readonly HashSet<int> persistentWarningCells = new HashSet<int>();
     private readonly Dictionary<int, HashSet<int>> warningOwnerIdsByCell =
@@ -27,6 +29,7 @@ public class BoardManager : MonoBehaviour
     public int TotalTileCount => boardCount * laneCount;
     public float BoardDistance => boardDistance;
     public float LaneDistance => laneDistance;
+    private int LaneColumnOffset => boardCount > 1 ? 1 : 0;
 
     public bool ConfigureBoard(
         int configuredBoardCount,
@@ -158,7 +161,12 @@ public class BoardManager : MonoBehaviour
             return;
         }
 
+        if (ReferenceEquals(focusedWarningOwner, owner))
+        {
+            SetWarningFocus(null);
+        }
         int ownerId = owner.GetInstanceID();
+        urgentWarningOwners.Remove(ownerId);
         List<int> changedCells = new List<int>();
 
         foreach (KeyValuePair<int, HashSet<int>> warningOwners
@@ -184,6 +192,77 @@ public class BoardManager : MonoBehaviour
         }
     }
 
+    internal void SetWarningFocus(Component owner)
+    {
+        if (ReferenceEquals(focusedWarningOwner, owner))
+        {
+            return;
+        }
+        focusedWarningOwner = owner;
+        for (int index = 0; index < spawnedTiles.Count; index++)
+        {
+            RefreshTileWarning(index);
+        }
+    }
+
+    internal void SetWarningUrgent(Component owner, bool urgent)
+    {
+        if (owner == null)
+        {
+            return;
+        }
+        int ownerId = owner.GetInstanceID();
+        bool changed = urgent ? urgentWarningOwners.Add(ownerId) : urgentWarningOwners.Remove(ownerId);
+        if (!changed)
+        {
+            return;
+        }
+        foreach (var entry in warningOwnerIdsByCell)
+        {
+            if (entry.Value.Contains(ownerId))
+            {
+                RefreshTileWarning(entry.Key);
+            }
+        }
+    }
+
+    // Normal completion leaves a visual tail; cancellation still releases immediately.
+    internal void CompleteTileWarnings(Component owner)
+    {
+        if (owner == null)
+        {
+            return;
+        }
+        int ownerId = owner.GetInstanceID();
+        var completedCells = new List<int>();
+        foreach (var entry in warningOwnerIdsByCell)
+        {
+            if (entry.Value.Contains(ownerId))
+            {
+                completedCells.Add(entry.Key);
+            }
+        }
+        ReleaseTileWarnings(owner);
+        foreach (int index in completedCells)
+        {
+            if (index < spawnedTiles.Count && spawnedTiles[index] != null)
+            {
+                spawnedTiles[index].PlayWarningAfterglow();
+            }
+        }
+    }
+
+    internal bool SetTilePreviewColor(int tileIndex, int laneIndex, Color? color)
+    {
+        int index = GetSpawnedTileIndex(tileIndex, laneIndex);
+        if (index < 0 || index >= spawnedTiles.Count || spawnedTiles[index] == null)
+        {
+            return false;
+        }
+        spawnedTiles[index].SetPreviewColor(color);
+        return true;
+    }
+
     public bool TryGetTilePosition(int tileIndex, out Vector3 worldPosition)
     {
         return TryGetTilePosition(tileIndex, 0, out worldPosition);
@@ -204,7 +283,7 @@ public class BoardManager : MonoBehaviour
             return false;
         }
 
-        float positionX = GetStartOffset() + boardDistance * tileIndex;
+        float positionX = GetStartOffset(laneIndex) + boardDistance * tileIndex;
         float positionY = GetLaneStartOffset() + laneDistance * laneIndex;
         worldPosition = tileParent.TransformPoint(
             new Vector3(positionX, positionY, 0f));
@@ -213,15 +292,24 @@ public class BoardManager : MonoBehaviour
 
     public bool TryGetTileIndex(Vector3 worldPosition, out int tileIndex)
     {
+        return TryGetTileIndex(worldPosition, 0, out tileIndex);
+    }
+
+    public bool TryGetTileIndex(
+        Vector3 worldPosition,
+        int laneIndex,
+        out int tileIndex)
+    {
         tileIndex = -1;
 
-        if (tileParent == null || boardCount <= 0 || boardDistance <= 0f)
+        if (tileParent == null || boardCount <= 0 || boardDistance <= 0f
+            || laneIndex < 0 || laneIndex >= laneCount)
         {
             return false;
         }
 
         Vector3 localPosition = tileParent.InverseTransformPoint(worldPosition);
-        float rawIndex = (localPosition.x - GetStartOffset()) / boardDistance;
+        float rawIndex = (localPosition.x - GetStartOffset(laneIndex)) / boardDistance;
         int nearestIndex = Mathf.RoundToInt(rawIndex);
 
         if (nearestIndex < 0 || nearestIndex >= boardCount
@@ -241,18 +329,37 @@ public class BoardManager : MonoBehaviour
     {
         tileDistance = 0;
 
-        if (!TryGetTileIndex(firstWorldPosition, out int firstIndex)
-            || !TryGetTileIndex(secondWorldPosition, out int secondIndex))
+        if (tileParent == null || boardDistance <= 0f)
         {
             return false;
         }
 
-        tileDistance = Mathf.Abs(firstIndex - secondIndex);
+        Vector3 first = tileParent.InverseTransformPoint(firstWorldPosition);
+        Vector3 second = tileParent.InverseTransformPoint(secondWorldPosition);
+        int firstColumn = Mathf.RoundToInt((first.x - GetStartOffset(0)) / boardDistance);
+        int secondColumn = Mathf.RoundToInt((second.x - GetStartOffset(0)) / boardDistance);
+        int columnCount = boardCount + (laneCount - 1) * LaneColumnOffset;
+        if (firstColumn < 0 || firstColumn >= columnCount
+            || secondColumn < 0 || secondColumn >= columnCount)
+        {
+            return false;
+        }
+        tileDistance = Mathf.Abs(firstColumn - secondColumn);
         return true;
     }
 
     public bool TryGetAdjacentTilePosition(
         Vector3 currentWorldPosition,
+        int direction,
+        out Vector3 targetWorldPosition)
+    {
+        return TryGetAdjacentTilePosition(currentWorldPosition, 0, direction,
+            out targetWorldPosition);
+    }
+
+    public bool TryGetAdjacentTilePosition(
+        Vector3 currentWorldPosition,
+        int laneIndex,
         int direction,
         out Vector3 targetWorldPosition)
     {
@@ -264,11 +371,13 @@ public class BoardManager : MonoBehaviour
             return false;
         }
 
-        float startOffset = GetStartOffset();
+        if (!TryGetTileIndex(currentWorldPosition, laneIndex, out int currentIndex))
+        {
+            return false;
+        }
+
+        float startOffset = GetStartOffset(laneIndex);
         Vector3 currentLocalPosition = tileParent.InverseTransformPoint(currentWorldPosition);
-        int currentIndex = Mathf.RoundToInt(
-            (currentLocalPosition.x - startOffset) / boardDistance);
-        currentIndex = Mathf.Clamp(currentIndex, 0, boardCount - 1);
 
         int moveDirection = direction > 0 ? 1 : -1;
         int targetIndex = currentIndex + moveDirection;
@@ -293,7 +402,8 @@ public class BoardManager : MonoBehaviour
         targetLaneIndex = currentLaneIndex;
         targetWorldPosition = Vector3.zero;
 
-        if (direction == 0)
+        if (direction == 0 || currentLaneIndex < 0 || currentLaneIndex >= laneCount
+            || tileIndex < 0 || tileIndex >= boardCount)
         {
             return false;
         }
@@ -301,7 +411,7 @@ public class BoardManager : MonoBehaviour
         targetLaneIndex += direction > 0 ? 1 : -1;
 
         if (!TryGetTilePosition(
-                tileIndex,
+                tileIndex + (currentLaneIndex - targetLaneIndex) * LaneColumnOffset,
                 targetLaneIndex,
                 out targetWorldPosition))
         {
@@ -318,6 +428,17 @@ public class BoardManager : MonoBehaviour
         int range,
         out Vector3 targetWorldPosition)
     {
+        return TryGetRangedTilePosition(currentWorldPosition, 0, direction,
+            range, out targetWorldPosition);
+    }
+
+    public bool TryGetRangedTilePosition(
+        Vector3 currentWorldPosition,
+        int laneIndex,
+        int direction,
+        int range,
+        out Vector3 targetWorldPosition)
+    {
         targetWorldPosition = currentWorldPosition;
 
         if (tileParent == null || boardCount <= 0 || boardDistance <= 0f
@@ -326,11 +447,13 @@ public class BoardManager : MonoBehaviour
             return false;
         }
 
-        float startOffset = GetStartOffset();
+        if (!TryGetTileIndex(currentWorldPosition, laneIndex, out int currentIndex))
+        {
+            return false;
+        }
+
+        float startOffset = GetStartOffset(laneIndex);
         Vector3 currentLocalPosition = tileParent.InverseTransformPoint(currentWorldPosition);
-        int currentIndex = Mathf.RoundToInt(
-            (currentLocalPosition.x - startOffset) / boardDistance);
-        currentIndex = Mathf.Clamp(currentIndex, 0, boardCount - 1);
 
         int moveDirection = direction > 0 ? 1 : -1;
         int targetIndex = Mathf.Clamp(
@@ -393,21 +516,26 @@ public class BoardManager : MonoBehaviour
 
         isGenerated = true;
         spawnedTiles.Clear();
-        float startOffset = GetStartOffset();
         float laneStartOffset = GetLaneStartOffset();
 
         for (int laneIndex = 0; laneIndex < laneCount; laneIndex++)
         {
             float positionY = laneStartOffset + laneDistance * laneIndex;
+            float startOffset = GetStartOffset(laneIndex);
 
             for (int tileIndex = 0; tileIndex < boardCount; tileIndex++)
             {
                 float positionX = startOffset + boardDistance * tileIndex;
                 BoardTile tile = Instantiate(tilePrefab, tileParent);
+                tile.SetWarningActive(false);
 
                 tile.transform.SetLocalPositionAndRotation(
                     new Vector3(positionX, positionY, 0f),
                     Quaternion.identity);
+                tile.ConfigureGrid(boardDistance, laneDistance,
+                    tileIndex == 0, tileIndex == boardCount - 1,
+                    laneIndex == 0 || LaneColumnOffset > 0 && tileIndex == boardCount - 1,
+                    laneIndex == laneCount - 1 || LaneColumnOffset > 0 && tileIndex == 0);
                 spawnedTiles.Add(tile);
             }
         }
@@ -429,6 +557,8 @@ public class BoardManager : MonoBehaviour
         spawnedTiles.Clear();
         persistentWarningCells.Clear();
         warningOwnerIdsByCell.Clear();
+        urgentWarningOwners.Clear();
+        focusedWarningOwner = null;
         isGenerated = false;
         GenerateBoard();
     }
@@ -447,11 +577,24 @@ public class BoardManager : MonoBehaviour
             && ownerIds.Count > 0;
         spawnedTiles[spawnedTileIndex].SetWarningActive(
             persistentWarningCells.Contains(spawnedTileIndex) || hasOwner);
+        spawnedTiles[spawnedTileIndex].SetWarningEmphasized(
+            hasOwner && focusedWarningOwner != null
+            && ownerIds.Contains(focusedWarningOwner.GetInstanceID()));
+        spawnedTiles[spawnedTileIndex].SetWarningUrgent(
+            hasOwner && ownerIds.Overlaps(urgentWarningOwners));
     }
 
-    private float GetStartOffset()
+    // Local tile IDs stay stable for saves; columns describe physical alignment.
+    public int GetColumnIndex(int tileIndex, int laneIndex)
     {
-        return -(boardCount - 1) * boardDistance * 0.5f;
+        return tileIndex + laneIndex * LaneColumnOffset;
+    }
+
+    private float GetStartOffset(int laneIndex)
+    {
+        return (laneIndex * LaneColumnOffset
+            - (boardCount - 1 + (laneCount - 1) * LaneColumnOffset) * 0.5f)
+            * boardDistance;
     }
 
     private float GetLaneStartOffset()

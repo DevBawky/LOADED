@@ -78,6 +78,7 @@ public partial class PlayerShoot : MonoBehaviour
         {
             Enemy = enemy;
             RemainingHealth = enemy == null ? 0 : enemy.CurrentHealth;
+            LaneIndex = enemy == null ? 0 : enemy.CurrentLaneIndex;
             StatusStacks = new int[
                 StatusEffectController.StackableStatusTypeCount];
             Segments = new List<
@@ -100,6 +101,7 @@ public partial class PlayerShoot : MonoBehaviour
         public EnemyController Enemy { get; }
         public int RemainingHealth { get; set; }
         public int TileIndex { get; set; } = -1;
+        public int LaneIndex { get; }
         public int[] StatusStacks { get; }
         public bool WasHitThisTurn { get; set; }
         public bool IsExposed { get; set; }
@@ -363,10 +365,13 @@ public partial class PlayerShoot : MonoBehaviour
                     waveManager != null
                         && waveManager.ActiveEnemies.Count <= 1,
                     GetCurrentCylinderBuild(),
-                    healthBeforeDamage);
+                    healthBeforeDamage,
+                    true,
+                    enemy.LastDamageAbsorbed);
         CombatPresentation.EnemySnapshot snapshot = combatPresentation == null
             ? default
             : combatPresentation.CaptureEnemy(enemy);
+        snapshot.OverkillStrength = presentationCue.OverkillStrength;
         combatPresentation?.PlayImpact(
             snapshot,
             horizontalDirection,
@@ -506,7 +511,7 @@ public partial class PlayerShoot : MonoBehaviour
         BulletInstance firstBullet = deckManager.LoadedBullets[firstBulletIndex];
 
         if (firstBullet == null
-            || !boardManager.TryGetTileIndex(transform.position, out _))
+            || !boardManager.TryGetTileIndex(transform.position, playerMove == null ? 0 : playerMove.CurrentLaneIndex, out _))
         {
             return;
         }
@@ -667,6 +672,14 @@ public partial class PlayerShoot : MonoBehaviour
         return BulletEffectUtility.IsBoardWideShot(bullet);
     }
 
+    internal static bool CanPlayerEffectTargetLane(
+        int sourceLaneIndex,
+        int targetLaneIndex,
+        bool isBoardWide)
+    {
+        return isBoardWide || sourceLaneIndex == targetLaneIndex;
+    }
+
     private void SortTargetsByTileIndex(List<EnemyController> targets)
     {
         if (boardManager == null)
@@ -680,9 +693,11 @@ public partial class PlayerShoot : MonoBehaviour
             int secondIndex = 0;
             bool hasFirst = first != null && boardManager.TryGetTileIndex(
                 first.transform.position,
+                first.CurrentLaneIndex,
                 out firstIndex);
             bool hasSecond = second != null && boardManager.TryGetTileIndex(
                 second.transform.position,
+                second.CurrentLaneIndex,
                 out secondIndex);
 
             if (!hasFirst || !hasSecond)
@@ -690,7 +705,8 @@ public partial class PlayerShoot : MonoBehaviour
                 return hasFirst == hasSecond ? 0 : hasFirst ? -1 : 1;
             }
 
-            return firstIndex.CompareTo(secondIndex);
+            return boardManager.GetColumnIndex(firstIndex, first.CurrentLaneIndex)
+                .CompareTo(boardManager.GetColumnIndex(secondIndex, second.CurrentLaneIndex));
         });
     }
 
@@ -698,6 +714,7 @@ public partial class PlayerShoot : MonoBehaviour
     {
         if (boardManager.TryGetRangedTilePosition(
                 transform.position,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 horizontalDirection,
                 maxRange,
                 out Vector3 rangedTilePosition))

@@ -212,14 +212,51 @@ public sealed class WaveManagerActiveEnemyLimitTests
     [TestCase(13, 5)]
     [TestCase(9, 3)]
     [TestCase(10, 4)]
-    [TestCase(1, 1)]
-    public void ActiveEnemyLimitRoundsThirtyFivePercentOfBoardCount(
-        int boardCount,
+    [TestCase(14, 5)]
+    [TestCase(16, 6)]
+    [TestCase(22, 8)]
+    [TestCase(26, 10)]
+    [TestCase(3, 1)]
+    [TestCase(2, 0)]
+    [TestCase(1, 0)]
+    [TestCase(0, 0)]
+    [TestCase(-1, 0)]
+    [TestCase(int.MaxValue, 858993458)]
+    public void ActiveEnemyLimitFloorsFortyPercentOfTotalTiles(
+        int totalTileCount,
         int expectedMaximumEnemyCount)
     {
         Assert.That(
-            WaveManager.CalculateMaximumActiveEnemyCount(boardCount),
+            WaveManager.CalculateMaximumActiveEnemyCount(totalTileCount),
             Is.EqualTo(expectedMaximumEnemyCount));
+    }
+
+    [TestCase(5, 2, 4)]
+    [TestCase(7, 2, 5)]
+    [TestCase(8, 2, 6)]
+    [TestCase(7, 3, 8)]
+    [TestCase(7, 1, 2)]
+    public void ConfiguredLimitUsesAllExistingLanes(int columns, int lanes, int expected)
+    {
+        GameObject root = new GameObject("Enemy Capacity Test");
+        try
+        {
+            BoardManager board = root.AddComponent<BoardManager>();
+            WaveManager waves = root.AddComponent<WaveManager>();
+            var boardFields = new SerializedObject(board);
+            boardFields.FindProperty("boardCount").intValue = columns;
+            boardFields.FindProperty("laneCount").intValue = lanes;
+            boardFields.ApplyModifiedPropertiesWithoutUndo();
+            var waveFields = new SerializedObject(waves);
+            waveFields.FindProperty("boardManager").objectReferenceValue = board;
+            waveFields.ApplyModifiedPropertiesWithoutUndo();
+            typeof(WaveManager).GetMethod("ConfigureMaximumActiveEnemyCount",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                .Invoke(waves, null);
+            Assert.That(waves.MaximumActiveEnemyCount, Is.EqualTo(expected));
+            Assert.That(waves.IsActiveEnemyLimitReached, Is.False);
+        }
+        finally { UnityEngine.Object.DestroyImmediate(root); }
     }
 
     [TestCase(-1, 2, 2)]
@@ -261,7 +298,7 @@ public sealed class WaveManagerActiveEnemyLimitTests
 public sealed class DuelClockBattleAssetTests
 {
     [Test]
-    public void EveryBattleUsesDuelClockAndFlattenedEnemyPool()
+    public void EveryBattleUsesDuelClockAndAValidEnemyPool()
     {
         string[] battleGuids = AssetDatabase.FindAssets(
             "t:BattleData",
@@ -287,10 +324,31 @@ public sealed class DuelClockBattleAssetTests
 
             Assert.That(battle.PacingMode,
                 Is.EqualTo(CombatPacingMode.DuelClock), assetPath);
-            Assert.That(battle.DuelClockEnemyPool.Count,
-                Is.EqualTo(flattenedEnemyCount), assetPath);
-            Assert.That(battle.DuelClockEnemyPool,
-                Has.None.Null, assetPath);
+            if (battle.DuelClockEnemySpawnEntries.Count > 0)
+            {
+                int minimumSpawnCount = 0;
+
+                foreach (DuelClockEnemySpawnEntry entry in
+                         battle.DuelClockEnemySpawnEntries)
+                {
+                    Assert.That(entry, Is.Not.Null, assetPath);
+                    Assert.That(entry.EnemyData, Is.Not.Null, assetPath);
+                    Assert.That(entry.Weight, Is.GreaterThan(0f), assetPath);
+                    minimumSpawnCount += entry.MinimumSpawnCount;
+                }
+
+                Assert.That(
+                    battle.DuelClockEnemySpawnCount,
+                    Is.GreaterThanOrEqualTo(minimumSpawnCount),
+                    assetPath);
+            }
+            else
+            {
+                Assert.That(battle.DuelClockEnemyPool.Count,
+                    Is.EqualTo(flattenedEnemyCount), assetPath);
+                Assert.That(battle.DuelClockEnemyPool,
+                    Has.None.Null, assetPath);
+            }
         }
     }
 }
@@ -1646,7 +1704,22 @@ public sealed class WaveManagerMovementReservationTests
         Assert.That(waveManager.IsResolvingTurn, Is.True);
 
         UnityEngine.Object.DestroyImmediate(source);
-        yield return null;
+        System.Reflection.MethodInfo resolveMethod = typeof(WaveManager)
+            .GetMethod(
+                "ResolveDetachedEnemyAttack",
+                System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic);
+        Assert.That(resolveMethod, Is.Not.Null);
+        IEnumerator detachedRoutine = resolveMethod.Invoke(
+            waveManager,
+            new object[] { ResolveAttack(), attackVisual }) as IEnumerator;
+        Assert.That(detachedRoutine, Is.Not.Null);
+
+        while (detachedRoutine.MoveNext())
+        {
+            yield return detachedRoutine.Current;
+        }
+
         yield return null;
 
         Assert.That(attackResolved, Is.True);

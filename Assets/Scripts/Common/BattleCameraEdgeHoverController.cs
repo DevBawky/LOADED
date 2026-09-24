@@ -160,12 +160,7 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
     private void UpdateAreaAvailability()
     {
-        if (boardManager.BoardCount <= 0
-            || !boardManager.TryGetTilePosition(
-                0,
-                out Vector3 firstTilePosition)
-            || !boardManager.TryGetTilePosition(
-                boardManager.BoardCount - 1,
+        if (!TryGetBoardEdges(out Vector3 firstTilePosition,
                 out Vector3 lastTilePosition))
         {
             SetAreaActive(leftArea, true);
@@ -275,10 +270,7 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
     private void FocusBoardEdge(HoveredEdge edge)
     {
-        if (boardManager.BoardCount < 2
-            || !boardManager.TryGetTilePosition(0, out Vector3 firstTilePosition)
-            || !boardManager.TryGetTilePosition(
-                boardManager.BoardCount - 1,
+        if (!TryGetBoardEdges(out Vector3 firstTilePosition,
                 out Vector3 lastTilePosition))
         {
             RestorePlayerFocus();
@@ -342,6 +334,29 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
         hoveredEdge = HoveredEdge.None;
         playerTarget = null;
+    }
+
+    private bool TryGetBoardEdges(out Vector3 left, out Vector3 right)
+    {
+        left = right = Vector3.zero;
+        if (boardManager == null || !boardManager.TryGetTilePosition(0, 0, out left))
+        {
+            return false;
+        }
+
+        right = left;
+        for (int lane = 0; lane < boardManager.LaneCount; lane++)
+        {
+            for (int end = 0; end < 2; end++)
+            {
+                if (!boardManager.TryGetTilePosition(
+                        end == 0 ? 0 : boardManager.BoardCount - 1, lane,
+                        out Vector3 position)) continue;
+                if (position.x < left.x) left = position;
+                if (position.x > right.x) right = position;
+            }
+        }
+        return true;
     }
 
     private void EnsureEdgeTarget()

@@ -17,6 +17,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private const string CurrentDamageTextName = "Text | Current Damage";
     private const string DodgeSfxId = "SFX_Evade";
     private const float BaseKillTier = 0.12f;
+    private static readonly int FinalDefeatInversionId =
+        Shader.PropertyToID("_FinalDefeatInversion");
     private static readonly int FullscreenCentersId =
         Shader.PropertyToID("_KillImpactCenters");
     private static readonly int FullscreenDirectionsId =
@@ -60,16 +62,19 @@ public sealed class CombatFeedbackController : MonoBehaviour
         public DefeatPresentationCue(
             float feedbackMultiplier,
             float presentationTime,
-            bool wasFinalEnemy)
+            bool wasFinalEnemy,
+            float overkillStrength = 0f)
         {
             FeedbackMultiplier = Mathf.Max(0f, feedbackMultiplier);
             PresentationTime = Mathf.Max(0f, presentationTime);
             WasFinalEnemy = wasFinalEnemy;
+            OverkillStrength = Mathf.Clamp01(overkillStrength);
         }
 
         public float FeedbackMultiplier { get; }
         public float PresentationTime { get; }
         public bool WasFinalEnemy { get; }
+        public float OverkillStrength { get; }
     }
 
     private readonly struct DefeatFeedbackRequest
@@ -81,7 +86,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
             float feedbackMultiplier,
             float baseIntensity,
             float amplifiedIntensity,
-            bool showComboText)
+            bool showComboText,
+            float overkillStrength)
         {
             WorldPosition = worldPosition;
             HorizontalDirection = horizontalDirection;
@@ -90,6 +96,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             BaseIntensity = baseIntensity;
             AmplifiedIntensity = amplifiedIntensity;
             ShowComboText = showComboText;
+            OverkillStrength = overkillStrength;
         }
 
         public Vector3 WorldPosition { get; }
@@ -99,6 +106,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         public float BaseIntensity { get; }
         public float AmplifiedIntensity { get; }
         public bool ShowComboText { get; }
+        public float OverkillStrength { get; }
     }
 
     [Header("Combo")]
@@ -358,6 +366,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private bool ownsTimeScale;
     private float hitStopRemaining;
     private bool slowMotionActive;
+    private bool finalDefeatSlowMotionActive;
     private float slowMotionStartScale = 1f;
     private float slowMotionCurrentScale = 1f;
     private float slowMotionTargetScale = 1f;
@@ -376,6 +385,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private CurrencyManager currencyManager;
     private readonly List<GameObject> spawnedComboTexts =
         new List<GameObject>();
+    private readonly System.Random comboTextColorRandom = new System.Random();
     private readonly List<GameObject> activeDodgeAfterimages =
         new List<GameObject>();
     private Coroutine dodgeTrailCoroutine;
@@ -383,6 +393,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
     public event System.Action<int, int, float> DefeatPerformanceRecorded;
 
     public int ComboCount => comboCount;
+    internal bool IsFinalDefeatPresentationActive =>
+        isActiveAndEnabled && finalDefeatSlowMotionActive;
     public float NextFiringSequenceDefeatFeedbackMultiplier =>
         GetFiringSequenceFeedbackMultiplier(
             firingSequenceDefeatCount >= int.MaxValue
@@ -481,6 +493,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 HandleDuelClockBeatsCommitted;
             waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
             waveManager.EnemyTurnCycleCompleted += HandleCountCompleted;
+            waveManager.FinalEnemyDefeated -= HandleFinalEnemyDefeated;
+            waveManager.FinalEnemyDefeated += HandleFinalEnemyDefeated;
         }
     }
 
@@ -518,6 +532,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             waveManager.DuelClockBeatsCommitted -=
                 HandleDuelClockBeatsCommitted;
             waveManager.EnemyTurnCycleCompleted -= HandleCountCompleted;
+            waveManager.FinalEnemyDefeated -= HandleFinalEnemyDefeated;
         }
 
         StopCountDrainAnimation();
@@ -530,6 +545,30 @@ public sealed class CombatFeedbackController : MonoBehaviour
         ClearDodgeAfterimages();
         defeatPresentationGeneration++;
         nextDefeatPresentationTime = defeatPresentationClock;
+    }
+
+    private void HandleFinalEnemyDefeated(EnemyController enemy)
+    {
+        if (GamePauseController.IsPaused || finalDefeatSlowMotionActive)
+        {
+            return;
+        }
+
+        // Share the existing time-effect owner so pause and accessibility still restore correctly.
+        RequestHitStop(0.065f);
+        StartVolumePulse(0.9f);
+        float timeMultiplier = CombatAccessibilitySettings.TimeEffectMultiplier;
+        if (timeMultiplier <= 0f)
+        {
+            return;
+        }
+
+        // The finale has an exact requested speed; the time-effects opt-out still applies.
+        StartSlowMotion(1f, 0.05f, 0.5f, 0.12f, 1f / timeMultiplier);
+        finalDefeatSlowMotionActive = true;
+        slowMotionAttackDuration = 0f;
+        slowMotionCurrentScale = slowMotionTargetScale;
+        UpdateFinalDefeatInversion();
     }
 
     private void OnDestroy() => CancelSlowMotionAndRestore();
@@ -789,7 +828,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         bool wasFinalEnemy,
         float cylinderBuild,
         int targetHealthBeforeDamage = -1,
-        bool countsForFiringSequence = true)
+        bool countsForFiringSequence = true,
+        int targetShieldBeforeDamage = 0)
     {
         comboCount = comboCount >= int.MaxValue
             ? int.MaxValue
@@ -865,6 +905,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float presentationDelay = ReserveDefeatPresentationDelay(
             defeatPresentationClock,
             defeatPresentationInterval);
+        float overkillStrength = CombatPresentation.CalculateOverkillStrength(
+            appliedDamage, targetHealthBeforeDamage, targetShieldBeforeDamage);
         DefeatFeedbackRequest request = new DefeatFeedbackRequest(
             worldPosition,
             horizontalDirection,
@@ -872,7 +914,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
             defeatFeedbackMultiplier,
             baseIntensity,
             amplifiedIntensity,
-            countsForFiringSequence);
+            countsForFiringSequence,
+            overkillStrength);
 
         if (presentationDelay <= 0f)
         {
@@ -889,7 +932,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         return new DefeatPresentationCue(
             defeatFeedbackMultiplier,
             defeatPresentationClock + presentationDelay,
-            wasFinalEnemy);
+            wasFinalEnemy,
+            overkillStrength);
     }
 
     public float GetRemainingDefeatPresentationDelay(
@@ -949,6 +993,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void PlayDefeatFeedback(DefeatFeedbackRequest request)
     {
+        SoundManager.PlayOverkillAccent(request.OverkillStrength);
         SoundManager.PlayComboDie(
             Mathf.Max(1, request.FiringSequenceDefeatCount));
         comboPunchRemaining = 0.3f;
@@ -1012,7 +1057,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
             waveManager != null && waveManager.ActiveEnemies.Count <= 1,
             0f,
             Mathf.Max(0, healthBeforeDamage),
-            false);
+            false,
+            enemy.LastDamageAbsorbed);
+        snapshot.OverkillStrength = cue.OverkillStrength;
         presentation?.PlayImpact(
             snapshot,
             horizontalDirection,
@@ -1038,6 +1085,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
             2 => secondKillTextColor,
             _ => highComboTextColor
         };
+        if (cylinderKillCount >= 4)
+        {
+            color = Color.HSVToRGB((float)comboTextColorRandom.NextDouble(), 0.72f, 1f);
+        }
         float sequenceGrowth = 1f + Mathf.Min(
             maximumComboTextScaleBonus,
             Mathf.Max(0, cylinderKillCount - 1) * 0.025f);
@@ -1060,7 +1111,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
             color,
             worldPosition,
             comboGrowth,
-            duration);
+            duration,
+            useComboShader: cylinderKillCount >= 4);
     }
 
     public void RecordKickReady(Vector3 worldPosition)
@@ -1160,7 +1212,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float scaleMultiplier,
         float duration,
         int horizontalDirection = 0,
-        bool useDodgeMotion = false)
+        bool useDodgeMotion = false,
+        bool useComboShader = false)
     {
         TextMeshPro text;
         GameObject textObject;
@@ -1198,6 +1251,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         text.rectTransform.sizeDelta = textAreaSize;
         color.a = 1f;
         text.color = color;
+        if (useComboShader)
+        {
+            // Reuse the neutral shimmer so every high combo retains its chosen hue.
+            BulletTypeTextEffect.Apply(text, BulletType.Normal);
+        }
         textObject.transform.position = worldPosition
             + new Vector3(0f, 0.72f, -1f);
         Vector3 targetScale = prefabScale * Mathf.Max(0.01f, scaleMultiplier);
@@ -2473,7 +2531,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float recoveryDuration,
         float strengthMultiplier = 1f)
     {
-        if (GamePauseController.IsPaused)
+        if (GamePauseController.IsPaused || finalDefeatSlowMotionActive)
         {
             return;
         }
@@ -2512,7 +2570,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     private void StartDodgeSlowMotion()
     {
-        if (GamePauseController.IsPaused)
+        if (GamePauseController.IsPaused || finalDefeatSlowMotionActive)
         {
             return;
         }
@@ -2582,7 +2640,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     public void RequestHitStop(float duration)
     {
-        if (GamePauseController.IsPaused)
+        if (GamePauseController.IsPaused || finalDefeatSlowMotionActive)
         {
             return;
         }
@@ -2697,7 +2755,9 @@ public sealed class CombatFeedbackController : MonoBehaviour
                         ? slowMotionSecondaryTargetScale
                         : slowMotionTargetScale,
                     slowMotionBaseScale,
-                    Mathf.SmoothStep(0f, 1f, progress));
+                    finalDefeatSlowMotionActive
+                        ? 1f - Mathf.Pow(1f - progress, 3f)
+                        : Mathf.SmoothStep(0f, 1f, progress));
             }
             else
             {
@@ -2706,6 +2766,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             }
 
             Time.timeScale = slowMotionCurrentScale;
+            UpdateFinalDefeatInversion();
         }
 
         RestoreSlowMotion();
@@ -2721,6 +2782,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
         hitStopRemaining = 0f;
         slowMotionActive = false;
+        finalDefeatSlowMotionActive = false;
+        Shader.SetGlobalFloat(FinalDefeatInversionId, 0f);
         slowMotionElapsed = 0f;
         slowMotionCurrentScale = slowMotionBaseScale;
         slowMotionHasSecondaryPhase = false;
@@ -2728,6 +2791,17 @@ public sealed class CombatFeedbackController : MonoBehaviour
         slowMotionSecondaryTransitionDuration = 0f;
         slowMotionSecondaryHoldDuration = 0f;
         ownsTimeScale = false;
+    }
+
+    private void UpdateFinalDefeatInversion()
+    {
+        float duration = slowMotionHoldDuration + slowMotionRecoveryDuration;
+        float progress = duration > 0f ? Mathf.Clamp01(slowMotionElapsed / duration) : 1f;
+        float flashStrength = Mathf.Clamp01(CombatAccessibilitySettings.FlashMultiplier * 2f);
+        Shader.SetGlobalFloat(FinalDefeatInversionId,
+            finalDefeatSlowMotionActive && fullscreenImpactEnabled
+                ? (1f - Mathf.SmoothStep(0f, 1f, progress)) * flashStrength * 0.3f
+                : 0f);
     }
 
     private void CancelSlowMotionAndRestore()

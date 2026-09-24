@@ -32,11 +32,21 @@ public class EnemyActionQueueUI : MonoBehaviour
     [Header("Fallback")]
     [SerializeField] private Color missingIconColor = Color.red;
 
+    [Header("Lane Layout")]
+    [SerializeField, Min(0f)] private float laneVerticalSeparation = 2f;
+
     private readonly List<Image> spawnedIcons = new List<Image>();
     private Material stunnedQueueMaterial;
     private bool isPrepared;
     private bool isStunned;
     private int displayRevision;
+    private bool hasCapturedQueuePosition;
+    private Vector2 baseQueuePosition;
+    private Outline hoverOutline;
+    private bool isHovered;
+    private bool originalOutlineEnabled;
+    private Color originalOutlineColor;
+    private Vector2 originalOutlineDistance;
 
     public int IconCount => spawnedIcons.Count;
     public Sprite NormalQueueSprite => normalQueueSprite;
@@ -45,6 +55,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     private void Awake()
     {
+        CaptureBaseQueuePosition();
         EnsureReadyImage();
         ResetDisplay();
     }
@@ -55,6 +66,47 @@ public class EnemyActionQueueUI : MonoBehaviour
         {
             Destroy(stunnedQueueMaterial);
         }
+    }
+
+    internal void SetHovered(bool hovered)
+    {
+        if (hovered == isHovered)
+        {
+            return;
+        }
+        isHovered = hovered;
+        if (queueImage == null)
+        {
+            return;
+        }
+        if (hovered)
+        {
+            hoverOutline = queueImage.GetComponent<Outline>();
+            if (hoverOutline == null)
+            {
+                hoverOutline = queueImage.gameObject.AddComponent<Outline>();
+                hoverOutline.enabled = false;
+            }
+            originalOutlineEnabled = hoverOutline.enabled;
+            originalOutlineColor = hoverOutline.effectColor;
+            originalOutlineDistance = hoverOutline.effectDistance;
+            hoverOutline.effectColor = new Color(1f, 0.94f, 0.72f, 1f);
+            Vector2 size = queueImage.rectTransform.rect.size;
+            float thickness = Mathf.Max(0.001f, Mathf.Min(size.x, size.y) * 0.05f);
+            hoverOutline.effectDistance = new Vector2(thickness, -thickness);
+            hoverOutline.enabled = true;
+        }
+        else if (hoverOutline != null)
+        {
+            hoverOutline.effectColor = originalOutlineColor;
+            hoverOutline.effectDistance = originalOutlineDistance;
+            hoverOutline.enabled = originalOutlineEnabled;
+        }
+    }
+
+    private void OnDisable()
+    {
+        SetHovered(false);
     }
 
     public void ShowQueue()
@@ -69,6 +121,20 @@ public class EnemyActionQueueUI : MonoBehaviour
         queueImage.gameObject.SetActive(true);
         RefreshEmphasis();
         RefreshQueueWidth();
+    }
+
+    public void ApplyLaneLayout(int laneIndex)
+    {
+        if (queueImage == null)
+        {
+            return;
+        }
+
+        CaptureBaseQueuePosition();
+        queueImage.rectTransform.anchoredPosition = baseQueuePosition
+            + Vector2.up * Mathf.Max(0, laneIndex)
+                * laneVerticalSeparation;
+        SyncReadyImageRect();
     }
 
     public bool AddAttackIcon(EnemyActionData actionData)
@@ -271,6 +337,17 @@ public class EnemyActionQueueUI : MonoBehaviour
         }
 
         queueImage.color = Color.white;
+    }
+
+    private void CaptureBaseQueuePosition()
+    {
+        if (hasCapturedQueuePosition || queueImage == null)
+        {
+            return;
+        }
+
+        baseQueuePosition = queueImage.rectTransform.anchoredPosition;
+        hasCapturedQueuePosition = true;
     }
 
     private void EnsureReadyImage()

@@ -33,6 +33,8 @@ public sealed class SoundManager : MonoBehaviour
     private bool gameOverBgmLocked;
     private int lastBgmIndex = -1;
     private AudioClip lastKnownBgmClip;
+    private float nextPenetrationAccentTime;
+    private float nextOverkillAccentTime;
     private int lastKnownBgmTimeSamples;
     private SoundtrackDirector soundtrackDirector;
     private UiButtonFeedbackInstaller uiButtonFeedbackInstaller;
@@ -201,6 +203,34 @@ public sealed class SoundManager : MonoBehaviour
         {
             manager.PlayOneShot(clip, pitch, volume, mixerGroup);
         }
+    }
+
+    internal static void PlayPenetrationAccent(int penetrationIndex)
+    {
+        SoundManager manager = Instance;
+        manager.PlayCombatAccent("SFX_Enemy_Hit",
+            1.2f + Mathf.Clamp(penetrationIndex - 1, 0, 4) * 0.08f,
+            0.3f, ref manager.nextPenetrationAccentTime);
+    }
+
+    internal static void PlayOverkillAccent(float strength)
+    {
+        if (strength <= 0f) return;
+        SoundManager manager = Instance;
+        float amount = Mathf.Clamp01(strength);
+        manager.PlayCombatAccent("SFX_Enemy_Die", Mathf.Lerp(0.9f, 0.7f, amount),
+            Mathf.Lerp(0.15f, 0.4f, amount), ref manager.nextOverkillAccentTime);
+    }
+
+    private void PlayCombatAccent(string id, float pitch, float volume, ref float nextTime)
+    {
+        if (Time.unscaledTime < nextTime || GamePauseController.IsPaused
+            || clipLibrary == null || !clipLibrary.TryGetFixedSfx(id,
+                out AudioClip clip, out float authoredVolume,
+                out UnityEngine.Audio.AudioMixerGroup mixerGroup)) return;
+        // Presentation accents must not consume the combat RNG stream.
+        nextTime = Time.unscaledTime + 0.08f;
+        PlayOneShot(clip, pitch, authoredVolume * volume, mixerGroup);
     }
 
     internal static float CalculateFiringSequenceKillPitch(
