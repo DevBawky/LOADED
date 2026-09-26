@@ -14,15 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_distributor
   displayName: "\uBD84\uBC30"
-  description: "누적 피해 보너스 100%를 남은 탄환 전체에 분배\n발사 시 파괴 (10%)"
+  description: "\uB204\uC801 \uD53C\uD574 \uBCF4\uB108\uC2A4 100%\uB97C \uB0A8\uC740
+    \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
+    (10%)"
   cylinderIcon: {fileID: -9192586164993529986, guid: 81c43afc203a57d4dbadd0567903f9e7, type: 3}
   price: 10
   grade: 2
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 10
   maxRange: 4
   criticalChance: 15
@@ -46,6 +50,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 0.12, g: 0.13, b: 0.15, a: 1}
@@ -54,7 +59,9 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "누적 피해 보너스 110%를 남은 탄환 전체에 분배\n발사 시 파괴 (6%)"
+  - description: "\uB204\uC801 \uD53C\uD574 \uBCF4\uB108\uC2A4 110%\uB97C \uB0A8\uC740
+      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
+      (6%)"
     damage: 14
     maxRange: 4
     criticalChance: 18
@@ -78,13 +85,14 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.12, g: 0.13, b: 0.15, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "누적 피해 보너스 125%를 남은 탄환 전체에 분배\n발사 시 파괴 (3%)"
+  - description: "\uB204\uC801 \uD53C\uD574 \uBCF4\uB108\uC2A4 125%\uB97C \uB0A8\uC740
+      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
+      (3%)"
     damage: 18
     maxRange: 5
     criticalChance: 22
@@ -108,13 +116,14 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.12, g: 0.13, b: 0.15, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "누적 피해 보너스 150%를 남은 탄환 전체에 분배\n발사 시 파괴 (1%)\n재장전 시 턴 소모 없음"
+  - description: "\uB204\uC801 \uD53C\uD574 \uBCF4\uB108\uC2A4 150%\uB97C \uB0A8\uC740
+      \uD0C4\uD658 \uC804\uCCB4\uC5D0 \uBD84\uBC30\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
+      (1%)\n\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 24
     maxRange: 5
     criticalChance: 28
@@ -139,9 +148,8 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 0
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.12, g: 0.13, b: 0.15, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.12
     upgradeCost: 0

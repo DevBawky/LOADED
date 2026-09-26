@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_venom
   displayName: "\uBCA0\uB188"
-  description: "독 +3"
+  description: "\uB3C5 +3"
   cylinderIcon: {fileID: -7888405720569401456, guid: cadb44fc37a6a8642923b53918727dd0, type: 3}
   price: 6
   grade: 1
@@ -24,6 +24,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 4
   maxRange: 3
   criticalChance: 20
@@ -35,8 +36,11 @@ MonoBehaviour:
     stackCount: 3
     knockbackDistance: 1
     amount: 1
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
   secondaryLineColor: {r: 0, g: 0.9, b: 0.18, a: 1}
@@ -45,7 +49,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "독 +5"
+  - description: "\uB3C5 +5"
     damage: 6
     maxRange: 3
     criticalChance: 30
@@ -57,15 +61,17 @@ MonoBehaviour:
       stackCount: 5
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0, g: 0.9, b: 0.18, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "독 +7\n치명타 시 추가로 독 +3\n연속 관통 (50%)"
+  - description: "\uB3C5 +7\n\uCE58\uBA85\uD0C0 \uC2DC \uCD94\uAC00\uB85C \uB3C5
+      +3\n\uC5F0\uC18D \uAD00\uD1B5 (50%)"
     damage: 8
     maxRange: 4
     criticalChance: 50
@@ -77,6 +83,8 @@ MonoBehaviour:
       stackCount: 7
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -86,18 +94,20 @@ MonoBehaviour:
         stackCount: 3
         knockbackDistance: 0
         amount: 0
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances:
     - chance: 50
     - chance: 50
     - chance: 50
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0, g: 0.9, b: 0.18, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "독 +10\n치명타 시 추가로 독 +5\n연속 관통 (70%)"
+  - description: "\uB3C5 +10\n\uCE58\uBA85\uD0C0 \uC2DC \uCD94\uAC00\uB85C \uB3C5
+      +5\n\uC5F0\uC18D \uAD00\uD1B5 (70%)"
     damage: 10
     maxRange: 5
     criticalChance: 65
@@ -109,6 +119,8 @@ MonoBehaviour:
       stackCount: 10
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -118,15 +130,16 @@ MonoBehaviour:
         stackCount: 5
         knockbackDistance: 0
         amount: 0
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances:
     - chance: 70
     - chance: 70
     - chance: 70
     - chance: 70
     - chance: 70
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0, g: 0.9, b: 0.18, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 0

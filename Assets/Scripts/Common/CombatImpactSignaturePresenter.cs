@@ -450,9 +450,9 @@ internal sealed class CombatImpactSignaturePresenter
             root.transform.localScale = Vector3.one
                 * Mathf.Lerp(0.68f, 1.08f, lockProgress)
                 * Mathf.Lerp(1f, 1.18f, progress);
-            root.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                root.transform,
+                null,
                 horizontalDirection * pulse * 2.5f);
             chamberRoot.localScale = Vector3.one
                 * Mathf.Lerp(1.48f, 0.86f, lockProgress)
@@ -643,9 +643,9 @@ internal sealed class CombatImpactSignaturePresenter
                 * direction
                 * 0.055f
                 * Mathf.Sin(progress * Mathf.PI);
-            root.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                root.transform,
+                null,
                 direction * progress * 13f);
             ApplyAlpha(renderers, startColors, envelope);
         }
@@ -768,9 +768,9 @@ internal sealed class CombatImpactSignaturePresenter
                 * Mathf.Lerp(0.42f, 2.65f, expansion);
             root.transform.position = startPosition
                 + Vector3.right * horizontalDirection * 0.07f * expansion;
-            root.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                root.transform,
+                null,
                 horizontalDirection * progress * 18f);
             ApplyAlpha(renderers, startColors, attack * release);
         }
@@ -1178,9 +1178,9 @@ internal sealed class CombatImpactSignaturePresenter
             center.localScale = centerStartScale * (isLocking
                 ? Mathf.Lerp(0.5f, 1.45f, phase)
                 : Mathf.Lerp(1.45f, 0.18f, phase));
-            root.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                root.transform,
+                null,
                 horizontalDirection * Mathf.Lerp(-12f, 24f, progress));
             ApplyAlpha(renderers, startColors, envelope);
         }
@@ -1192,6 +1192,7 @@ internal sealed class CombatImpactSignaturePresenter
     {
         GameObject root = new GameObject(effectName);
         root.transform.position = position;
+        BattleSpriteBillboard.FaceTransform(root.transform);
         spawnedEffects.Add(root);
         return root;
     }

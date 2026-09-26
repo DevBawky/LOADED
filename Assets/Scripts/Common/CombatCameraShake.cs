@@ -368,7 +368,7 @@ public sealed class CombatCameraShake : MonoBehaviour
     {
         instance = this;
         baseLocalPosition = transform.localPosition;
-        baseLocalRotation = Quaternion.identity;
+        baseLocalRotation = transform.localRotation;
         BindCinemachineNoise();
 
         if (cinemachineNoise == null)

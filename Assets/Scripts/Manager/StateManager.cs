@@ -41,6 +41,7 @@ public class StateManager : MonoBehaviour
     [SerializeField] private PlayerHealth playerHealth;
     [SerializeField] private RelicManager relicManager;
     [SerializeField] private GameStartUI gameStartUI;
+    [SerializeField] private BattleWorld3DController battleWorld3DController;
 
     [Header("Panels")]
     [SerializeField] private GameObject mainGamePanel;
@@ -151,6 +152,9 @@ public class StateManager : MonoBehaviour
 
         gameStartUI ??= FindFirstObjectByType<GameStartUI>(
             FindObjectsInactive.Include);
+        battleWorld3DController ??=
+            FindFirstObjectByType<BattleWorld3DController>(
+                FindObjectsInactive.Include);
 
         if (gameStartUI != null)
         {
@@ -495,6 +499,7 @@ public class StateManager : MonoBehaviour
 
         if (!TryGetCurrentBattle(out BattleData battle)
             || battle.TilePrefab == null
+            || !ApplyBattleEnvironment(battle)
             || !boardManager.ConfigureBoard(
                 battle.BoardCount,
                 CurrentStage.LaneCount,
@@ -570,6 +575,7 @@ public class StateManager : MonoBehaviour
 
         if (!TryGetCurrentBattle(out BattleData battle)
             || battle.TilePrefab == null
+            || !ApplyBattleEnvironment(battle)
             || !boardManager.ConfigureBoard(
                 battle.BoardCount,
                 CurrentStage.LaneCount,
@@ -851,6 +857,7 @@ public class StateManager : MonoBehaviour
 
         if (!TryGetCurrentBattle(out BattleData battle)
             || battle.TilePrefab == null
+            || !ApplyBattleEnvironment(battle)
             || !boardManager.ConfigureBoard(
                 battle.BoardCount,
                 CurrentStage.LaneCount,
@@ -1386,6 +1393,18 @@ public class StateManager : MonoBehaviour
                 + playerSpawnOffset;
             playerMove.SetLaneIndex(0);
         }
+    }
+
+    private bool ApplyBattleEnvironment(BattleData battle)
+    {
+        if (battle == null)
+        {
+            return false;
+        }
+
+        battleWorld3DController?.ApplyProfile(
+            battle.EnvironmentProfile);
+        return true;
     }
 
     private void SetInputLocked(bool inputLocked)

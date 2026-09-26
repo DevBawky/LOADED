@@ -3634,12 +3634,43 @@ MonoBehaviour:
   stageReportTitleText: {fileID: 0}
   stageReportBodyText: {fileID: 0}
   stageReportClickText: {fileID: 0}
+  stageReportContent: {fileID: 0}
+  stageResultContent: {fileID: 0}
+  comboKillResultText: {fileID: 0}
+  cylinderKillResultText: {fileID: 0}
+  executorResultText: {fileID: 0}
+  comboBronzeCriteriaText: {fileID: 0}
+  comboSilverCriteriaText: {fileID: 0}
+  comboGoldCriteriaText: {fileID: 0}
+  executorBronzeCriteriaText: {fileID: 0}
+  executorSilverCriteriaText: {fileID: 0}
+  executorGoldCriteriaText: {fileID: 0}
+  comboMedalImage: {fileID: 0}
+  cylinderMedalImage: {fileID: 0}
+  executorMedalImage: {fileID: 0}
+  bonusResultText: {fileID: 0}
+  gainGoldButton: {fileID: 0}
+  gainGoldAmountText: {fileID: 0}
+  bronzeMedalSprite: {fileID: 0}
+  silverMedalSprite: {fileID: 0}
+  goldMedalSprite: {fileID: 0}
+  reportPopupDuration: 0.3
+  resultPopupDuration: 0.35
+  popupStartScale: 0.72
+  popupOvershoot: 1.15
+  resultCountDuration: 1.2
+  medalPopupDuration: 0.38
+  medalStartScale: 0.18
+  medalRevealInterval: 0.14
   gameplayCanvas: {fileID: 0}
   cinemachineCamera: {fileID: 0}
   playerTrackingTarget: {fileID: 0}
   playerShoot: {fileID: 0}
   playerMove: {fileID: 0}
   playerHealth: {fileID: 0}
+  waveManager: {fileID: 0}
+  currencyManager: {fileID: 0}
+  combatFeedback: {fileID: 0}
   clickTextBlinkInterval: 0.3
   useUnscaledTime: 1
   fightText: {fileID: 58027665752101708}
@@ -3648,6 +3679,7 @@ MonoBehaviour:
   damageValueColor: {r: 1, g: 0.62, b: 0.22, a: 1}
   damageTakenValueColor: {r: 1, g: 0.3, b: 0.3, a: 1}
   summaryValueColor: {r: 0.45, g: 1, b: 0.55, a: 1}
+  goldValueColor: {r: 1, g: 0.88, b: 0.1, a: 1}
 --- !u!1 &4614839208836090402
 GameObject:
   m_ObjectHideFlags: 0
@@ -6928,7 +6960,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7529050675397182998, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -9719.999
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7529050675397182998, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
       propertyPath: m_LocalRotation.w
@@ -6966,13 +6998,13 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 8369966277609176264, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
-      propertyPath: m_text
-      value: "\uC815\uC0B0"
-      objectReference: {fileID: 0}
     - target: {fileID: 7890689633255067835, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
       propertyPath: m_Name
       value: Text | Amount
+      objectReference: {fileID: 0}
+    - target: {fileID: 8369966277609176264, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
+      propertyPath: m_text
+      value: "\uC815\uC0B0"
       objectReference: {fileID: 0}
     - target: {fileID: 8369966277609176264, guid: f78c29a5249dfe04dab9fb2868424b1c, type: 3}
       propertyPath: m_fontSize

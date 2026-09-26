@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_chain_fire
   displayName: "\uC5F0\uC1C4\uD0C4"
-  description: "연속 사격 확률: 100%/80%/60%/40%/20%\n추가 탄환 소모 없음"
+  description: "\uC5F0\uC18D \uC0AC\uACA9 \uD655\uB960: 100%/80%/60%/40%/20%\n\uCD94\uAC00
+    \uD0C4\uD658 \uC18C\uBAA8 \uC5C6\uC74C"
   cylinderIcon: {fileID: 9112154179431215879, guid: 910ba590abb509945b70ef8e23821d91, type: 3}
   price: 10
   grade: 2
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 10
   maxRange: 3
   criticalChance: 15
@@ -38,6 +41,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 0.82, g: 0.85, b: 0.88, a: 1}
@@ -46,7 +50,8 @@ MonoBehaviour:
   recoilStrength: 0.08
   upgradeCost: 20
   upgradeLevels:
-  - description: "연속 사격 확률: 100%/85%/70%/55%/40%/25%\n추가 탄환 소모 없음"
+  - description: "\uC5F0\uC18D \uC0AC\uACA9 \uD655\uB960: 100%/85%/70%/55%/40%/25%\n\uCD94\uAC00
+      \uD0C4\uD658 \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 12
     maxRange: 3
     criticalChance: 20
@@ -62,11 +67,13 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.08
     upgradeCost: 50
-  - description: "연속 사격 확률: 100%/90%/80%/70%/60%/50%\n추가 탄환 소모 없음"
+  - description: "\uC5F0\uC18D \uC0AC\uACA9 \uD655\uB960: 100%/90%/80%/70%/60%/50%\n\uCD94\uAC00
+      \uD0C4\uD658 \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 15
     maxRange: 4
     criticalChance: 28
@@ -82,11 +89,14 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "연속 사격 확률: 100%/95%/90%/85%/80%/75%/70%\n추가 탄환 소모 없음\n치명타 시 골드 +1"
+  - description: "\uC5F0\uC18D \uC0AC\uACA9 \uD655\uB960: 100%/95%/90%/85%/80%/75%/70%\n\uCD94\uAC00
+      \uD0C4\uD658 \uC18C\uBAA8 \uC5C6\uC74C\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC
+      +1"
     damage: 20
     maxRange: 5
     criticalChance: 38
@@ -112,6 +122,7 @@ MonoBehaviour:
         secondTransferPercent: 0
         thirdTransferPercent: 0
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12

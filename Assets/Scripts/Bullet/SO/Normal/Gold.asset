@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uD669\uAE08\uD0C4"
-  description: "적 명중 시 골드 +1 (30%)\n치명타 시 골드 +1 (50%)"
+  description: "\uC801 \uBA85\uC911 \uC2DC \uACE8\uB4DC +1 (30%)\n\uCE58\uBA85\uD0C0
+    \uC2DC \uACE8\uB4DC +1 (50%)"
   cylinderIcon: {fileID: 21300000, guid: 9f3da703d3a3228458471a1253b1a404, type: 3}
   price: 3
   grade: 0
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 3
   maxRange: 3
   criticalChance: 20
@@ -48,6 +51,7 @@ MonoBehaviour:
       secondTransferPercent: 0
       thirdTransferPercent: 0
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
   secondaryLineColor: {r: 1, g: 0.78, b: 0.12, a: 1}
@@ -56,7 +60,8 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 5
   upgradeLevels:
-  - description: "적 명중 시 골드 +1 (70%)\n치명타 시 골드 +1 (70%)"
+  - description: "\uC801 \uBA85\uC911 \uC2DC \uACE8\uB4DC +1 (70%)\n\uCE58\uBA85\uD0C0
+      \uC2DC \uACE8\uB4DC +1 (70%)"
     damage: 5
     maxRange: 3
     criticalChance: 25
@@ -82,11 +87,13 @@ MonoBehaviour:
         secondTransferPercent: 0
         thirdTransferPercent: 0
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 10
-  - description: "적 명중 시 골드 +1\n치명타 시 골드 +2 (80%)\n관통 1회 (30%)"
+  - description: "\uC801 \uBA85\uC911 \uC2DC \uACE8\uB4DC +1\n\uCE58\uBA85\uD0C0
+      \uC2DC \uACE8\uB4DC +2 (80%)\n\uAD00\uD1B5 1\uD68C (30%)"
     damage: 7
     maxRange: 3
     criticalChance: 32
@@ -113,11 +120,14 @@ MonoBehaviour:
         thirdTransferPercent: 0
     penetrationChances:
     - chance: 30
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 15
-  - description: "적 명중 시 골드 +2\n치명타 시 골드 +3 (70%)\n관통 1회 (50%)\n적 처치 시 골드 +2"
+  - description: "\uC801 \uBA85\uC911 \uC2DC \uACE8\uB4DC +2\n\uCE58\uBA85\uD0C0
+      \uC2DC \uACE8\uB4DC +3 (70%)\n\uAD00\uD1B5 1\uD68C (50%)\n\uC801 \uCC98\uCE58
+      \uC2DC \uACE8\uB4DC +2"
     damage: 10
     maxRange: 4
     criticalChance: 40
@@ -154,6 +164,7 @@ MonoBehaviour:
         thirdTransferPercent: 0
     penetrationChances:
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.35

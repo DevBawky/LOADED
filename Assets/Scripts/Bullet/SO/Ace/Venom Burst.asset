@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_venom_burst
   displayName: "\uB9F9\uB3C5"
-  description: "대상 독 전부 소비\n남은 독 피해 100% 즉시 적용"
+  description: "\uB300\uC0C1 \uB3C5 \uC804\uBD80 \uC18C\uBE44\n\uB0A8\uC740 \uB3C5
+    \uD53C\uD574 100% \uC989\uC2DC \uC801\uC6A9"
   cylinderIcon: {fileID: -4169730618207851146, guid: bf217de4a496384478866404bb6540a6, type: 3}
   price: 10
   grade: 2
@@ -24,6 +25,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 12
   maxRange: 4
   criticalChance: 20
@@ -39,6 +41,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 0.58, g: 0.08, b: 0.95, a: 1}
@@ -47,7 +50,8 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "대상 독 전부 소비\n남은 독 피해 110% 즉시 적용\n독 +5"
+  - description: "\uB300\uC0C1 \uB3C5 \uC804\uBD80 \uC18C\uBE44\n\uB0A8\uC740 \uB3C5
+      \uD53C\uD574 110% \uC989\uC2DC \uC801\uC6A9\n\uB3C5 +5"
     damage: 16
     maxRange: 4
     criticalChance: 24
@@ -63,11 +67,14 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "대상 독 전부 소비\n남은 독 피해 150% 즉시 적용\n독 +10\n관통 1회 (50%)"
+  - description: "\uB300\uC0C1 \uB3C5 \uC804\uBD80 \uC18C\uBE44\n\uB0A8\uC740 \uB3C5
+      \uD53C\uD574 150% \uC989\uC2DC \uC801\uC6A9\n\uB3C5 +10\n\uAD00\uD1B5 1\uD68C
+      (50%)"
     damage: 21
     maxRange: 5
     criticalChance: 28
@@ -84,11 +91,14 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "대상 독 전부 소비\n남은 독 피해 200% 즉시 적용\n독 +20\n관통 최대 3회 (각 50%)"
+  - description: "\uB300\uC0C1 \uB3C5 \uC804\uBD80 \uC18C\uBE44\n\uB0A8\uC740 \uB3C5
+      \uD53C\uD574 200% \uC989\uC2DC \uC801\uC6A9\n\uB3C5 +20\n\uAD00\uD1B5 \uCD5C\uB300
+      3\uD68C (\uAC01 50%)"
     damage: 28
     maxRange: 5
     criticalChance: 35
@@ -107,6 +117,7 @@ MonoBehaviour:
     - chance: 50
     - chance: 50
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12

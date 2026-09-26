@@ -165,7 +165,7 @@ public partial class PlayerShoot : MonoBehaviour
     [SerializeField] private CombatPresentation combatPresentation;
     [SerializeField] private CombatFeedbackController combatFeedback;
     [Min(0f)]
-    [SerializeField] private float shotInterval = 0.2f;
+    [SerializeField] private float shotInterval = 0.15f;
 
     [Header("Shot Presentation")]
     [Min(0f)]
@@ -198,6 +198,7 @@ public partial class PlayerShoot : MonoBehaviour
     private bool bulletDestroyedThisCylinder;
     private int pendingSaverGold;
     private PlayerShotRangePreview rangePreview;
+    private BulletProjectileView activeProjectileView;
 
     public bool IsFiring => isFiring;
     public int InitialLoadedBulletCount => isFiring
@@ -302,6 +303,7 @@ public partial class PlayerShoot : MonoBehaviour
         }
         ClearLoadedBulletDamagePreview();
         EndFiringSequence();
+        CancelActiveProjectile();
 
         bulletFeedbackView?.Hide();
         reservedDamageByEnemy.Clear();
@@ -487,11 +489,11 @@ public partial class PlayerShoot : MonoBehaviour
         }
 
         if (deckManager == null || playerMove == null || playerHealth == null
-            || boardManager == null || waveManager == null || firePoint == null
-            || bulletLinePrefab == null)
+            || boardManager == null || waveManager == null
+            || firePoint == null)
         {
             Debug.LogError(
-                "Deck Manager, Player Move, Player Health, Board Manager, Wave Manager, Fire Point, and Bullet Line Prefab must be assigned in the Inspector.",
+                "Deck Manager, Player Move, Player Health, Board Manager, Wave Manager, and Fire Point must be assigned in the Inspector.",
                 this);
             return;
         }
@@ -532,6 +534,16 @@ public partial class PlayerShoot : MonoBehaviour
     {
         isFiring = false;
         playerMove?.SetShooting(false);
+    }
+
+    private void CancelActiveProjectile()
+    {
+        if (activeProjectileView != null)
+        {
+            activeProjectileView.CancelTravel();
+        }
+
+        activeProjectileView = null;
     }
 
     public bool TryEjectLoadedBullet(int loadedBulletIndex)
@@ -746,21 +758,6 @@ public partial class PlayerShoot : MonoBehaviour
             randomAngle,
             Vector3.forward) * horizontalShotVector;
         return startPoint + angledShotVector;
-    }
-
-    private IEnumerator WaitForShotInterval()
-    {
-        float elapsedTime = 0f;
-
-        while (elapsedTime < shotInterval)
-        {
-            yield return null;
-
-            if (!GamePauseController.IsPaused)
-            {
-                elapsedTime += Time.deltaTime;
-            }
-        }
     }
 
     private void ShowBulletFeedback(BulletInstance bulletData)

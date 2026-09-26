@@ -14,15 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uC2A4\uC651\uD0C4"
-  description: "대상과 위치 교환"
+  description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658"
   cylinderIcon: {fileID: -1611615653400164907, guid: 96884931d179a6f4f83b01b601888336, type: 3}
   price: 6
   grade: 1
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 5
   maxRange: 3
   criticalChance: 30
@@ -38,6 +40,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
   secondaryLineColor: {r: 0, g: 0.62, b: 0.78, a: 1}
@@ -46,7 +49,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "대상과 위치 교환\n기절 +1 (30%)"
+  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (30%)"
     damage: 7
     maxRange: 3
     criticalChance: 40
@@ -70,11 +73,13 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "대상과 위치 교환\n기절 +1 (50%)\n치명타 시 약화 +2"
+  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (50%)\n\uCE58\uBA85\uD0C0
+      \uC2DC \uC57D\uD654 +2"
     damage: 10
     maxRange: 4
     criticalChance: 55
@@ -108,11 +113,13 @@ MonoBehaviour:
         secondTransferPercent: 0
         thirdTransferPercent: 0
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "대상과 위치 교환\n기절 +1 (70%)\n치명타 시 약화 +3\n재장전 시 턴 소모 없음"
+  - description: "\uB300\uC0C1\uACFC \uC704\uCE58 \uAD50\uD658\n\uAE30\uC808 +1 (70%)\n\uCE58\uBA85\uD0C0
+      \uC2DC \uC57D\uD654 +3\n\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 13
     maxRange: 5
     criticalChance: 70
@@ -146,6 +153,7 @@ MonoBehaviour:
         secondTransferPercent: 0
         thirdTransferPercent: 0
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 1
     recoilStrength: 0.35

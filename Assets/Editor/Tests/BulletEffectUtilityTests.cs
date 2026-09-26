@@ -351,22 +351,6 @@ public sealed class BulletEffectUtilityTests
         }
     }
 
-    [TestCase(true, 0.2f, false)]
-    [TestCase(true, 0f, false)]
-    [TestCase(false, 0.2f, true)]
-    [TestCase(false, 0f, false)]
-    public void RequiredShotgunShotsSkipTheAdditionalShotInterval(
-        bool hasRequiredShotgunShot,
-        float interval,
-        bool expected)
-    {
-        Assert.That(
-            PlayerShoot.ShouldWaitBeforeAdditionalShot(
-                hasRequiredShotgunShot,
-                interval),
-            Is.EqualTo(expected));
-    }
-
     [Test]
     public void NewBulletCapstonesChangeTheirCorePlayPattern()
     {

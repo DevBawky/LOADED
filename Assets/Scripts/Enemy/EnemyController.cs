@@ -3551,6 +3551,13 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         avatarInstance.transform.SetParent(transform, false);
         avatarInstance.transform.localPosition = Vector3.zero;
         avatarInstance.transform.localRotation = Quaternion.identity;
+        BattleSpriteBillboard billboard =
+            avatarInstance.GetComponent<BattleSpriteBillboard>();
+        if (billboard == null)
+        {
+            billboard = avatarInstance.AddComponent<BattleSpriteBillboard>();
+        }
+        billboard.SetTargetCamera(Camera.main);
         avatarAnimator = avatarInstance.GetComponent<Animator>();
         avatarAnimator ??=
             avatarInstance.GetComponentInChildren<Animator>(true);

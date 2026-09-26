@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_weakness
   displayName: "\uC57D\uD654\uD0C4"
-  description: "약화 +4"
+  description: "\uC57D\uD654 +4"
   cylinderIcon: {fileID: 1555538946713009086, guid: a0f23b1691353f54da65b21310560a46, type: 3}
   price: 6
   grade: 1
@@ -24,6 +24,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 10
   maxRange: 3
   criticalChance: 15
@@ -39,6 +40,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
   secondaryLineColor: {r: 0.45, g: 0.1, b: 0.85, a: 1}
@@ -47,7 +49,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "약화 +6"
+  - description: "\uC57D\uD654 +6"
     damage: 13
     maxRange: 3
     criticalChance: 23
@@ -63,11 +65,12 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "약화 +6\n치명타 시 골드 +1"
+  - description: "\uC57D\uD654 +6\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +1"
     damage: 19
     maxRange: 4
     criticalChance: 37
@@ -93,11 +96,13 @@ MonoBehaviour:
         secondTransferPercent: 0
         thirdTransferPercent: 0
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "약화 +6\n치명타 시 골드 +2\n재장전 시 턴 소모 없음"
+  - description: "\uC57D\uD654 +6\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +2\n\uC7AC\uC7A5\uC804
+      \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 25
     maxRange: 5
     criticalChance: 50
@@ -123,6 +128,7 @@ MonoBehaviour:
         secondTransferPercent: 0
         thirdTransferPercent: 0
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 1
     recoilStrength: 0.1

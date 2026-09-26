@@ -63,9 +63,33 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     private void Awake()
     {
+        EnsureWorldCanvasDepthOffset();
         CaptureBaseQueuePosition();
         EnsureReadyImage();
         ResetDisplay();
+    }
+
+    internal BattleWorldCanvasDepthOffset EnsureWorldCanvasDepthOffset()
+    {
+        if (queueImage == null)
+        {
+            return null;
+        }
+
+        Canvas canvas = queueImage.GetComponentInParent<Canvas>(true);
+        if (canvas == null || canvas.renderMode != RenderMode.WorldSpace)
+        {
+            return null;
+        }
+
+        BattleWorldCanvasDepthOffset depthOffset =
+            canvas.GetComponent<BattleWorldCanvasDepthOffset>();
+        if (depthOffset == null)
+        {
+            depthOffset =
+                canvas.gameObject.AddComponent<BattleWorldCanvasDepthOffset>();
+        }
+        return depthOffset;
     }
 
     private void OnDestroy()

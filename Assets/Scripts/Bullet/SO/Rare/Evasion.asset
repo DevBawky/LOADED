@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_evasion
   displayName: "\uD68C\uD53C\uD0C4"
-  description: "적·플레이어 반대 방향으로 1칸 이동"
+  description: "\uC801\xB7\uD50C\uB808\uC774\uC5B4 \uBC18\uB300 \uBC29\uD5A5\uC73C\uB85C
+    1\uCE78 \uC774\uB3D9"
   cylinderIcon: {fileID: 3249896679004901830, guid: 5364dc00657126e4b9a649732e993e18, type: 3}
   price: 6
   grade: 1
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 18
   maxRange: 4
   criticalChance: 20
@@ -46,6 +49,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
   secondaryLineColor: {r: 0.72, g: 0.36, b: 0.16, a: 1}
@@ -54,7 +58,8 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "적 밀치기 2칸\n플레이어 반대 방향으로 1칸 이동"
+  - description: "\uC801 \uBC00\uCE58\uAE30 2\uCE78\n\uD50C\uB808\uC774\uC5B4 \uBC18\uB300
+      \uBC29\uD5A5\uC73C\uB85C 1\uCE78 \uC774\uB3D9"
     damage: 21
     maxRange: 4
     criticalChance: 22
@@ -78,11 +83,13 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "적·플레이어 반대 방향으로 2칸 이동"
+  - description: "\uC801\xB7\uD50C\uB808\uC774\uC5B4 \uBC18\uB300 \uBC29\uD5A5\uC73C\uB85C
+      2\uCE78 \uC774\uB3D9"
     damage: 24
     maxRange: 5
     criticalChance: 25
@@ -106,11 +113,13 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "적 밀치기 3칸\n플레이어 반대 방향으로 2칸 이동"
+  - description: "\uC801 \uBC00\uCE58\uAE30 3\uCE78\n\uD50C\uB808\uC774\uC5B4 \uBC18\uB300
+      \uBC29\uD5A5\uC73C\uB85C 2\uCE78 \uC774\uB3D9"
     damage: 28
     maxRange: 5
     criticalChance: 30
@@ -134,8 +143,8 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 0
-

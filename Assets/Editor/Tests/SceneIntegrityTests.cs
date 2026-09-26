@@ -65,6 +65,25 @@ public sealed class SceneIntegrityTests
     }
 
     [Test]
+    public void GameStartCanvas_SettlementButtonRemainsOnCanvasPlane()
+    {
+        GameObject canvas = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Canvas _ Game Start.prefab");
+
+        Assert.That(canvas, Is.Not.Null);
+        Button settlementButton = AssertNamedComponent<Button>(
+            canvas,
+            "Button | Gain Gold");
+        RectTransform rect = settlementButton.transform as RectTransform;
+
+        Assert.That(rect, Is.Not.Null);
+        Assert.That(
+            rect.localPosition.z,
+            Is.EqualTo(0f).Within(0.001f),
+            "The settlement button must stay on the same UI plane as the result panel.");
+    }
+
+    [Test]
     public void StageOneBattleList_ContainsOnlyValidAuthoredBattles()
     {
         StageData stage = AssetDatabase.LoadAssetAtPath<StageData>(

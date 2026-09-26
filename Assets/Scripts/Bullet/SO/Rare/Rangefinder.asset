@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_rangefinder
   displayName: "\uAC70\uB9AC\uCE21\uC815\uD0C4"
-  description: "대상과의 거리 한 칸당 최종 피해 +50%"
+  description: "\uB300\uC0C1\uACFC\uC758 \uAC70\uB9AC \uD55C \uCE78\uB2F9 \uCD5C\uC885
+    \uD53C\uD574 +50%"
   cylinderIcon: {fileID: 3676542836413149954, guid: de66cb09e9b921242928e672092735b1, type: 3}
   price: 6
   grade: 1
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 20
   maxRange: 4
   criticalChance: 20
@@ -34,8 +37,11 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 1
     amount: 50
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
   secondaryLineColor: {r: 1, g: 0.9, b: 0.05, a: 1}
@@ -44,7 +50,8 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "대상과의 거리 한 칸당 최종 피해 +100%"
+  - description: "\uB300\uC0C1\uACFC\uC758 \uAC70\uB9AC \uD55C \uCE78\uB2F9 \uCD5C\uC885
+      \uD53C\uD574 +100%"
     damage: 20
     maxRange: 5
     criticalChance: 23
@@ -56,15 +63,17 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 100
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.9, b: 0.05, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "대상과의 거리 한 칸당 최종 피해 +100%\n표식 +1 (40%)"
+  - description: "\uB300\uC0C1\uACFC\uC758 \uAC70\uB9AC \uD55C \uCE78\uB2F9 \uCD5C\uC885
+      \uD53C\uD574 +100%\n\uD45C\uC2DD +1 (40%)"
     damage: 22
     maxRange: 6
     criticalChance: 27
@@ -76,21 +85,25 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 100
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 2
       target: 0
       activationChance: 40
       stackCount: 1
       knockbackDistance: 1
       amount: 25
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.9, b: 0.05, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "대상과의 거리 한 칸당 최종 피해 +120%\n표식 +1"
+  - description: "\uB300\uC0C1\uACFC\uC758 \uAC70\uB9AC \uD55C \uCE78\uB2F9 \uCD5C\uC885
+      \uD53C\uD574 +120%\n\uD45C\uC2DD +1"
     damage: 24
     maxRange: 7
     criticalChance: 32
@@ -102,17 +115,20 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 120
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 2
       target: 0
       activationChance: 100
       stackCount: 1
       knockbackDistance: 1
       amount: 35
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.9, b: 0.05, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 0

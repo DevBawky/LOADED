@@ -941,9 +941,9 @@ public sealed class CombatPresentation : MonoBehaviour
                 baseSize * (isSmoke ? 1.4f : 2.4f),
                 baseSize,
                 1f);
-            ember.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                ember.transform,
+                null,
                 Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg);
             StartCoroutine(AnimateSpark(
                 ember,
@@ -1024,9 +1024,9 @@ public sealed class CombatPresentation : MonoBehaviour
                     : Random.Range(0.006f, 0.018f),
                 1f) * Mathf.Lerp(0.75f, 1.25f, ScaledIntensity * 0.5f)
                 * effectMultiplier;
-            spark.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                spark.transform,
+                null,
                 Mathf.Atan2(velocity.y, velocity.x) * Mathf.Rad2Deg);
             StartCoroutine(AnimateOpticalMote(
                 spark,
@@ -1080,9 +1080,9 @@ public sealed class CombatPresentation : MonoBehaviour
                 Random.Range(0.22f, 0.52f) * tierScale * effectMultiplier,
                 Random.Range(0.006f, 0.018f) * tierScale * effectMultiplier,
                 1f);
-            streak.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                streak.transform,
+                null,
                 Random.Range(-9f, 9f));
             Vector2 velocity = new Vector2(
                 direction * Random.Range(1.2f, 2.6f) * tierScale,
@@ -1247,9 +1247,9 @@ public sealed class CombatPresentation : MonoBehaviour
                 * horizontalDirection
                 * 0.065f
                 * Mathf.SmoothStep(0f, 1f, progress);
-            root.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                root.transform,
+                null,
                 horizontalDirection * progress * 3.5f);
 
             if (muzzleLight != null)
@@ -1311,9 +1311,9 @@ public sealed class CombatPresentation : MonoBehaviour
                 * horizontalDirection
                 * 0.045f
                 * pulse;
-            root.transform.rotation = Quaternion.Euler(
-                0f,
-                0f,
+            BattleSpriteBillboard.FaceTransform(
+                root.transform,
+                null,
                 horizontalDirection * pulse * 4.5f);
 
             foreach (SpriteRenderer renderer in renderers)
@@ -1427,6 +1427,7 @@ public sealed class CombatPresentation : MonoBehaviour
     {
         GameObject root = new GameObject(effectName);
         root.transform.position = position;
+        BattleSpriteBillboard.FaceTransform(root.transform);
         spawnedEffects.Add(root);
         return root;
     }
@@ -1448,6 +1449,7 @@ public sealed class CombatPresentation : MonoBehaviour
 
         if (parent == null)
         {
+            BattleSpriteBillboard.FaceTransform(spriteObject.transform);
             spawnedEffects.Add(spriteObject);
         }
 

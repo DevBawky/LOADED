@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_wall_impact
   displayName: "\uB300\uC9C0 \uBD84\uC1C4"
-  description: "명중한 적 뒤 1칸에\n최종 피해의 50% 피해 전이"
+  description: "\uBA85\uC911\uD55C \uC801 \uB4A4 1\uCE78\uC5D0\n\uCD5C\uC885 \uD53C\uD574\uC758
+    50% \uD53C\uD574 \uC804\uC774"
   cylinderIcon: {fileID: -7083666770999427850, guid: e170791347034894ea9607c2245a7052, type: 3}
   price: 6
   grade: 1
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 16
   maxRange: 4
   criticalChance: 15
@@ -38,6 +41,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
   secondaryLineColor: {r: 0.45, g: 0.23, b: 0.1, a: 1}
@@ -46,7 +50,8 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "명중한 적 뒤 1/2칸에 각각\n최종 피해의 60/30% 피해 전이"
+  - description: "\uBA85\uC911\uD55C \uC801 \uB4A4 1/2\uCE78\uC5D0 \uAC01\uAC01\n\uCD5C\uC885
+      \uD53C\uD574\uC758 60/30% \uD53C\uD574 \uC804\uC774"
     damage: 20
     maxRange: 4
     criticalChance: 18
@@ -62,13 +67,13 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0.45, g: 0.23, b: 0.1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "명중한 적 뒤 1/2/3칸에 각각\n최종 피해의 100/75/50% 피해 전이"
+  - description: "\uBA85\uC911\uD55C \uC801 \uB4A4 1/2/3\uCE78\uC5D0 \uAC01\uAC01\n\uCD5C\uC885
+      \uD53C\uD574\uC758 100/75/50% \uD53C\uD574 \uC804\uC774"
     damage: 25
     maxRange: 5
     criticalChance: 22
@@ -84,13 +89,13 @@ MonoBehaviour:
       thirdTransferPercent: 50
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0.45, g: 0.23, b: 0.1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "명중한 적 뒤 1/2/3칸에 각각\n최종 피해의 150/100/50% 피해 전이"
+  - description: "\uBA85\uC911\uD55C \uC801 \uB4A4 1/2/3\uCE78\uC5D0 \uAC01\uAC01\n\uCD5C\uC885
+      \uD53C\uD574\uC758 150/100/50% \uD53C\uD574 \uC804\uC774"
     damage: 32
     maxRange: 5
     criticalChance: 28
@@ -106,9 +111,8 @@ MonoBehaviour:
       thirdTransferPercent: 50
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0.45, g: 0.23, b: 0.1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 0

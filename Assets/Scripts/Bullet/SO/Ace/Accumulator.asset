@@ -14,15 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_accumulator
   displayName: "\uCD95\uC804\uAE30"
-  description: "다른 탄환이 치명타를 발생시키면 전력 +1\n전력 하나당 최종 피해 +20%, 발사 후 50%를 보존\n발사 시 파괴 (8%)"
+  description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
+    \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +20%,
+    \uBC1C\uC0AC \uD6C4 50%\uB97C \uBCF4\uC874\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
+    (8%)"
   cylinderIcon: {fileID: 6396061427510755365, guid: 125bc83cf0534c64aaea6b7f4d16d2f6, type: 3}
   price: 10
   grade: 2
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 20
   maxRange: 4
   criticalChance: 20
@@ -34,14 +39,19 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 50
     amount: 20
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   - effectType: 8
     target: 1
     activationChance: 8
     stackCount: 1
     knockbackDistance: 1
     amount: 1
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 0.05, g: 0.25, b: 1, a: 1}
@@ -50,7 +60,10 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "다른 탄환이 치명타를 발생시키면 전력 +1\n전력 하나당 최종 피해 +25%, 발사 후 75%를 보존\n발사 시 파괴 (6%)"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
+      \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574
+      +25%, \uBC1C\uC0AC \uD6C4 75%\uB97C \uBCF4\uC874\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
+      (6%)"
     damage: 25
     maxRange: 4
     criticalChance: 24
@@ -62,21 +75,27 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 75
       amount: 25
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 8
       target: 1
       activationChance: 6
       stackCount: 1
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.05, g: 0.25, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "다른 탄환이 치명타를 발생시키면 전력 +1\n전력 하나당 최종 피해 +30%, 발사 후 100%를 보존\n발사 시 파괴 (4%)"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
+      \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574
+      +30%, \uBC1C\uC0AC \uD6C4 100%\uB97C \uBCF4\uC874\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
+      (4%)"
     damage: 28
     maxRange: 5
     criticalChance: 28
@@ -88,21 +107,27 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 100
       amount: 30
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 8
       target: 1
       activationChance: 4
       stackCount: 1
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.05, g: 0.25, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "다른 탄환이 치명타를 발생시키면 전력 +1\n전력 하나당 최종 피해 +35%, 발사 후 100%를 보존, 기절 +2\n발사 시 파괴 (2%)"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uB97C \uBC1C\uC0DD\uC2DC\uD0A4\uBA74
+      \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574
+      +35%, \uBC1C\uC0AC \uD6C4 100%\uB97C \uBCF4\uC874, \uAE30\uC808 +2\n\uBC1C\uC0AC
+      \uC2DC \uD30C\uAD34 (2%)"
     damage: 35
     maxRange: 5
     criticalChance: 35
@@ -114,23 +139,28 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 100
       amount: 40
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 1
       target: 0
       activationChance: 100
       stackCount: 2
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     - effectType: 8
       target: 1
       activationChance: 2
       stackCount: 1
       knockbackDistance: 1
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.05, g: 0.25, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 0

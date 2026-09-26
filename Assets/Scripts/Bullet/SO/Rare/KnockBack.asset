@@ -14,15 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uB109\uBC31\uD0C4"
-  description: "밀치기 최대 1칸"
+  description: "\uBC00\uCE58\uAE30 \uCD5C\uB300 1\uCE78"
   cylinderIcon: {fileID: 470928459729146777, guid: 3e42a765c51425c49bf806e06d80546c, type: 3}
   price: 6
   grade: 1
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 25
   maxRange: 3
   criticalChance: 20
@@ -38,6 +40,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
   secondaryLineColor: {r: 0.68, g: 0.18, b: 1, a: 1}
@@ -46,7 +49,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 10
   upgradeLevels:
-  - description: "밀치기 최대 2칸"
+  - description: "\uBC00\uCE58\uAE30 \uCD5C\uB300 2\uCE78"
     damage: 28
     maxRange: 3
     criticalChance: 24
@@ -62,11 +65,12 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 20
-  - description: "밀치기 최대 3칸\n기절 +1 (50%)"
+  - description: "\uBC00\uCE58\uAE30 \uCD5C\uB300 3\uCE78\n\uAE30\uC808 +1 (50%)"
     damage: 35
     maxRange: 4
     criticalChance: 28
@@ -90,11 +94,12 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 40
-  - description: "밀치기 최대 5칸\n기절 +2 (50%)"
+  - description: "\uBC00\uCE58\uAE30 \uCD5C\uB300 5\uCE78\n\uAE30\uC808 +2 (50%)"
     damage: 40
     maxRange: 4
     criticalChance: 35
@@ -118,6 +123,7 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.35

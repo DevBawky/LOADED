@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_pierce
   displayName: "\uC410\uAE30"
-  description: "관통 2회"
+  description: "\uAD00\uD1B5 2\uD68C"
   cylinderIcon: {fileID: -2250305250062886216, guid: c47efbb67453aee41a9363eb9e0ca4fb, type: 3}
   price: 20
   grade: 3
@@ -24,6 +24,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 30
   maxRange: 3
   criticalChance: 30
@@ -33,6 +34,7 @@ MonoBehaviour:
   penetrationChances:
   - chance: 100
   - chance: 100
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 1, g: 0.5, b: 0, a: 1}
   secondaryLineColor: {r: 0, g: 0, b: 0, a: 1}
@@ -41,7 +43,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 50
   upgradeLevels:
-  - description: "관통 3회"
+  - description: "\uAD00\uD1B5 3\uD68C"
     damage: 40
     maxRange: 3
     criticalChance: 40
@@ -52,11 +54,13 @@ MonoBehaviour:
     - chance: 100
     - chance: 100
     - chance: 100
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "관통 4회\n재장전 시 턴 소모 없음"
+  - description: "\uAD00\uD1B5 4\uD68C\n\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8
+      \uC5C6\uC74C"
     damage: 50
     maxRange: 4
     criticalChance: 50
@@ -68,11 +72,13 @@ MonoBehaviour:
     - chance: 100
     - chance: 100
     - chance: 100
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     upgradeCost: 200
-  - description: "관통 5회\n치명타 시 골드 +1\n재장전 시 턴 소모 없음"
+  - description: "\uAD00\uD1B5 5\uD68C\n\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +1\n\uC7AC\uC7A5\uC804
+      \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 70
     maxRange: 5
     criticalChance: 60
@@ -95,6 +101,7 @@ MonoBehaviour:
     - chance: 100
     - chance: 100
     - chance: 100
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 1
     recoilStrength: 0.1

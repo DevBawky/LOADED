@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_legacy
   displayName: "\uC720\uC0B0"
-  description: "다른 탄환이 영구 파괴될 때마다 유산 +1\n유산 하나당 최종 피해 +30%"
+  description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420 \uB54C\uB9C8\uB2E4
+    \uC720\uC0B0 +1\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +30%"
   cylinderIcon: {fileID: 1299048383668103208, guid: 984a547c75e2cda4199f4b6e673f39f3, type: 3}
   price: 10
   grade: 2
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 20
   maxRange: 4
   criticalChance: 20
@@ -38,6 +41,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 0, g: 0.42, b: 1, a: 1}
@@ -46,7 +50,9 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 +1\n유산 하나당 최종 피해 +40%"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 +1\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885
+      \uD53C\uD574 +40%"
     damage: 25
     maxRange: 4
     criticalChance: 24
@@ -62,11 +68,14 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 +1\n유산 하나당 최종 피해 +60%"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 +1\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885
+      \uD53C\uD574 +60%"
     damage: 21
     maxRange: 5
     criticalChance: 28
@@ -83,11 +92,14 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 30
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "다른 탄환이 영구 파괴될 때마다 유산 +2\n유산 하나당 최종 피해 +60%"
+  - description: "\uB2E4\uB978 \uD0C4\uD658\uC774 \uC601\uAD6C \uD30C\uAD34\uB420
+      \uB54C\uB9C8\uB2E4 \uC720\uC0B0 +2\n\uC720\uC0B0 \uD558\uB098\uB2F9 \uCD5C\uC885
+      \uD53C\uD574 +60%"
     damage: 28
     maxRange: 5
     criticalChance: 35
@@ -104,6 +116,7 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12

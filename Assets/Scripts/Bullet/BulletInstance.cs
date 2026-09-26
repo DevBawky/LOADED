@@ -150,6 +150,9 @@ public sealed class BulletInstance
     public BulletType BulletType => data == null
         ? BulletType.Normal
         : data.BulletType;
+    public ProjectileVisualProfile ProjectileVisual => data == null
+        ? ProjectileVisualProfile.Default
+        : data.ProjectileVisual;
     public string BulletTypeDisplayName => data == null
         ? BulletData.GetBulletTypeDisplayName(BulletType.Normal)
         : data.BulletTypeDisplayName;

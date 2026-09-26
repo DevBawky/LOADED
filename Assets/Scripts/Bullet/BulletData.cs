@@ -422,6 +422,10 @@ public class BulletData : ScriptableObject
     [SerializeField] private Color levelThreeColor =
         new Color(1f, 0.65f, 0.2f, 1f);
 
+    [Header("Projectile Presentation")]
+    [Tooltip("비어 있으면 Resources의 공용 기본 Sphere Projectile을 사용합니다.")]
+    [SerializeField] private ProjectileVisualProfile projectileVisual;
+
     [Header("Combat")]
     [Min(0)]
     [SerializeField] private int damage;
@@ -467,6 +471,9 @@ public class BulletData : ScriptableObject
     public int Price => Mathf.Max(0, price);
     public BulletGrade Grade => grade;
     public BulletType BulletType => bulletType;
+    public ProjectileVisualProfile ProjectileVisual => projectileVisual != null
+        ? projectileVisual
+        : ProjectileVisualProfile.Default;
     public string BulletTypeDisplayName => GetBulletTypeDisplayName(bulletType);
     public string BulletTypeDescription => GetBulletTypeDescription(0);
     public int Damage => damage;

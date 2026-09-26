@@ -14,15 +14,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_masterpiece
   displayName: "\uBA85\uD488\uD0C4"
-  description: "보유한 에이스·레전드리 탄환 하나당 최종 피해 +25%\n치명타 시 골드 +1"
+  description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
+    \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +25%\n\uCE58\uBA85\uD0C0
+    \uC2DC \uACE8\uB4DC +1"
   cylinderIcon: {fileID: 3980920622273506909, guid: 545c7c4fbc9be074ea6a254309f79abe, type: 3}
   price: 10
   grade: 2
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 16
   maxRange: 4
   criticalChance: 20
@@ -34,6 +38,8 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 1
     amount: 25
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents:
   - trigger: 1
     events:
@@ -43,7 +49,10 @@ MonoBehaviour:
       stackCount: 0
       knockbackDistance: 0
       amount: 1
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 0.62, g: 0.92, b: 1, a: 1}
@@ -52,7 +61,9 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "보유한 에이스·레전드리 탄환 하나당 최종 피해 +50%\n치명타 시 골드 +2"
+  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +50%\n\uCE58\uBA85\uD0C0
+      \uC2DC \uACE8\uB4DC +2"
     damage: 20
     maxRange: 4
     criticalChance: 24
@@ -64,6 +75,8 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 35
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -73,14 +86,17 @@ MonoBehaviour:
         stackCount: 0
         knockbackDistance: 0
         amount: 2
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.62, g: 0.92, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "보유한 에이스·레전드리 탄환 하나당 최종 피해 +50%\n치명타 시 골드 +3\n관통 1회 (30%)"
+  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +50%\n\uCE58\uBA85\uD0C0
+      \uC2DC \uACE8\uB4DC +3\n\uAD00\uD1B5 1\uD68C (30%)"
     damage: 26
     maxRange: 5
     criticalChance: 29
@@ -92,6 +108,8 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 50
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -101,15 +119,19 @@ MonoBehaviour:
         stackCount: 0
         knockbackDistance: 0
         amount: 3
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances:
     - chance: 30
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.62, g: 0.92, b: 1, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "보유한 에이스·레전드리 탄환 하나당 최종 피해 +50%\n치명타 시 골드 +5\n관통 1회\n재장전 시 턴 소모 없음"
+  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +50%\n\uCE58\uBA85\uD0C0
+      \uC2DC \uACE8\uB4DC +5\n\uAD00\uD1B5 1\uD68C\n\uC7AC\uC7A5\uC804 \uC2DC \uD134
+      \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 34
     maxRange: 5
     criticalChance: 36
@@ -121,6 +143,8 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 50
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents:
     - trigger: 1
       events:
@@ -130,11 +154,12 @@ MonoBehaviour:
         stackCount: 0
         knockbackDistance: 0
         amount: 5
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances:
     - chance: 100
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.62, g: 0.92, b: 1, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.12
     upgradeCost: 0

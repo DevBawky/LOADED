@@ -404,6 +404,10 @@ public class BoardManagerTests
                 .Find("Canvas/Image | Queue") as RectTransform;
             Assert.That(enemy, Is.Not.Null);
             Assert.That(queueUI, Is.Not.Null);
+            BattleWorldCanvasDepthOffset depthOffset =
+                queueUI.EnsureWorldCanvasDepthOffset();
+            Assert.That(depthOffset, Is.Not.Null);
+            Assert.That(depthOffset.CameraDepthOffset, Is.GreaterThan(0f));
             Assert.That(queueRect, Is.Not.Null);
             float baseQueueY = queueRect.anchoredPosition.y;
 

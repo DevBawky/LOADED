@@ -88,6 +88,8 @@ public class BattleData : ScriptableObject
 
     [Header("Battle Settings")]
     [SerializeField] private BattleType battleType;
+    [Tooltip("Battle 씬의 3D 환경, 카메라와 조명 설정입니다.")]
+    [SerializeField] private BattleEnvironmentProfile environmentProfile;
     [Min(1)]
     [SerializeField] private int boardCount = 7;
     [SerializeField] private BoardTile tilePrefab;
@@ -131,6 +133,8 @@ public class BattleData : ScriptableObject
     public string ClearNoticeDescription =>
         clearNoticeDescription ?? string.Empty;
     public BattleType BattleType => battleType;
+    public BattleEnvironmentProfile EnvironmentProfile =>
+        environmentProfile;
     public bool IsBoss => battleType == BattleType.Boss;
     public int BoardCount => Mathf.Max(1, boardCount);
     public BoardTile TilePrefab => tilePrefab;

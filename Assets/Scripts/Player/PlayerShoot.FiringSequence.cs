@@ -5,11 +5,33 @@ using UnityEngine;
 
 public partial class PlayerShoot
 {
-    internal static bool ShouldWaitBeforeAdditionalShot(
-        bool hasRequiredShotgunShot,
-        float interval)
+    private const float ProjectileTravelBaseDuration = 0.04f;
+    private const float ProjectileTravelDurationPerTile = 0.02f;
+    private const float MinimumProjectileTravelDuration = 0.06f;
+    private const float MaximumProjectileTravelDuration = 0.14f;
+
+    internal static float ResolveProjectileTravelDuration(int tileDistance)
     {
-        return !hasRequiredShotgunShot && interval > 0f;
+        if (tileDistance < 0)
+        {
+            return MaximumProjectileTravelDuration;
+        }
+
+        return Mathf.Clamp(
+            ProjectileTravelBaseDuration
+            + tileDistance * ProjectileTravelDurationPerTile,
+            MinimumProjectileTravelDuration,
+            MaximumProjectileTravelDuration);
+    }
+
+    internal static float AdvanceShotTimer(
+        float elapsedTime,
+        float unscaledDeltaTime,
+        bool isPaused)
+    {
+        return isPaused
+            ? elapsedTime
+            : elapsedTime + Mathf.Max(0f, unscaledDeltaTime);
     }
 
     internal static void ResetPostFireAbilityStacks(
@@ -27,6 +49,11 @@ public partial class PlayerShoot
 
     private sealed class FiringSequenceController
     {
+        private sealed class ShotCadenceState
+        {
+            public bool IsComplete { get; set; }
+        }
+
         private readonly struct ReplayShot
         {
             public ReplayShot(
@@ -444,12 +471,6 @@ public partial class PlayerShoot
                                 chainAdditionalShotCount++;
                             }
     
-                            if (ShouldWaitBeforeAdditionalShot(
-                                hasRequiredShotgunShot,
-                                shotInterval))
-                            {
-                                yield return WaitForShotInterval();
-                            }
                         }
                     }
                     while (keepFiring);
@@ -478,10 +499,6 @@ public partial class PlayerShoot
     
                         firedBullet.ConsumeAbilityStacks(shellCost);
     
-                        if (shotInterval > 0f)
-                        {
-                            yield return WaitForShotInterval();
-                        }
                     }
     
                     if (deckManager.LoadedBullets.Count == 0
@@ -629,15 +646,6 @@ public partial class PlayerShoot
                 previousPreFireState = currentPreFireState;
                 hasPreviousPreFireState = true;
                 currentConsumedBullet = null;
-    
-                if (deckManager.LoadedBullets.Count > 0 && shotInterval > 0f)
-                {
-                    yield return WaitForShotInterval();
-                }
-                else
-                {
-                    yield return null;
-                }
             }
     
             if (!bulletDestroyedThisCylinder && pendingSaverGold > 0)
@@ -753,7 +761,8 @@ public partial class PlayerShoot
                     && bulletData.RollPenetrationAfterHit(hitBuffer.Count);
                 endPoint = reachesBulletBlocker
                     ? bulletBlocker.WorldPosition
-                    : hitBuffer[hitBuffer.Count - 1].transform.position;
+                    : GetProjectileImpactPoint(
+                        hitBuffer[hitBuffer.Count - 1]);
             }
             else if (hasBulletBlocker)
             {
@@ -787,24 +796,43 @@ public partial class PlayerShoot
                 : null;
     
             Vector3 shotStartPoint = firePoint.position;
-            Vector3 shotEndPoint = GetShotLineEndPoint(shotStartPoint, endPoint);
-            BulletLine bulletLine = Instantiate(
-                bulletLinePrefab,
-                shotStartPoint,
-                Quaternion.identity);
-    
-            if (!bulletLine.Initialize(
-                    bulletData,
-                    shotStartPoint,
-                    shotEndPoint))
+            Vector3 shotEndPoint = hasViableTarget
+                ? endPoint
+                : GetShotLineEndPoint(shotStartPoint, endPoint);
+            int tileDistance = -1;
+            if (boardManager != null
+                && boardManager.TryGetTileDistance(
+                    transform.position,
+                    endPoint,
+                    out int resolvedTileDistance))
             {
-                ReleaseProjectedDamage(shotReservations);
-                Destroy(bulletLine.gameObject);
-                relicManager?.NotifyShotCancelled();
-                onCompleted?.Invoke(false);
-                yield break;
+                tileDistance = resolvedTileDistance;
             }
-    
+            float projectileTravelDuration =
+                ResolveProjectileTravelDuration(tileDistance);
+            bool projectileStarted = BulletProjectileView.TrySpawn(
+                bulletData.ProjectileVisual,
+                bulletData,
+                shotStartPoint,
+                shotEndPoint,
+                out BulletProjectileView projectile);
+            if (!projectileStarted && bulletLinePrefab != null)
+            {
+                BulletLine bulletLine = Instantiate(
+                    bulletLinePrefab,
+                    shotStartPoint,
+                    Quaternion.identity);
+                if (!bulletLine.Initialize(
+                        bulletData,
+                        shotStartPoint,
+                        shotEndPoint))
+                {
+                    Destroy(bulletLine.gameObject);
+                }
+            }
+
+            ShotCadenceState shotCadence = new ShotCadenceState();
+            owner.StartCoroutine(TrackShotCadence(shotCadence));
             ShowBulletFeedback(bulletData);
             if (shotHasCriticalOutcome && hasViableTarget)
             {
@@ -822,6 +850,11 @@ public partial class PlayerShoot
                 bulletData,
                 shotHasCriticalOutcome,
                 horizontalDirection);
+            // Projectile arrival controls damage timing independently from
+            // the fixed interval that controls the next sequential shot.
+            yield return WaitForProjectileArrival(
+                projectile,
+                projectileTravelDuration);
             yield return ApplyShotScopedEffects(bulletData, horizontalDirection);
             yield return ApplyHitResults(
                 bulletData,
@@ -844,7 +877,104 @@ public partial class PlayerShoot
                 bulletData,
                 shotHasCriticalOutcome,
                 generatesShells);
+            yield return WaitForShotCadence(shotCadence);
             onCompleted?.Invoke(true);
+        }
+
+        private static Vector3 GetProjectileImpactPoint(
+            EnemyController enemy)
+        {
+            if (enemy == null)
+            {
+                return Vector3.zero;
+            }
+
+            SpriteRenderer targetRenderer = enemy.HoverRenderer;
+            return targetRenderer == null
+                ? enemy.transform.position
+                : targetRenderer.bounds.center;
+        }
+
+        private IEnumerator WaitForProjectileArrival(
+            BulletProjectileView projectile,
+            float travelDuration)
+        {
+            if (owner.activeProjectileView != null
+                && owner.activeProjectileView != projectile)
+            {
+                owner.activeProjectileView.CancelTravel();
+            }
+
+            owner.activeProjectileView = projectile;
+
+            if (travelDuration <= 0f)
+            {
+                if (projectile != null)
+                {
+                    projectile.CompleteTravel();
+                }
+
+                if (owner.activeProjectileView == projectile)
+                {
+                    owner.activeProjectileView = null;
+                }
+
+                yield break;
+            }
+
+            float elapsedTime = 0f;
+
+            while (elapsedTime < travelDuration)
+            {
+                yield return null;
+
+                elapsedTime = AdvanceShotTimer(
+                    elapsedTime,
+                    Time.unscaledDeltaTime,
+                    GamePauseController.IsPaused);
+                if (projectile != null)
+                {
+                    projectile.SetTravelProgress(
+                        elapsedTime / travelDuration);
+                }
+            }
+
+            if (projectile != null)
+            {
+                projectile.CompleteTravel();
+            }
+
+            if (owner.activeProjectileView == projectile)
+            {
+                owner.activeProjectileView = null;
+            }
+        }
+
+        private IEnumerator TrackShotCadence(ShotCadenceState state)
+        {
+            float duration = Mathf.Max(0f, shotInterval);
+            float elapsedTime = 0f;
+
+            while (elapsedTime < duration)
+            {
+                yield return null;
+
+                elapsedTime = AdvanceShotTimer(
+                    elapsedTime,
+                    Time.unscaledDeltaTime,
+                    GamePauseController.IsPaused);
+            }
+
+            state.IsComplete = true;
+        }
+
+        private static IEnumerator WaitForShotCadence(
+            ShotCadenceState state)
+        {
+            while (!state.IsComplete)
+            {
+                yield return null;
+            }
         }
 
         private bool HasExposedHitTarget()
@@ -2061,7 +2191,6 @@ public partial class PlayerShoot
                         GetCurrentCylinderBuild());
                 }
     
-                yield return null;
             }
         }
     
@@ -2792,14 +2921,10 @@ public partial class PlayerShoot
             return owner.GetShotLineEndPoint(startPoint, targetEndPoint);
         }
 
-        private IEnumerator WaitForShotInterval()
-        {
-            return owner.WaitForShotInterval();
-        }
-
         private void ShowBulletFeedback(BulletInstance bullet)
         {
             owner.ShowBulletFeedback(bullet);
         }
+
     }
 }

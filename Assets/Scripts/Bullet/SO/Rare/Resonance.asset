@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_resonance
   displayName: "\uACF5\uBA85\uD0C4"
-  description: "실린더에 남아 있는 다른 공명탄 하나당 최종 피해 +25%"
+  description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978 \uACF5\uBA85\uD0C4
+    \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +25%"
   cylinderIcon: {fileID: 7042858435584613796, guid: 7b79d6a48f71d2f44bc1338af5e892f5, type: 3}
   price: 6
   grade: 1
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 30
   maxRange: 3
   criticalChance: 15
@@ -34,8 +37,11 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 1
     amount: 25
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
   secondaryLineColor: {r: 1, g: 0.18, b: 0.24, a: 1}
@@ -44,7 +50,8 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 피해 +30%"
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +30%"
     damage: 35
     maxRange: 3
     criticalChance: 21
@@ -56,15 +63,17 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 30
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.18, b: 0.24, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 피해 +40%"
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +40%"
     damage: 40
     maxRange: 4
     criticalChance: 29
@@ -76,15 +85,17 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 40
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.18, b: 0.24, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.15
     upgradeCost: 40
-  - description: "실린더에 남아 있는 다른 공명탄 하나당 최종 피해 +50%"
+  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
+      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +50%"
     damage: 50
     maxRange: 5
     criticalChance: 40
@@ -96,12 +107,13 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 50
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances:
     - chance: 60
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 1, g: 0.18, b: 0.24, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.18
     upgradeCost: 0

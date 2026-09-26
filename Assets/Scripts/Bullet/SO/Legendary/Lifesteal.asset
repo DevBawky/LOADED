@@ -14,15 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_lifesteal
   displayName: "\uAC70\uBA38\uB9AC"
-  description: "피해량만큼 흡혈 (70%)"
+  description: "\uD53C\uD574\uB7C9\uB9CC\uD07C \uD761\uD608 (70%)"
   cylinderIcon: {fileID: -7185434700578658702, guid: 021c097390f83374d941ad2d742ed91d, type: 3}
   price: 20
   grade: 3
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 2
   maxRange: 3
   criticalChance: 30
@@ -38,6 +40,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 1, g: 0.5, b: 0, a: 1}
   secondaryLineColor: {r: 0.9, g: 0, b: 0.05, a: 1}
@@ -46,7 +49,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 50
   upgradeLevels:
-  - description: "피해량만큼 흡혈"
+  - description: "\uD53C\uD574\uB7C9\uB9CC\uD07C \uD761\uD608"
     damage: 5
     maxRange: 3
     criticalChance: 30
@@ -62,11 +65,13 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "피해량만큼 흡혈\n관통 1회 (50%)"
+  - description: "\uD53C\uD574\uB7C9\uB9CC\uD07C \uD761\uD608\n\uAD00\uD1B5 1\uD68C
+      (50%)"
     damage: 8
     maxRange: 4
     criticalChance: 30
@@ -83,11 +88,13 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 200
-  - description: "피해량만큼 흡혈\n관통 1회\n모든 적에게 약화 +5"
+  - description: "\uD53C\uD574\uB7C9\uB9CC\uD07C \uD761\uD608\n\uAD00\uD1B5 1\uD68C\n\uBAA8\uB4E0
+      \uC801\uC5D0\uAC8C \uC57D\uD654 +5"
     damage: 10
     maxRange: 4
     criticalChance: 50
@@ -112,6 +119,7 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 100
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.2

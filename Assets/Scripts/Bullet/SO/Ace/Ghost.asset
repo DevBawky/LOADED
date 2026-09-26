@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_ghost
   displayName: "\uC720\uB839"
-  description: "재장전 시 턴 소모 없음"
+  description: "\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C"
   cylinderIcon: {fileID: -8299782735030386280, guid: 04280ab5e354d75488156673e8734f28, type: 3}
   price: 10
   grade: 2
@@ -24,6 +24,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 20
   maxRange: 3
   criticalChance: 30
@@ -31,6 +32,7 @@ MonoBehaviour:
   effects: []
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 0.78, g: 0.58, b: 1, a: 1}
@@ -39,7 +41,8 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "재장전 시 턴 소모 없음\n관통 1회 (50%)"
+  - description: "\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C\n\uAD00\uD1B5
+      1\uD68C (50%)"
     damage: 27
     maxRange: 3
     criticalChance: 40
@@ -48,13 +51,13 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.78, g: 0.58, b: 1, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "재장전 시 턴 소모 없음\n관통 최대 2회 (50%)"
+  - description: "\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C\n\uAD00\uD1B5
+      \uCD5C\uB300 2\uD68C (50%)"
     damage: 36
     maxRange: 4
     criticalChance: 50
@@ -64,13 +67,13 @@ MonoBehaviour:
     penetrationChances:
     - chance: 50
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.78, g: 0.58, b: 1, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "재장전 시 턴 소모 없음\n연속 관통 (50%)\n적 처치 시 골드 +3"
+  - description: "\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C\n\uC5F0\uC18D
+      \uAD00\uD1B5 (50%)\n\uC801 \uCC98\uCE58 \uC2DC \uACE8\uB4DC +3"
     damage: 45
     maxRange: 4
     criticalChance: 65
@@ -85,14 +88,15 @@ MonoBehaviour:
         stackCount: 0
         knockbackDistance: 0
         amount: 3
+        secondTransferPercent: 0
+        thirdTransferPercent: 0
     penetrationChances:
     - chance: 50
     - chance: 50
     - chance: 50
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
-    secondaryLineColor: {r: 0.78, g: 0.58, b: 1, a: 1}
     doesNotConsumeTurn: 1
     recoilStrength: 0.1
     upgradeCost: 0

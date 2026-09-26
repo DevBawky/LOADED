@@ -14,15 +14,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_focus
   displayName: "\uC9D1\uC911\uD0C4"
-  description: "실린더에서 앞선 탄환이 치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +20%p\n치명타 시 모두 소모"
+  description: "\uC2E4\uB9B0\uB354\uC5D0\uC11C \uC55E\uC120 \uD0C4\uD658\uC774 \uCE58\uBA85\uD0C0\uAC00
+    \uBC1C\uC0DD\uD558\uC9C0 \uC54A\uC744 \uB54C \uC9D1\uC911 +1\n\uC9D1\uC911 \uD558\uB098\uB2F9
+    \uCE58\uBA85\uD0C0 \uD655\uB960 +20%p\n\uCE58\uBA85\uD0C0 \uC2DC \uBAA8\uB450
+    \uC18C\uBAA8"
   cylinderIcon: {fileID: 437931843702538465, guid: c089d7c1b75375d49a10f260b93feec2, type: 3}
   price: 6
   grade: 1
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 11
   maxRange: 4
   criticalChance: 10
@@ -34,8 +39,11 @@ MonoBehaviour:
     stackCount: 1
     knockbackDistance: 1
     amount: 20
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
   secondaryLineColor: {r: 0, g: 0.75, b: 0.72, a: 1}
@@ -44,7 +52,10 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "실린더에서 앞선 탄환이 치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +25%p\n치명타 시 모두 소모"
+  - description: "\uC2E4\uB9B0\uB354\uC5D0\uC11C \uC55E\uC120 \uD0C4\uD658\uC774
+      \uCE58\uBA85\uD0C0\uAC00 \uBC1C\uC0DD\uD558\uC9C0 \uC54A\uC744 \uB54C \uC9D1\uC911
+      +1\n\uC9D1\uC911 \uD558\uB098\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960 +25%p\n\uCE58\uBA85\uD0C0
+      \uC2DC \uBAA8\uB450 \uC18C\uBAA8"
     damage: 14
     maxRange: 4
     criticalChance: 12
@@ -56,15 +67,19 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 25
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0, g: 0.75, b: 0.72, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "실린더에서 앞선 탄환이 치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +30%p\n치명타 시 모두 소모"
+  - description: "\uC2E4\uB9B0\uB354\uC5D0\uC11C \uC55E\uC120 \uD0C4\uD658\uC774
+      \uCE58\uBA85\uD0C0\uAC00 \uBC1C\uC0DD\uD558\uC9C0 \uC54A\uC744 \uB54C \uC9D1\uC911
+      +1\n\uC9D1\uC911 \uD558\uB098\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960 +30%p\n\uCE58\uBA85\uD0C0
+      \uC2DC \uBAA8\uB450 \uC18C\uBAA8"
     damage: 18
     maxRange: 5
     criticalChance: 15
@@ -76,15 +91,19 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 30
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0, g: 0.75, b: 0.72, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 40
-  - description: "실린더에서 앞선 탄환이 치명타가 발생하지 않을 때 집중 +1\n집중 하나당 치명타 확률 +50%p\n치명타 시 모두 소모"
+  - description: "\uC2E4\uB9B0\uB354\uC5D0\uC11C \uC55E\uC120 \uD0C4\uD658\uC774
+      \uCE58\uBA85\uD0C0\uAC00 \uBC1C\uC0DD\uD558\uC9C0 \uC54A\uC744 \uB54C \uC9D1\uC911
+      +1\n\uC9D1\uC911 \uD558\uB098\uB2F9 \uCE58\uBA85\uD0C0 \uD655\uB960 +50%p\n\uCE58\uBA85\uD0C0
+      \uC2DC \uBAA8\uB450 \uC18C\uBAA8"
     damage: 23
     maxRange: 5
     criticalChance: 20
@@ -96,11 +115,12 @@ MonoBehaviour:
       stackCount: 1
       knockbackDistance: 1
       amount: 50
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
-    primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
-    secondaryLineColor: {r: 0, g: 0.75, b: 0.72, a: 1}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 0

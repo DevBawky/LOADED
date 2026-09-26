@@ -14,15 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_spread
   displayName: "\uD655\uC0B0\uD0C4"
-  description: "이후 탄환 최종 피해 +15%"
+  description: "\uC774\uD6C4 \uD0C4\uD658 \uCD5C\uC885 \uD53C\uD574 +15%"
   cylinderIcon: {fileID: 6459364409021095807, guid: 1e448a4270ef93e47bfb7ca96b21808e, type: 3}
   price: 10
   grade: 2
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 12
   maxRange: 4
   criticalChance: 20
@@ -38,6 +40,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
   secondaryLineColor: {r: 0.72, g: 0.36, b: 0.16, a: 1}
@@ -46,7 +49,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "이후 탄환 최종 피해 +20%"
+  - description: "\uC774\uD6C4 \uD0C4\uD658 \uCD5C\uC885 \uD53C\uD574 +20%"
     damage: 16
     maxRange: 5
     criticalChance: 24
@@ -62,11 +65,13 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "이후 탄환 최종 피해 +30%\n관통 1회 (50%)"
+  - description: "\uC774\uD6C4 \uD0C4\uD658 \uCD5C\uC885 \uD53C\uD574 +30%\n\uAD00\uD1B5
+      1\uD68C (50%)"
     damage: 20
     maxRange: 5
     criticalChance: 28
@@ -83,11 +88,13 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "이후 탄환 최종 피해 +40%\n관통 1회"
+  - description: "\uC774\uD6C4 \uD0C4\uD658 \uCD5C\uC885 \uD53C\uD574 +40%\n\uAD00\uD1B5
+      1\uD68C"
     damage: 25
     maxRange: 6
     criticalChance: 35
@@ -104,8 +111,8 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 100
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 0
-

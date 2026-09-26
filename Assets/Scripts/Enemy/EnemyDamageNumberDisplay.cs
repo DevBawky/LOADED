@@ -166,6 +166,8 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
+        ConfigureForBattleCamera(number);
+
         // The project layout owns separation. Keeping Damage Numbers Pro's
         // Collision and Push active here would apply a second, much larger
         // offset on top of minimumSpawnSeparation.
@@ -186,6 +188,8 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     {
         bool collisionEnabled = prefab.enableCollision;
         bool pushEnabled = prefab.enablePush;
+        bool game3DEnabled = prefab.enable3DGame;
+        bool faceCameraViewEnabled = prefab.faceCameraView;
 
         try
         {
@@ -193,12 +197,16 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             // synchronous initialization, then restore the prefab settings.
             prefab.enableCollision = false;
             prefab.enablePush = false;
+            prefab.enable3DGame = true;
+            prefab.faceCameraView = true;
             return prefab.Spawn(position, damage);
         }
         finally
         {
             prefab.enableCollision = collisionEnabled;
             prefab.enablePush = pushEnabled;
+            prefab.enable3DGame = game3DEnabled;
+            prefab.faceCameraView = faceCameraViewEnabled;
         }
     }
 
@@ -209,18 +217,42 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     {
         bool collisionEnabled = prefab.enableCollision;
         bool pushEnabled = prefab.enablePush;
+        bool game3DEnabled = prefab.enable3DGame;
+        bool faceCameraViewEnabled = prefab.faceCameraView;
 
         try
         {
             prefab.enableCollision = false;
             prefab.enablePush = false;
+            prefab.enable3DGame = true;
+            prefab.faceCameraView = true;
             return prefab.Spawn(position, statusText);
         }
         finally
         {
             prefab.enableCollision = collisionEnabled;
             prefab.enablePush = pushEnabled;
+            prefab.enable3DGame = game3DEnabled;
+            prefab.faceCameraView = faceCameraViewEnabled;
         }
+    }
+
+    internal static void ConfigureForBattleCamera(
+        DamageNumber number,
+        Camera battleCamera = null)
+    {
+        if (number == null)
+        {
+            return;
+        }
+
+        battleCamera ??= Camera.main;
+        number.enable3DGame = true;
+        number.faceCameraView = true;
+        number.cameraOverride = battleCamera == null
+            ? null
+            : battleCamera.transform;
+        BattleSpriteBillboard.FaceTransform(number.transform, battleCamera);
     }
 
     private void ApplyTierStyle(

@@ -14,15 +14,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_normal
   displayName: "\uC218\uD608"
-  description: "적 처치 시 최대 체력 +1 (50%)"
+  description: "\uC801 \uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +1 (50%)"
   cylinderIcon: {fileID: -213895607114171709, guid: a6deae905e16fff478ead0ecb5eb5a1f, type: 3}
   price: 10
   grade: 2
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 13
   maxRange: 3
   criticalChance: 25
@@ -40,6 +42,7 @@ MonoBehaviour:
       secondTransferPercent: 0
       thirdTransferPercent: 0
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 1, g: 0.18, b: 0.18, a: 1}
@@ -48,7 +51,7 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "적 처치 시 최대 체력 +1 (80%)"
+  - description: "\uC801 \uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +1 (80%)"
     damage: 17
     maxRange: 3
     criticalChance: 33
@@ -66,11 +69,13 @@ MonoBehaviour:
         secondTransferPercent: 0
         thirdTransferPercent: 0
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "적 처치 시 최대 체력 +1\n관통 최대 2회 (30%)"
+  - description: "\uC801 \uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +1\n\uAD00\uD1B5
+      \uCD5C\uB300 2\uD68C (30%)"
     damage: 22
     maxRange: 4
     criticalChance: 41
@@ -90,11 +95,13 @@ MonoBehaviour:
     penetrationChances:
     - chance: 30
     - chance: 30
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "적 처치 시 최대 체력 +2\n연속 관통 (30%)\n재장전 시 턴 소모 없음"
+  - description: "\uC801 \uCC98\uCE58 \uC2DC \uCD5C\uB300 \uCCB4\uB825 +2\n\uC5F0\uC18D
+      \uAD00\uD1B5 (30%)\n\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 30
     maxRange: 4
     criticalChance: 50
@@ -116,6 +123,7 @@ MonoBehaviour:
     - chance: 45
     - chance: 45
     - chance: 45
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 1
     recoilStrength: 0.35

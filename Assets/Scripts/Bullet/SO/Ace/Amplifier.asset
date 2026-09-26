@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_amplifier
   displayName: "\uC99D\uD3ED"
-  description: "상태이상 스택 x2 (65%)"
+  description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x2 (65%)"
   cylinderIcon: {fileID: 2641190778768216385, guid: 2c63fd166474af84597b03192c176150, type: 3}
   price: 10
   grade: 2
@@ -24,6 +24,7 @@ MonoBehaviour:
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 10
   maxRange: 4
   criticalChance: 20
@@ -39,6 +40,7 @@ MonoBehaviour:
     thirdTransferPercent: 0
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
   secondaryLineColor: {r: 1, g: 0.28, b: 0.78, a: 1}
@@ -47,7 +49,7 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "상태이상 스택 x2 (80%)"
+  - description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x2 (80%)"
     damage: 14
     maxRange: 4
     criticalChance: 24
@@ -63,11 +65,12 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "상태이상 스택 x3\n표식 +2"
+  - description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x3\n\uD45C\uC2DD +2"
     damage: 18
     maxRange: 5
     criticalChance: 28
@@ -91,11 +94,13 @@ MonoBehaviour:
       thirdTransferPercent: 0
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "상태이상 스택 x3\n표식 +5\n약화 +2\n재장전 시 턴 소모 없음"
+  - description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x3\n\uD45C\uC2DD +5\n\uC57D\uD654
+      +2\n\uC7AC\uC7A5\uC804 \uC2DC \uD134 \uC18C\uBAA8 \uC5C6\uC74C"
     damage: 24
     maxRange: 5
     criticalChance: 35
@@ -128,6 +133,7 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 30
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 1
     recoilStrength: 0.12

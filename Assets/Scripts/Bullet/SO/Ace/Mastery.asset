@@ -14,15 +14,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_mastery
   displayName: "\uD1B5\uB2EC"
-  description: "치명타 확률 5%\n치명타 배율 x7"
+  description: "\uCE58\uBA85\uD0C0 \uD655\uB960 5%\n\uCE58\uBA85\uD0C0 \uBC30\uC728
+    x7"
   cylinderIcon: {fileID: 1143175659841188501, guid: f2d720128da7fa64ea235046d96d07d9, type: 3}
   price: 20
   grade: 3
+  bulletType: 0
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 16
   maxRange: 5
   criticalChance: 5
@@ -30,6 +33,7 @@ MonoBehaviour:
   effects: []
   conditionalEvents: []
   penetrationChances: []
+  shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
   primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
   secondaryLineColor: {r: 0.72, g: 0.36, b: 0.16, a: 1}
@@ -38,7 +42,8 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 50
   upgradeLevels:
-  - description: "치명타 확률 7%\n치명타 배율 x8"
+  - description: "\uCE58\uBA85\uD0C0 \uD655\uB960 7%\n\uCE58\uBA85\uD0C0 \uBC30\uC728
+      x8"
     damage: 20
     maxRange: 5
     criticalChance: 7
@@ -46,11 +51,13 @@ MonoBehaviour:
     effects: []
     conditionalEvents: []
     penetrationChances: []
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "치명타 확률 10%\n치명타 배율 x10\n관통 1회 (50%)"
+  - description: "\uCE58\uBA85\uD0C0 \uD655\uB960 10%\n\uCE58\uBA85\uD0C0 \uBC30\uC728
+      x10\n\uAD00\uD1B5 1\uD68C (50%)"
     damage: 25
     maxRange: 6
     criticalChance: 10
@@ -59,11 +66,13 @@ MonoBehaviour:
     conditionalEvents: []
     penetrationChances:
     - chance: 50
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 200
-  - description: "치명타 확률 15%\n치명타 배율 x12\n관통 2회"
+  - description: "\uCE58\uBA85\uD0C0 \uD655\uB960 15%\n\uCE58\uBA85\uD0C0 \uBC30\uC728
+      x12\n\uAD00\uD1B5 2\uD68C"
     damage: 30
     maxRange: 6
     criticalChance: 15
@@ -73,8 +82,8 @@ MonoBehaviour:
     penetrationChances:
     - chance: 100
     - chance: 100
+    shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 0
-
