@@ -3,6 +3,7 @@ using Unity.Cinemachine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
@@ -30,12 +31,23 @@ public static class Battle3DSetupBuilder
         "Assets/Resources/ProjectileVisuals/DefaultProjectileVisual.asset";
     private const string EnvironmentProfilePath =
         "Assets/Resources/Battle/DefaultBattleEnvironment.asset";
+    private const string SkyboxMaterialPath =
+        "Assets/Materials/Battle3DSkybox.mat";
+    private const string BattleVolumeProfilePath =
+        "Assets/Settings/BattleEnvironmentVolume.asset";
+    private const string LegacyVolumeProfilePath =
+        "Assets/Scenes/SampleScene/Main Camera Profile.asset";
 
     private const string EnvironmentRootName = "##--ENVIRONMENT--##";
     private const string BoardRootName = "##--BOARDS--##";
     private const string BackgroundRootName = "##--BACKGROUNDS--##";
     private const string TerrainObjectName = "Terrain | Battle Ground";
     private const string DirectionalLightName = "Directional Light | Battle 3D";
+    private const string FillLightName = "Directional Light | Cool Fill";
+    private const string LightingRootName = "Lighting | Battle";
+    private const string ReflectionProbeName = "Reflection Probe | Battle Arena";
+    private const string LightProbeGroupName = "Light Probes | Battle Arena";
+    private const string PropsRootName = "Props | Battle";
 
     [MenuItem("Tools/LOADED/Apply Battle 3D Prototype")]
     public static void Apply()
@@ -49,13 +61,18 @@ public static class Battle3DSetupBuilder
 
         int rendererIndex = EnsureBattleRenderer();
         Material terrainMaterial = EnsureTerrainMaterial();
+        Material skyboxMaterial = EnsureSkyboxMaterial();
+        VolumeProfile volumeProfile = EnsureBattleVolumeProfile();
         Material projectileMaterial = EnsureProjectileMaterial();
         BulletProjectileView projectilePrefab = EnsureProjectilePrefab(
             projectileMaterial);
         ProjectileVisualProfile projectileProfile =
             EnsureProjectileProfile(projectilePrefab);
         BattleEnvironmentProfile environmentProfile =
-            EnsureEnvironmentProfile(rendererIndex);
+            EnsureEnvironmentProfile(
+                rendererIndex,
+                skyboxMaterial,
+                volumeProfile);
         Texture2D terrainTexture = EnsureTerrainTexture();
         TerrainLayer terrainLayer = EnsureTerrainLayer(terrainTexture);
         TerrainData terrainData = EnsureTerrainData(terrainLayer);
@@ -243,6 +260,7 @@ public static class Battle3DSetupBuilder
         targetFeature.name = CombatImpactRendererFeatureName;
         targetFeature.hideFlags = sourceFeature.hideFlags;
         EditorUtility.SetDirty(targetFeature);
+        EnsureBattleAmbientOcclusion(renderer);
 
         SerializedObject serializedLegacy = new SerializedObject(
             legacyRenderer);
@@ -309,6 +327,55 @@ public static class Battle3DSetupBuilder
         EditorUtility.SetDirty(renderer);
     }
 
+    private static void EnsureBattleAmbientOcclusion(
+        UniversalRendererData renderer)
+    {
+        ScreenSpaceAmbientOcclusion ambientOcclusion = null;
+        foreach (ScriptableRendererFeature feature in renderer.rendererFeatures)
+        {
+            if (feature is ScreenSpaceAmbientOcclusion existing)
+            {
+                ambientOcclusion = existing;
+                break;
+            }
+        }
+
+        if (ambientOcclusion == null)
+        {
+            ambientOcclusion = ScriptableObject.CreateInstance<
+                ScreenSpaceAmbientOcclusion>();
+            ambientOcclusion.name = "Screen Space Ambient Occlusion";
+            AssetDatabase.AddObjectToAsset(ambientOcclusion, renderer);
+            renderer.rendererFeatures.Add(ambientOcclusion);
+        }
+
+        SerializedObject serializedFeature = new SerializedObject(
+            ambientOcclusion);
+        SerializedProperty settings = serializedFeature.FindProperty(
+            "m_Settings");
+        if (settings == null)
+        {
+            throw new InvalidOperationException(
+                "URP ambient occlusion settings could not be located.");
+        }
+
+        settings.FindPropertyRelative("AOMethod").intValue = 0;
+        settings.FindPropertyRelative("Downsample").boolValue = false;
+        settings.FindPropertyRelative("AfterOpaque").boolValue = false;
+        settings.FindPropertyRelative("Source").intValue = 1;
+        settings.FindPropertyRelative("NormalSamples").intValue = 2;
+        settings.FindPropertyRelative("Intensity").floatValue = 1.35f;
+        settings.FindPropertyRelative("DirectLightingStrength").floatValue =
+            0.22f;
+        settings.FindPropertyRelative("Radius").floatValue = 0.08f;
+        settings.FindPropertyRelative("Samples").intValue = 0;
+        settings.FindPropertyRelative("BlurQuality").intValue = 0;
+        settings.FindPropertyRelative("Falloff").floatValue = 80f;
+        serializedFeature.ApplyModifiedPropertiesWithoutUndo();
+        ambientOcclusion.Create();
+        EditorUtility.SetDirty(ambientOcclusion);
+    }
+
     private static Material EnsureTerrainMaterial()
     {
         Shader shader = Shader.Find("Universal Render Pipeline/Terrain/Lit");
@@ -318,17 +385,132 @@ public static class Battle3DSetupBuilder
                 "URP Terrain/Lit shader is unavailable.");
         }
 
-        Material material = GetOrCreateMaterial(TerrainMaterialPath, shader);
-        SetColorIfPresent(
-            material,
-            "_BaseColor",
-            new Color(0.17f, 0.20f, 0.13f, 1f));
-        SetColorIfPresent(
-            material,
-            "_Color",
-            new Color(0.17f, 0.20f, 0.13f, 1f));
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(
+            TerrainMaterialPath);
+        bool created = material == null;
+        if (material == null)
+        {
+            material = new Material(shader);
+            AssetDatabase.CreateAsset(material, TerrainMaterialPath);
+        }
+        else
+        {
+            material.shader = shader;
+        }
+
+        Color legacyTint = new Color(0.17f, 0.20f, 0.13f, 1f);
+        bool usesLegacyTint = material.HasProperty("_BaseColor")
+            && Approximately(material.GetColor("_BaseColor"), legacyTint);
+        if (created || usesLegacyTint)
+        {
+            SetColorIfPresent(material, "_BaseColor", Color.white);
+            SetColorIfPresent(material, "_Color", Color.white);
+        }
         EditorUtility.SetDirty(material);
         return material;
+    }
+
+    private static Material EnsureSkyboxMaterial()
+    {
+        Shader shader = Shader.Find("Skybox/Procedural");
+        if (shader == null)
+        {
+            throw new InvalidOperationException(
+                "Procedural Skybox shader is unavailable.");
+        }
+
+        Material material = GetOrCreateMaterial(SkyboxMaterialPath, shader);
+        SetFloatIfPresent(material, "_SunDisk", 2f);
+        SetFloatIfPresent(material, "_SunSize", 0.035f);
+        SetFloatIfPresent(material, "_SunSizeConvergence", 5f);
+        SetFloatIfPresent(material, "_AtmosphereThickness", 1.05f);
+        SetColorIfPresent(
+            material,
+            "_SkyTint",
+            new Color(0.32f, 0.42f, 0.58f, 1f));
+        SetColorIfPresent(
+            material,
+            "_GroundColor",
+            new Color(0.12f, 0.09f, 0.07f, 1f));
+        SetFloatIfPresent(material, "_Exposure", 1.12f);
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static VolumeProfile EnsureBattleVolumeProfile()
+    {
+        VolumeProfile profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(
+            BattleVolumeProfilePath);
+        if (profile == null)
+        {
+            if (AssetDatabase.LoadAssetAtPath<VolumeProfile>(
+                    LegacyVolumeProfilePath) != null)
+            {
+                AssetDatabase.CopyAsset(
+                    LegacyVolumeProfilePath,
+                    BattleVolumeProfilePath);
+                profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(
+                    BattleVolumeProfilePath);
+            }
+            else
+            {
+                profile = ScriptableObject.CreateInstance<VolumeProfile>();
+                AssetDatabase.CreateAsset(profile, BattleVolumeProfilePath);
+            }
+        }
+
+        profile.name = "BattleEnvironmentVolume";
+
+        Bloom bloom = GetOrAddVolumeOverride<Bloom>(profile);
+        bloom.threshold.Override(1.05f);
+        bloom.intensity.Override(0.28f);
+        bloom.scatter.Override(0.62f);
+        bloom.clamp.Override(16f);
+        bloom.highQualityFiltering.Override(true);
+
+        Tonemapping tonemapping = GetOrAddVolumeOverride<Tonemapping>(profile);
+        tonemapping.mode.Override(TonemappingMode.ACES);
+
+        ColorAdjustments color =
+            GetOrAddVolumeOverride<ColorAdjustments>(profile);
+        color.postExposure.Override(0.08f);
+        color.contrast.Override(9f);
+        color.colorFilter.Override(new Color(1f, 0.97f, 0.92f, 1f));
+        color.saturation.Override(-4f);
+
+        WhiteBalance whiteBalance =
+            GetOrAddVolumeOverride<WhiteBalance>(profile);
+        whiteBalance.temperature.Override(3f);
+        whiteBalance.tint.Override(1f);
+
+        Vignette vignette = GetOrAddVolumeOverride<Vignette>(profile);
+        vignette.color.Override(new Color(0.025f, 0.03f, 0.045f, 1f));
+        vignette.center.Override(new Vector2(0.5f, 0.5f));
+        vignette.intensity.Override(0.14f);
+        vignette.smoothness.Override(0.55f);
+        vignette.rounded.Override(false);
+
+        EditorUtility.SetDirty(profile);
+        return profile;
+    }
+
+    private static T GetOrAddVolumeOverride<T>(VolumeProfile profile)
+        where T : VolumeComponent
+    {
+        if (!profile.TryGet(out T component))
+        {
+            component = profile.Add<T>(true);
+
+            if (AssetDatabase.Contains(profile)
+                && !AssetDatabase.Contains(component))
+            {
+                AssetDatabase.AddObjectToAsset(component, profile);
+            }
+        }
+
+        component.active = true;
+        EditorUtility.SetDirty(component);
+        return component;
     }
 
     private static Material EnsureProjectileMaterial()
@@ -404,7 +586,9 @@ public static class Battle3DSetupBuilder
     }
 
     private static BattleEnvironmentProfile EnsureEnvironmentProfile(
-        int rendererIndex)
+        int rendererIndex,
+        Material skyboxMaterial,
+        VolumeProfile volumeProfile)
     {
         BattleEnvironmentProfile profile =
             AssetDatabase.LoadAssetAtPath<BattleEnvironmentProfile>(
@@ -426,9 +610,23 @@ public static class Battle3DSetupBuilder
             new Vector3(35f, 0f, 0f);
         serializedProfile.FindProperty("cinemachineFollowOffset").vector3Value =
             new Vector3(0f, 9.3f, -12f);
+        serializedProfile.FindProperty("usePerspective").boolValue = true;
+        serializedProfile.FindProperty("perspectiveFieldOfView").floatValue =
+            40f;
         serializedProfile.FindProperty("orthographicSize").floatValue = 5f;
         serializedProfile.FindProperty("rendererIndex").intValue =
             rendererIndex;
+        serializedProfile.FindProperty("skyboxMaterial")
+            .objectReferenceValue = skyboxMaterial;
+        serializedProfile.FindProperty("volumeProfile")
+            .objectReferenceValue = volumeProfile;
+        serializedProfile.FindProperty("ambientIntensity").floatValue = 0.82f;
+        serializedProfile.FindProperty("reflectionIntensity").floatValue =
+            0.78f;
+        serializedProfile.FindProperty("fogEnabled").boolValue = true;
+        serializedProfile.FindProperty("fogColor").colorValue =
+            new Color(0.12f, 0.16f, 0.22f, 1f);
+        serializedProfile.FindProperty("fogDensity").floatValue = 0.012f;
         serializedProfile.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(profile);
         return profile;
@@ -441,6 +639,13 @@ public static class Battle3DSetupBuilder
             TerrainTexturePath);
         if (texture != null)
         {
+            if (texture.width == textureSize
+                && texture.height == textureSize
+                && CalculateAverageLuminance(texture) < 0.3f)
+            {
+                PaintTerrainTexture(texture);
+                EditorUtility.SetDirty(texture);
+            }
             return texture;
         }
 
@@ -453,7 +658,16 @@ public static class Battle3DSetupBuilder
             name = "BattleGroundTexture"
         };
 
-        Color baseColor = new Color(0.23f, 0.26f, 0.17f, 1f);
+        PaintTerrainTexture(texture);
+        AssetDatabase.CreateAsset(texture, TerrainTexturePath);
+        EditorUtility.SetDirty(texture);
+        return texture;
+    }
+
+    private static void PaintTerrainTexture(Texture2D texture)
+    {
+        Color baseColor = new Color(0.42f, 0.39f, 0.26f, 1f);
+        int textureSize = texture.width;
         Color[] pixels = new Color[textureSize * textureSize];
         for (int y = 0; y < textureSize; y++)
         {
@@ -470,9 +684,22 @@ public static class Battle3DSetupBuilder
         texture.wrapMode = TextureWrapMode.Repeat;
         texture.filterMode = FilterMode.Bilinear;
         texture.Apply(false, false);
-        AssetDatabase.CreateAsset(texture, TerrainTexturePath);
-        EditorUtility.SetDirty(texture);
-        return texture;
+    }
+
+    private static float CalculateAverageLuminance(Texture2D texture)
+    {
+        Color[] pixels = texture.GetPixels();
+        if (pixels.Length == 0)
+        {
+            return 1f;
+        }
+
+        float total = 0f;
+        foreach (Color pixel in pixels)
+        {
+            total += pixel.grayscale;
+        }
+        return total / pixels.Length;
     }
 
     private static TerrainLayer EnsureTerrainLayer(Texture2D terrainTexture)
@@ -481,6 +708,21 @@ public static class Battle3DSetupBuilder
             AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainLayerPath);
         if (terrainLayer != null)
         {
+            Vector4 legacyRemap = new Vector4(
+                0.17f,
+                0.20f,
+                0.13f,
+                1f);
+            if (Approximately(terrainLayer.diffuseRemapMax, legacyRemap))
+            {
+                terrainLayer.diffuseRemapMax = new Vector4(
+                    0.82f,
+                    0.88f,
+                    0.68f,
+                    1f);
+                terrainLayer.smoothness = 0.1f;
+                EditorUtility.SetDirty(terrainLayer);
+            }
             return terrainLayer;
         }
 
@@ -493,11 +735,11 @@ public static class Battle3DSetupBuilder
         terrainLayer.tileSize = new Vector2(8f, 8f);
         terrainLayer.diffuseRemapMin = Vector4.zero;
         terrainLayer.diffuseRemapMax = new Vector4(
-            0.17f,
-            0.20f,
-            0.13f,
+            0.82f,
+            0.88f,
+            0.68f,
             1f);
-        terrainLayer.smoothness = 0.08f;
+        terrainLayer.smoothness = 0.1f;
         AssetDatabase.CreateAsset(terrainLayer, TerrainLayerPath);
         EditorUtility.SetDirty(terrainLayer);
         return terrainLayer;
@@ -658,7 +900,18 @@ public static class Battle3DSetupBuilder
             directionalLight = lightObject.AddComponent<Light>();
         }
         directionalLight.type = LightType.Directional;
-        directionalLight.shadows = LightShadows.Hard;
+        directionalLight.color = profile.DirectionalLightColor;
+        directionalLight.intensity = profile.DirectionalLightIntensity;
+        directionalLight.transform.rotation = profile.DirectionalLightRotation;
+        directionalLight.shadows = LightShadows.Soft;
+        directionalLight.shadowStrength = 0.9f;
+        directionalLight.shadowBias = 0.04f;
+        directionalLight.shadowNormalBias = 0.35f;
+        directionalLight.GetUniversalAdditionalLightData();
+        RenderSettings.sun = directionalLight;
+
+        EnsureEnvironmentAuthoringHierarchy(environmentRoot.transform);
+        ApplyRenderSettings(profile);
 
         Camera battleCamera = cameraObject.GetComponent<Camera>();
         if (battleCamera == null)
@@ -672,7 +925,8 @@ public static class Battle3DSetupBuilder
             battleCamera,
             profile,
             rendererIndex,
-            playerObject.transform);
+            playerObject.transform,
+            profile.VolumeProfile);
         ConfigureOverlayCanvas(gameplayCanvasObject, 0);
         ConfigureOverlayCanvas(gameStartCanvasObject, 5);
 
@@ -699,6 +953,10 @@ public static class Battle3DSetupBuilder
         SetObjectReference(controller, "defaultProfile", profile);
         SetObjectReference(controller, "boardRoot", boardRoot.transform);
         SetObjectReference(controller, "battleCamera", battleCamera);
+        SetObjectReference(
+            controller,
+            "battleVolume",
+            battleCamera.GetComponent<Volume>());
         SetObjectReference(controller, "directionalLight", directionalLight);
         SetObjectReference(controller, "playerVisualRoot", playerVisual);
 
@@ -727,20 +985,42 @@ public static class Battle3DSetupBuilder
         Camera battleCamera,
         BattleEnvironmentProfile profile,
         int rendererIndex,
-        Transform followTarget)
+        Transform followTarget,
+        VolumeProfile volumeProfile)
     {
         cameraObject.transform.SetLocalPositionAndRotation(
             profile.CameraLocalPosition,
             profile.CameraLocalRotation);
-        battleCamera.orthographic = true;
+        battleCamera.orthographic = !profile.UsesPerspective;
+        battleCamera.fieldOfView = profile.PerspectiveFieldOfView;
         battleCamera.orthographicSize = profile.OrthographicSize;
         battleCamera.backgroundColor = profile.CameraBackgroundColor;
+        battleCamera.clearFlags = CameraClearFlags.Skybox;
+        battleCamera.allowHDR = true;
+        battleCamera.allowMSAA = false;
 
         UniversalAdditionalCameraData cameraData =
             battleCamera.GetUniversalAdditionalCameraData();
         cameraData.SetRenderer(rendererIndex);
         cameraData.renderShadows = true;
+        cameraData.renderPostProcessing = true;
         cameraData.requiresDepthTexture = true;
+        cameraData.requiresColorTexture = true;
+        cameraData.antialiasing = AntialiasingMode
+            .SubpixelMorphologicalAntiAliasing;
+        cameraData.antialiasingQuality = AntialiasingQuality.High;
+        cameraData.dithering = true;
+        cameraData.stopNaN = true;
+
+        Volume volume = cameraObject.GetComponent<Volume>();
+        if (volume == null)
+        {
+            volume = cameraObject.AddComponent<Volume>();
+        }
+        volume.isGlobal = true;
+        volume.priority = 0f;
+        volume.weight = 1f;
+        volume.sharedProfile = volumeProfile;
 
         CinemachineFollow follow =
             cameraObject.GetComponent<CinemachineFollow>();
@@ -755,6 +1035,10 @@ public static class Battle3DSetupBuilder
         {
             cinemachineCamera.Follow = followTarget;
             LensSettings lens = cinemachineCamera.Lens;
+            lens.ModeOverride = profile.UsesPerspective
+                ? LensSettings.OverrideModes.Perspective
+                : LensSettings.OverrideModes.Orthographic;
+            lens.FieldOfView = profile.PerspectiveFieldOfView;
             lens.OrthographicSize = profile.OrthographicSize;
             cinemachineCamera.Lens = lens;
         }
@@ -772,6 +1056,145 @@ public static class Battle3DSetupBuilder
         {
             confiner.enabled = false;
         }
+    }
+
+    private static void EnsureEnvironmentAuthoringHierarchy(Transform parent)
+    {
+        Transform lightingRoot = EnsureChild(parent, LightingRootName);
+        EnsureFillLight(lightingRoot);
+        EnsureReflectionProbe(lightingRoot);
+        EnsureLightProbes(lightingRoot);
+
+        Transform propsRoot = EnsureChild(parent, PropsRootName);
+        EnsureChild(propsRoot, "Architecture");
+        EnsureChild(propsRoot, "Ground Detail");
+        EnsureChild(propsRoot, "Background");
+        EnsureChild(propsRoot, "Foreground");
+        EnsureChild(propsRoot, "Environment FX");
+    }
+
+    private static void EnsureFillLight(Transform parent)
+    {
+        GameObject lightObject = FindDescendant(parent, FillLightName);
+        bool created = lightObject == null;
+        if (lightObject == null)
+        {
+            lightObject = new GameObject(FillLightName);
+            lightObject.transform.SetParent(parent, false);
+        }
+
+        Light fillLight = lightObject.GetComponent<Light>();
+        if (fillLight == null)
+        {
+            fillLight = lightObject.AddComponent<Light>();
+        }
+
+        if (!created)
+        {
+            return;
+        }
+
+        fillLight.type = LightType.Directional;
+        fillLight.color = new Color(0.38f, 0.52f, 0.78f, 1f);
+        fillLight.intensity = 0.24f;
+        fillLight.shadows = LightShadows.None;
+        lightObject.transform.localRotation = Quaternion.Euler(38f, 145f, 0f);
+        fillLight.GetUniversalAdditionalLightData();
+    }
+
+    private static void EnsureReflectionProbe(Transform parent)
+    {
+        GameObject probeObject = FindDescendant(parent, ReflectionProbeName);
+        bool created = probeObject == null;
+        if (probeObject == null)
+        {
+            probeObject = new GameObject(ReflectionProbeName);
+            probeObject.transform.SetParent(parent, false);
+        }
+
+        ReflectionProbe probe = probeObject.GetComponent<ReflectionProbe>();
+        if (probe == null)
+        {
+            probe = probeObject.AddComponent<ReflectionProbe>();
+        }
+
+        if (!created)
+        {
+            return;
+        }
+
+        probe.mode = ReflectionProbeMode.Realtime;
+        probe.refreshMode = ReflectionProbeRefreshMode.OnAwake;
+        probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.IndividualFaces;
+        probe.resolution = 256;
+        probe.hdr = true;
+        probe.boxProjection = true;
+        probe.intensity = 0.8f;
+        probe.blendDistance = 3f;
+        probe.size = new Vector3(34f, 10f, 16f);
+        probe.center = new Vector3(0f, 4f, 0f);
+    }
+
+    private static void EnsureLightProbes(Transform parent)
+    {
+        GameObject probeObject = FindDescendant(parent, LightProbeGroupName);
+        bool created = probeObject == null;
+        if (probeObject == null)
+        {
+            probeObject = new GameObject(LightProbeGroupName);
+            probeObject.transform.SetParent(parent, false);
+        }
+
+        LightProbeGroup group = probeObject.GetComponent<LightProbeGroup>();
+        if (group == null)
+        {
+            group = probeObject.AddComponent<LightProbeGroup>();
+        }
+
+        if (!created)
+        {
+            return;
+        }
+
+        Vector3[] positions = new Vector3[18];
+        int index = 0;
+        foreach (float height in new[] { 0.8f, 3.5f })
+        {
+            foreach (float z in new[] { -4f, 0f, 4f })
+            {
+                foreach (float x in new[] { -10f, 0f, 10f })
+                {
+                    positions[index++] = new Vector3(x, height, z);
+                }
+            }
+        }
+        group.probePositions = positions;
+    }
+
+    private static Transform EnsureChild(Transform parent, string objectName)
+    {
+        GameObject existing = FindDescendant(parent, objectName);
+        if (existing != null)
+        {
+            return existing.transform;
+        }
+
+        GameObject child = new GameObject(objectName);
+        child.transform.SetParent(parent, false);
+        return child.transform;
+    }
+
+    private static void ApplyRenderSettings(BattleEnvironmentProfile profile)
+    {
+        RenderSettings.skybox = profile.SkyboxMaterial;
+        RenderSettings.ambientMode = AmbientMode.Skybox;
+        RenderSettings.ambientIntensity = profile.AmbientIntensity;
+        RenderSettings.reflectionIntensity = profile.ReflectionIntensity;
+        RenderSettings.fog = profile.FogEnabled;
+        RenderSettings.fogMode = FogMode.ExponentialSquared;
+        RenderSettings.fogColor = profile.FogColor;
+        RenderSettings.fogDensity = profile.FogDensity;
+        DynamicGI.UpdateEnvironment();
     }
 
     private static Material GetOrCreateMaterial(string path, Shader shader)
@@ -832,6 +1255,19 @@ public static class Battle3DSetupBuilder
         {
             material.SetFloat(propertyName, value);
         }
+    }
+
+    private static bool Approximately(Color left, Color right)
+    {
+        return Mathf.Abs(left.r - right.r) < 0.0001f
+            && Mathf.Abs(left.g - right.g) < 0.0001f
+            && Mathf.Abs(left.b - right.b) < 0.0001f
+            && Mathf.Abs(left.a - right.a) < 0.0001f;
+    }
+
+    private static bool Approximately(Vector4 left, Vector4 right)
+    {
+        return (left - right).sqrMagnitude < 0.0000001f;
     }
 
     private static void SetObjectReference(

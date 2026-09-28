@@ -12,18 +12,26 @@
 - Existing combat feedback remains in its current pipeline. The 3D renderer
   reuses its fullscreen impact feature and URP post-processing data instead of
   adding a separate world-space impact layer.
+- The project remains on URP rather than migrating to HDRP. Battle uses an HDR
+  camera, ACES tonemapping, SMAA, full-resolution SSAO, soft main-light
+  shadows, environment fog, reflection probes, and light probes as its HD
+  presentation baseline.
 
 ## Authored data
 
 `BattleEnvironmentProfile` owns the reusable Battle world presentation:
 
 - board position and rotation;
-- orthographic camera transform and framing;
+- Perspective camera transform, FOV, and legacy orthographic fallback framing;
 - URP renderer index;
 - directional light color, strength, and direction.
+- Procedural Skybox, ambient/reflection strength, distance fog, and the Battle
+  Volume Profile.
 
-The default camera pitch is 35 degrees. This increases the screen-space depth
-of each lane while keeping the board coordinates and tile spacing unchanged.
+The default camera uses a 40-degree Perspective lens at a 35-degree pitch.
+This introduces visible lane and prop depth while keeping the full seven-tile
+board safely inside a 16:9 frame. The previous orthographic size remains as a
+fallback and as the reference framing value for presentation tests.
 The Cinemachine camera follows `Player/Avatar`; its follow offset places that
 target at screen center instead of trying to keep the whole battlefield in a
 fixed frame.
@@ -32,6 +40,19 @@ The Battle Terrain is a persistent object under `##--ENVIRONMENT--##` in
 `Battle.unity`. Terrain sculpting, painting, trees, details, transform, and
 material changes are authored directly in the scene and TerrainData asset.
 They are not created or reset at runtime.
+
+`Props | Battle` is the authoring root for future 3D set dressing. Its
+`Architecture`, `Ground Detail`, `Background`, `Foreground`, and
+`Environment FX` children separate buildings and terrain dressing by visual
+depth without giving them gameplay responsibility. `Lighting | Battle` owns
+the cool fill light, realtime arena reflection probe, and an 18-point light
+probe grid. Existing children are preserved when the builder is rerun.
+
+`Assets/Materials/Battle3DSkybox.mat` is a neutral dusk Procedural Skybox.
+`Assets/Settings/BattleEnvironmentVolume.asset` preserves the existing Old
+Movie override and adds ACES tonemapping, restrained HDR Bloom, color balance,
+and vignette. The camera Volume uses this shared asset in edit mode and clones
+it at runtime when combat feedback temporarily pulses its overrides.
 
 Every current `BattleData` points to
 `Resources/Battle/DefaultBattleEnvironment.asset`.
@@ -81,14 +102,32 @@ as a fast bullet instead of a large floating orb.
    if the optional projectile object is unavailable.
 6. Enemy world-space HUDs retain their authored lane layout: health and action
    UI stay below lower-lane enemies and above upper-lane enemies. Lane changes
-   continue to interpolate those positions in `EnemyActionQueueUI`.
+   interpolate those positions with the same duration and easing as the enemy
+   move. The lane sorting commit does not restart or snap that interpolation.
    `BattleWorldCanvasDepthOffset` moves only the Canvas render depth along the
-   camera ray and compensates its horizontal scale for camera pitch. This
-   preserves its screen position and authored lane layout, keeps it in front
-   of the 3D Terrain depth buffer, and avoids horizontal stretching.
+   camera ray, turns the Canvas fully toward the camera, and compensates its
+   scale for Perspective depth and camera pitch. This preserves its screen
+   position and apparent size, keeps it in front of the 3D Terrain depth
+   buffer, and avoids perspective skew.
+   The compensation preserves the Canvas runtime X sign so the enemy's
+   counter-flip continues to cancel actor facing and UI never mirrors. Canvas
+   projection runs after combat camera shake so a hit cannot leave the HUD one
+   camera frame behind. The health-bar impact keeps its horizontal anchor and
+   uses only vertical micro-shake, squash, flash, and shards for local feedback.
 7. Damage Numbers Pro popups and procedural SpriteRenderer combat effects face
-   the pitched Battle camera. Their authored screen proportions are preserved
-   instead of being vertically foreshortened on the world XY plane.
+   the pitched Battle camera. Damage text uses the camera's plane rotation
+   instead of pointing individually at the camera position, so every popup is
+   perfectly front-facing across the screen. Their authored screen proportions
+   remain intact while the camera naturally gives the two lanes a small depth
+   difference. Popup anchors and overlap checks also use the camera plane, so
+   lane Z separation is reflected on screen. Repeated numbers may spread only
+   two compact rows from their target; a saturated layout reuses the clearest
+   bounded slot instead of drifting farther away.
+   The fullscreen kill shockwave continues to derive its center with
+   `WorldToViewportPoint`, so its hit position is projection-independent.
+8. `BattleCameraEdgeHoverController` calculates visible board width from the
+   active lens. Edge hover therefore keeps its authored viewport inset in
+   both Perspective and the orthographic fallback.
 
 ## Rebuilding
 
@@ -96,8 +135,10 @@ Run `Tools > LOADED > Apply Battle 3D Prototype` after adding new BulletData or
 BattleData assets. The builder is idempotent and updates:
 
 - the Universal 3D Renderer entry, combat fullscreen feature, and post-process
-  data;
-- the directional light and, only when absent, the initial flat Terrain;
+  data, plus Battle-only SSAO;
+- the Procedural Skybox, Battle Volume Profile, soft directional lighting,
+  fill light, probes, Prop authoring roots, and only when absent, the initial
+  flat Terrain;
 - Battle camera and board scene wiring;
 - the shared Sphere projectile prefab and profile;
 - all BulletData and BattleData references.

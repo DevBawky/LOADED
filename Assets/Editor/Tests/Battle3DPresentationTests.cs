@@ -5,6 +5,7 @@ using Unity.Cinemachine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
@@ -19,6 +20,10 @@ public sealed class Battle3DPresentationTests
         "Assets/Settings/Battle3DRenderer.asset";
     private const string KillImpactShaderPath =
         "Assets/Shaders/KillImpactFullscreen.shader";
+    private const string SkyboxMaterialPath =
+        "Assets/Materials/Battle3DSkybox.mat";
+    private const string BattleVolumeProfilePath =
+        "Assets/Settings/BattleEnvironmentVolume.asset";
 
     [Test]
     public void KillImpactShader_AvoidsFullFrameBrightnessPulse()
@@ -90,6 +95,72 @@ public sealed class Battle3DPresentationTests
             featureMap.arraySize,
             Is.EqualTo(renderer.rendererFeatures.Count));
         Assert.That(featureMap.GetArrayElementAtIndex(0).longValue, Is.Not.Zero);
+
+        ScreenSpaceAmbientOcclusion ambientOcclusion = null;
+        int ambientOcclusionCount = 0;
+        foreach (ScriptableRendererFeature feature in renderer.rendererFeatures)
+        {
+            if (feature is ScreenSpaceAmbientOcclusion resolved)
+            {
+                ambientOcclusionCount++;
+                ambientOcclusion = resolved;
+            }
+        }
+
+        Assert.That(ambientOcclusionCount, Is.EqualTo(1));
+        SerializedObject serializedAmbientOcclusion =
+            new SerializedObject(ambientOcclusion);
+        SerializedProperty settings = serializedAmbientOcclusion
+            .FindProperty("m_Settings");
+        Assert.That(settings, Is.Not.Null);
+        Assert.That(
+            settings.FindPropertyRelative("Intensity").floatValue,
+            Is.EqualTo(1.35f).Within(0.0001f));
+        Assert.That(
+            settings.FindPropertyRelative("Source").intValue,
+            Is.EqualTo(1));
+        Assert.That(
+            settings.FindPropertyRelative("Downsample").boolValue,
+            Is.False);
+    }
+
+    [Test]
+    public void BattleEnvironmentAssets_AreConfiguredForHdrWorldRendering()
+    {
+        BattleEnvironmentProfile environment =
+            AssetDatabase.LoadAssetAtPath<BattleEnvironmentProfile>(
+                EnvironmentProfilePath);
+        Material skybox = AssetDatabase.LoadAssetAtPath<Material>(
+            SkyboxMaterialPath);
+        VolumeProfile volume = AssetDatabase.LoadAssetAtPath<VolumeProfile>(
+            BattleVolumeProfilePath);
+
+        Assert.That(environment, Is.Not.Null);
+        Assert.That(skybox, Is.Not.Null);
+        Assert.That(skybox.shader, Is.Not.Null);
+        Assert.That(skybox.shader.name, Is.EqualTo("Skybox/Procedural"));
+        Assert.That(environment.SkyboxMaterial, Is.SameAs(skybox));
+        Assert.That(environment.VolumeProfile, Is.SameAs(volume));
+        Assert.That(environment.UsesPerspective, Is.True);
+        Assert.That(environment.PerspectiveFieldOfView,
+            Is.EqualTo(40f).Within(0.0001f));
+        Assert.That(environment.FogEnabled, Is.True);
+        Assert.That(environment.FogDensity, Is.GreaterThan(0f));
+
+        Assert.That(volume, Is.Not.Null);
+        Assert.That(volume.TryGet(out Tonemapping tonemapping), Is.True);
+        Assert.That(tonemapping.active, Is.True);
+        Assert.That(tonemapping.mode.overrideState, Is.True);
+        Assert.That(tonemapping.mode.value, Is.EqualTo(TonemappingMode.ACES));
+        Assert.That(volume.TryGet(out Bloom bloom), Is.True);
+        Assert.That(bloom.active, Is.True);
+        Assert.That(bloom.intensity.value,
+            Is.EqualTo(0.28f).Within(0.0001f));
+        Assert.That(volume.TryGet(out ColorAdjustments color), Is.True);
+        Assert.That(color.contrast.value, Is.EqualTo(9f).Within(0.0001f));
+        Assert.That(volume.TryGet(out Vignette vignette), Is.True);
+        Assert.That(vignette.intensity.value,
+            Is.EqualTo(0.14f).Within(0.0001f));
     }
 
     [Test]
@@ -385,8 +456,8 @@ public sealed class Battle3DPresentationTests
         try
         {
             Camera camera = cameraObject.AddComponent<Camera>();
-            camera.orthographic = true;
-            camera.orthographicSize = 5f;
+            camera.orthographic = false;
+            camera.fieldOfView = 40f;
             cameraObject.transform.position = new Vector3(0f, 0f, -10f);
             Vector3 impactPosition = new Vector3(2f, 0f, 0f);
 
@@ -425,6 +496,7 @@ public sealed class Battle3DPresentationTests
 
             Assert.That(number.enable3DGame, Is.True);
             Assert.That(number.faceCameraView, Is.True);
+            Assert.That(number.lookAtCamera, Is.False);
             Assert.That(number.cameraOverride, Is.SameAs(camera.transform));
             Assert.That(
                 Vector3.Dot(
@@ -465,7 +537,8 @@ public sealed class Battle3DPresentationTests
             Assert.That(avatar, Is.Not.Null);
             cameraObject = new GameObject("Battle Camera Test");
             Camera camera = cameraObject.AddComponent<Camera>();
-            camera.orthographic = true;
+            camera.orthographic = !profile.UsesPerspective;
+            camera.fieldOfView = profile.PerspectiveFieldOfView;
             camera.orthographicSize = profile.OrthographicSize;
             cameraObject.transform.SetPositionAndRotation(
                 player.transform.position + profile.CinemachineFollowOffset,
@@ -536,7 +609,37 @@ public sealed class Battle3DPresentationTests
     }
 
     [Test]
-    public void WorldCanvasCompensatesForCameraPitchWithoutChangingLayout()
+    public void WorldCanvasProjectionRunsAfterCombatCameraShake()
+    {
+        DefaultExecutionOrder cameraShakeOrder =
+            typeof(CombatCameraShake).GetCustomAttribute<
+                DefaultExecutionOrder>();
+        DefaultExecutionOrder canvasProjectionOrder =
+            typeof(BattleWorldCanvasDepthOffset).GetCustomAttribute<
+                DefaultExecutionOrder>();
+
+        Assert.That(cameraShakeOrder, Is.Not.Null);
+        Assert.That(canvasProjectionOrder, Is.Not.Null);
+        Assert.That(
+            canvasProjectionOrder.order,
+            Is.GreaterThan(cameraShakeOrder.order));
+    }
+
+    [Test]
+    public void EnemyHealthBarImpactShakeKeepsItsHorizontalAnchor()
+    {
+        Vector2 offset = EnemyHealthBarFeedback.ResolveImpactShakeOffset(
+            new Vector2(1f, 0.75f),
+            new Vector2(0.12f, 0.045f),
+            1.4f,
+            0.25f);
+
+        Assert.That(offset.x, Is.Zero.Within(0.0001f));
+        Assert.That(offset.y, Is.Not.Zero);
+    }
+
+    [Test]
+    public void WorldCanvasFacesCameraWithoutChangingItsScreenSize()
     {
         GameObject cameraObject = new GameObject("Battle Camera");
         GameObject ownerObject = new GameObject("Enemy");
@@ -574,15 +677,202 @@ public sealed class Battle3DPresentationTests
                 projectedWidth,
                 Is.EqualTo(projectedHeight).Within(0.0001f));
             Assert.That(
+                Vector3.Dot(
+                    canvasRect.right,
+                    cameraObject.transform.right),
+                Is.GreaterThan(0.999f));
+            Assert.That(
+                Vector3.Dot(
+                    canvasRect.up,
+                    cameraObject.transform.up),
+                Is.GreaterThan(0.999f));
+            Assert.That(
                 canvasRect.localScale.x,
                 Is.EqualTo(Mathf.Cos(35f * Mathf.Deg2Rad))
                     .Within(0.0001f));
-            Assert.That(canvasRect.localScale.y, Is.EqualTo(1f));
+            Assert.That(
+                canvasRect.localScale.y,
+                Is.EqualTo(Mathf.Cos(35f * Mathf.Deg2Rad))
+                    .Within(0.0001f));
         }
         finally
         {
             Object.DestroyImmediate(canvasObject);
             Object.DestroyImmediate(ownerObject);
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
+    [Test]
+    public void PerspectiveWorldCanvasDepthOffsetPreservesScreenSize()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera");
+        GameObject ownerObject = new GameObject("Enemy");
+        GameObject canvasObject = new GameObject(
+            "Canvas",
+            typeof(RectTransform));
+
+        try
+        {
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.orthographic = false;
+            camera.fieldOfView = 40f;
+            camera.aspect = 16f / 9f;
+            cameraObject.transform.SetPositionAndRotation(
+                new Vector3(0f, 9.3f, -12f),
+                Quaternion.Euler(35f, 0f, 0f));
+            canvasObject.transform.SetParent(ownerObject.transform, false);
+            RectTransform canvasRect =
+                canvasObject.GetComponent<RectTransform>();
+            canvasRect.anchoredPosition3D = new Vector3(1f, 0.5f, 2f);
+
+            Vector3 originalCenter = camera.WorldToViewportPoint(
+                canvasRect.position);
+            Vector3 originalUp = camera.WorldToViewportPoint(
+                canvasRect.TransformPoint(Vector3.up));
+            float originalHeight = Vector2.Distance(
+                originalCenter,
+                originalUp);
+
+            BattleWorldCanvasDepthOffset depthOffset =
+                canvasObject.AddComponent<BattleWorldCanvasDepthOffset>();
+            depthOffset.SetTargetCamera(camera);
+
+            Vector3 offsetCenter = camera.WorldToViewportPoint(
+                canvasRect.position);
+            Vector3 offsetUp = camera.WorldToViewportPoint(
+                canvasRect.TransformPoint(Vector3.up));
+            float offsetHeight = Vector2.Distance(offsetCenter, offsetUp);
+
+            Assert.That(offsetCenter.x,
+                Is.EqualTo(originalCenter.x).Within(0.0001f));
+            Assert.That(offsetCenter.y,
+                Is.EqualTo(originalCenter.y).Within(0.0001f));
+            Assert.That(offsetHeight,
+                Is.EqualTo(originalHeight).Within(0.0001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+            Object.DestroyImmediate(ownerObject);
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
+    [Test]
+    public void WorldCanvasDepthOffsetPreservesRuntimeCounterFlip()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera");
+        GameObject ownerObject = new GameObject("Enemy");
+        GameObject canvasObject = new GameObject(
+            "Canvas",
+            typeof(RectTransform));
+
+        try
+        {
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.orthographic = false;
+            camera.fieldOfView = 40f;
+            cameraObject.transform.SetPositionAndRotation(
+                new Vector3(0f, 9.3f, -12f),
+                Quaternion.Euler(35f, 0f, 0f));
+            canvasObject.transform.SetParent(ownerObject.transform, false);
+
+            BattleWorldCanvasDepthOffset depthOffset =
+                canvasObject.AddComponent<BattleWorldCanvasDepthOffset>();
+            depthOffset.SetTargetCamera(camera);
+
+            ownerObject.transform.localScale = new Vector3(-1f, 1f, 1f);
+            Vector3 counterFlippedScale = canvasObject.transform.localScale;
+            counterFlippedScale.x = -Mathf.Abs(counterFlippedScale.x);
+            canvasObject.transform.localScale = counterFlippedScale;
+            depthOffset.SetTargetCamera(camera);
+
+            Assert.That(canvasObject.transform.localScale.x, Is.LessThan(0f));
+            Assert.That(canvasObject.transform.lossyScale.x, Is.GreaterThan(0f));
+            Assert.That(
+                Vector3.Dot(
+                    canvasObject.transform.right,
+                    cameraObject.transform.right),
+                Is.GreaterThan(0.999f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+            Object.DestroyImmediate(ownerObject);
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
+    [Test]
+    public void PerspectiveProjectionUtilityMatchesUnityViewportProjection()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera");
+
+        try
+        {
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.orthographic = false;
+            camera.fieldOfView = 40f;
+            camera.aspect = 16f / 9f;
+            cameraObject.transform.SetPositionAndRotation(
+                new Vector3(0f, 9.3f, -12f),
+                Quaternion.Euler(35f, 0f, 0f));
+            Vector3 worldPosition = new Vector3(7f, 0.03f, 0.46f);
+
+            float resolved = BattleCameraProjectionUtility.ResolveViewportX(
+                camera,
+                worldPosition,
+                camera.transform.position);
+            float expected = camera.WorldToViewportPoint(worldPosition).x;
+
+            Assert.That(resolved, Is.EqualTo(expected).Within(0.0001f));
+            Assert.That(
+                BattleCameraProjectionUtility.ResolveWorldWidth(
+                    camera,
+                    worldPosition),
+                Is.GreaterThan(0f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
+    [Test]
+    public void PerspectiveEdgeFocusPlacesTileAtAuthoredViewportInset()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera");
+
+        try
+        {
+            const float desiredInset = 0.08f;
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.orthographic = false;
+            camera.fieldOfView = 40f;
+            camera.aspect = 16f / 9f;
+            cameraObject.transform.SetPositionAndRotation(
+                new Vector3(0f, 9.3f, -12f),
+                Quaternion.Euler(35f, 0f, 0f));
+            Vector3 leftTile = new Vector3(-7f, 0.03f, -0.46f);
+            float viewWidth = BattleCameraProjectionUtility.ResolveWorldWidth(
+                camera,
+                leftTile);
+            float focusedCameraX = leftTile.x
+                - (desiredInset - 0.5f) * viewWidth;
+            Vector3 focusedCameraPosition = camera.transform.position;
+            focusedCameraPosition.x = focusedCameraX;
+
+            float viewportX = BattleCameraProjectionUtility.ResolveViewportX(
+                camera,
+                leftTile,
+                focusedCameraPosition);
+
+            Assert.That(viewportX,
+                Is.EqualTo(desiredInset).Within(0.0001f));
+        }
+        finally
+        {
             Object.DestroyImmediate(cameraObject);
         }
     }
@@ -627,6 +917,28 @@ public sealed class Battle3DPresentationTests
                 Object.FindFirstObjectByType<Light>(
                     FindObjectsInactive.Include),
                 Is.Not.Null);
+            Light directionalLight = FindSceneObject(
+                    scene,
+                    "Directional Light | Battle 3D")
+                .GetComponent<Light>();
+            Assert.That(directionalLight.shadows, Is.EqualTo(LightShadows.Soft));
+            Assert.That(RenderSettings.sun, Is.SameAs(directionalLight));
+
+            Assert.That(FindSceneObject(scene, "Props | Battle"), Is.Not.Null);
+            Assert.That(FindSceneObject(scene, "Architecture"), Is.Not.Null);
+            Assert.That(FindSceneObject(scene, "Ground Detail"), Is.Not.Null);
+            Assert.That(FindSceneObject(scene, "Background"), Is.Not.Null);
+            Assert.That(FindSceneObject(scene, "Foreground"), Is.Not.Null);
+            Assert.That(FindSceneObject(scene, "Environment FX"), Is.Not.Null);
+            Assert.That(
+                Object.FindFirstObjectByType<ReflectionProbe>(
+                    FindObjectsInactive.Include),
+                Is.Not.Null);
+            LightProbeGroup lightProbes =
+                Object.FindFirstObjectByType<LightProbeGroup>(
+                    FindObjectsInactive.Include);
+            Assert.That(lightProbes, Is.Not.Null);
+            Assert.That(lightProbes.probePositions, Has.Length.EqualTo(18));
 
             Assert.That(board, Is.Not.Null);
             Assert.That(
@@ -636,8 +948,13 @@ public sealed class Battle3DPresentationTests
                 Is.LessThan(0.01f));
 
             Assert.That(battleCamera, Is.Not.Null);
-            Assert.That(battleCamera.orthographic, Is.True);
+            Assert.That(battleCamera.orthographic, Is.False);
+            Assert.That(battleCamera.fieldOfView,
+                Is.EqualTo(40f).Within(0.0001f));
             Assert.That(battleCamera.orthographicSize, Is.EqualTo(5f));
+            Assert.That(battleCamera.clearFlags,
+                Is.EqualTo(CameraClearFlags.Skybox));
+            Assert.That(battleCamera.allowHDR, Is.True);
             Assert.That(
                 Quaternion.Angle(
                     battleCamera.transform.localRotation,
@@ -651,14 +968,30 @@ public sealed class Battle3DPresentationTests
                 serializedCameraData.FindProperty("m_RendererIndex").intValue,
                 Is.EqualTo(1));
             Assert.That(cameraData.renderPostProcessing, Is.True);
+            Assert.That(cameraData.requiresDepthTexture, Is.True);
+            Assert.That(cameraData.requiresColorTexture, Is.True);
+            Assert.That(
+                cameraData.antialiasing,
+                Is.EqualTo(AntialiasingMode
+                    .SubpixelMorphologicalAntiAliasing));
             UnityEngine.Rendering.Volume battleVolume =
                 Object.FindFirstObjectByType<UnityEngine.Rendering.Volume>(
                     FindObjectsInactive.Include);
             Assert.That(battleVolume, Is.Not.Null);
             Assert.That(
+                battleVolume.sharedProfile,
+                Is.SameAs(AssetDatabase.LoadAssetAtPath<VolumeProfile>(
+                    BattleVolumeProfilePath)));
+            Assert.That(
                 (cameraData.volumeLayerMask.value
                     & (1 << battleVolume.gameObject.layer)) != 0,
                 Is.True);
+            Assert.That(
+                RenderSettings.skybox,
+                Is.SameAs(AssetDatabase.LoadAssetAtPath<Material>(
+                    SkyboxMaterialPath)));
+            Assert.That(RenderSettings.ambientMode, Is.EqualTo(AmbientMode.Skybox));
+            Assert.That(RenderSettings.fog, Is.True);
 
             GameObject gameplayCanvas = FindRootObject(scene, "Canvas");
             GameObject gameStartCanvas = FindRootObject(
@@ -679,6 +1012,11 @@ public sealed class Battle3DPresentationTests
                 battleCamera.GetComponent<CinemachineCamera>();
             Assert.That(cinemachineCamera, Is.Not.Null);
             Assert.That(cinemachineCamera.Follow, Is.SameAs(player.transform));
+            Assert.That(
+                cinemachineCamera.Lens.ModeOverride,
+                Is.EqualTo(LensSettings.OverrideModes.Perspective));
+            Assert.That(cinemachineCamera.Lens.FieldOfView,
+                Is.EqualTo(40f).Within(0.0001f));
             Assert.That(
                 avatar.GetComponent<BattleSpriteBillboard>(),
                 Is.Not.Null);

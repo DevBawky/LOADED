@@ -676,6 +676,89 @@ public sealed class EnemyDamageNumberDisplayTests
         Assert.That(nextOffset, Is.EqualTo(requestedOffset));
     }
 
+    [Test]
+    public void FindAvailableOffset_DoesNotConfuseSeparate3DLanes()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera Test");
+        createdObjects.Add(cameraObject);
+        Camera camera = cameraObject.AddComponent<Camera>();
+        cameraObject.transform.SetPositionAndRotation(
+            new Vector3(0f, 9.3f, -12f),
+            Quaternion.Euler(35f, 0f, 0f));
+        DamageNumberSpawnLayout layout = new DamageNumberSpawnLayout();
+        Vector3 lowerLane = new Vector3(0f, 0.75f, -0.46f);
+        Vector3 upperLane = new Vector3(0f, 0.75f, 0.46f);
+        DamageNumbersPro.DamageNumber lowerNumber = CreateDamageNumber();
+        lowerNumber.transform.position = lowerLane;
+        layout.Track(lowerLane, lowerNumber);
+
+        Vector3 upperPosition = layout.FindAvailableOffset(
+            upperLane,
+            0.45f,
+            camera,
+            2);
+
+        Assert.That(upperPosition, Is.EqualTo(upperLane));
+    }
+
+    [Test]
+    public void FindAvailableOffset_StaysInsideBoundedSpawnRows()
+    {
+        DamageNumberSpawnLayout layout = new DamageNumberSpawnLayout();
+        Vector3 requestedPosition = Vector3.zero;
+        const float separation = 0.45f;
+        const int maximumRows = 2;
+
+        for (int index = 0; index < 20; index++)
+        {
+            Vector3 position = layout.FindAvailableOffset(
+                requestedPosition,
+                separation,
+                null,
+                maximumRows);
+            Assert.That(Mathf.Abs(position.x),
+                Is.LessThanOrEqualTo(separation + 0.0001f));
+            Assert.That(position.y,
+                Is.InRange(0f, separation * maximumRows + 0.0001f));
+            Assert.That(position.z, Is.Zero.Within(0.0001f));
+
+            DamageNumbersPro.DamageNumber number = CreateDamageNumber();
+            number.transform.position = position;
+            layout.Track(position, number);
+        }
+    }
+
+    [Test]
+    public void SpawnAnchor_DepthOffsetDoesNotMoveItsScreenPosition()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera Test");
+        createdObjects.Add(cameraObject);
+        Camera camera = cameraObject.AddComponent<Camera>();
+        camera.orthographic = false;
+        camera.fieldOfView = 40f;
+        cameraObject.transform.SetPositionAndRotation(
+            new Vector3(0f, 9.3f, -12f),
+            Quaternion.Euler(35f, 0f, 0f));
+        Vector3 targetPosition = new Vector3(2f, 1.08f, 0.46f);
+        Vector3 offset = new Vector3(0f, 0.75f, -1f);
+        Vector3 screenAnchor = targetPosition
+            + camera.transform.up * offset.y;
+
+        Vector3 resolved = EnemyDamageNumberDisplay.ResolveSpawnAnchor(
+            targetPosition,
+            offset,
+            camera);
+        Vector3 expectedViewport = camera.WorldToViewportPoint(screenAnchor);
+        Vector3 resolvedViewport = camera.WorldToViewportPoint(resolved);
+
+        Assert.That(resolvedViewport.x,
+            Is.EqualTo(expectedViewport.x).Within(0.0001f));
+        Assert.That(resolvedViewport.y,
+            Is.EqualTo(expectedViewport.y).Within(0.0001f));
+        Assert.That(Vector3.Distance(resolved, screenAnchor),
+            Is.EqualTo(1f).Within(0.0001f));
+    }
+
     [TestCase(CombatImpactTier.Normal, 0.5f)]
     [TestCase(CombatImpactTier.Critical, 0.59f)]
     [TestCase(CombatImpactTier.Devastating, 0.71f)]

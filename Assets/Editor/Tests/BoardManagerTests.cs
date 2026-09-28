@@ -483,6 +483,44 @@ public class BoardManagerTests
     }
 
     [Test]
+    public void LaneSortingCanCommitWithoutInterruptingHudTransition()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/Enemy/Enemy.prefab");
+        GameObject enemyObject = Object.Instantiate(prefab);
+
+        try
+        {
+            EnemyController enemy = enemyObject.GetComponent<EnemyController>();
+            EnemyActionQueueUI ui =
+                enemyObject.GetComponent<EnemyActionQueueUI>();
+            RectTransform queue = enemyObject.transform.Find(
+                "Canvas/Image | Queue") as RectTransform;
+            Assert.That(enemy, Is.Not.Null);
+            Assert.That(ui, Is.Not.Null);
+            Assert.That(queue, Is.Not.Null);
+
+            ui.ApplyLaneLayout(0);
+            Vector3 transitionPosition = queue.localPosition;
+            SerializedObject serializedEnemy = new SerializedObject(enemy);
+            serializedEnemy.FindProperty("currentLaneIndex").intValue = 1;
+            serializedEnemy.ApplyModifiedPropertiesWithoutUndo();
+
+            enemy.ApplyLaneSortingOrder(false);
+
+            Assert.That(queue.localPosition, Is.EqualTo(transitionPosition));
+            UnityEngine.Rendering.SortingGroup sortingGroup =
+                enemy.GetComponent<UnityEngine.Rendering.SortingGroup>();
+            Assert.That(sortingGroup.sortingOrder,
+                Is.EqualTo(EnemyController.CalculateLaneSortingOrder(1, 2)));
+        }
+        finally
+        {
+            Object.DestroyImmediate(enemyObject);
+        }
+    }
+
+    [Test]
     public void SpawnLaneSelectionPrefersTheLeastPopulatedLane()
     {
         Assert.That(

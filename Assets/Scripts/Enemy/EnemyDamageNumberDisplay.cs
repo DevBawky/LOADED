@@ -43,6 +43,8 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     [Header("Overlap Avoidance")]
     [Tooltip("모든 적에게 표시 중인 숫자 사이에 확보할 추가 월드 간격입니다. 텍스트 스케일 기반의 자동 최소 간격보다 작게 설정해도 자동 최소값이 적용됩니다.")]
     [SerializeField, Min(0f)] private float minimumSpawnSeparation = 0.2f;
+    [Tooltip("기준 위치에서 위로 분산할 수 있는 최대 행 수입니다.")]
+    [SerializeField, Range(1, 4)] private int maximumSpawnRows = 2;
 
     [Header("Readability Scale")]
     [SerializeField, Range(0.1f, 1f)] private float damageNumberScaleMultiplier = 0.5f;
@@ -147,12 +149,18 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
+        Camera battleCamera = Camera.main;
         Vector3 position = SharedSpawnLayout.FindAvailableOffset(
-            transform.position + damageOffset,
+            ResolveSpawnAnchor(
+                transform.position,
+                damageOffset,
+                battleCamera),
             ResolveMinimumSpawnSeparation(
                 minimumSpawnSeparation,
                 damageNumberScaleMultiplier,
-                statusTextScaleMultiplier));
+                statusTextScaleMultiplier),
+            battleCamera,
+            Mathf.Max(1, maximumSpawnRows));
         DamageNumber number = SpawnWithoutSpamMovement(
             prefab,
             position,
@@ -253,6 +261,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         battleCamera ??= Camera.main;
         number.enable3DGame = true;
         number.faceCameraView = true;
+        number.lookAtCamera = false;
         number.cameraOverride = battleCamera == null
             ? null
             : battleCamera.transform;
@@ -319,6 +328,31 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             largestBaseScale * SeparationPerScaleUnit);
     }
 
+    internal static Vector3 ResolveSpawnAnchor(
+        Vector3 targetPosition,
+        Vector3 authoredOffset,
+        Camera battleCamera)
+    {
+        if (battleCamera == null)
+        {
+            return targetPosition + authoredOffset;
+        }
+
+        Vector3 anchor = targetPosition
+            + battleCamera.transform.right * authoredOffset.x
+            + battleCamera.transform.up * authoredOffset.y;
+        Vector3 directionToCamera = battleCamera.transform.position - anchor;
+
+        if (directionToCamera.sqrMagnitude <= Mathf.Epsilon)
+        {
+            directionToCamera = -battleCamera.transform.forward;
+        }
+
+        // The old 2D Z value was a render-depth offset. Move along the camera
+        // ray so it cannot shift the popup away from the target on screen.
+        return anchor + directionToCamera.normalized * -authoredOffset.z;
+    }
+
     private void SpawnStatus(DamageNumber prefab, string statusText)
     {
         if (prefab == null || string.IsNullOrWhiteSpace(statusText))
@@ -326,12 +360,18 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
+        Camera battleCamera = Camera.main;
         Vector3 position = SharedSpawnLayout.FindAvailableOffset(
-            transform.position + statusOffset,
+            ResolveSpawnAnchor(
+                transform.position,
+                statusOffset,
+                battleCamera),
             ResolveMinimumSpawnSeparation(
                 minimumSpawnSeparation,
                 damageNumberScaleMultiplier,
-                statusTextScaleMultiplier));
+                statusTextScaleMultiplier),
+            battleCamera,
+            Mathf.Max(1, maximumSpawnRows));
         DamageNumber number = SpawnWithoutSpamMovement(
             prefab,
             position,
@@ -352,7 +392,9 @@ internal sealed class DamageNumberSpawnLayout
 
     public Vector3 FindAvailableOffset(
         Vector3 requestedOffset,
-        float minimumSeparation)
+        float minimumSeparation,
+        Camera battleCamera = null,
+        int maximumRows = 2)
     {
         RemoveInactiveReservations();
 
@@ -363,21 +405,34 @@ internal sealed class DamageNumberSpawnLayout
             return requestedOffset;
         }
 
-        int candidateCount = reservations.Count * 3 + 16;
+        int candidateCount = Mathf.Max(0, maximumRows) * 3 + 1;
+        Vector3 bestCandidate = requestedOffset;
+        float bestClearance = -1f;
 
         for (int index = 0; index < candidateCount; index++)
         {
             Vector3 candidate = requestedOffset
-                + CalculateCandidateOffset(index, separation);
+                + CalculateCandidateOffset(
+                    index,
+                    separation,
+                    battleCamera);
+            float clearance = FindNearestReservationDistance(
+                candidate,
+                battleCamera);
 
-            if (!OverlapsReservation(candidate, separation))
+            if (clearance >= separation)
             {
                 return candidate;
             }
+
+            if (clearance > bestClearance)
+            {
+                bestClearance = clearance;
+                bestCandidate = candidate;
+            }
         }
 
-        return requestedOffset
-            + Vector3.up * separation * (reservations.Count + 1);
+        return bestCandidate;
     }
 
     public void Track(Vector3 worldPosition, DamageNumber number)
@@ -406,31 +461,35 @@ internal sealed class DamageNumberSpawnLayout
         }
     }
 
-    private bool OverlapsReservation(
+    private float FindNearestReservationDistance(
         Vector3 candidate,
-        float minimumSeparation)
+        Camera battleCamera)
     {
-        Vector2 candidatePosition = candidate;
+        Vector2 candidatePosition = ResolveLayoutPosition(
+            candidate,
+            battleCamera);
+        float nearestDistance = float.PositiveInfinity;
 
         foreach (Reservation reservation in reservations)
         {
-            Vector2 reservedPosition = reservation.Number == null
+            Vector3 reservedWorldPosition = reservation.Number == null
                 ? reservation.WorldPosition
                 : reservation.Number.transform.position;
-
-            if (Vector2.Distance(candidatePosition, reservedPosition)
-                < minimumSeparation)
-            {
-                return true;
-            }
+            Vector2 reservedPosition = ResolveLayoutPosition(
+                reservedWorldPosition,
+                battleCamera);
+            nearestDistance = Mathf.Min(
+                nearestDistance,
+                Vector2.Distance(candidatePosition, reservedPosition));
         }
 
-        return false;
+        return nearestDistance;
     }
 
     private static Vector3 CalculateCandidateOffset(
         int index,
-        float separation)
+        float separation,
+        Camera battleCamera)
     {
         if (index <= 0)
         {
@@ -446,10 +505,27 @@ internal sealed class DamageNumberSpawnLayout
             1 => 1,
             _ => 0
         };
-        return new Vector3(
+        Vector2 layoutOffset = new Vector2(
             column * separation,
-            row * separation,
-            0f);
+            row * separation);
+        return battleCamera == null
+            ? new Vector3(layoutOffset.x, layoutOffset.y, 0f)
+            : battleCamera.transform.right * layoutOffset.x
+                + battleCamera.transform.up * layoutOffset.y;
+    }
+
+    private static Vector2 ResolveLayoutPosition(
+        Vector3 worldPosition,
+        Camera battleCamera)
+    {
+        if (battleCamera == null)
+        {
+            return worldPosition;
+        }
+
+        return new Vector2(
+            Vector3.Dot(worldPosition, battleCamera.transform.right),
+            Vector3.Dot(worldPosition, battleCamera.transform.up));
     }
 
     private readonly struct Reservation

@@ -3298,7 +3298,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         bool changesLane = currentLaneIndex != targetLaneIndex;
         if (changesLane)
         {
-            actionQueueUI?.ApplyLaneLayout(targetLaneIndex, true);
+            actionQueueUI?.ApplyLaneLayout(
+                targetLaneIndex,
+                true,
+                actorMotion.MoveDuration);
         }
 
         try
@@ -3311,7 +3314,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         currentLaneIndex = targetLaneIndex;
-        ApplyLaneSortingOrder();
+        ApplyLaneSortingOrder(!changesLane);
 
         if (updateRetreatState
             && boardManager.TryGetTileDistance(
@@ -4046,7 +4049,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             + CalculateLaneSortingOrder(laneIndex, sanitizedLaneCount);
     }
 
-    internal void ApplyLaneSortingOrder()
+    internal void ApplyLaneSortingOrder(bool refreshLaneLayout = true)
     {
         int laneCount = boardManager == null
             ? Mathf.Max(1, currentLaneIndex + 1)
@@ -4089,7 +4092,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 laneCount);
         }
 
-        actionQueueUI?.ApplyLaneLayout(currentLaneIndex);
+        if (refreshLaneLayout)
+        {
+            actionQueueUI?.ApplyLaneLayout(currentLaneIndex);
+        }
     }
 
     private void RefreshHealthUI(

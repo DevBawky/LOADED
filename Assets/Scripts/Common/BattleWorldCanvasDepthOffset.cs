@@ -1,6 +1,7 @@
 using UnityEngine;
 
 [DisallowMultipleComponent]
+[DefaultExecutionOrder(20000)]
 public sealed class BattleWorldCanvasDepthOffset : MonoBehaviour
 {
     [SerializeField] private Camera targetCamera;
@@ -9,7 +10,8 @@ public sealed class BattleWorldCanvasDepthOffset : MonoBehaviour
     private RectTransform rectTransform;
     private Vector3 authoredLocalPosition;
     private Vector3 authoredAnchoredPosition;
-    private float authoredLocalScaleMagnitudeX;
+    private Vector3 authoredLocalScale;
+    private Quaternion authoredLocalRotation;
     private bool hasCapturedPosition;
 
     public float CameraDepthOffset => Mathf.Max(0f, cameraDepthOffset);
@@ -34,6 +36,7 @@ public sealed class BattleWorldCanvasDepthOffset : MonoBehaviour
     private void OnDisable()
     {
         RestoreAuthoredPosition();
+        RestoreAuthoredRotation();
         RestoreAuthoredScale();
     }
 
@@ -50,7 +53,8 @@ public sealed class BattleWorldCanvasDepthOffset : MonoBehaviour
         }
 
         authoredLocalPosition = transform.localPosition;
-        authoredLocalScaleMagnitudeX = Mathf.Abs(transform.localScale.x);
+        authoredLocalScale = transform.localScale;
+        authoredLocalRotation = transform.localRotation;
         rectTransform = transform as RectTransform;
         if (rectTransform != null)
         {
@@ -70,7 +74,20 @@ public sealed class BattleWorldCanvasDepthOffset : MonoBehaviour
         if (targetCamera == null || CameraDepthOffset <= 0f)
         {
             RestoreAuthoredPosition();
-            RestoreAuthoredScale();
+            if (targetCamera == null)
+            {
+                RestoreAuthoredRotation();
+                RestoreAuthoredScale();
+            }
+            else
+            {
+                Vector3 facingWorldPosition = transform.parent == null
+                    ? authoredLocalPosition
+                    : transform.parent.TransformPoint(authoredLocalPosition);
+                ApplyCameraFacing(ResolveCameraFacingScale(
+                    facingWorldPosition,
+                    facingWorldPosition));
+            }
             return;
         }
 
@@ -82,6 +99,7 @@ public sealed class BattleWorldCanvasDepthOffset : MonoBehaviour
             : (targetCamera.transform.position - authoredWorldPosition)
                 .normalized;
         Vector3 worldOffset = directionToCamera * CameraDepthOffset;
+        Vector3 offsetWorldPosition = authoredWorldPosition + worldOffset;
         Vector3 localOffset = transform.parent == null
             ? worldOffset
             : transform.parent.InverseTransformVector(worldOffset);
@@ -96,31 +114,48 @@ public sealed class BattleWorldCanvasDepthOffset : MonoBehaviour
             transform.localPosition = authoredLocalPosition + localOffset;
         }
 
-        ApplyCameraAspectCompensation();
+        ApplyCameraFacing(ResolveCameraFacingScale(
+            authoredWorldPosition,
+            offsetWorldPosition));
     }
 
-    private void ApplyCameraAspectCompensation()
+    private float ResolveCameraFacingScale(
+        Vector3 authoredWorldPosition,
+        Vector3 offsetWorldPosition)
     {
-        Vector3 cameraForward = targetCamera.transform.forward;
-        float projectedWidth = Vector3.ProjectOnPlane(
-            transform.right,
-            cameraForward).magnitude;
-        float projectedHeight = Vector3.ProjectOnPlane(
-            transform.up,
-            cameraForward).magnitude;
+        Vector3 authoredWorldUp = transform.parent == null
+            ? authoredLocalRotation * Vector3.up
+            : transform.parent.TransformVector(
+                authoredLocalRotation * Vector3.up);
+        Vector3 facingWorldUp = targetCamera.transform.up
+            * authoredWorldUp.magnitude;
+        Vector3 authoredCenter = targetCamera.WorldToViewportPoint(
+            authoredWorldPosition);
+        Vector3 authoredUp = targetCamera.WorldToViewportPoint(
+            authoredWorldPosition + authoredWorldUp);
+        Vector3 facingCenter = targetCamera.WorldToViewportPoint(
+            offsetWorldPosition);
+        Vector3 facingUp = targetCamera.WorldToViewportPoint(
+            offsetWorldPosition + facingWorldUp);
+        float authoredHeight = Vector2.Distance(
+            authoredCenter,
+            authoredUp);
+        float facingHeight = Vector2.Distance(facingCenter, facingUp);
+        return facingHeight <= Mathf.Epsilon
+            ? 1f
+            : authoredHeight / facingHeight;
+    }
 
-        if (projectedWidth <= Mathf.Epsilon)
-        {
-            RestoreAuthoredScale();
-            return;
-        }
+    private void ApplyCameraFacing(float scale)
+    {
+        transform.rotation = BattleSpriteBillboard.GetFacingRotation(
+            targetCamera);
 
-        float facingSign = transform.localScale.x < 0f ? -1f : 1f;
-        Vector3 localScale = transform.localScale;
-        localScale.x = authoredLocalScaleMagnitudeX
-            * facingSign
-            * projectedHeight
-            / projectedWidth;
+        float currentFacingSign = transform.localScale.x < 0f ? -1f : 1f;
+        Vector3 localScale = authoredLocalScale * scale;
+        localScale.x = Mathf.Abs(authoredLocalScale.x)
+            * currentFacingSign
+            * scale;
         transform.localScale = localScale;
     }
 
@@ -146,9 +181,17 @@ public sealed class BattleWorldCanvasDepthOffset : MonoBehaviour
             return;
         }
 
-        float facingSign = transform.localScale.x < 0f ? -1f : 1f;
-        Vector3 localScale = transform.localScale;
-        localScale.x = authoredLocalScaleMagnitudeX * facingSign;
+        float currentFacingSign = transform.localScale.x < 0f ? -1f : 1f;
+        Vector3 localScale = authoredLocalScale;
+        localScale.x = Mathf.Abs(authoredLocalScale.x) * currentFacingSign;
         transform.localScale = localScale;
+    }
+
+    private void RestoreAuthoredRotation()
+    {
+        if (hasCapturedPosition)
+        {
+            transform.localRotation = authoredLocalRotation;
+        }
     }
 }

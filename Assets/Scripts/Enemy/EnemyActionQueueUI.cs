@@ -169,6 +169,17 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     public void ApplyLaneLayout(int laneIndex, bool animate)
     {
+        ApplyLaneLayout(
+            laneIndex,
+            animate,
+            laneLayoutTransitionDuration);
+    }
+
+    internal void ApplyLaneLayout(
+        int laneIndex,
+        bool animate,
+        float transitionDuration)
+    {
         if (queueImage == null)
         {
             return;
@@ -218,7 +229,8 @@ public class EnemyActionQueueUI : MonoBehaviour
                 queueRect,
                 targetQueuePosition,
                 targetHealthPosition,
-                animate);
+                animate,
+                transitionDuration);
             return;
         }
 
@@ -228,19 +240,21 @@ public class EnemyActionQueueUI : MonoBehaviour
         ApplyFallbackLaneLayout(
             queueImage.rectTransform,
             targetAnchoredPosition,
-            animate);
+            animate,
+            transitionDuration);
     }
 
     private void ApplyLaneLayoutPositions(
         RectTransform queueRect,
         Vector3 targetQueuePosition,
         Vector3 targetHealthPosition,
-        bool animate)
+        bool animate,
+        float transitionDuration)
     {
         StopLaneLayoutTransition();
 
         if (!animate || !isActiveAndEnabled
-            || laneLayoutTransitionDuration <= 0f)
+            || transitionDuration <= 0f)
         {
             queueRect.localPosition = targetQueuePosition;
             laneHealthPanel.localPosition = targetHealthPosition;
@@ -253,18 +267,20 @@ public class EnemyActionQueueUI : MonoBehaviour
                 queueRect,
                 targetQueuePosition,
                 laneHealthPanel,
-                targetHealthPosition));
+                targetHealthPosition,
+                transitionDuration));
     }
 
     private void ApplyFallbackLaneLayout(
         RectTransform queueRect,
         Vector2 targetPosition,
-        bool animate)
+        bool animate,
+        float transitionDuration)
     {
         StopLaneLayoutTransition();
 
         if (!animate || !isActiveAndEnabled
-            || laneLayoutTransitionDuration <= 0f)
+            || transitionDuration <= 0f)
         {
             queueRect.anchoredPosition = targetPosition;
             SyncReadyImageRect();
@@ -272,20 +288,24 @@ public class EnemyActionQueueUI : MonoBehaviour
         }
 
         laneLayoutTransitionCoroutine = StartCoroutine(
-            AnimateFallbackLaneLayout(queueRect, targetPosition));
+            AnimateFallbackLaneLayout(
+                queueRect,
+                targetPosition,
+                transitionDuration));
     }
 
     private IEnumerator AnimateLaneLayout(
         RectTransform queueRect,
         Vector3 targetQueuePosition,
         RectTransform healthRect,
-        Vector3 targetHealthPosition)
+        Vector3 targetHealthPosition,
+        float transitionDuration)
     {
         Vector3 startQueuePosition = queueRect.localPosition;
         Vector3 startHealthPosition = healthRect.localPosition;
         float elapsedTime = 0f;
 
-        while (elapsedTime < laneLayoutTransitionDuration)
+        while (elapsedTime < transitionDuration)
         {
             yield return null;
 
@@ -296,15 +316,16 @@ public class EnemyActionQueueUI : MonoBehaviour
 
             elapsedTime += Time.deltaTime;
             float progress = Mathf.Clamp01(
-                elapsedTime / laneLayoutTransitionDuration);
+                elapsedTime / transitionDuration);
+            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
             queueRect.localPosition = Vector3.Lerp(
                 startQueuePosition,
                 targetQueuePosition,
-                progress);
+                smoothProgress);
             healthRect.localPosition = Vector3.Lerp(
                 startHealthPosition,
                 targetHealthPosition,
-                progress);
+                smoothProgress);
             SyncReadyImageRect();
         }
 
@@ -316,12 +337,13 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     private IEnumerator AnimateFallbackLaneLayout(
         RectTransform queueRect,
-        Vector2 targetPosition)
+        Vector2 targetPosition,
+        float transitionDuration)
     {
         Vector2 startPosition = queueRect.anchoredPosition;
         float elapsedTime = 0f;
 
-        while (elapsedTime < laneLayoutTransitionDuration)
+        while (elapsedTime < transitionDuration)
         {
             yield return null;
 
@@ -332,11 +354,12 @@ public class EnemyActionQueueUI : MonoBehaviour
 
             elapsedTime += Time.deltaTime;
             float progress = Mathf.Clamp01(
-                elapsedTime / laneLayoutTransitionDuration);
+                elapsedTime / transitionDuration);
+            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
             queueRect.anchoredPosition = Vector2.Lerp(
                 startPosition,
                 targetPosition,
-                progress);
+                smoothProgress);
             SyncReadyImageRect();
         }
 

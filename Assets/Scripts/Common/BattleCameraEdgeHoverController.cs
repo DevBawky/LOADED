@@ -38,6 +38,7 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
     private PlayerMove playerMove;
     private Camera targetCamera;
     private CinemachineCamera cinemachineCamera;
+    private CinemachineFollow cinemachineFollow;
     private Canvas rootCanvas;
     private Transform playerTarget;
     private Transform edgeTarget;
@@ -150,6 +151,11 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
             cinemachineCamera = targetCamera.GetComponent<CinemachineCamera>();
         }
 
+        if (cinemachineFollow == null && targetCamera != null)
+        {
+            cinemachineFollow = targetCamera.GetComponent<CinemachineFollow>();
+        }
+
         return leftArea != null
             && rightArea != null
             && boardManager != null
@@ -185,22 +191,26 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
     private bool IsTileVisibleFromPlayer(Vector3 tilePosition)
     {
-        if (!targetCamera.orthographic)
+        Transform activeFollow = cinemachineCamera.Follow;
+        Vector3 playerFocusedCameraPosition = targetCamera.transform.position;
+        if (activeFollow != null)
+        {
+            playerFocusedCameraPosition += playerMove.transform.position
+                - activeFollow.position;
+        }
+
+        float viewportX = BattleCameraProjectionUtility.ResolveViewportX(
+            targetCamera,
+            tilePosition,
+            playerFocusedCameraPosition);
+        float depth = BattleCameraProjectionUtility.ResolveCameraDepth(
+            targetCamera,
+            tilePosition,
+            playerFocusedCameraPosition);
+        if (depth <= 0f)
         {
             return false;
         }
-
-        float halfViewWidth = targetCamera.orthographicSize
-            * targetCamera.aspect;
-
-        if (halfViewWidth <= 0f)
-        {
-            return false;
-        }
-
-        float viewportX = 0.5f
-            + (tilePosition.x - playerMove.transform.position.x)
-            / (halfViewWidth * 2f);
         return viewportX >= 0f && viewportX <= 1f;
     }
 
@@ -296,11 +306,24 @@ public sealed class BattleCameraEdgeHoverController : MonoBehaviour
 
         EnsureEdgeTarget();
 
-        float halfViewWidth = targetCamera.orthographicSize * targetCamera.aspect;
-        float screenInset = halfViewWidth * 2f * edgeTileViewportInset;
-        float targetX = edge == HoveredEdge.Left
-            ? tilePosition.x + halfViewWidth - screenInset
-            : tilePosition.x - halfViewWidth + screenInset;
+        float viewWidth = BattleCameraProjectionUtility.ResolveWorldWidth(
+            targetCamera,
+            tilePosition);
+        if (viewWidth <= 0f)
+        {
+            RestorePlayerFocus();
+            return;
+        }
+
+        float desiredViewportX = edge == HoveredEdge.Left
+            ? edgeTileViewportInset
+            : 1f - edgeTileViewportInset;
+        float cameraOffsetX = cinemachineFollow == null
+            ? 0f
+            : cinemachineFollow.FollowOffset.x;
+        float targetX = tilePosition.x
+            - (desiredViewportX - 0.5f) * viewWidth
+            - cameraOffsetX;
 
         float boardCenterX = (leftTilePosition.x + rightTilePosition.x) * 0.5f;
         float minimumDirectionalOffset = Mathf.Max(
