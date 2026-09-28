@@ -33,20 +33,20 @@ public sealed class BattleEnvironmentProfile : ScriptableObject
     [SerializeField] private Material skyboxMaterial;
     [SerializeField] private VolumeProfile volumeProfile;
     [Min(0f)]
-    [SerializeField] private float ambientIntensity = 0.82f;
+    [SerializeField] private float ambientIntensity = 1.12f;
     [Min(0f)]
-    [SerializeField] private float reflectionIntensity = 0.78f;
+    [SerializeField] private float reflectionIntensity = 0.95f;
     [SerializeField] private bool fogEnabled = true;
     [SerializeField] private Color fogColor =
-        new Color(0.12f, 0.16f, 0.22f, 1f);
+        new Color(0.22f, 0.29f, 0.40f, 1f);
     [Min(0f)]
-    [SerializeField] private float fogDensity = 0.012f;
+    [SerializeField] private float fogDensity = 0.006f;
 
     [Header("Lighting")]
     [SerializeField] private Color directionalLightColor =
-        new Color(1f, 0.86f, 0.68f, 1f);
+        new Color(1f, 0.92f, 0.80f, 1f);
     [Min(0f)]
-    [SerializeField] private float directionalLightIntensity = 1.25f;
+    [SerializeField] private float directionalLightIntensity = 1.65f;
     [SerializeField] private Vector3 directionalLightEulerAngles =
         new Vector3(52f, -32f, 0f);
 

@@ -733,6 +733,7 @@ GameObject:
   - component: {fileID: 700000000000000001}
   - component: {fileID: 700000000000000002}
   - component: {fileID: 700000000000000003}
+  - component: {fileID: 8212061025679520457}
   m_Layer: 0
   m_Name: Enemy
   m_TagString: Untagged
@@ -899,6 +900,7 @@ MonoBehaviour:
   statusOffset: {x: 0, y: 1, z: -1}
   followTarget: 1
   minimumSpawnSeparation: 0.45
+  maximumSpawnRows: 2
   damageNumberScaleMultiplier: 0.5
   statusTextScaleMultiplier: 0.5
   criticalDamageColor: {r: 1, g: 0.86, b: 0.28, a: 1}
@@ -935,3 +937,19 @@ MonoBehaviour:
   flashRecoverDuration: 0.14
   shardCount: 5
   shardDuration: 0.22
+--- !u!114 &8212061025679520457
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8378092708147667353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2868105115cac724f95ff519238bf21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattleContactShadow
+  worldSize: {x: 1.15, y: 0.5}
+  opacity: 0.36
+  surfaceOffset: 0.012
+  groundProbeDistance: 4

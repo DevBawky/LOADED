@@ -16,6 +16,13 @@
   camera, ACES tonemapping, SMAA, full-resolution SSAO, soft main-light
   shadows, environment fog, reflection probes, and light probes as its HD
   presentation baseline.
+- The default lighting balance uses a warm 1.65 key light, a cool 0.38 fill,
+  1.12 ambient intensity, and four shadow cascades. SSAO is limited to 0.85 so
+  low-poly contact detail remains visible without crushing the whole arena.
+- Player and shared Enemy prefabs align their visible foot sprites to the
+  current Terrain height and project every animated sprite part into an
+  alpha-cut silhouette shadow. This preserves the existing 2D sprite shaders,
+  animation, and horizontal flip behavior while grounding them in the 3D set.
 
 ## Authored data
 
@@ -25,7 +32,7 @@
 - Perspective camera transform, FOV, and legacy orthographic fallback framing;
 - URP renderer index;
 - directional light color, strength, and direction.
-- Procedural Skybox, ambient/reflection strength, distance fog, and the Battle
+- URP gradient Skybox, ambient/reflection strength, distance fog, and the Battle
   Volume Profile.
 
 The default camera uses a 40-degree Perspective lens at a 35-degree pitch.
@@ -86,15 +93,36 @@ as a fast bullet instead of a large floating orb.
 1. `StateManager` applies the selected battle's environment profile before
    configuring the board.
 2. `BattleWorld3DController` rotates the board plane onto XZ, configures the
-   player-following Battle camera and Universal Renderer, and applies the
-   directional light. The Terrain remains scene-authored.
+   player-following Battle camera and Universal Renderer, and applies one soft
+   shadow-casting directional key light. Skybox ambient/reflection lighting,
+   exponential-squared fog, and the global URP Volume provide the remaining
+   environment illumination; no legacy 2D global light or secondary
+   directional fill light is used. The forward 3D renderer is also the URP
+   default so the Unity Scene View can draw the Terrain; the Battle camera
+   keeps an explicit renderer assignment. The Main Camera's scene-authored
+   Transform and world-space Cinemachine follow offset own the initial view;
+   environment profiles may change lens and rendering settings but never
+   replace that authored pose. The Terrain remains scene-authored.
 3. `BoardManager` continues to generate cells in its own local XY coordinates.
    `TransformPoint` maps those cells onto the XZ ground plane, so save indices,
    lane rules, targeting, and movement stay unchanged.
 4. Player and spawned enemy avatar roots use `BattleSpriteBillboard` to face
    the camera while their owning gameplay objects stay at exact board world
    positions. The billboard aligns its horizontal axis with the camera so the
-   gameplay facing sign is preserved on screen.
+   gameplay facing sign is preserved on screen. `BattleContactShadow` moves
+   only that visual root so the midpoint of the visible foot sprites matches
+   the owning grid cell center on X/Z and their lowest edge stays on the active
+   Terrain; gameplay roots, board indices, and `ActorMotion` jumps remain
+   authoritative. Every visible body-part SpriteRenderer is also
+   projected onto the Terrain along the directional key light and rendered
+   through the sprite's alpha, producing the current animated character
+   silhouette instead of a generic oval contact blob. The foot anchor is
+   cached in avatar-local space, and camera shake, billboard facing, grounding,
+   screen-space optical centering, then world-space HUD projection run in that
+   order. The stable visual center excludes held weapons, so asymmetric props
+   and animation poses do not pull the character away from the projected grid
+   center. Shot animation and camera shake therefore cannot make actor roots
+   hop between visual offsets.
 5. `PlayerShoot` creates `BulletProjectileView` as presentation for each shot,
    advances it to the target over the distance-resolved travel duration, and
    then resolves damage and effects. A separate fixed `0.15` second cadence
@@ -119,12 +147,19 @@ as a fast bullet instead of a large floating orb.
    instead of pointing individually at the camera position, so every popup is
    perfectly front-facing across the screen. Their authored screen proportions
    remain intact while the camera naturally gives the two lanes a small depth
-   difference. Popup anchors and overlap checks also use the camera plane, so
+   difference. Impact snapshots reuse the character's stable, weapon-excluded
+   optical center and pin it to the projected grid center line. Procedural
+   spark, streak, and popup offsets also use the current camera right/up axes
+   instead of world X/Y. Camera position, rotation, and FOV can therefore be
+   authored without retuning per-effect offsets. Popup anchors begin at the
+   camera-aligned Avatar root, and overlap checks use the same camera plane, so
    lane Z separation is reflected on screen. Repeated numbers may spread only
    two compact rows from their target; a saturated layout reuses the clearest
-   bounded slot instead of drifting farther away.
-   The fullscreen kill shockwave continues to derive its center with
-   `WorldToViewportPoint`, so its hit position is projection-independent.
+   bounded slot instead of drifting farther away. The fullscreen kill
+   shockwave continues to derive its center with `WorldToViewportPoint`, and
+   passes that normalized viewport coordinate directly to URP's fullscreen
+   blit without an additional platform Y flip. Its hit position therefore
+   follows the same projection-independent impact anchor.
 8. `BattleCameraEdgeHoverController` calculates visible board width from the
    active lens. Edge hover therefore keeps its authored viewport inset in
    both Perspective and the orthographic fallback.
@@ -136,11 +171,12 @@ BattleData assets. The builder is idempotent and updates:
 
 - the Universal 3D Renderer entry, combat fullscreen feature, and post-process
   data, plus Battle-only SSAO;
-- the Procedural Skybox, Battle Volume Profile, soft directional lighting,
+- the URP gradient Skybox, Battle Volume Profile, soft directional lighting,
   fill light, probes, Prop authoring roots, and only when absent, the initial
   flat Terrain;
 - Battle camera and board scene wiring;
 - the shared Sphere projectile prefab and profile;
+- ground-projected contact shadows on the Player and shared Enemy prefabs;
 - all BulletData and BattleData references.
 
 Once the Terrain assets and scene object exist, rerunning the builder preserves

@@ -18,12 +18,16 @@ public sealed class Battle3DPresentationTests
         "Assets/Resources/Battle/DefaultBattleEnvironment.asset";
     private const string BattleRendererPath =
         "Assets/Settings/Battle3DRenderer.asset";
+    private const string PipelinePath =
+        "Assets/Settings/UniversalRP.asset";
     private const string KillImpactShaderPath =
         "Assets/Shaders/KillImpactFullscreen.shader";
     private const string SkyboxMaterialPath =
         "Assets/Materials/Battle3DSkybox.mat";
     private const string BattleVolumeProfilePath =
         "Assets/Settings/BattleEnvironmentVolume.asset";
+    private const string GroundShadowShaderPath =
+        "Assets/Shaders/BattleSpriteGroundShadow.shader";
 
     [Test]
     public void KillImpactShader_AvoidsFullFrameBrightnessPulse()
@@ -35,12 +39,15 @@ public sealed class Battle3DPresentationTests
     }
 
     [Test]
-    public void KillImpactShader_ConvertsViewportYToFullscreenBlitUv()
+    public void KillImpactShader_DoesNotDoubleFlipViewportY()
     {
         string source = System.IO.File.ReadAllText(KillImpactShaderPath);
 
-        Assert.That(source, Does.Contain("#if UNITY_UV_STARTS_AT_TOP"));
-        Assert.That(source, Does.Contain("center.y = 1.0 - center.y;"));
+        Assert.That(
+            source,
+            Does.Contain(
+                "float2 center = _KillImpactCenters[impactIndex].xy;"));
+        Assert.That(source, Does.Not.Contain("center.y = 1.0 - center.y;"));
     }
 
     [Test]
@@ -115,7 +122,7 @@ public sealed class Battle3DPresentationTests
         Assert.That(settings, Is.Not.Null);
         Assert.That(
             settings.FindPropertyRelative("Intensity").floatValue,
-            Is.EqualTo(1.35f).Within(0.0001f));
+            Is.EqualTo(0.85f).Within(0.0001f));
         Assert.That(
             settings.FindPropertyRelative("Source").intValue,
             Is.EqualTo(1));
@@ -134,18 +141,42 @@ public sealed class Battle3DPresentationTests
             SkyboxMaterialPath);
         VolumeProfile volume = AssetDatabase.LoadAssetAtPath<VolumeProfile>(
             BattleVolumeProfilePath);
+        UniversalRenderPipelineAsset pipeline =
+            AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>(
+                PipelinePath);
 
         Assert.That(environment, Is.Not.Null);
         Assert.That(skybox, Is.Not.Null);
         Assert.That(skybox.shader, Is.Not.Null);
-        Assert.That(skybox.shader.name, Is.EqualTo("Skybox/Procedural"));
+        Assert.That(
+            skybox.shader.name,
+            Is.EqualTo("LOADED/Battle Gradient Skybox"));
         Assert.That(environment.SkyboxMaterial, Is.SameAs(skybox));
         Assert.That(environment.VolumeProfile, Is.SameAs(volume));
         Assert.That(environment.UsesPerspective, Is.True);
         Assert.That(environment.PerspectiveFieldOfView,
             Is.EqualTo(40f).Within(0.0001f));
         Assert.That(environment.FogEnabled, Is.True);
-        Assert.That(environment.FogDensity, Is.GreaterThan(0f));
+        Assert.That(environment.FogDensity,
+            Is.EqualTo(0.006f).Within(0.0001f));
+        Assert.That(environment.AmbientIntensity,
+            Is.EqualTo(1.12f).Within(0.0001f));
+        Assert.That(environment.DirectionalLightIntensity,
+            Is.EqualTo(1.65f).Within(0.0001f));
+
+        Assert.That(pipeline, Is.Not.Null);
+        SerializedObject serializedPipeline = new SerializedObject(pipeline);
+        Assert.That(
+            serializedPipeline.FindProperty("m_SoftShadowsSupported")
+                .boolValue,
+            Is.True);
+        Assert.That(
+            serializedPipeline.FindProperty("m_ShadowCascadeCount").intValue,
+            Is.EqualTo(4));
+        Assert.That(
+            serializedPipeline.FindProperty("m_DefaultRendererIndex")
+                .intValue,
+            Is.EqualTo(environment.RendererIndex));
 
         Assert.That(volume, Is.Not.Null);
         Assert.That(volume.TryGet(out Tonemapping tonemapping), Is.True);
@@ -157,10 +188,58 @@ public sealed class Battle3DPresentationTests
         Assert.That(bloom.intensity.value,
             Is.EqualTo(0.28f).Within(0.0001f));
         Assert.That(volume.TryGet(out ColorAdjustments color), Is.True);
-        Assert.That(color.contrast.value, Is.EqualTo(9f).Within(0.0001f));
+        Assert.That(color.postExposure.value,
+            Is.EqualTo(0.38f).Within(0.0001f));
+        Assert.That(color.contrast.value, Is.EqualTo(7f).Within(0.0001f));
         Assert.That(volume.TryGet(out Vignette vignette), Is.True);
         Assert.That(vignette.intensity.value,
-            Is.EqualTo(0.14f).Within(0.0001f));
+            Is.EqualTo(0.1f).Within(0.0001f));
+    }
+
+    [Test]
+    public void PlayerAndEnemyPrefabsUseSpriteSilhouetteGroundShadows()
+    {
+        GameObject player = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/Player/Player.prefab");
+        GameObject enemy = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/Enemy/Enemy.prefab");
+        Shader shadowShader = AssetDatabase.LoadAssetAtPath<Shader>(
+            GroundShadowShaderPath);
+
+        Assert.That(player, Is.Not.Null);
+        Assert.That(enemy, Is.Not.Null);
+        Assert.That(player.GetComponent<BattleContactShadow>(), Is.Not.Null);
+        Assert.That(enemy.GetComponent<BattleContactShadow>(), Is.Not.Null);
+        Assert.That(shadowShader, Is.Not.Null);
+        Assert.That(
+            shadowShader.name,
+            Is.EqualTo("LOADED/Battle Sprite Ground Shadow"));
+
+        Assert.That(
+            BattleContactShadow.ResolveGroundingCorrection(1.25f, 0.5f),
+            Is.EqualTo(-0.75f).Within(0.0001f));
+        Vector3 gridCorrection =
+            BattleContactShadow.ResolveGridGroundingCorrection(
+                new Vector3(1.2f, 0.8f, -0.3f),
+                new Vector3(1f, 4f, -0.5f),
+                0.1f);
+        Assert.That(gridCorrection.x,
+            Is.EqualTo(-0.2f).Within(0.0001f));
+        Assert.That(gridCorrection.y,
+            Is.EqualTo(-0.7f).Within(0.0001f));
+        Assert.That(gridCorrection.z,
+            Is.EqualTo(-0.2f).Within(0.0001f));
+
+        Bounds spriteBounds = new Bounds(
+            new Vector3(0.25f, -0.1f, 0f),
+            new Vector3(2f, 3f, 0f));
+        Vector2 flipped = BattleContactShadow.ResolveFlippedVertex(
+            new Vector2(-0.5f, 0.7f),
+            spriteBounds,
+            true,
+            true);
+        Assert.That(flipped.x, Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(flipped.y, Is.EqualTo(-0.9f).Within(0.0001f));
     }
 
     [Test]
@@ -517,7 +596,7 @@ public sealed class Battle3DPresentationTests
     }
 
     [Test]
-    public void FollowOffsetKeepsThePlayerAtScreenCenter()
+    public void SceneAuthoredCameraKeepsThePlayerInView()
     {
         BattleEnvironmentProfile profile =
             AssetDatabase.LoadAssetAtPath<BattleEnvironmentProfile>(
@@ -532,7 +611,10 @@ public sealed class Battle3DPresentationTests
                 BattleScenePath,
                 OpenSceneMode.Single);
             GameObject player = FindSceneObject(scene, "Player");
+            Camera authoredCamera = FindSceneObject(scene, "Main Camera")
+                .GetComponent<Camera>();
             Assert.That(player, Is.Not.Null);
+            Assert.That(authoredCamera, Is.Not.Null);
             Transform avatar = player.transform.Find("Avatar");
             Assert.That(avatar, Is.Not.Null);
             cameraObject = new GameObject("Battle Camera Test");
@@ -541,12 +623,12 @@ public sealed class Battle3DPresentationTests
             camera.fieldOfView = profile.PerspectiveFieldOfView;
             camera.orthographicSize = profile.OrthographicSize;
             cameraObject.transform.SetPositionAndRotation(
-                player.transform.position + profile.CinemachineFollowOffset,
-                profile.CameraLocalRotation);
+                authoredCamera.transform.position,
+                authoredCamera.transform.rotation);
 
             Vector3 viewportPoint = camera.WorldToViewportPoint(avatar.position);
             Assert.That(viewportPoint.x, Is.EqualTo(0.5f).Within(0.001f));
-            Assert.That(viewportPoint.y, Is.EqualTo(0.5f).Within(0.001f));
+            Assert.That(viewportPoint.y, Is.InRange(0f, 1f));
             Assert.That(viewportPoint.z, Is.GreaterThan(0f));
         }
         finally
@@ -555,6 +637,58 @@ public sealed class Battle3DPresentationTests
             {
                 Object.DestroyImmediate(cameraObject);
             }
+            if (originalSetup.Length > 0)
+            {
+                EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
+            }
+        }
+    }
+
+    [Test]
+    public void ApplyingEnvironmentProfilePreservesSceneAuthoredCameraPose()
+    {
+        SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
+
+        try
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                BattleScenePath,
+                OpenSceneMode.Single);
+            BattleWorld3DController controller = FindSceneObject(
+                    scene,
+                    "##--ENVIRONMENT--##")
+                .GetComponent<BattleWorld3DController>();
+            Camera camera = FindSceneObject(scene, "Main Camera")
+                .GetComponent<Camera>();
+            CinemachineFollow follow =
+                camera.GetComponent<CinemachineFollow>();
+            BattleEnvironmentProfile profile =
+                AssetDatabase.LoadAssetAtPath<BattleEnvironmentProfile>(
+                    EnvironmentProfilePath);
+
+            Assert.That(controller, Is.Not.Null);
+            Assert.That(camera, Is.Not.Null);
+            Assert.That(follow, Is.Not.Null);
+            Assert.That(profile, Is.Not.Null);
+
+            Vector3 expectedPosition = camera.transform.localPosition;
+            Quaternion expectedRotation = camera.transform.localRotation;
+            Vector3 expectedFollowOffset = follow.FollowOffset;
+
+            controller.ApplyProfile(profile);
+
+            Assert.That(camera.transform.localPosition,
+                Is.EqualTo(expectedPosition));
+            Assert.That(
+                Quaternion.Angle(
+                    camera.transform.localRotation,
+                    expectedRotation),
+                Is.LessThan(0.01f));
+            Assert.That(follow.FollowOffset,
+                Is.EqualTo(expectedFollowOffset));
+        }
+        finally
+        {
             if (originalSetup.Length > 0)
             {
                 EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
@@ -623,6 +757,34 @@ public sealed class Battle3DPresentationTests
         Assert.That(
             canvasProjectionOrder.order,
             Is.GreaterThan(cameraShakeOrder.order));
+    }
+
+    [Test]
+    public void ActorProjectionRunsAfterCameraShakeInStableOrder()
+    {
+        DefaultExecutionOrder cameraShakeOrder =
+            typeof(CombatCameraShake).GetCustomAttribute<
+                DefaultExecutionOrder>();
+        DefaultExecutionOrder billboardOrder =
+            typeof(BattleSpriteBillboard).GetCustomAttribute<
+                DefaultExecutionOrder>();
+        DefaultExecutionOrder groundingOrder =
+            typeof(BattleContactShadow).GetCustomAttribute<
+                DefaultExecutionOrder>();
+        DefaultExecutionOrder canvasOrder =
+            typeof(BattleWorldCanvasDepthOffset).GetCustomAttribute<
+                DefaultExecutionOrder>();
+
+        Assert.That(cameraShakeOrder, Is.Not.Null);
+        Assert.That(billboardOrder, Is.Not.Null);
+        Assert.That(groundingOrder, Is.Not.Null);
+        Assert.That(canvasOrder, Is.Not.Null);
+        Assert.That(billboardOrder.order,
+            Is.GreaterThan(cameraShakeOrder.order));
+        Assert.That(groundingOrder.order,
+            Is.GreaterThan(billboardOrder.order));
+        Assert.That(canvasOrder.order,
+            Is.GreaterThan(groundingOrder.order));
     }
 
     [Test]
@@ -911,8 +1073,15 @@ public sealed class Battle3DPresentationTests
             Assert.That(terrain.gameObject.scene.path,
                 Is.EqualTo(BattleScenePath));
             Assert.That(AssetDatabase.Contains(terrain.terrainData), Is.True);
-            Assert.That(terrain.terrainData.size, Is.EqualTo(
-                new Vector3(36f, 2f, 14f)));
+            Assert.That(terrain.terrainData.size.x, Is.GreaterThanOrEqualTo(36f));
+            Assert.That(terrain.terrainData.size.y, Is.GreaterThan(0f));
+            Assert.That(terrain.terrainData.size.z, Is.GreaterThanOrEqualTo(14f));
+            Assert.That(terrain.gameObject.activeSelf, Is.True);
+            Assert.That(terrain.enabled, Is.True);
+            Assert.That(terrain.drawHeightmap, Is.True);
+            Assert.That(
+                terrain.editorRenderFlags,
+                Is.EqualTo(TerrainRenderFlags.All));
             Assert.That(
                 Object.FindFirstObjectByType<Light>(
                     FindObjectsInactive.Include),
@@ -923,6 +1092,14 @@ public sealed class Battle3DPresentationTests
                 .GetComponent<Light>();
             Assert.That(directionalLight.shadows, Is.EqualTo(LightShadows.Soft));
             Assert.That(RenderSettings.sun, Is.SameAs(directionalLight));
+            Assert.That(directionalLight.intensity,
+                Is.EqualTo(1.65f).Within(0.0001f));
+            Assert.That(
+                FindSceneObject(scene, "Directional Light | Cool Fill"),
+                Is.Null);
+            Assert.That(
+                FindSceneObject(scene, "Global Light 2D"),
+                Is.Null);
 
             Assert.That(FindSceneObject(scene, "Props | Battle"), Is.Not.Null);
             Assert.That(FindSceneObject(scene, "Architecture"), Is.Not.Null);
@@ -955,11 +1132,18 @@ public sealed class Battle3DPresentationTests
             Assert.That(battleCamera.clearFlags,
                 Is.EqualTo(CameraClearFlags.Skybox));
             Assert.That(battleCamera.allowHDR, Is.True);
+            CinemachineFollow authoredFollow =
+                battleCamera.GetComponent<CinemachineFollow>();
+            CinemachineCamera authoredCinemachineCamera =
+                battleCamera.GetComponent<CinemachineCamera>();
+            Assert.That(authoredFollow, Is.Not.Null);
+            Assert.That(authoredCinemachineCamera, Is.Not.Null);
+            Assert.That(authoredCinemachineCamera.Follow, Is.Not.Null);
             Assert.That(
-                Quaternion.Angle(
-                    battleCamera.transform.localRotation,
-                    Quaternion.Euler(35f, 0f, 0f)),
-                Is.LessThan(0.01f));
+                authoredFollow.FollowOffset,
+                Is.EqualTo(
+                    battleCamera.transform.position
+                    - authoredCinemachineCamera.Follow.position));
             UniversalAdditionalCameraData cameraData =
                 battleCamera.GetUniversalAdditionalCameraData();
             SerializedObject serializedCameraData =

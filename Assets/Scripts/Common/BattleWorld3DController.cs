@@ -14,10 +14,16 @@ public sealed class BattleWorld3DController : MonoBehaviour
     [SerializeField] private Light directionalLight;
     [SerializeField] private Transform playerVisualRoot;
 
+    private bool hasCapturedAuthoredCameraPose;
+    private Vector3 authoredCameraLocalPosition;
+    private Quaternion authoredCameraLocalRotation;
+    private Vector3 authoredFollowOffset;
+
     public BattleEnvironmentProfile ActiveProfile { get; private set; }
 
     private void Awake()
     {
+        CaptureAuthoredCameraPose();
         ApplyProfile(defaultProfile);
     }
 
@@ -43,9 +49,8 @@ public sealed class BattleWorld3DController : MonoBehaviour
 
         if (battleCamera != null)
         {
-            battleCamera.transform.SetLocalPositionAndRotation(
-                resolved.CameraLocalPosition,
-                resolved.CameraLocalRotation);
+            CaptureAuthoredCameraPose();
+            RestoreAuthoredCameraPose();
             ApplyCameraProjection(battleCamera, resolved);
             battleCamera.backgroundColor = resolved.CameraBackgroundColor;
             battleCamera.clearFlags = CameraClearFlags.Skybox;
@@ -83,6 +88,57 @@ public sealed class BattleWorld3DController : MonoBehaviour
         }
 
         ConfigureBillboard(playerVisualRoot);
+    }
+
+    private void CaptureAuthoredCameraPose()
+    {
+        if (hasCapturedAuthoredCameraPose || battleCamera == null)
+        {
+            return;
+        }
+
+        Transform cameraTransform = battleCamera.transform;
+        authoredCameraLocalPosition = cameraTransform.localPosition;
+        authoredCameraLocalRotation = cameraTransform.localRotation;
+
+        CinemachineFollow follow =
+            battleCamera.GetComponent<CinemachineFollow>();
+        authoredFollowOffset = follow != null
+            ? follow.FollowOffset
+            : Vector3.zero;
+
+        CinemachineCamera cinemachineCamera =
+            battleCamera.GetComponent<CinemachineCamera>();
+        if (follow != null
+            && cinemachineCamera != null
+            && cinemachineCamera.Follow != null
+            && follow.TrackerSettings.BindingMode
+                == Unity.Cinemachine.TargetTracking.BindingMode.WorldSpace)
+        {
+            authoredFollowOffset = cameraTransform.position
+                - cinemachineCamera.Follow.position;
+        }
+
+        hasCapturedAuthoredCameraPose = true;
+    }
+
+    private void RestoreAuthoredCameraPose()
+    {
+        if (!hasCapturedAuthoredCameraPose || battleCamera == null)
+        {
+            return;
+        }
+
+        battleCamera.transform.SetLocalPositionAndRotation(
+            authoredCameraLocalPosition,
+            authoredCameraLocalRotation);
+
+        CinemachineFollow follow =
+            battleCamera.GetComponent<CinemachineFollow>();
+        if (follow != null)
+        {
+            follow.FollowOffset = authoredFollowOffset;
+        }
     }
 
     private static void ApplyWorldRendering(BattleEnvironmentProfile profile)

@@ -173,7 +173,10 @@ public sealed class CombatPresentation : MonoBehaviour
                 color, snapshot.SortingOrder + 6 + i);
             var renderer = streak.GetComponent<SpriteRenderer>();
             renderer.sortingLayerID = snapshot.SortingLayerId;
-            streak.transform.position = snapshot.Position + Vector3.right * (direction * 0.28f);
+            streak.transform.position = BattleCameraEffectSpace.Offset(
+                snapshot.Position,
+                new Vector3(direction * 0.28f, 0f, 0f),
+                Camera.main);
             streak.transform.localScale = new Vector3(i == 0 ? 0.85f : 0.65f,
                 i == 0 ? 0.045f : 0.014f, 1f);
             StartCoroutine(AnimateOpticalMote(streak, renderer,
@@ -321,9 +324,10 @@ public sealed class CombatPresentation : MonoBehaviour
         snapshot.Sprite = renderer.sprite;
         snapshot.Material = renderer.sharedMaterial;
         snapshot.VisualPosition = renderer.transform.position;
-        snapshot.Position = ResolveImpactWorldPosition(
-            renderer,
-            snapshot.Position);
+        snapshot.Position = BattleCameraEffectSpace.ResolveActorVisualCenter(
+            enemy.transform,
+            Camera.main,
+            ResolveImpactWorldPosition(renderer, snapshot.Position));
         snapshot.Rotation = renderer.transform.rotation;
         snapshot.Scale = renderer.transform.lossyScale;
         snapshot.Color = renderer.color;
@@ -989,11 +993,13 @@ public sealed class CombatPresentation : MonoBehaviour
                 color,
                 isSmoke ? 218 : 224);
             SpriteRenderer renderer = ember.GetComponent<SpriteRenderer>();
-            ember.transform.position = position
-                + new Vector3(
+            ember.transform.position = BattleCameraEffectSpace.Offset(
+                position,
+                new Vector3(
                     direction * Random.Range(0.01f, 0.11f),
                     Random.Range(-0.04f, 0.04f),
-                    0f);
+                    0f),
+                Camera.main);
             Vector2 velocity = new Vector2(
                 direction * Random.Range(1.2f, isSmoke ? 2.1f : 4.1f),
                 Random.Range(-0.8f, 1.25f));
@@ -1057,8 +1063,10 @@ public sealed class CombatPresentation : MonoBehaviour
                 sortingOrder);
             SpriteRenderer renderer = spark.GetComponent<SpriteRenderer>();
             renderer.sortingLayerID = sortingLayerId;
-            spark.transform.position = position
-                + (Vector3)Random.insideUnitCircle * 0.05f;
+            spark.transform.position = BattleCameraEffectSpace.Offset(
+                position,
+                (Vector3)(Random.insideUnitCircle * 0.05f),
+                Camera.main);
 
             int distributionIndex = sparkIndex % 10;
             bool isReverseFragment = distributionIndex >= 7
@@ -1144,10 +1152,13 @@ public sealed class CombatPresentation : MonoBehaviour
                 sortingOrder);
             SpriteRenderer renderer = streak.GetComponent<SpriteRenderer>();
             renderer.sortingLayerID = sortingLayerId;
-            streak.transform.position = position + new Vector3(
-                -direction * Random.Range(0.02f, 0.16f),
-                Random.Range(-0.16f, 0.16f),
-                0f);
+            streak.transform.position = BattleCameraEffectSpace.Offset(
+                position,
+                new Vector3(
+                    -direction * Random.Range(0.02f, 0.16f),
+                    Random.Range(-0.16f, 0.16f),
+                    0f),
+                Camera.main);
             streak.transform.localScale = new Vector3(
                 Random.Range(0.22f, 0.52f) * tierScale * effectMultiplier,
                 Random.Range(0.006f, 0.018f) * tierScale * effectMultiplier,
@@ -1314,11 +1325,15 @@ public sealed class CombatPresentation : MonoBehaviour
             float scale = Mathf.Lerp(0.34f, 1.12f, attack)
                 * Mathf.Lerp(0.78f, 1f, decay);
             root.transform.localScale = baseScale * scale;
-            root.transform.position = startPosition
-                + Vector3.right
-                * horizontalDirection
-                * 0.065f
-                * Mathf.SmoothStep(0f, 1f, progress);
+            root.transform.position = BattleCameraEffectSpace.Offset(
+                startPosition,
+                new Vector3(
+                    horizontalDirection
+                        * 0.065f
+                        * Mathf.SmoothStep(0f, 1f, progress),
+                    0f,
+                    0f),
+                Camera.main);
             BattleSpriteBillboard.FaceTransform(
                 root.transform,
                 null,
@@ -1378,11 +1393,13 @@ public sealed class CombatPresentation : MonoBehaviour
             root.transform.localScale = baseScale
                 * Mathf.Lerp(0.38f, 1.18f, attack)
                 * Mathf.Lerp(0.74f, 1f, release);
-            root.transform.position = startPosition
-                + Vector3.right
-                * horizontalDirection
-                * 0.045f
-                * pulse;
+            root.transform.position = BattleCameraEffectSpace.Offset(
+                startPosition,
+                new Vector3(
+                    horizontalDirection * 0.045f * pulse,
+                    0f,
+                    0f),
+                Camera.main);
             BattleSpriteBillboard.FaceTransform(
                 root.transform,
                 null,
@@ -1419,7 +1436,9 @@ public sealed class CombatPresentation : MonoBehaviour
             float deltaTime = Time.unscaledDeltaTime;
             elapsed += deltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
-            spark.transform.position += (Vector3)(velocity * deltaTime);
+            spark.transform.position += BattleCameraEffectSpace.CameraPlaneDelta(
+                velocity * deltaTime,
+                Camera.main);
             velocity.y -= 4.5f * deltaTime;
             spark.transform.localScale = Vector3.Lerp(
                 initialScale,
@@ -1457,7 +1476,9 @@ public sealed class CombatPresentation : MonoBehaviour
             elapsed += deltaTime;
             float progress = Mathf.Clamp01(elapsed / duration);
             float pulse = Mathf.Sin(progress * Mathf.PI);
-            mote.transform.position += (Vector3)(velocity * deltaTime);
+            mote.transform.position += BattleCameraEffectSpace.CameraPlaneDelta(
+                velocity * deltaTime,
+                Camera.main);
             mote.transform.Rotate(
                 0f,
                 0f,

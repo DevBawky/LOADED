@@ -107,12 +107,10 @@ Shader "Loaded/Kill Impact Fullscreen"
                         continue;
                     }
 
+                    // URP's fullscreen pass provides normalized blit UVs in
+                    // the same viewport convention as WorldToViewportPoint.
+                    // Flipping Y here mirrors the wave around screen center.
                     float2 center = _KillImpactCenters[impactIndex].xy;
-#if UNITY_UV_STARTS_AT_TOP
-                    // WorldToViewportPoint uses a bottom-left origin, while
-                    // the fullscreen blit UV uses a top-left origin here.
-                    center.y = 1.0 - center.y;
-#endif
                     float4 directionData = _KillImpactDirections[impactIndex];
                     float2 direction = directionData.xy;
                     float shotPulse = saturate(directionData.z);

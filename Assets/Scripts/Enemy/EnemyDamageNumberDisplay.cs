@@ -150,9 +150,12 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         }
 
         Camera battleCamera = Camera.main;
+        Vector3 visualOrigin = BattleCameraEffectSpace.ResolveActorVisualOrigin(
+            transform,
+            transform.position);
         Vector3 position = SharedSpawnLayout.FindAvailableOffset(
             ResolveSpawnAnchor(
-                transform.position,
+                visualOrigin,
                 damageOffset,
                 battleCamera),
             ResolveMinimumSpawnSeparation(
@@ -338,19 +341,15 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return targetPosition + authoredOffset;
         }
 
-        Vector3 anchor = targetPosition
-            + battleCamera.transform.right * authoredOffset.x
-            + battleCamera.transform.up * authoredOffset.y;
-        Vector3 directionToCamera = battleCamera.transform.position - anchor;
-
-        if (directionToCamera.sqrMagnitude <= Mathf.Epsilon)
-        {
-            directionToCamera = -battleCamera.transform.forward;
-        }
-
-        // The old 2D Z value was a render-depth offset. Move along the camera
-        // ray so it cannot shift the popup away from the target on screen.
-        return anchor + directionToCamera.normalized * -authoredOffset.z;
+        // The old 2D Z value was a render-depth offset. Move toward the
+        // camera so it cannot shift the popup away from the target on screen.
+        return BattleCameraEffectSpace.Offset(
+            targetPosition,
+            new Vector3(
+                authoredOffset.x,
+                authoredOffset.y,
+                -authoredOffset.z),
+            battleCamera);
     }
 
     private void SpawnStatus(DamageNumber prefab, string statusText)
@@ -361,9 +360,12 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         }
 
         Camera battleCamera = Camera.main;
+        Vector3 visualOrigin = BattleCameraEffectSpace.ResolveActorVisualOrigin(
+            transform,
+            transform.position);
         Vector3 position = SharedSpawnLayout.FindAvailableOffset(
             ResolveSpawnAnchor(
-                transform.position,
+                visualOrigin,
                 statusOffset,
                 battleCamera),
             ResolveMinimumSpawnSeparation(

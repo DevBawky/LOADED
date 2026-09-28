@@ -24,11 +24,11 @@ MonoBehaviour:
   rendererIndex: 1
   skyboxMaterial: {fileID: 2100000, guid: 89021ba58c54c41499945b5d3827d870, type: 2}
   volumeProfile: {fileID: 11400000, guid: 2d7b61e0a37416046801d5704d66627a, type: 2}
-  ambientIntensity: 0.82
-  reflectionIntensity: 0.78
+  ambientIntensity: 1.12
+  reflectionIntensity: 0.95
   fogEnabled: 1
-  fogColor: {r: 0.12, g: 0.16, b: 0.22, a: 1}
-  fogDensity: 0.012
-  directionalLightColor: {r: 1, g: 0.86, b: 0.68, a: 1}
-  directionalLightIntensity: 1.25
+  fogColor: {r: 0.22, g: 0.29, b: 0.4, a: 1}
+  fogDensity: 0.006
+  directionalLightColor: {r: 1, g: 0.92, b: 0.8, a: 1}
+  directionalLightIntensity: 1.65
   directionalLightEulerAngles: {x: 52, y: -32, z: 0}

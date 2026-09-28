@@ -1,5 +1,6 @@
 using UnityEngine;
 
+[DefaultExecutionOrder(13000)]
 [DisallowMultipleComponent]
 public sealed class BattleSpriteBillboard : MonoBehaviour
 {

@@ -367,8 +367,13 @@ internal sealed class CombatImpactSignaturePresenter
             float progress = Mathf.Clamp01(elapsed / duration);
             float snap = 1f - Mathf.Pow(1f - progress, 3f);
             float release = 1f - Mathf.SmoothStep(0.28f, 1f, progress);
-            root.transform.position = startPosition
-                + Vector3.right * horizontalDirection * 0.06f * snap;
+            root.transform.position = BattleCameraEffectSpace.Offset(
+                startPosition,
+                new Vector3(
+                    horizontalDirection * 0.06f * snap,
+                    0f,
+                    0f),
+                Camera.main);
             root.transform.localScale = Vector3.one
                 * Mathf.Lerp(0.78f, 1.12f, snap);
             ApplyAlpha(renderers, startColors, release);
@@ -517,8 +522,13 @@ internal sealed class CombatImpactSignaturePresenter
                 Mathf.Clamp01(progress / 0.2f));
             float release = 1f - Mathf.SmoothStep(0.2f, 1f, progress);
             float pulse = Mathf.Sin(progress * Mathf.PI);
-            root.transform.position = startPosition
-                + Vector3.right * horizontalDirection * 0.035f * pulse;
+            root.transform.position = BattleCameraEffectSpace.Offset(
+                startPosition,
+                new Vector3(
+                    horizontalDirection * 0.035f * pulse,
+                    0f,
+                    0f),
+                Camera.main);
             root.transform.localScale = Vector3.one
                 * Mathf.Lerp(0.68f, 1.08f, lockProgress)
                 * Mathf.Lerp(1f, 1.18f, progress);
@@ -927,11 +937,15 @@ internal sealed class CombatImpactSignaturePresenter
             core.localScale = coreStartScale * (isCompressing
                 ? Mathf.Lerp(1.6f, 0.42f, phase)
                 : Mathf.Lerp(0.42f, 2.25f, phase));
-            root.transform.position = startPosition
-                + Vector3.right
-                * direction
-                * 0.055f
-                * Mathf.Sin(progress * Mathf.PI);
+            root.transform.position = BattleCameraEffectSpace.Offset(
+                startPosition,
+                new Vector3(
+                    direction
+                        * 0.055f
+                        * Mathf.Sin(progress * Mathf.PI),
+                    0f,
+                    0f),
+                Camera.main);
             BattleSpriteBillboard.FaceTransform(
                 root.transform,
                 null,
@@ -1055,8 +1069,13 @@ internal sealed class CombatImpactSignaturePresenter
             float release = 1f - Mathf.SmoothStep(0.08f, 1f, progress);
             root.transform.localScale = Vector3.one
                 * Mathf.Lerp(0.42f, 2.65f, expansion);
-            root.transform.position = startPosition
-                + Vector3.right * horizontalDirection * 0.07f * expansion;
+            root.transform.position = BattleCameraEffectSpace.Offset(
+                startPosition,
+                new Vector3(
+                    horizontalDirection * 0.07f * expansion,
+                    0f,
+                    0f),
+                Camera.main);
             BattleSpriteBillboard.FaceTransform(
                 root.transform,
                 null,
@@ -1197,8 +1216,11 @@ internal sealed class CombatImpactSignaturePresenter
         FiringSequenceDefeatFeedbackProfile profile,
         Settings settings)
     {
-        Vector3 delta = snapshot.Position - previousPosition;
-        float distance = delta.magnitude;
+        Vector2 cameraPlaneDelta = BattleCameraEffectSpace
+            .CameraPlaneComponents(
+                snapshot.Position - previousPosition,
+                Camera.main);
+        float distance = cameraPlaneDelta.magnitude;
 
         if (distance < 0.08f)
         {
@@ -1209,7 +1231,9 @@ internal sealed class CombatImpactSignaturePresenter
             "Defeat Chain Tear",
             Vector3.Lerp(previousPosition, snapshot.Position, 0.5f));
         List<SpriteRenderer> tears = new List<SpriteRenderer>(3);
-        float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+        float angle = Mathf.Atan2(
+            cameraPlaneDelta.y,
+            cameraPlaneDelta.x) * Mathf.Rad2Deg;
 
         for (int index = 0; index < 3; index++)
         {
@@ -1326,13 +1350,15 @@ internal sealed class CombatImpactSignaturePresenter
                 color,
                 snapshot.SortingLayerId,
                 snapshot.SortingOrder + 2 + index);
+            Vector2 cameraPlaneDelta = BattleCameraEffectSpace
+                .CameraPlaneComponents(
+                    snapshot.Position - previousPosition,
+                    Camera.main);
             echo.transform.localRotation = Quaternion.Euler(
                 0f,
                 0f,
-                Mathf.Atan2(
-                    snapshot.Position.y - previousPosition.y,
-                    snapshot.Position.x - previousPosition.x)
-                * Mathf.Rad2Deg);
+                Mathf.Atan2(cameraPlaneDelta.y, cameraPlaneDelta.x)
+                    * Mathf.Rad2Deg);
             echo.transform.localScale = new Vector3(
                 0.18f * settings.Intensity * profile.FragmentMultiplier,
                 0.016f * settings.Intensity,
@@ -1494,22 +1520,34 @@ internal sealed class CombatImpactSignaturePresenter
                 renderer.color = color;
                 silhouette.transform.localScale = startScale
                     * Mathf.Lerp(1.055f, 0.985f, settle);
-                silhouette.transform.position = startPosition
-                    + Vector3.right
-                    * direction
-                    * 0.025f
-                    * Mathf.Sin(settle * Mathf.PI);
+                silhouette.transform.position = BattleCameraEffectSpace.Offset(
+                    startPosition,
+                    new Vector3(
+                        direction
+                            * 0.025f
+                            * Mathf.Sin(settle * Mathf.PI),
+                        0f,
+                        0f),
+                    Camera.main);
                 continue;
             }
 
             float release = Mathf.InverseLerp(safeHold, duration, elapsed);
             float releaseEase = 1f - Mathf.Pow(1f - release, 3f);
-            Vector3 position = startPosition;
-            position.x += direction * settings.DefeatKnockbackDistance
-                * 0.42f * settings.Intensity * feedbackMultiplier * releaseEase;
-            position.y += Mathf.Sin(release * Mathf.PI)
-                * settings.DefeatLiftHeight * 0.55f * settings.Intensity;
-            silhouette.transform.position = position;
+            silhouette.transform.position = BattleCameraEffectSpace.Offset(
+                startPosition,
+                new Vector3(
+                    direction * settings.DefeatKnockbackDistance
+                        * 0.42f
+                        * settings.Intensity
+                        * feedbackMultiplier
+                        * releaseEase,
+                    Mathf.Sin(release * Mathf.PI)
+                        * settings.DefeatLiftHeight
+                        * 0.55f
+                        * settings.Intensity,
+                    0f),
+                Camera.main);
             silhouette.transform.rotation = startRotation
                 * Quaternion.Euler(0f, 0f, -direction * 9f * releaseEase);
             silhouette.transform.localScale = new Vector3(
@@ -1805,15 +1843,20 @@ internal sealed class CombatImpactSignaturePresenter
             float progress = Mathf.Clamp01(
                 elapsed / settings.DefeatAfterimageDuration);
             float eased = 1f - Mathf.Pow(1f - progress, 3f);
-            Vector3 position = startPosition;
-            position.x += direction * settings.DefeatKnockbackDistance
-                * settings.Intensity * distanceScale * feedbackMultiplier
-                * eased;
-            position.y += Mathf.Sin(progress * Mathf.PI)
-                * settings.DefeatLiftHeight
-                * settings.Intensity
-                * feedbackMultiplier;
-            afterimage.transform.position = position;
+            afterimage.transform.position = BattleCameraEffectSpace.Offset(
+                startPosition,
+                new Vector3(
+                    direction * settings.DefeatKnockbackDistance
+                        * settings.Intensity
+                        * distanceScale
+                        * feedbackMultiplier
+                        * eased,
+                    Mathf.Sin(progress * Mathf.PI)
+                        * settings.DefeatLiftHeight
+                        * settings.Intensity
+                        * feedbackMultiplier,
+                    0f),
+                Camera.main);
             afterimage.transform.rotation = startRotation
                 * Quaternion.Euler(0f, 0f, -direction * 14f * eased);
             afterimage.transform.localScale = new Vector3(
