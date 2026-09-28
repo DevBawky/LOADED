@@ -29,7 +29,9 @@ public sealed class SoundManager : MonoBehaviour
     private IReadOnlyList<AudioClip> currentPlaylist;
     private IReadOnlyList<AudioClip> pendingPlaylist;
     private Coroutine bgmTransitionCoroutine;
+    private Coroutine combatDuckCoroutine;
     private float bgmFadeMultiplier = 1f;
+    private float combatDuckMultiplier = 1f;
     private bool gameOverBgmLocked;
     private int lastBgmIndex = -1;
     private AudioClip lastKnownBgmClip;
@@ -80,7 +82,7 @@ public sealed class SoundManager : MonoBehaviour
             // Time.timeScale must not alter the authored BGM playback pitch.
             bgmSource.pitch = 1f;
             bgmSource.volume = clipLibrary.BgmVolume * bgmVolume
-                * bgmFadeMultiplier;
+                * bgmFadeMultiplier * combatDuckMultiplier;
             ApplyMixerRouting();
         }
 
@@ -200,6 +202,14 @@ public sealed class SoundManager : MonoBehaviour
     public static void PlayComboDie(int firingSequenceKillCount)
     {
         SoundManager manager = Instance;
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
+        FiringSequenceDefeatFeedbackProfile profile =
+            FiringSequenceDefeatFeedbackProfile.Resolve(
+                firingSequenceKillCount);
         float pitch = CalculateFiringSequenceKillPitch(
             firingSequenceKillCount);
         if (manager.clipLibrary != null
@@ -210,8 +220,123 @@ public sealed class SoundManager : MonoBehaviour
                 out _,
                 out UnityEngine.Audio.AudioMixerGroup mixerGroup))
         {
-            manager.PlayOneShot(clip, pitch, volume, mixerGroup);
+            manager.PlayOneShot(
+                clip,
+                pitch,
+                volume * Mathf.Lerp(
+                    1f,
+                    1.12f,
+                    Mathf.InverseLerp(
+                        1f,
+                        1.68f,
+                        profile.IntensityMultiplier)),
+                mixerGroup);
         }
+
+        if (profile.Tier >= FiringSequenceDefeatTier.Chain)
+        {
+            manager.PlayFixedCombatLayer(
+                "SFX_Enemy_Hit",
+                Mathf.Lerp(1.28f, 1.58f, Mathf.InverseLerp(
+                    2f,
+                    5f,
+                    profile.KillCount)),
+                Mathf.Lerp(0.18f, 0.3f, Mathf.InverseLerp(
+                    2f,
+                    5f,
+                    profile.KillCount)));
+            manager.StartCombatDuck(profile);
+        }
+
+        if (profile.Tier >= FiringSequenceDefeatTier.Rupture)
+        {
+            manager.PlayFixedCombatLayer(
+                "SFX_Enemy_Die",
+                Mathf.Lerp(0.76f, 0.62f, Mathf.InverseLerp(
+                    3f,
+                    5f,
+                    profile.KillCount)),
+                Mathf.Lerp(0.2f, 0.38f, Mathf.InverseLerp(
+                    3f,
+                    5f,
+                    profile.KillCount)));
+        }
+    }
+
+    private void PlayFixedCombatLayer(string id, float pitch, float volume)
+    {
+        if (clipLibrary == null
+            || !clipLibrary.TryGetFixedSfx(
+                id,
+                out AudioClip clip,
+                out float authoredVolume,
+                out UnityEngine.Audio.AudioMixerGroup mixerGroup))
+        {
+            return;
+        }
+
+        PlayOneShot(
+            clip,
+            pitch,
+            authoredVolume * Mathf.Clamp(volume, 0f, 0.5f),
+            mixerGroup);
+    }
+
+    private void StartCombatDuck(
+        FiringSequenceDefeatFeedbackProfile profile)
+    {
+        if (combatDuckCoroutine != null)
+        {
+            StopCoroutine(combatDuckCoroutine);
+        }
+
+        float strength = Mathf.Lerp(
+            0.1f,
+            0.28f,
+            Mathf.InverseLerp(1.16f, 1.68f, profile.IntensityMultiplier));
+        combatDuckCoroutine = StartCoroutine(CombatDuckRoutine(strength));
+    }
+
+    private IEnumerator CombatDuckRoutine(float strength)
+    {
+        const float holdDuration = 0.045f;
+        const float recoveryDuration = 0.13f;
+        float elapsed = 0f;
+        combatDuckMultiplier = 1f - Mathf.Clamp(strength, 0f, 0.35f);
+
+        while (elapsed < holdDuration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                elapsed += Time.unscaledDeltaTime;
+            }
+        }
+
+        elapsed = 0f;
+        float startMultiplier = combatDuckMultiplier;
+        while (elapsed < recoveryDuration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsed += Time.unscaledDeltaTime;
+            combatDuckMultiplier = Mathf.Lerp(
+                startMultiplier,
+                1f,
+                Mathf.SmoothStep(
+                    0f,
+                    1f,
+                    Mathf.Clamp01(elapsed / recoveryDuration)));
+        }
+
+        combatDuckMultiplier = 1f;
+        combatDuckCoroutine = null;
     }
 
     internal static void PlayPenetrationAccent(int penetrationIndex)
@@ -250,7 +375,18 @@ public sealed class SoundManager : MonoBehaviour
             * (1f - Mathf.Exp(-additionalKills * ComboPitchGrowthRate));
     }
 
-    public static void ResetComboPitch() { }
+    public static void ResetComboPitch()
+    {
+        SoundManager manager = Instance;
+
+        if (manager.combatDuckCoroutine != null)
+        {
+            manager.StopCoroutine(manager.combatDuckCoroutine);
+            manager.combatDuckCoroutine = null;
+        }
+
+        manager.combatDuckMultiplier = 1f;
+    }
     public static void StopBgm() => Instance.SetPlaylist(null);
 
     public static void PlayGameOverBgm()
@@ -559,7 +695,7 @@ public sealed class SoundManager : MonoBehaviour
         {
             float authoredVolume = clipLibrary == null ? 1f : clipLibrary.BgmVolume;
             bgmSource.volume = authoredVolume * bgmVolume
-                * bgmFadeMultiplier;
+                * bgmFadeMultiplier * combatDuckMultiplier;
         }
 
         foreach (AudioSource source in sfxSources)

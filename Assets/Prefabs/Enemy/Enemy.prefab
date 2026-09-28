@@ -785,7 +785,9 @@ MonoBehaviour:
   isQueueCreated: 0
   isAttackPrepared: 0
   isRetreating: 0
+  currentLaneIndex: 0
   preparedTargetTileIndex: -1
+  preparedTargetLaneIndex: 0
   preparedTargetPosition: {x: 0, y: 0, z: 0}
   preparedSupportTarget: {fileID: 0}
   preparedSupportType: 0
@@ -795,6 +797,7 @@ MonoBehaviour:
   isBigBarrelPhaseTwo: 0
   bigBarrelActionUsesPhaseTwo: 0
   preparedBigBarrelFuse: 0
+  preparedBigBarrelLaneIndex: 0
   bigBarrelReloadTurnsRemaining: 0
   preparedBombTargetTileIndices: 
   preparedShotgunTileIndices: 
@@ -839,6 +842,8 @@ MonoBehaviour:
   stunnedHotColor: {r: 0.55, g: 0.95, b: 1.4, a: 1}
   stunnedFlameSpeed: 0.45
   missingIconColor: {r: 1, g: 0, b: 0, a: 1}
+  laneVerticalSeparation: 2
+  laneLayoutTransitionDuration: 0.18
 --- !u!114 &700000000000000001
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -893,7 +898,9 @@ MonoBehaviour:
   damageOffset: {x: 0, y: 0.75, z: -1}
   statusOffset: {x: 0, y: 1, z: -1}
   followTarget: 1
-  minimumSpawnSeparation: 0.17
+  minimumSpawnSeparation: 0.45
+  damageNumberScaleMultiplier: 0.5
+  statusTextScaleMultiplier: 0.5
   criticalDamageColor: {r: 1, g: 0.86, b: 0.28, a: 1}
   devastatingDamageColor: {r: 1, g: 0.32, b: 0.08, a: 1}
   defeatDamageColor: {r: 1, g: 0.92, b: 0.78, a: 1}

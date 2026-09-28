@@ -28,6 +28,7 @@ public sealed class CombatPresentation : MonoBehaviour
         public Sprite Sprite;
         public Material Material;
         public Vector3 Position;
+        public Vector3 VisualPosition;
         public Quaternion Rotation;
         public Vector3 Scale;
         public Color Color;
@@ -298,6 +299,7 @@ public sealed class CombatPresentation : MonoBehaviour
         EnemySnapshot snapshot = new EnemySnapshot
         {
             Position = enemy.transform.position,
+            VisualPosition = enemy.transform.position,
             Rotation = enemy.transform.rotation,
             Scale = Vector3.one,
             Color = Color.white,
@@ -318,7 +320,10 @@ public sealed class CombatPresentation : MonoBehaviour
 
         snapshot.Sprite = renderer.sprite;
         snapshot.Material = renderer.sharedMaterial;
-        snapshot.Position = renderer.transform.position;
+        snapshot.VisualPosition = renderer.transform.position;
+        snapshot.Position = ResolveImpactWorldPosition(
+            renderer,
+            snapshot.Position);
         snapshot.Rotation = renderer.transform.rotation;
         snapshot.Scale = renderer.transform.lossyScale;
         snapshot.Color = renderer.color;
@@ -330,6 +335,13 @@ public sealed class CombatPresentation : MonoBehaviour
         }
 
         return snapshot;
+    }
+
+    internal static Vector3 ResolveImpactWorldPosition(
+        SpriteRenderer renderer,
+        Vector3 fallbackPosition)
+    {
+        return renderer == null ? fallbackPosition : renderer.bounds.center;
     }
 
     private static SpriteRenderer FindSnapshotRenderer(EnemyController enemy)
@@ -415,11 +427,39 @@ public sealed class CombatPresentation : MonoBehaviour
         CombatImpactTier impactTier,
         float feedbackMultiplier = 1f,
         float presentationDelay = 0f,
-        bool wasFinalEnemy = false)
+        bool wasFinalEnemy = false,
+        int firingSequenceDefeatCount = 1,
+        bool hasPreviousDefeatPosition = false,
+        Vector3 previousDefeatPosition = default,
+        bool guaranteedDefeatShockwavePlayed = false)
     {
         if (!presentationEnabled || !snapshot.IsValid)
         {
             return;
+        }
+
+        FiringSequenceDefeatFeedbackProfile defeatProfile =
+            FiringSequenceDefeatFeedbackProfile.Resolve(
+                firingSequenceDefeatCount);
+
+        if (ShouldPlayGuaranteedDefeatShockwave(
+                impactTier,
+                guaranteedDefeatShockwavePlayed))
+        {
+            EnsureRuntimeResources();
+            Color shockwaveAccent = GetAccentColor(bullet);
+            Color shockwaveSecondary = ResolveImpactWaveColor(
+                shockwaveAccent,
+                GetSecondaryAccentColor(bullet));
+            EnsureImpactSignaturePresenter();
+            impactSignaturePresenter?.PlayGuaranteedDefeatShockwave(
+                snapshot,
+                horizontalDirection,
+                shockwaveAccent,
+                shockwaveSecondary,
+                defeatProfile,
+                CreateImpactSignatureSettings());
+            guaranteedDefeatShockwavePlayed = true;
         }
 
         if (impactTier == CombatImpactTier.Defeat
@@ -431,7 +471,11 @@ public sealed class CombatPresentation : MonoBehaviour
                 bullet,
                 feedbackMultiplier,
                 presentationDelay,
-                wasFinalEnemy));
+                wasFinalEnemy,
+                firingSequenceDefeatCount,
+                hasPreviousDefeatPosition,
+                previousDefeatPosition,
+                guaranteedDefeatShockwavePlayed));
             return;
         }
 
@@ -514,11 +558,15 @@ public sealed class CombatPresentation : MonoBehaviour
             waveAccent,
             impactMultiplier,
             wasFinalEnemy,
+            defeatProfile,
+            hasPreviousDefeatPosition,
+            previousDefeatPosition,
             CreateImpactSignatureSettings());
 
         if (impactTier == CombatImpactTier.Defeat)
         {
-            PlayHitStop(defeatHitStopDuration * impactMultiplier);
+            PlayHitStop(
+                defeatHitStopDuration * defeatProfile.HitStopMultiplier);
         }
         else if (impactTier == CombatImpactTier.Devastating)
         {
@@ -538,7 +586,11 @@ public sealed class CombatPresentation : MonoBehaviour
         BulletInstance bullet,
         float feedbackMultiplier,
         float delay,
-        bool wasFinalEnemy)
+        bool wasFinalEnemy,
+        int firingSequenceDefeatCount,
+        bool hasPreviousDefeatPosition,
+        Vector3 previousDefeatPosition,
+        bool guaranteedDefeatShockwavePlayed)
     {
         float remaining = Mathf.Max(0f, delay);
 
@@ -559,7 +611,18 @@ public sealed class CombatPresentation : MonoBehaviour
             CombatImpactTier.Defeat,
             feedbackMultiplier,
             0f,
-            wasFinalEnemy);
+            wasFinalEnemy,
+            firingSequenceDefeatCount,
+            hasPreviousDefeatPosition,
+            previousDefeatPosition,
+            guaranteedDefeatShockwavePlayed);
+    }
+
+    internal static bool ShouldPlayGuaranteedDefeatShockwave(
+        CombatImpactTier impactTier,
+        bool alreadyPlayed)
+    {
+        return impactTier == CombatImpactTier.Defeat && !alreadyPlayed;
     }
 
     private void EnsureRuntimeResources()
@@ -975,7 +1038,6 @@ public sealed class CombatPresentation : MonoBehaviour
             * CombatAccessibilitySettings.ParticleDensityMultiplier
             * 0.58f
             * effectMultiplier));
-        Color heatDust = new Color(0.44f, 0.26f, 0.12f, 0.42f);
         Color warmGlint = Color.Lerp(
             new Color(1f, 0.72f, 0.3f, 0.88f),
             accent,
@@ -983,18 +1045,13 @@ public sealed class CombatPresentation : MonoBehaviour
 
         for (int sparkIndex = 0; sparkIndex < scaledCount; sparkIndex++)
         {
-            bool isHeatDust = sparkIndex % 3 == 0;
-            Color color = isHeatDust
-                ? Color.Lerp(
-                    heatDust,
-                    defeatDustColor,
-                    Random.Range(0.06f, 0.2f))
-                : Color.Lerp(warmGlint, accent, Random.Range(0.08f, 0.3f));
-            color.a = isHeatDust
-                ? Random.Range(0.22f, 0.42f)
-                : Random.Range(0.58f, 0.9f);
+            Color color = Color.Lerp(
+                warmGlint,
+                accent,
+                Random.Range(0.08f, 0.3f));
+            color.a = Random.Range(0.58f, 0.9f);
             GameObject spark = CreateSpriteObject(
-                isHeatDust ? "Heat Dust Mote" : "Optical Impact Glint",
+                "Optical Impact Glint",
                 null,
                 color,
                 sortingOrder);
@@ -1003,25 +1060,39 @@ public sealed class CombatPresentation : MonoBehaviour
             spark.transform.position = position
                 + (Vector3)Random.insideUnitCircle * 0.05f;
 
-            float forwardSpeed = Random.Range(0.45f, isDefeated ? 1.8f : 1.2f);
-            Vector2 velocity = new Vector2(
-                direction * forwardSpeed,
-                Random.Range(-0.5f, isDefeated ? 1.15f : 0.72f));
+            int distributionIndex = sparkIndex % 10;
+            bool isReverseFragment = distributionIndex >= 7
+                && distributionIndex < 9;
+            bool isVerticalFragment = distributionIndex == 9;
+            bool isLargeFragment = sparkIndex % 5 == 1;
+            Vector2 velocity;
 
-            if (sparkIndex % 4 == 0)
+            if (isVerticalFragment)
             {
-                velocity.x *= -0.35f;
+                velocity = new Vector2(
+                    direction * Random.Range(0.08f, 0.38f),
+                    Random.Range(0.9f, isDefeated ? 1.9f : 1.45f));
+            }
+            else if (isReverseFragment)
+            {
+                velocity = new Vector2(
+                    -direction * Random.Range(0.4f, isDefeated ? 1.2f : 0.85f),
+                    Random.Range(-0.35f, isDefeated ? 0.9f : 0.55f));
+            }
+            else
+            {
+                velocity = new Vector2(
+                    direction * Random.Range(0.75f, isDefeated ? 2.25f : 1.55f),
+                    Random.Range(-0.5f, isDefeated ? 1.15f : 0.72f));
             }
 
             velocity *= effectMultiplier;
 
             spark.transform.localScale = new Vector3(
-                isHeatDust
-                    ? Random.Range(0.025f, 0.065f)
-                    : Random.Range(0.07f, 0.16f),
-                isHeatDust
-                    ? Random.Range(0.018f, 0.05f)
-                    : Random.Range(0.006f, 0.018f),
+                Random.Range(0.07f, 0.16f)
+                    * (isLargeFragment ? 1.65f : 1f),
+                Random.Range(0.006f, 0.018f)
+                    * (isLargeFragment ? 1.35f : 1f),
                 1f) * Mathf.Lerp(0.75f, 1.25f, ScaledIntensity * 0.5f)
                 * effectMultiplier;
             BattleSpriteBillboard.FaceTransform(
@@ -1034,7 +1105,8 @@ public sealed class CombatPresentation : MonoBehaviour
                 velocity,
                 isDefeated
                     ? Random.Range(0.24f, 0.4f)
-                    : Random.Range(0.13f, 0.25f)));
+                    : Random.Range(0.13f, 0.25f),
+                Random.Range(-240f, 240f)));
         }
     }
 
@@ -1365,7 +1437,8 @@ public sealed class CombatPresentation : MonoBehaviour
         GameObject mote,
         SpriteRenderer renderer,
         Vector2 velocity,
-        float duration)
+        float duration,
+        float angularVelocity = 0f)
     {
         float elapsed = 0f;
         Vector3 initialScale = mote.transform.localScale;
@@ -1385,6 +1458,11 @@ public sealed class CombatPresentation : MonoBehaviour
             float progress = Mathf.Clamp01(elapsed / duration);
             float pulse = Mathf.Sin(progress * Mathf.PI);
             mote.transform.position += (Vector3)(velocity * deltaTime);
+            mote.transform.Rotate(
+                0f,
+                0f,
+                angularVelocity * deltaTime,
+                Space.Self);
             velocity *= Mathf.Exp(-2.8f * deltaTime);
             mote.transform.localScale = new Vector3(
                 initialScale.x * Mathf.Lerp(0.45f, 1.4f, pulse),

@@ -9,7 +9,8 @@ public sealed class CombatImpactParticleEffect : MonoBehaviour
         Accent,
         HotAccent,
         Dust,
-        Enemy
+        Enemy,
+        BrightAccent
     }
 
     [Serializable]
@@ -207,6 +208,9 @@ public sealed class CombatImpactParticleEffect : MonoBehaviour
 
         return source switch
         {
+            ColorSource.BrightAccent => new ParticleSystem.MinMaxGradient(
+                Color.Lerp(accent, Color.white, 0.42f),
+                Color.Lerp(accent, Color.white, 0.9f)),
             ColorSource.HotAccent => new ParticleSystem.MinMaxGradient(
                 Color.Lerp(accent, new Color(1f, 0.72f, 0.28f, 1f), 0.45f),
                 Color.Lerp(accent, Color.white, 0.82f)),

@@ -82,6 +82,31 @@ internal sealed class CombatImpactSignaturePresenter
         this.whiteSprite = whiteSprite;
     }
 
+    public void PlayGuaranteedDefeatShockwave(
+        CombatPresentation.EnemySnapshot snapshot,
+        int horizontalDirection,
+        Color accent,
+        Color waveAccent,
+        FiringSequenceDefeatFeedbackProfile defeatProfile,
+        Settings settings)
+    {
+        if (coroutineHost == null
+            || whiteSprite == null
+            || !snapshot.IsValid
+            || settings.Intensity <= 0f)
+        {
+            return;
+        }
+
+        SpawnGuaranteedDefeatShockwave(
+            snapshot,
+            horizontalDirection,
+            accent,
+            waveAccent,
+            defeatProfile,
+            settings);
+    }
+
     public void Play(
         CombatPresentation.ImpactSignature signature,
         CombatPresentation.EnemySnapshot snapshot,
@@ -90,6 +115,9 @@ internal sealed class CombatImpactSignaturePresenter
         Color waveAccent,
         float feedbackMultiplier,
         bool wasFinalEnemy,
+        FiringSequenceDefeatFeedbackProfile defeatProfile,
+        bool hasPreviousDefeatPosition,
+        Vector3 previousDefeatPosition,
         Settings settings)
     {
         if (coroutineHost == null
@@ -126,11 +154,45 @@ internal sealed class CombatImpactSignaturePresenter
                 accent,
                 waveAccent,
                 feedbackMultiplier,
+                defeatProfile.SecondaryWaveMultiplier,
+                defeatProfile.FragmentMultiplier,
                 settings);
         }
 
         if (signature.UsesDefeatSilhouette)
         {
+            if (defeatProfile.UsesVacuum)
+            {
+                SpawnDefeatVacuum(
+                    snapshot,
+                    accent,
+                    defeatProfile,
+                    settings);
+            }
+
+            if (defeatProfile.UsesLinkTear
+                && hasPreviousDefeatPosition)
+            {
+                SpawnDefeatLinkTear(
+                    previousDefeatPosition,
+                    snapshot,
+                    accent,
+                    waveAccent,
+                    defeatProfile,
+                    settings);
+            }
+
+            if (defeatProfile.UsesEchoPull
+                && hasPreviousDefeatPosition)
+            {
+                SpawnDefeatEchoPull(
+                    previousDefeatPosition,
+                    snapshot,
+                    accent,
+                    defeatProfile,
+                    settings);
+            }
+
             float overkillMultiplier = 1f + Mathf.Clamp01(snapshot.OverkillStrength) * 0.75f;
             SpawnDefeatSilhouette(
                 snapshot,
@@ -138,6 +200,16 @@ internal sealed class CombatImpactSignaturePresenter
                 accent,
                 feedbackMultiplier * overkillMultiplier,
                 wasFinalEnemy,
+                settings);
+            SpawnDefeatFractureStreaks(
+                snapshot,
+                horizontalDirection,
+                accent,
+                feedbackMultiplier * overkillMultiplier,
+                settings.DefeatSilhouetteHoldDuration
+                    * (wasFinalEnemy
+                        ? settings.FinalDefeatDurationMultiplier
+                        : 1f),
                 settings);
             SpawnDefeatAfterimages(
                 snapshot,
@@ -473,6 +545,8 @@ internal sealed class CombatImpactSignaturePresenter
         Color accent,
         Color waveAccent,
         float feedbackMultiplier,
+        float secondaryWaveMultiplier,
+        float fragmentMultiplier,
         Settings settings)
     {
         float effectMultiplier = Mathf.Max(0f, feedbackMultiplier);
@@ -480,7 +554,8 @@ internal sealed class CombatImpactSignaturePresenter
             Mathf.RoundToInt(
                 8f
                 * CombatAccessibilitySettings.ParticleDensityMultiplier
-                * effectMultiplier),
+                * effectMultiplier
+                * Mathf.Max(1f, fragmentMultiplier)),
             4,
             12);
         GameObject root = CreateRoot(
@@ -539,7 +614,219 @@ internal sealed class CombatImpactSignaturePresenter
             horizontalDirection,
             waveAccent,
             effectMultiplier,
+            secondaryWaveMultiplier,
             settings));
+    }
+
+    private void SpawnGuaranteedDefeatShockwave(
+        CombatPresentation.EnemySnapshot snapshot,
+        int horizontalDirection,
+        Color accent,
+        Color waveAccent,
+        FiringSequenceDefeatFeedbackProfile profile,
+        Settings settings)
+    {
+        int layerCount = ResolveGuaranteedDefeatShockwaveLayerCount(profile);
+
+        for (int layerIndex = 0; layerIndex < layerCount; layerIndex++)
+        {
+            int fragmentCount = Mathf.Clamp(
+                Mathf.RoundToInt(
+                    (10f + layerIndex * 2f)
+                    * Mathf.Lerp(
+                        0.72f,
+                        1f,
+                        CombatAccessibilitySettings.ParticleDensityMultiplier)),
+                8,
+                14);
+            GameObject root = CreateRoot(
+                $"Guaranteed Defeat Shockwave {layerIndex + 1}",
+                snapshot.Position);
+            List<SpriteRenderer> arcs =
+                new List<SpriteRenderer>(fragmentCount);
+            List<Vector3> radialDirections =
+                new List<Vector3>(fragmentCount);
+            List<Vector3> startScales =
+                new List<Vector3>(fragmentCount);
+            float angleOffset = layerIndex % 2 == 0 ? 0f : 11f;
+
+            for (int fragmentIndex = 0;
+                 fragmentIndex < fragmentCount;
+                 fragmentIndex++)
+            {
+                float angle = 360f * fragmentIndex / fragmentCount
+                    + angleOffset;
+                Vector3 radial = GetRadial(angle);
+                Color color = Color.Lerp(
+                    accent,
+                    waveAccent,
+                    0.34f + layerIndex * 0.22f);
+                color = Color.Lerp(
+                    color,
+                    Color.white,
+                    fragmentIndex % 4 == 0 ? 0.22f : 0.04f);
+                color.a = Mathf.Max(0.38f, 0.82f - layerIndex * 0.17f);
+                SpriteRenderer arc = CreateSprite(
+                    "Defeat Shockwave Arc",
+                    root.transform,
+                    color,
+                    snapshot.SortingLayerId,
+                    snapshot.SortingOrder + 4 + layerIndex);
+                arc.transform.localPosition = radial
+                    * (0.075f + layerIndex * 0.018f)
+                    * settings.Intensity;
+                arc.transform.localRotation = Quaternion.Euler(
+                    0f,
+                    0f,
+                    angle + 90f);
+                arc.transform.localScale = new Vector3(
+                    (0.12f + layerIndex * 0.025f)
+                        * settings.Intensity
+                        * profile.FragmentMultiplier,
+                    Mathf.Max(0.009f, 0.017f - layerIndex * 0.002f)
+                        * settings.Intensity,
+                    1f);
+                arcs.Add(arc);
+                radialDirections.Add(radial);
+                startScales.Add(arc.transform.localScale);
+            }
+
+            coroutineHost.StartCoroutine(AnimateGuaranteedDefeatShockwave(
+                root,
+                arcs,
+                radialDirections,
+                startScales,
+                NormalizeDirection(horizontalDirection),
+                layerIndex,
+                profile,
+                settings));
+        }
+    }
+
+    private IEnumerator AnimateGuaranteedDefeatShockwave(
+        GameObject root,
+        IReadOnlyList<SpriteRenderer> arcs,
+        IReadOnlyList<Vector3> radialDirections,
+        IReadOnlyList<Vector3> startScales,
+        int horizontalDirection,
+        int layerIndex,
+        FiringSequenceDefeatFeedbackProfile profile,
+        Settings settings)
+    {
+        float delay = layerIndex * 0.055f;
+        while (delay > 0f && root != null)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                delay -= Time.unscaledDeltaTime;
+            }
+        }
+
+        if (root == null)
+        {
+            yield break;
+        }
+
+        float duration = 0.18f + layerIndex * 0.035f;
+        float elapsed = 0f;
+        int visibleFrameCount = 0;
+        List<Color> startColors = CaptureColors(arcs);
+        float maximumRadius = (0.74f + layerIndex * 0.2f)
+            * settings.Intensity
+            * Mathf.Lerp(1f, profile.SecondaryWaveMultiplier, 0.34f);
+        float rotationDirection = layerIndex % 2 == 0 ? 1f : -1f;
+
+        while (ShouldContinueAnimation(elapsed, duration, visibleFrameCount)
+               && root != null)
+        {
+            yield return null;
+
+            if (root == null)
+            {
+                yield break;
+            }
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            visibleFrameCount++;
+            elapsed = AdvanceAnimationTime(
+                elapsed,
+                duration,
+                Time.unscaledDeltaTime,
+                visibleFrameCount);
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float expansion = 1f - Mathf.Pow(1f - progress, 3f);
+
+            if (profile.Tier >= FiringSequenceDefeatTier.Frenzy)
+            {
+                float rewindEnvelope = Mathf.Sin(
+                    Mathf.InverseLerp(0.34f, 0.68f, progress)
+                    * Mathf.PI);
+                expansion = Mathf.Clamp01(
+                    expansion - Mathf.Max(0f, rewindEnvelope) * 0.09f);
+            }
+
+            float attack = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(progress / 0.1f));
+            float release = 1f - Mathf.SmoothStep(0.24f, 1f, progress);
+
+            for (int index = 0; index < arcs.Count; index++)
+            {
+                SpriteRenderer arc = arcs[index];
+
+                if (arc == null)
+                {
+                    continue;
+                }
+
+                arc.transform.localPosition = radialDirections[index]
+                    * Mathf.Lerp(0.07f, maximumRadius, expansion);
+                arc.transform.localScale = new Vector3(
+                    startScales[index].x * Mathf.Lerp(0.68f, 1.35f, expansion),
+                    startScales[index].y * Mathf.Lerp(1.15f, 0.38f, expansion),
+                    startScales[index].z);
+                Color color = startColors[index];
+                color.a *= attack * release;
+                arc.color = color;
+            }
+
+            float zRotation = horizontalDirection
+                * rotationDirection
+                * progress
+                * (18f + layerIndex * 12f);
+            FaceGuaranteedDefeatShockwave(
+                root.transform,
+                null,
+                zRotation);
+        }
+
+        DestroyEffect(root);
+    }
+
+    internal static int ResolveGuaranteedDefeatShockwaveLayerCount(
+        FiringSequenceDefeatFeedbackProfile profile)
+    {
+        if (profile.Tier >= FiringSequenceDefeatTier.Maximum)
+        {
+            return 3;
+        }
+
+        return profile.Tier >= FiringSequenceDefeatTier.Rupture ? 2 : 1;
+    }
+
+    internal static void FaceGuaranteedDefeatShockwave(
+        Transform root,
+        Camera camera,
+        float zRotation)
+    {
+        BattleSpriteBillboard.FaceTransform(root, camera, zRotation);
     }
 
     private IEnumerator AnimateCompressionBurst(
@@ -552,6 +839,7 @@ internal sealed class CombatImpactSignaturePresenter
         int horizontalDirection,
         Color waveAccent,
         float feedbackMultiplier,
+        float secondaryWaveMultiplier,
         Settings settings)
     {
         float duration = settings.DevastatingCompressionDuration;
@@ -604,7 +892,8 @@ internal sealed class CombatImpactSignaturePresenter
                     snapshot,
                     horizontalDirection,
                     waveAccent,
-                    feedbackMultiplier,
+                    feedbackMultiplier
+                        * Mathf.Max(1f, secondaryWaveMultiplier),
                     settings);
             }
 
@@ -656,7 +945,7 @@ internal sealed class CombatImpactSignaturePresenter
                 snapshot,
                 horizontalDirection,
                 waveAccent,
-                feedbackMultiplier,
+                feedbackMultiplier * Mathf.Max(1f, secondaryWaveMultiplier),
                 settings);
         }
 
@@ -778,6 +1067,343 @@ internal sealed class CombatImpactSignaturePresenter
         DestroyEffect(root);
     }
 
+    private void SpawnDefeatVacuum(
+        CombatPresentation.EnemySnapshot snapshot,
+        Color accent,
+        FiringSequenceDefeatFeedbackProfile profile,
+        Settings settings)
+    {
+        int fragmentCount = Mathf.Clamp(
+            Mathf.RoundToInt(
+                7f
+                * CombatAccessibilitySettings.ParticleDensityMultiplier
+                * profile.FragmentMultiplier),
+            5,
+            11);
+        GameObject root = CreateRoot(
+            "Defeat Micro Vacuum",
+            snapshot.Position);
+        List<SpriteRenderer> fragments =
+            new List<SpriteRenderer>(fragmentCount);
+        List<Vector3> startPositions = new List<Vector3>(fragmentCount);
+        float radius = 0.5f
+            * settings.Intensity
+            * Mathf.Lerp(1f, 1.28f, profile.IntensityMultiplier - 1f);
+
+        for (int index = 0; index < fragmentCount; index++)
+        {
+            float angle = 360f * index / fragmentCount + 11f;
+            Vector3 radial = GetRadial(angle);
+            Color color = Color.Lerp(accent, settings.DefeatDustColor, 0.38f);
+            color.a = index % 2 == 0 ? 0.7f : 0.48f;
+            SpriteRenderer fragment = CreateSprite(
+                "Vacuum Fragment",
+                root.transform,
+                color,
+                snapshot.SortingLayerId,
+                snapshot.SortingOrder + 3);
+            fragment.transform.localPosition = radial * radius;
+            fragment.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                angle + 90f);
+            fragment.transform.localScale = new Vector3(
+                0.1f * settings.Intensity,
+                0.012f * settings.Intensity,
+                1f);
+            fragments.Add(fragment);
+            startPositions.Add(fragment.transform.localPosition);
+        }
+
+        coroutineHost.StartCoroutine(AnimateDefeatVacuum(
+            root,
+            fragments,
+            startPositions,
+            0.085f));
+    }
+
+    private IEnumerator AnimateDefeatVacuum(
+        GameObject root,
+        IReadOnlyList<SpriteRenderer> fragments,
+        IReadOnlyList<Vector3> startPositions,
+        float duration)
+    {
+        float elapsed = 0f;
+        int visibleFrameCount = 0;
+        List<Vector3> startScales = new List<Vector3>(fragments.Count);
+        foreach (SpriteRenderer fragment in fragments)
+        {
+            startScales.Add(
+                fragment == null ? Vector3.one : fragment.transform.localScale);
+        }
+        List<Color> startColors = CaptureColors(fragments);
+
+        while (ShouldContinueAnimation(elapsed, duration, visibleFrameCount)
+               && root != null)
+        {
+            yield return null;
+
+            if (root == null)
+            {
+                yield break;
+            }
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            visibleFrameCount++;
+            elapsed = AdvanceAnimationTime(
+                elapsed,
+                duration,
+                Time.unscaledDeltaTime,
+                visibleFrameCount);
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float collapse = Mathf.SmoothStep(0f, 1f, progress);
+            float alpha = 1f - Mathf.SmoothStep(0.68f, 1f, progress);
+
+            for (int index = 0; index < fragments.Count; index++)
+            {
+                SpriteRenderer fragment = fragments[index];
+
+                if (fragment == null)
+                {
+                    continue;
+                }
+
+                fragment.transform.localPosition = Vector3.Lerp(
+                    startPositions[index],
+                    Vector3.zero,
+                    collapse);
+                fragment.transform.localScale = new Vector3(
+                    startScales[index].x * Mathf.Lerp(1f, 0.16f, collapse),
+                    startScales[index].y * Mathf.Lerp(0.72f, 1.7f, collapse),
+                    startScales[index].z);
+                Color color = startColors[index];
+                color.a *= alpha;
+                fragment.color = color;
+            }
+        }
+
+        DestroyEffect(root);
+    }
+
+    private void SpawnDefeatLinkTear(
+        Vector3 previousPosition,
+        CombatPresentation.EnemySnapshot snapshot,
+        Color accent,
+        Color waveAccent,
+        FiringSequenceDefeatFeedbackProfile profile,
+        Settings settings)
+    {
+        Vector3 delta = snapshot.Position - previousPosition;
+        float distance = delta.magnitude;
+
+        if (distance < 0.08f)
+        {
+            return;
+        }
+
+        GameObject root = CreateRoot(
+            "Defeat Chain Tear",
+            Vector3.Lerp(previousPosition, snapshot.Position, 0.5f));
+        List<SpriteRenderer> tears = new List<SpriteRenderer>(3);
+        float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+
+        for (int index = 0; index < 3; index++)
+        {
+            Color color = Color.Lerp(
+                accent,
+                waveAccent,
+                index * 0.32f);
+            color.a = 0.68f - index * 0.14f;
+            SpriteRenderer tear = CreateSprite(
+                "Chain Tear Segment",
+                root.transform,
+                color,
+                snapshot.SortingLayerId,
+                snapshot.SortingOrder + 1 + index);
+            tear.transform.localPosition = new Vector3(
+                0f,
+                (index - 1) * 0.026f * settings.Intensity,
+                0f);
+            tear.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                angle + (index - 1) * 3.5f);
+            tear.transform.localScale = new Vector3(
+                distance * Mathf.Lerp(1f, 0.72f, index * 0.5f),
+                0.014f * settings.Intensity * profile.FragmentMultiplier,
+                1f);
+            tears.Add(tear);
+        }
+
+        coroutineHost.StartCoroutine(AnimateDefeatLinkTear(
+            root,
+            tears,
+            0.18f));
+    }
+
+    private IEnumerator AnimateDefeatLinkTear(
+        GameObject root,
+        IReadOnlyList<SpriteRenderer> tears,
+        float duration)
+    {
+        float elapsed = 0f;
+        int visibleFrameCount = 0;
+        List<Color> colors = CaptureColors(tears);
+        Vector3 startScale = root.transform.localScale;
+
+        while (ShouldContinueAnimation(elapsed, duration, visibleFrameCount)
+               && root != null)
+        {
+            yield return null;
+
+            if (root == null)
+            {
+                yield break;
+            }
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            visibleFrameCount++;
+            elapsed = AdvanceAnimationTime(
+                elapsed,
+                duration,
+                Time.unscaledDeltaTime,
+                visibleFrameCount);
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float reveal = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(progress / 0.2f));
+            float release = 1f - Mathf.SmoothStep(0.18f, 1f, progress);
+            root.transform.localScale = new Vector3(
+                startScale.x * Mathf.Lerp(0.08f, 1.06f, reveal),
+                startScale.y * Mathf.Lerp(1.8f, 0.65f, progress),
+                startScale.z);
+            ApplyAlpha(tears, colors, reveal * release);
+        }
+
+        DestroyEffect(root);
+    }
+
+    private void SpawnDefeatEchoPull(
+        Vector3 previousPosition,
+        CombatPresentation.EnemySnapshot snapshot,
+        Color accent,
+        FiringSequenceDefeatFeedbackProfile profile,
+        Settings settings)
+    {
+        if ((snapshot.Position - previousPosition).sqrMagnitude < 0.0064f)
+        {
+            return;
+        }
+
+        List<GameObject> echoes = new List<GameObject>(3);
+        List<SpriteRenderer> renderers = new List<SpriteRenderer>(3);
+        List<Vector3> startPositions = new List<Vector3>(3);
+
+        for (int index = 0; index < 3; index++)
+        {
+            float positionT = 0.18f + index * 0.2f;
+            Vector3 position = Vector3.Lerp(
+                previousPosition,
+                snapshot.Position,
+                positionT);
+            GameObject root = CreateRoot(
+                "Defeat Echo Pull",
+                position);
+            Color color = Color.Lerp(accent, Color.white, index * 0.16f);
+            color.a = 0.42f + index * 0.12f;
+            SpriteRenderer echo = CreateSprite(
+                "Echo Pull Streak",
+                root.transform,
+                color,
+                snapshot.SortingLayerId,
+                snapshot.SortingOrder + 2 + index);
+            echo.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                Mathf.Atan2(
+                    snapshot.Position.y - previousPosition.y,
+                    snapshot.Position.x - previousPosition.x)
+                * Mathf.Rad2Deg);
+            echo.transform.localScale = new Vector3(
+                0.18f * settings.Intensity * profile.FragmentMultiplier,
+                0.016f * settings.Intensity,
+                1f);
+            echoes.Add(root);
+            renderers.Add(echo);
+            startPositions.Add(position);
+        }
+
+        coroutineHost.StartCoroutine(AnimateDefeatEchoPull(
+            echoes,
+            renderers,
+            startPositions,
+            snapshot.Position,
+            0.14f));
+    }
+
+    private IEnumerator AnimateDefeatEchoPull(
+        IReadOnlyList<GameObject> echoes,
+        IReadOnlyList<SpriteRenderer> renderers,
+        IReadOnlyList<Vector3> startPositions,
+        Vector3 destination,
+        float duration)
+    {
+        float elapsed = 0f;
+        int visibleFrameCount = 0;
+        List<Color> colors = CaptureColors(renderers);
+
+        while (ShouldContinueAnimation(elapsed, duration, visibleFrameCount))
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            visibleFrameCount++;
+            elapsed = AdvanceAnimationTime(
+                elapsed,
+                duration,
+                Time.unscaledDeltaTime,
+                visibleFrameCount);
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float pull = 1f - Mathf.Pow(1f - progress, 3f);
+
+            for (int index = 0; index < echoes.Count; index++)
+            {
+                GameObject echo = echoes[index];
+
+                if (echo == null || renderers[index] == null)
+                {
+                    continue;
+                }
+
+                echo.transform.position = Vector3.Lerp(
+                    startPositions[index],
+                    destination,
+                    pull);
+                Color color = colors[index];
+                color.a *= 1f - Mathf.SmoothStep(0.42f, 1f, progress);
+                renderers[index].color = color;
+            }
+        }
+
+        foreach (GameObject echo in echoes)
+        {
+            DestroyEffect(echo);
+        }
+    }
+
     private void SpawnDefeatSilhouette(
         CombatPresentation.EnemySnapshot snapshot,
         int horizontalDirection,
@@ -897,6 +1523,180 @@ internal sealed class CombatImpactSignaturePresenter
         }
 
         DestroyEffect(silhouette);
+    }
+
+    private void SpawnDefeatFractureStreaks(
+        CombatPresentation.EnemySnapshot snapshot,
+        int horizontalDirection,
+        Color accent,
+        float feedbackMultiplier,
+        float delay,
+        Settings settings)
+    {
+        GameObject root = CreateRoot(
+            "Defeat Silhouette Fractures",
+            snapshot.Position);
+        int fractureCount = Mathf.Clamp(
+            Mathf.RoundToInt(
+                5f * CombatAccessibilitySettings.ParticleDensityMultiplier),
+            3,
+            7);
+        float width = snapshot.HasSprite
+            ? snapshot.Sprite.bounds.size.x * Mathf.Abs(snapshot.Scale.x)
+            : 0.6f;
+        float height = snapshot.HasSprite
+            ? snapshot.Sprite.bounds.size.y * Mathf.Abs(snapshot.Scale.y)
+            : 0.84f;
+        List<SpriteRenderer> renderers = new List<SpriteRenderer>(fractureCount);
+        List<Vector3> startPositions = new List<Vector3>(fractureCount);
+        List<Vector3> startScales = new List<Vector3>(fractureCount);
+        List<float> driftDirections = new List<float>(fractureCount);
+
+        for (int index = 0; index < fractureCount; index++)
+        {
+            float verticalT = fractureCount <= 1
+                ? 0.5f
+                : index / (float)(fractureCount - 1);
+            Color color = index % 3 == 1
+                ? new Color(0.035f, 0.018f, 0.012f, 0.82f)
+                : Color.Lerp(accent, Color.white, 0.72f);
+            color.a = index % 3 == 1 ? 0.82f : 0.9f;
+            SpriteRenderer fracture = CreateSprite(
+                $"Fracture Slash {index + 1}",
+                root.transform,
+                color,
+                snapshot.SortingLayerId,
+                snapshot.SortingOrder + 6 + index);
+            fracture.enabled = false;
+            fracture.transform.localPosition = new Vector3(
+                Random.Range(-width * 0.1f, width * 0.1f),
+                Mathf.Lerp(-height * 0.38f, height * 0.38f, verticalT)
+                    + Random.Range(-height * 0.05f, height * 0.05f),
+                0f);
+            fracture.transform.localRotation = Quaternion.Euler(
+                0f,
+                0f,
+                Random.Range(-18f, 18f));
+            fracture.transform.localScale = new Vector3(
+                width * Random.Range(0.58f, 1.02f),
+                Mathf.Max(0.009f, height * Random.Range(0.014f, 0.026f)),
+                1f);
+            renderers.Add(fracture);
+            startPositions.Add(fracture.transform.localPosition);
+            startScales.Add(fracture.transform.localScale);
+            driftDirections.Add(index % 2 == 0 ? 1f : -1f);
+        }
+
+        coroutineHost.StartCoroutine(AnimateDefeatFractureStreaks(
+            root,
+            renderers,
+            startPositions,
+            startScales,
+            driftDirections,
+            NormalizeDirection(horizontalDirection),
+            Mathf.Max(0f, delay * 0.56f),
+            0.19f,
+            Mathf.Max(0f, feedbackMultiplier),
+            settings));
+    }
+
+    private IEnumerator AnimateDefeatFractureStreaks(
+        GameObject root,
+        IReadOnlyList<SpriteRenderer> renderers,
+        IReadOnlyList<Vector3> startPositions,
+        IReadOnlyList<Vector3> startScales,
+        IReadOnlyList<float> driftDirections,
+        int horizontalDirection,
+        float delay,
+        float duration,
+        float feedbackMultiplier,
+        Settings settings)
+    {
+        while (delay > 0f && root != null)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                delay -= Time.unscaledDeltaTime;
+            }
+        }
+
+        if (root == null)
+        {
+            yield break;
+        }
+
+        foreach (SpriteRenderer renderer in renderers)
+        {
+            if (renderer != null)
+            {
+                renderer.enabled = true;
+            }
+        }
+
+        float elapsed = 0f;
+        int visibleFrameCount = 0;
+
+        while (ShouldContinueAnimation(elapsed, duration, visibleFrameCount)
+               && root != null)
+        {
+            yield return null;
+
+            if (root == null)
+            {
+                yield break;
+            }
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            visibleFrameCount++;
+            elapsed = AdvanceAnimationTime(
+                elapsed,
+                duration,
+                Time.unscaledDeltaTime,
+                visibleFrameCount);
+            float progress = Mathf.Clamp01(elapsed / duration);
+            float expansion = 1f - Mathf.Pow(1f - progress, 3f);
+            float attack = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(progress / 0.12f));
+            float release = 1f - Mathf.SmoothStep(0.22f, 1f, progress);
+
+            for (int index = 0; index < renderers.Count; index++)
+            {
+                SpriteRenderer renderer = renderers[index];
+
+                if (renderer == null)
+                {
+                    continue;
+                }
+
+                float drift = driftDirections[index]
+                    * horizontalDirection
+                    * settings.DefeatKnockbackDistance
+                    * 0.24f
+                    * feedbackMultiplier
+                    * expansion;
+                renderer.transform.localPosition = startPositions[index]
+                    + Vector3.right * drift;
+                renderer.transform.localScale = new Vector3(
+                    startScales[index].x * Mathf.Lerp(0.72f, 1.18f, expansion),
+                    startScales[index].y * Mathf.Lerp(1f, 0.18f, expansion),
+                    startScales[index].z);
+                Color color = renderer.color;
+                color.a = (index % 3 == 1 ? 0.82f : 0.9f)
+                    * attack
+                    * release;
+                renderer.color = color;
+            }
+        }
+
+        DestroyEffect(root);
     }
 
     private void SpawnDefeatAfterimages(
@@ -1225,7 +2025,9 @@ internal sealed class CombatImpactSignaturePresenter
             objectName,
             typeof(SpriteRenderer));
         snapshotObject.transform.SetPositionAndRotation(
-            snapshot.Position,
+            snapshot.HasSprite
+                ? snapshot.VisualPosition
+                : snapshot.Position,
             snapshot.Rotation);
         SpriteRenderer renderer = snapshotObject.GetComponent<SpriteRenderer>();
 

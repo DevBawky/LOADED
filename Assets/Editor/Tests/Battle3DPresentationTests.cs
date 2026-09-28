@@ -15,6 +15,82 @@ public sealed class Battle3DPresentationTests
         "Assets/Resources/ProjectileVisuals/DefaultProjectileVisual.asset";
     private const string EnvironmentProfilePath =
         "Assets/Resources/Battle/DefaultBattleEnvironment.asset";
+    private const string BattleRendererPath =
+        "Assets/Settings/Battle3DRenderer.asset";
+    private const string KillImpactShaderPath =
+        "Assets/Shaders/KillImpactFullscreen.shader";
+
+    [Test]
+    public void KillImpactShader_AvoidsFullFrameBrightnessPulse()
+    {
+        string source = System.IO.File.ReadAllText(KillImpactShaderPath);
+
+        Assert.That(source, Does.Not.Contain("screenFlash"));
+        Assert.That(source, Does.Not.Contain("exposureLift"));
+    }
+
+    [Test]
+    public void KillImpactShader_ConvertsViewportYToFullscreenBlitUv()
+    {
+        string source = System.IO.File.ReadAllText(KillImpactShaderPath);
+
+        Assert.That(source, Does.Contain("#if UNITY_UV_STARTS_AT_TOP"));
+        Assert.That(source, Does.Contain("center.y = 1.0 - center.y;"));
+    }
+
+    [Test]
+    public void Battle3DRendererSupportsLegacyCombatImpactPresentation()
+    {
+        UniversalRendererData renderer =
+            AssetDatabase.LoadAssetAtPath<UniversalRendererData>(
+                BattleRendererPath);
+        Assert.That(renderer, Is.Not.Null);
+
+        SerializedObject serializedRenderer = new SerializedObject(renderer);
+        SerializedProperty postProcessData =
+            serializedRenderer.FindProperty("postProcessData")
+            ?? serializedRenderer.FindProperty("m_PostProcessData");
+        Assert.That(postProcessData, Is.Not.Null);
+        Assert.That(postProcessData.objectReferenceValue, Is.Not.Null);
+
+        ScriptableRendererFeature impactFeature = null;
+        int impactFeatureCount = 0;
+        foreach (ScriptableRendererFeature feature in renderer.rendererFeatures)
+        {
+            if (feature != null && feature.name == "Kill Impact Fullscreen")
+            {
+                impactFeatureCount++;
+                impactFeature = feature;
+            }
+        }
+
+        Assert.That(impactFeatureCount, Is.EqualTo(1));
+        Assert.That(impactFeature, Is.Not.Null);
+        Assert.That(
+            impactFeature.GetType().Name,
+            Is.EqualTo("FullScreenPassRendererFeature"));
+
+        SerializedObject serializedFeature = new SerializedObject(
+            impactFeature);
+        Assert.That(
+            serializedFeature.FindProperty("injectionPoint").intValue,
+            Is.EqualTo(600));
+        Assert.That(
+            serializedFeature.FindProperty("fetchColorBuffer").boolValue,
+            Is.True);
+        Assert.That(
+            serializedFeature.FindProperty("passMaterial")
+                .objectReferenceValue,
+            Is.Not.Null);
+
+        SerializedProperty featureMap = serializedRenderer.FindProperty(
+            "m_RendererFeatureMap");
+        Assert.That(featureMap, Is.Not.Null);
+        Assert.That(
+            featureMap.arraySize,
+            Is.EqualTo(renderer.rendererFeatures.Count));
+        Assert.That(featureMap.GetArrayElementAtIndex(0).longValue, Is.Not.Zero);
+    }
 
     [Test]
     public void EveryBulletUsesTheCommonSphereProjectileProfile()
@@ -273,6 +349,65 @@ public sealed class Battle3DPresentationTests
     }
 
     [Test]
+    public void GuaranteedDefeatShockwave_RemainsFacingThePitchedCamera()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera");
+        GameObject shockwaveObject = new GameObject("Defeat Shockwave");
+
+        try
+        {
+            Camera camera = cameraObject.AddComponent<Camera>();
+            cameraObject.transform.rotation = Quaternion.Euler(35f, 0f, 0f);
+
+            CombatImpactSignaturePresenter.FaceGuaranteedDefeatShockwave(
+                shockwaveObject.transform,
+                camera,
+                24f);
+
+            Assert.That(
+                Vector3.Dot(
+                    shockwaveObject.transform.forward,
+                    cameraObject.transform.forward),
+                Is.GreaterThan(0.999f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(shockwaveObject);
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
+    [Test]
+    public void FullscreenImpactCenter_TracksTheCurrentBattleCamera()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera");
+
+        try
+        {
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.orthographic = true;
+            camera.orthographicSize = 5f;
+            cameraObject.transform.position = new Vector3(0f, 0f, -10f);
+            Vector3 impactPosition = new Vector3(2f, 0f, 0f);
+
+            Vector2 beforeMove = CombatFeedbackController
+                .ResolveFullscreenImpactCenter(camera, impactPosition);
+            cameraObject.transform.position = new Vector3(1f, 0f, -10f);
+            Vector2 afterMove = CombatFeedbackController
+                .ResolveFullscreenImpactCenter(camera, impactPosition);
+
+            Assert.That(afterMove.x, Is.LessThan(beforeMove.x));
+            Vector2 expected = camera.WorldToViewportPoint(impactPosition);
+            Assert.That(afterMove.x, Is.EqualTo(expected.x).Within(0.0001f));
+            Assert.That(afterMove.y, Is.EqualTo(expected.y).Within(0.0001f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
+    [Test]
     public void DamageNumberFacesThePitchedBattleCamera()
     {
         GameObject cameraObject = new GameObject("Battle Camera");
@@ -515,6 +650,15 @@ public sealed class Battle3DPresentationTests
             Assert.That(
                 serializedCameraData.FindProperty("m_RendererIndex").intValue,
                 Is.EqualTo(1));
+            Assert.That(cameraData.renderPostProcessing, Is.True);
+            UnityEngine.Rendering.Volume battleVolume =
+                Object.FindFirstObjectByType<UnityEngine.Rendering.Volume>(
+                    FindObjectsInactive.Include);
+            Assert.That(battleVolume, Is.Not.Null);
+            Assert.That(
+                (cameraData.volumeLayerMask.value
+                    & (1 << battleVolume.gameObject.layer)) != 0,
+                Is.True);
 
             GameObject gameplayCanvas = FindRootObject(scene, "Canvas");
             GameObject gameStartCanvas = FindRootObject(

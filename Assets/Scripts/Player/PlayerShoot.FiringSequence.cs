@@ -2102,7 +2102,10 @@ public partial class PlayerShoot
                 combatFeedback == null
                     ? 0f
                     : combatFeedback.GetRemainingDefeatPresentationDelay(cue),
-                cue.WasFinalEnemy);
+                cue.WasFinalEnemy,
+                cue.FiringSequenceDefeatCount,
+                cue.HasPreviousDefeatPosition,
+                cue.PreviousDefeatPosition);
         }
     
         private IEnumerator ApplyEyeOfTheStormDamage(

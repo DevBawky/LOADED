@@ -210,9 +210,11 @@ float4 _KillImpactColors[4];
 | Z | `Normal=0`, `Critical=1/3`, `Devastating=2/3`, `Defeat=1`로 정규화한 충격 등급 |
 | W | 마지막 적 처치 여부 |
 
-`_KillImpactDirections`의 XY는 사격 방향이며 Z는 발사 순간 광학 펄스 여부다. Z가 1인 항목은 명중용 Impact Snap과 헤일로를 건너뛰고 총구 위치에서 완화된 방향성 렌즈 이동과 초점 펀치, 탄환 Primary Color의 희미한 전면 섬광만 재생한다. 따라서 발사와 명중이 같은 프레임에 가까워도 두 박자가 서로 다른 형태로 합성된다.
+`_KillImpactDirections`의 XY는 사격 방향이며 Z는 발사 순간 광학 펄스 여부다. Z가 1인 항목은 명중용 Impact Snap과 헤일로를 건너뛰고 총구 위치에서 완화된 방향성 렌즈 이동과 초점 펀치만 재생한다. 따라서 발사와 명중이 같은 프레임에 가까워도 두 박자가 서로 다른 형태로 합성된다.
 
-`_KillImpactColors`는 각 충격을 발생시킨 탄환의 Primary Color를 전달한다. 셰이더는 공통 주황색을 섞지 않고 일반 명중부터 처치까지 모든 압력파와 파열 헤일로에 이 색을 그대로 사용한다. 발사와 명중 초반에는 같은 색상의 낮은 강도 전면 섬광을 짧게 더해 화면 왜곡을 과도하게 높이지 않고도 타격 박자를 읽을 수 있게 한다. 화면 위에 고정 탄흔을 그리지 않고, 네 충격의 압축파·탄도 아지랑이·RGB Offset·밝은 영역의 광학 산란을 원본 카메라 컬러에 누적한다. 크리티컬 이상의 충격은 등급에 따라 화면 탄성 변형, 2차 압력파와 헤일로, 방향성 재샘플링 잔상, 짧은 노출 하강과 복원을 추가한다.
+`_KillImpactColors`는 각 충격을 발생시킨 탄환의 Primary Color를 전달한다. 셰이더는 공통 주황색을 섞지 않고 일반 명중부터 처치까지 모든 압력파와 파열 헤일로에 이 색을 그대로 사용한다. 화면 위에 고정 탄흔을 그리지 않고, 네 충격의 압축파·탄도 아지랑이·RGB Offset·밝은 영역의 국소 광학 산란을 원본 카메라 컬러에 누적한다. 크리티컬 이상의 충격은 등급에 따라 화면 탄성 변형, 강화된 2차 압력파와 헤일로, 방향성 재샘플링 잔상과 짧은 노출 하강을 추가한다. 발사·명중의 전면 섬광과 노출 상승, 전투 Volume Pulse의 Bloom 증폭은 눈부심을 줄이기 위해 사용하지 않는다.
+
+`WorldToViewportPoint`가 전달하는 좌표는 좌하단 원점이다. Full Screen Pass의 Blit UV가 좌상단 원점을 사용하는 플랫폼에서는 셰이더가 중심점 Y를 반전해 적의 실제 화면 위치와 충격파 중심을 일치시킨다. 중심의 월드 좌표는 적 스프라이트의 Transform 피벗이 아니라 실제 렌더 경계 중앙을 사용한다. Fullscreen Impact가 유지되는 동안에는 현재 Battle 카메라로 매 프레임 다시 투영하므로 카메라 펀치 중에도 적과 중심이 함께 움직인다. 처치 지점의 월드 충격파는 매 프레임 카메라 빌보드 회전을 유지한 채 Z축 롤만 더하므로, 경사진 2.5D 카메라에서도 바닥으로 눕지 않는다.
 
 ### 시간 처리
 
@@ -245,7 +247,7 @@ float4 _KillImpactColors[4];
 | Kill Motion | `Kill Camera Shake` | 0.055 | 처치 카메라 흔들림 |
 | Volume Pulse | `Volume Pulse Duration` | 0.8 | 처치 후처리 지속 시간 |
 | Volume Pulse | `Chromatic Boost` | 1 | 색수차 추가 강도 |
-| Volume Pulse | `Bloom Boost` | 3 | Bloom 추가 강도 |
+| Volume Pulse | `Bloom Boost` | 3 | 설정값은 유지하지만 전투 충격 펄스에서는 배율 0으로 억제 |
 | Fullscreen Impact | `Fullscreen Impact Duration` | 0.42 | 처치 충격파 지속 시간 |
 | Fullscreen Impact | `Shockwave Strength` | 1 | 충격파 UV 왜곡 |
 | Fullscreen Impact | `RGB Split Strength` | 1 | RGB 분리 강도 |
@@ -262,7 +264,7 @@ float4 _KillImpactColors[4];
 
 1. `Hit Camera Shake`와 `Minimum Hit Intensity`로 일반 공격의 피로도를 먼저 맞춘다.
 2. `Fullscreen Impact Duration`과 `Shockwave Strength`로 처치의 크기를 결정한다.
-3. `Chromatic Boost`와 `Bloom Boost`는 실제 게임 배경에서 과노출 여부를 확인하며 낮춘다.
+3. `Chromatic Boost`, 비네트와 렌즈 왜곡으로 충격을 조정한다. 전투 충격의 Bloom 배율은 0으로 유지한다.
 4. 슬로 모션은 Hold보다 Recovery를 먼저 조정하면 조작 단절감을 줄이기 쉽다.
 5. 효과음은 Kill, Critical, Hit 순으로 최대 볼륨을 정한 뒤 다른 전투 SFX와 비교한다.
 
@@ -270,8 +272,10 @@ float4 _KillImpactColors[4];
 
 | 파일 | 역할 |
 | --- | --- |
-| `Assets/Scripts/Common/CombatFeedbackController.cs` | 콤보, 누적 대미지 UI, Volume, 슬로 모션, Fullscreen Impact, 사운드 총괄 |
-| `Assets/Scripts/Common/CombatPresentation.cs` | 총구 섬광·Point Light, 적 국소 접촉 섬광, 잔광·열기 먼지 생성 |
+| `Assets/Scripts/Common/CombatFeedbackController.cs` | 콤보, 실린더 다중 처치 단계, 처치 위치의 단계별 색상·4연속 이상 셰이더를 사용하는 `N연속 처치!` 월드 텍스트, 누적 대미지 UI, Volume, 슬로 모션과 Fullscreen Impact 총괄 |
+| `Assets/Scripts/Common/CombatPresentation.cs` | 총구 섬광·Point Light, 적 국소 접촉 섬광, 먼지 없는 탄환색 명중·처치 불꽃과 다중 처치 위치 정보 전달 |
+| `Assets/Scripts/Common/CombatImpactSignaturePresenter.cs` | 처치 실루엣, 압축·2차 파동, 위치 연결 찢김, 마이크로 흡입과 잔향 생성 |
+| `Assets/Scripts/Sound/SoundManager.cs` | 처치 단계별 피치·금속음·저역음 레이어와 짧은 BGM 덕킹 |
 | `Assets/Scripts/Player/PlayerShoot.cs` | 실제 피해·처치 이벤트 전달, 실린더 진행도 계산 |
 | `Assets/Scripts/Enemy/EnemyController.cs` | 상태 피해의 실제 적용 대미지 반환 |
 | `Assets/Shaders/KillImpactFullscreen.shader` | 카메라 컬러 기반 다중 충격파 후처리 |
@@ -328,18 +332,32 @@ git diff --check
 
 회피 연출은 성공 순간의 짧은 Snap, 남은 이동을 보여주는 Glide, 정상 속도로 돌아가는 Release 순서로 진행한다. `Dodge Sustained Effect Duration`은 Fullscreen Impact와 Volume Pulse가 너무 일찍 사라지지 않도록 두 효과의 최소 지속시간을 맞춘다. `Dodge Initial Slow Motion Scale/Duration`은 첫 순간의 정지감, `Dodge Slow Motion Glide Duration`은 Snap에서 기존 `Dodge Slow Motion Scale`로 넘어가는 시간, `Dodge Afterimage Interval`은 실제 이동 중 잔상 생성 간격, `Dodge Origin Ghost Duration`은 출발 위치 피격 잔상의 유지 시간을 조절한다. 모든 연출 코루틴은 일시정지 중 실제 진행을 멈추며, 컴포넌트 비활성화 시 진행 중인 잔상 생성과 시간 효과를 정리한다.
 
+## 실린더 다중 처치 피드백
+
+한 실린더의 처치 횟수는 1/2/3/4/5+ 단계 프로필로 변환한다. 프로필은 시각 강도, 카메라 펀치, 히트스톱, 2차 압력파와 파편 배율만 제공하며 피해·보상·통계에는 관여하지 않는다. 5회 이상은 동일한 최대 프로필을 사용한다.
+
+- 1회: 사망 좌표의 보장된 1차 충격파, 기존 강한 처치 실루엣과 압축 파열
+- 2회: 직전 처치점과 현재 처치점을 잇는 국소 찢김, 현재 사망 위치의 `2연속 처치!` 월드 텍스트, 금속성 상단 레이어
+- 3회: 두 겹 충격파, 명중점 마이크로 흡입, 강화된 2차 압력파와 저역 파괴음
+- 4회: 파동의 짧은 되감기, 직전 처치점에서 끌려오는 잔향과 더 큰 카메라 리바운드
+- 5회 이상: 세 겹 충격파와 최대 강도를 유지하고 추가 누적은 제한
+
+각 처치의 1차 충격파는 큐 밖에서 즉시 시작하고, 실루엣·압축·후속 파동은 기존 0.18초 프레젠테이션 큐를 사용한다. 따라서 동시 다중 처치도 모든 사망 위치를 즉시 표시하면서 나머지 연출은 읽을 수 있는 순서로 재생한다. 슬로 모션은 기존 시간 효과 소유자에게 더 강한 요청으로 갱신되며 별도 배속 코루틴을 중첩하지 않는다. 화면 전체 노출과 Bloom은 올리지 않는다.
+
 ## Play Mode 확인 체크리스트
 
 1. 일반 명중 시 짧은 충격파와 Hit Accent가 한 번 발생하는지 확인한다.
 2. 크리티컬 시 화면 전체 색상이 반전되지 않는지 확인한다.
 3. 크리티컬 전용 크랙음과 강화된 왜곡은 유지되는지 확인한다.
 4. 처치 시 Volume Pulse, 슬로 모션, 카메라 흔들림과 Kill Accent가 함께 발생하는지 확인한다.
-5. 관통 공격으로 여러 적을 맞혔을 때 최대 4개의 충격 중심이 각각 보이는지 확인한다.
-6. 콤보 텍스트와 타이머가 처치마다 갱신되고 제한 시간 후 초기화되는지 확인한다.
-7. 현재 실린더 누적 대미지가 실제 적용 대미지만 합산하고 부드럽게 롤업되는지 확인한다.
-8. 독 폭발 피해와 독 폭발 처치도 동일한 UI와 피드백을 발생시키는지 확인한다.
-9. 일시정지 도중 콤보, 슬로 모션과 화면 효과가 비정상적으로 진행되지 않는지 확인한다.
-10. 컴포넌트 비활성화 또는 전투 종료 후 Volume과 `Time.timeScale`이 원래 상태로 복원되는지 확인한다.
+5. 한 실린더에서 동시에 여러 적을 처치해도 모든 사망 위치에서 1차 충격파가 즉시 한 번씩 발생하는지 확인한다.
+6. 2~5명 이상 처치할 때 찢김, 다중 파동, 흡입, 되감기, 잔향과 현재 사망 위치의 `N연속 처치!` 월드 텍스트가 단계적으로 추가되고 5회 이후 연출 강도가 더 커지지 않는지 확인한다.
+7. 관통 공격으로 여러 적을 맞혔을 때 최대 4개의 Fullscreen Impact 중심과 별개로 각 처치의 월드 충격파가 보이는지 확인한다.
+8. 콤보 텍스트와 타이머가 처치마다 갱신되고 제한 시간 후 초기화되는지 확인한다.
+9. 현재 실린더 누적 대미지가 실제 적용 대미지만 합산하고 부드럽게 롤업되는지 확인한다.
+10. 독 폭발 피해와 독 폭발 처치도 동일한 UI와 피드백을 발생시키는지 확인한다.
+11. 일시정지 도중 콤보, 슬로 모션과 화면 효과가 비정상적으로 진행되지 않는지 확인한다.
+12. 컴포넌트 비활성화 또는 전투 종료 후 카메라, BGM 덕킹, Volume과 `Time.timeScale`이 원래 상태로 복원되는지 확인한다.
 
 ## 후속 개선 후보
 

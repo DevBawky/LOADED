@@ -11,6 +11,10 @@ public static class Battle3DSetupBuilder
     private const string ScenePath = "Assets/Scenes/Battle.unity";
     private const string PipelinePath = "Assets/Settings/UniversalRP.asset";
     private const string RendererPath = "Assets/Settings/Battle3DRenderer.asset";
+    private const string LegacyRendererPath =
+        "Assets/Settings/Renderer2D.asset";
+    private const string CombatImpactRendererFeatureName =
+        "Kill Impact Fullscreen";
     private const string TerrainDataPath = "Assets/Terrain/BattleTerrain.asset";
     private const string TerrainLayerPath =
         "Assets/Terrain/BattleGround.terrainlayer";
@@ -74,6 +78,26 @@ public static class Battle3DSetupBuilder
         Apply();
     }
 
+    [MenuItem("Tools/LOADED/Repair Battle 3D Impact Rendering")]
+    public static void RepairBattleRendererPresentation()
+    {
+        UniversalRendererData renderer =
+            AssetDatabase.LoadAssetAtPath<UniversalRendererData>(
+                RendererPath);
+        if (renderer == null)
+        {
+            throw new InvalidOperationException(
+                $"Battle renderer not found: {RendererPath}");
+        }
+
+        EnsureBattleRendererPresentation(renderer);
+        AssetDatabase.SaveAssets();
+        AssetDatabase.ImportAsset(
+            RendererPath,
+            ImportAssetOptions.ForceUpdate);
+        Debug.Log("Repaired Battle 3D combat impact rendering.");
+    }
+
     private static int EnsureBattleRenderer()
     {
         UniversalRenderPipelineAsset pipeline =
@@ -94,6 +118,8 @@ public static class Battle3DSetupBuilder
             renderer.name = "Battle3DRenderer";
             AssetDatabase.CreateAsset(renderer, RendererPath);
         }
+
+        EnsureBattleRendererPresentation(renderer);
 
         SerializedObject serializedPipeline = new SerializedObject(pipeline);
         SerializedProperty rendererList = serializedPipeline.FindProperty(
@@ -160,6 +186,127 @@ public static class Battle3DSetupBuilder
         serializedPipeline.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(pipeline);
         return rendererIndex;
+    }
+
+    private static void EnsureBattleRendererPresentation(
+        UniversalRendererData renderer)
+    {
+        ScriptableRendererData legacyRenderer =
+            AssetDatabase.LoadAssetAtPath<ScriptableRendererData>(
+                LegacyRendererPath);
+        if (legacyRenderer == null)
+        {
+            throw new InvalidOperationException(
+                $"Legacy renderer not found: {LegacyRendererPath}");
+        }
+
+        ScriptableRendererFeature sourceFeature = null;
+        foreach (ScriptableRendererFeature feature in
+                 legacyRenderer.rendererFeatures)
+        {
+            if (feature != null
+                && feature.name == CombatImpactRendererFeatureName)
+            {
+                sourceFeature = feature;
+                break;
+            }
+        }
+
+        if (sourceFeature == null)
+        {
+            throw new InvalidOperationException(
+                $"Renderer feature not found: {CombatImpactRendererFeatureName}");
+        }
+
+        ScriptableRendererFeature targetFeature = null;
+        foreach (ScriptableRendererFeature feature in renderer.rendererFeatures)
+        {
+            if (feature != null
+                && feature.name == CombatImpactRendererFeatureName
+                && feature.GetType() == sourceFeature.GetType())
+            {
+                targetFeature = feature;
+                break;
+            }
+        }
+
+        if (targetFeature == null)
+        {
+            targetFeature = UnityEngine.Object.Instantiate(sourceFeature);
+            targetFeature.name = CombatImpactRendererFeatureName;
+            targetFeature.hideFlags = sourceFeature.hideFlags;
+            AssetDatabase.AddObjectToAsset(targetFeature, renderer);
+            renderer.rendererFeatures.Add(targetFeature);
+        }
+
+        EditorUtility.CopySerialized(sourceFeature, targetFeature);
+        targetFeature.name = CombatImpactRendererFeatureName;
+        targetFeature.hideFlags = sourceFeature.hideFlags;
+        EditorUtility.SetDirty(targetFeature);
+
+        SerializedObject serializedLegacy = new SerializedObject(
+            legacyRenderer);
+        SerializedProperty sourcePostProcessData =
+            serializedLegacy.FindProperty("m_PostProcessData");
+        if (sourcePostProcessData == null
+            || sourcePostProcessData.objectReferenceValue == null)
+        {
+            throw new InvalidOperationException(
+                "Legacy renderer PostProcessData could not be located.");
+        }
+
+        SerializedObject serializedRenderer = new SerializedObject(renderer);
+        SerializedProperty targetPostProcessData =
+            serializedRenderer.FindProperty("postProcessData")
+            ?? serializedRenderer.FindProperty("m_PostProcessData");
+        SerializedProperty serializedFeatures =
+            serializedRenderer.FindProperty("m_RendererFeatures");
+        SerializedProperty serializedFeatureMap =
+            serializedRenderer.FindProperty("m_RendererFeatureMap");
+        if (targetPostProcessData == null
+            || serializedFeatures == null
+            || serializedFeatureMap == null)
+        {
+            throw new InvalidOperationException(
+                "Battle renderer presentation properties could not be located.");
+        }
+
+        targetPostProcessData.objectReferenceValue =
+            sourcePostProcessData.objectReferenceValue;
+        serializedFeatures.arraySize = renderer.rendererFeatures.Count;
+        serializedFeatureMap.arraySize = renderer.rendererFeatures.Count;
+        for (int index = 0;
+             index < renderer.rendererFeatures.Count;
+             index++)
+        {
+            ScriptableRendererFeature feature =
+                renderer.rendererFeatures[index];
+            serializedFeatures.GetArrayElementAtIndex(index)
+                .objectReferenceValue = feature;
+
+            if (feature == null)
+            {
+                serializedFeatureMap.GetArrayElementAtIndex(index)
+                    .longValue = 0L;
+                continue;
+            }
+
+            if (!AssetDatabase.TryGetGUIDAndLocalFileIdentifier(
+                    feature,
+                    out _,
+                    out long localId))
+            {
+                throw new InvalidOperationException(
+                    $"Renderer feature local ID could not be resolved: {feature.name}");
+            }
+
+            serializedFeatureMap.GetArrayElementAtIndex(index)
+                .longValue = localId;
+        }
+
+        serializedRenderer.ApplyModifiedPropertiesWithoutUndo();
+        renderer.SetDirty();
+        EditorUtility.SetDirty(renderer);
     }
 
     private static Material EnsureTerrainMaterial()

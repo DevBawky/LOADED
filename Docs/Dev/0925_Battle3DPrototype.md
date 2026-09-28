@@ -9,8 +9,9 @@
   3D space.
 - The existing `##--BACKGROUNDS--##` active state is preserved by the setup
   builder. It is currently disabled.
-- Existing combat feedback remains in its current pipeline. A separate 3D
-  feedback pass is outside this prototype.
+- Existing combat feedback remains in its current pipeline. The 3D renderer
+  reuses its fullscreen impact feature and URP post-processing data instead of
+  adding a separate world-space impact layer.
 
 ## Authored data
 
@@ -94,7 +95,8 @@ as a fast bullet instead of a large floating orb.
 Run `Tools > LOADED > Apply Battle 3D Prototype` after adding new BulletData or
 BattleData assets. The builder is idempotent and updates:
 
-- the Universal 3D Renderer entry;
+- the Universal 3D Renderer entry, combat fullscreen feature, and post-process
+  data;
 - the directional light and, only when absent, the initial flat Terrain;
 - Battle camera and board scene wiring;
 - the shared Sphere projectile prefab and profile;

@@ -1,5 +1,7 @@
+using System.Linq;
 using System.Reflection;
 using NUnit.Framework;
+using TMPro;
 using UnityEditor;
 using UnityEngine;
 
@@ -612,7 +614,9 @@ public sealed class EnemyDamageNumberDisplayTests
         Vector3 firstOffset = layout.FindAvailableOffset(
             requestedOffset,
             minimumSeparation);
-        layout.Track(firstOffset, CreateDamageNumber());
+        DamageNumbersPro.DamageNumber firstNumber = CreateDamageNumber();
+        firstNumber.transform.position = firstOffset;
+        layout.Track(firstOffset, firstNumber);
 
         Vector3 secondOffset = layout.FindAvailableOffset(
             requestedOffset,
@@ -643,6 +647,22 @@ public sealed class EnemyDamageNumberDisplayTests
     }
 
     [Test]
+    public void FindAvailableOffset_UsesTheDamageNumbersCurrentWorldPosition()
+    {
+        DamageNumberSpawnLayout layout = new DamageNumberSpawnLayout();
+        Vector3 requestedPosition = new Vector3(0f, 0.75f, -1f);
+        DamageNumbersPro.DamageNumber firstNumber = CreateDamageNumber();
+        layout.Track(requestedPosition, firstNumber);
+        firstNumber.transform.position = requestedPosition + Vector3.right * 3f;
+
+        Vector3 nextPosition = layout.FindAvailableOffset(
+            requestedPosition,
+            0.65f);
+
+        Assert.That(nextPosition, Is.EqualTo(requestedPosition));
+    }
+
+    [Test]
     public void FindAvailableOffset_ZeroSeparationAddsNoOffset()
     {
         DamageNumberSpawnLayout layout = new DamageNumberSpawnLayout();
@@ -654,6 +674,33 @@ public sealed class EnemyDamageNumberDisplayTests
             0f);
 
         Assert.That(nextOffset, Is.EqualTo(requestedOffset));
+    }
+
+    [TestCase(CombatImpactTier.Normal, 0.5f)]
+    [TestCase(CombatImpactTier.Critical, 0.59f)]
+    [TestCase(CombatImpactTier.Devastating, 0.71f)]
+    [TestCase(CombatImpactTier.Defeat, 0.79f)]
+    public void DamageNumberScale_HalvesEveryTierWhilePreservingHierarchy(
+        CombatImpactTier impactTier,
+        float expectedScale)
+    {
+        float scale = EnemyDamageNumberDisplay.ResolveDamageNumberScale(
+            impactTier,
+            0.5f,
+            1.18f,
+            1.42f,
+            1.58f);
+
+        Assert.That(scale, Is.EqualTo(expectedScale).Within(0.0001f));
+    }
+
+    [Test]
+    public void MinimumSpawnSeparation_ExpandsForHalfScaleText()
+    {
+        float separation = EnemyDamageNumberDisplay
+            .ResolveMinimumSpawnSeparation(0.17f, 0.5f, 0.5f);
+
+        Assert.That(separation, Is.EqualTo(0.45f).Within(0.0001f));
     }
 
     private DamageNumbersPro.DamageNumber CreateDamageNumber()
@@ -789,6 +836,115 @@ public sealed class ComboFeedbackProgressionTests
     }
 
     [Test]
+    public void DefeatFeedbackProfile_UsesDistinctStagesAndCapsAtFiveKills()
+    {
+        FiringSequenceDefeatFeedbackProfile first =
+            FiringSequenceDefeatFeedbackProfile.Resolve(1);
+        FiringSequenceDefeatFeedbackProfile second =
+            FiringSequenceDefeatFeedbackProfile.Resolve(2);
+        FiringSequenceDefeatFeedbackProfile third =
+            FiringSequenceDefeatFeedbackProfile.Resolve(3);
+        FiringSequenceDefeatFeedbackProfile fourth =
+            FiringSequenceDefeatFeedbackProfile.Resolve(4);
+        FiringSequenceDefeatFeedbackProfile fifth =
+            FiringSequenceDefeatFeedbackProfile.Resolve(5);
+        FiringSequenceDefeatFeedbackProfile tenth =
+            FiringSequenceDefeatFeedbackProfile.Resolve(10);
+
+        Assert.That(first.Tier, Is.EqualTo(FiringSequenceDefeatTier.Base));
+        Assert.That(second.Tier, Is.EqualTo(FiringSequenceDefeatTier.Chain));
+        Assert.That(third.Tier, Is.EqualTo(FiringSequenceDefeatTier.Rupture));
+        Assert.That(fourth.Tier, Is.EqualTo(FiringSequenceDefeatTier.Frenzy));
+        Assert.That(fifth.Tier, Is.EqualTo(FiringSequenceDefeatTier.Maximum));
+        Assert.That(second.UsesLinkTear, Is.True);
+        Assert.That(third.UsesVacuum, Is.True);
+        Assert.That(fourth.UsesEchoPull, Is.True);
+        Assert.That(tenth.IntensityMultiplier,
+            Is.EqualTo(fifth.IntensityMultiplier));
+        Assert.That(tenth.CameraMultiplier,
+            Is.EqualTo(fifth.CameraMultiplier));
+    }
+
+    [Test]
+    public void CylinderChainText_RestoresCountBasedColorAndShader()
+    {
+        Color secondKillColor = new Color(1f, 0.46f, 0.08f, 1f);
+        Color highComboColor = new Color(1f, 0.12f, 0.06f, 1f);
+        Assert.That(
+            CombatFeedbackController.FormatCylinderChainText(1),
+            Is.Empty);
+        Assert.That(
+            CombatFeedbackController.FormatCylinderChainText(4),
+            Is.EqualTo("4연속 처치!"));
+        Assert.That(
+            CombatFeedbackController.ResolveKillComboTextColor(
+                1,
+                secondKillColor,
+                highComboColor,
+                0.25f),
+            Is.EqualTo(Color.white));
+        Assert.That(
+            CombatFeedbackController.ResolveKillComboTextColor(
+                2,
+                secondKillColor,
+                highComboColor,
+                0.25f),
+            Is.EqualTo(secondKillColor));
+        Assert.That(
+            CombatFeedbackController.ResolveKillComboTextColor(
+                3,
+                secondKillColor,
+                highComboColor,
+                0.25f),
+            Is.EqualTo(highComboColor));
+        Assert.That(
+            CombatFeedbackController.ShouldUseKillComboShader(3),
+            Is.False);
+        Assert.That(
+            CombatFeedbackController.ShouldUseKillComboShader(4),
+            Is.True);
+    }
+
+    [Test]
+    public void CylinderChainText_AnchorsAboveDefeatedEnemy()
+    {
+        Vector3 defeatedEnemyPosition = new Vector3(3.25f, 1.1f, 4.5f);
+        Vector3 textPosition = CombatFeedbackController
+            .ResolveCombatTextPosition(defeatedEnemyPosition);
+
+        Assert.That(textPosition.x, Is.EqualTo(defeatedEnemyPosition.x));
+        Assert.That(textPosition.y,
+            Is.EqualTo(defeatedEnemyPosition.y + 0.72f));
+        Assert.That(textPosition.z,
+            Is.EqualTo(defeatedEnemyPosition.z));
+    }
+
+    [Test]
+    public void CylinderChainText_RendersOnDamageUiLayer()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Text _ Kill Combo.prefab");
+        Assert.That(prefab, Is.Not.Null);
+        GameObject instance = Object.Instantiate(prefab);
+
+        try
+        {
+            TextMeshPro text = instance.GetComponent<TextMeshPro>();
+            Assert.That(text, Is.Not.Null);
+            CombatFeedbackController.ConfigureCombatTextRendering(text);
+
+            Assert.That(
+                SortingLayer.IDToName(text.sortingLayerID),
+                Is.EqualTo("Damage UI"));
+            Assert.That(text.sortingOrder, Is.GreaterThan(32000));
+        }
+        finally
+        {
+            Object.DestroyImmediate(instance);
+        }
+    }
+
+    [Test]
     public void KillPitch_IncreasesForEveryFiringSequenceKill()
     {
         float first = SoundManager.CalculateFiringSequenceKillPitch(1);
@@ -878,9 +1034,90 @@ public sealed class CombatImpactTierUtilityTests
 
 public sealed class CombatPresentationSignatureTests
 {
-    [TestCase("Assets/Prefabs/VFX/VFX_EnemyHit.prefab", 2)]
-    [TestCase("Assets/Prefabs/VFX/VFX_EnemyCriticalHit.prefab", 3)]
-    [TestCase("Assets/Prefabs/VFX/VFX_EnemyDefeat.prefab", 3)]
+    [Test]
+    public void ImpactWorldPosition_UsesVisibleSpriteBoundsCenter()
+    {
+        GameObject target = new GameObject("Offset Pivot Enemy");
+        Texture2D texture = new Texture2D(2, 2);
+        Sprite sprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, 2f, 2f),
+            new Vector2(0f, 0.5f),
+            1f);
+
+        try
+        {
+            SpriteRenderer renderer = target.AddComponent<SpriteRenderer>();
+            renderer.sprite = sprite;
+
+            Vector3 resolved = CombatPresentation.ResolveImpactWorldPosition(
+                renderer,
+                target.transform.position);
+
+            Assert.That(resolved, Is.EqualTo(renderer.bounds.center));
+            Assert.That(resolved.x, Is.GreaterThan(target.transform.position.x));
+        }
+        finally
+        {
+            Object.DestroyImmediate(target);
+            Object.DestroyImmediate(sprite);
+            Object.DestroyImmediate(texture);
+        }
+    }
+
+    [Test]
+    public void GuaranteedDefeatShockwave_PlaysOnlyOnceForEveryDefeatCue()
+    {
+        Assert.That(
+            CombatPresentation.ShouldPlayGuaranteedDefeatShockwave(
+                CombatImpactTier.Defeat,
+                false),
+            Is.True);
+        Assert.That(
+            CombatPresentation.ShouldPlayGuaranteedDefeatShockwave(
+                CombatImpactTier.Defeat,
+                true),
+            Is.False);
+        Assert.That(
+            CombatPresentation.ShouldPlayGuaranteedDefeatShockwave(
+                CombatImpactTier.Critical,
+                false),
+            Is.False);
+    }
+
+    [Test]
+    public void GuaranteedDefeatShockwave_AddsCappedLayersForKillStages()
+    {
+        int first = CombatImpactSignaturePresenter
+            .ResolveGuaranteedDefeatShockwaveLayerCount(
+                FiringSequenceDefeatFeedbackProfile.Resolve(1));
+        int third = CombatImpactSignaturePresenter
+            .ResolveGuaranteedDefeatShockwaveLayerCount(
+                FiringSequenceDefeatFeedbackProfile.Resolve(3));
+        int fifth = CombatImpactSignaturePresenter
+            .ResolveGuaranteedDefeatShockwaveLayerCount(
+                FiringSequenceDefeatFeedbackProfile.Resolve(5));
+        int tenth = CombatImpactSignaturePresenter
+            .ResolveGuaranteedDefeatShockwaveLayerCount(
+                FiringSequenceDefeatFeedbackProfile.Resolve(10));
+
+        Assert.That(first, Is.EqualTo(1));
+        Assert.That(third, Is.EqualTo(2));
+        Assert.That(fifth, Is.EqualTo(3));
+        Assert.That(tenth, Is.EqualTo(fifth));
+    }
+
+    [Test]
+    public void CombatImpactVolumePulse_DoesNotBoostBloom()
+    {
+        Assert.That(
+            CombatFeedbackController.ImpactVolumeBloomMultiplier,
+            Is.Zero);
+    }
+
+    [TestCase("Assets/Prefabs/VFX/VFX_EnemyHit.prefab", 3)]
+    [TestCase("Assets/Prefabs/VFX/VFX_EnemyCriticalHit.prefab", 4)]
+    [TestCase("Assets/Prefabs/VFX/VFX_EnemyDefeat.prefab", 4)]
     public void ImpactParticlePrefab_EmitsEveryConfiguredLayer(
         string prefabPath,
         int expectedLayerCount)
@@ -920,6 +1157,102 @@ public sealed class CombatPresentationSignatureTests
         {
             Object.DestroyImmediate(instance);
         }
+    }
+
+    [TestCase(
+        "Assets/Prefabs/VFX/VFX_EnemyHit.prefab",
+        "Hit Core Burst",
+        "Hit Directional Sparks",
+        "Hit Micro Glint")]
+    [TestCase(
+        "Assets/Prefabs/VFX/VFX_EnemyCriticalHit.prefab",
+        "Critical Core Burst",
+        "Critical Shards",
+        "Critical Star Glints")]
+    public void NonDefeatImpact_UsesBulletColoredLayersWithoutDust(
+        string prefabPath,
+        string coreName,
+        string sparkName,
+        string glintName)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            prefabPath);
+        Assert.That(prefab, Is.Not.Null);
+        Transform core = prefab.transform.Find(coreName);
+        Transform sparks = prefab.transform.Find(sparkName);
+        Transform glints = prefab.transform.Find(glintName);
+
+        Assert.That(core, Is.Not.Null);
+        Assert.That(sparks, Is.Not.Null);
+        Assert.That(glints, Is.Not.Null);
+        Assert.That(
+            prefab.GetComponentsInChildren<ParticleSystem>(true)
+                .Any(system => system.name.Contains("Dust")),
+            Is.False);
+        Assert.That(sparks.GetComponent<ParticleSystem>().trails.enabled,
+            Is.True);
+    }
+
+    [Test]
+    public void DefeatImpact_UsesBulletColoredFireworksWithoutDust()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/VFX/VFX_EnemyDefeat.prefab");
+        Assert.That(prefab, Is.Not.Null);
+        Transform coreBurst = prefab.transform.Find("Defeat Core Burst");
+        Transform bloom = prefab.transform.Find("Defeat Firework Bloom");
+        Transform glints = prefab.transform.Find("Defeat Star Glints");
+
+        Assert.That(prefab.transform.Find("Defeat Dust"), Is.Null);
+        Assert.That(coreBurst, Is.Not.Null);
+        Assert.That(bloom, Is.Not.Null);
+        Assert.That(glints, Is.Not.Null);
+        Assert.That(
+            coreBurst.GetComponent<ParticleSystem>().trails.enabled,
+            Is.True);
+        Assert.That(
+            bloom.GetComponent<ParticleSystem>().shape.shapeType,
+            Is.EqualTo(ParticleSystemShapeType.Sphere));
+    }
+
+    [Test]
+    public void NonDefeatImpact_UsesFortyAndSeventyPercentEmissionBudgets()
+    {
+        int normalBudget = ReadImpactParticleEmissionBudget(
+            "Assets/Prefabs/VFX/VFX_EnemyHit.prefab");
+        int criticalBudget = ReadImpactParticleEmissionBudget(
+            "Assets/Prefabs/VFX/VFX_EnemyCriticalHit.prefab");
+        int defeatBudget = ReadImpactParticleEmissionBudget(
+            "Assets/Prefabs/VFX/VFX_EnemyDefeat.prefab");
+
+        Assert.That((float)normalBudget / defeatBudget,
+            Is.EqualTo(0.4f).Within(0.01f));
+        Assert.That((float)criticalBudget / defeatBudget,
+            Is.EqualTo(0.7f).Within(0.01f));
+    }
+
+    private static int ReadImpactParticleEmissionBudget(string prefabPath)
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            prefabPath);
+        Assert.That(prefab, Is.Not.Null);
+        CombatImpactParticleEffect effect =
+            prefab.GetComponent<CombatImpactParticleEffect>();
+        Assert.That(effect, Is.Not.Null);
+        SerializedProperty layers = new SerializedObject(effect)
+            .FindProperty("layers");
+        int budget = 0;
+
+        for (int layerIndex = 0;
+             layerIndex < layers.arraySize;
+             layerIndex++)
+        {
+            budget += layers.GetArrayElementAtIndex(layerIndex)
+                .FindPropertyRelative("baseEmissionCount")
+                .intValue;
+        }
+
+        return budget;
     }
 
     [TestCase(6, 1f, 6)]

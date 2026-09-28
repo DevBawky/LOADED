@@ -5,6 +5,8 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class EnemyDamageNumberDisplay : MonoBehaviour
 {
+    private const float SeparationPerScaleUnit = 0.9f;
+
     [Header("Damage Number Prefabs")]
     [SerializeField] private DamageNumber normalDamagePrefab;
     [SerializeField] private DamageNumber criticalDamagePrefab;
@@ -39,8 +41,12 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     [SerializeField] private bool followTarget;
 
     [Header("Overlap Avoidance")]
-    [Tooltip("같은 적에게 표시 중인 숫자 사이에 확보할 최소 월드 간격입니다. 0이면 강제 간격을 사용하지 않습니다.")]
+    [Tooltip("모든 적에게 표시 중인 숫자 사이에 확보할 추가 월드 간격입니다. 텍스트 스케일 기반의 자동 최소 간격보다 작게 설정해도 자동 최소값이 적용됩니다.")]
     [SerializeField, Min(0f)] private float minimumSpawnSeparation = 0.2f;
+
+    [Header("Readability Scale")]
+    [SerializeField, Range(0.1f, 1f)] private float damageNumberScaleMultiplier = 0.5f;
+    [SerializeField, Range(0.1f, 1f)] private float statusTextScaleMultiplier = 0.5f;
 
     [Header("Impact Tier Styling")]
     [SerializeField] private Color criticalDamageColor =
@@ -51,14 +57,10 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         new Color(1f, 0.92f, 0.78f, 1f);
     [SerializeField] private float criticalDamageScale = 1.18f;
     [SerializeField] private float devastatingDamageScale = 1.42f;
+    [SerializeField] private float defeatDamageScale = 1.58f;
 
-    private readonly DamageNumberSpawnLayout spawnLayout =
+    private static readonly DamageNumberSpawnLayout SharedSpawnLayout =
         new DamageNumberSpawnLayout();
-
-    private void OnDisable()
-    {
-        spawnLayout.Clear();
-    }
 
     public void ShowAttackDamage(
         int damage,
@@ -145,21 +147,23 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
-        Vector3 localOffset = spawnLayout.FindAvailableOffset(
-            damageOffset,
-            minimumSpawnSeparation);
-        Vector3 position = transform.position + localOffset;
+        Vector3 position = SharedSpawnLayout.FindAvailableOffset(
+            transform.position + damageOffset,
+            ResolveMinimumSpawnSeparation(
+                minimumSpawnSeparation,
+                damageNumberScaleMultiplier,
+                statusTextScaleMultiplier));
         DamageNumber number = SpawnWithoutSpamMovement(
             prefab,
             position,
             damage);
-        ConfigureSpawnedNumber(number, localOffset);
+        ConfigureSpawnedNumber(number, position);
         ApplyTierStyle(number, impactTier);
     }
 
     private void ConfigureSpawnedNumber(
         DamageNumber number,
-        Vector3 localOffset)
+        Vector3 spawnPosition)
     {
         if (number == null)
         {
@@ -178,7 +182,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             number.SetFollowedTarget(transform, false);
         }
 
-        spawnLayout.Track(localOffset, number);
+        SharedSpawnLayout.Track(spawnPosition, number);
     }
 
     private static DamageNumber SpawnWithoutSpamMovement(
@@ -259,25 +263,60 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         DamageNumber number,
         CombatImpactTier impactTier)
     {
-        if (number == null || impactTier == CombatImpactTier.Normal)
+        if (number == null)
         {
             return;
         }
+
+        number.SetScale(ResolveDamageNumberScale(
+            impactTier,
+            damageNumberScaleMultiplier,
+            criticalDamageScale,
+            devastatingDamageScale,
+            defeatDamageScale));
 
         switch (impactTier)
         {
             case CombatImpactTier.Critical:
                 number.SetColor(criticalDamageColor);
-                number.SetScale(criticalDamageScale);
                 break;
             case CombatImpactTier.Devastating:
                 number.SetColor(devastatingDamageColor);
-                number.SetScale(devastatingDamageScale);
                 break;
             case CombatImpactTier.Defeat:
                 number.SetColor(defeatDamageColor);
                 break;
         }
+    }
+
+    internal static float ResolveDamageNumberScale(
+        CombatImpactTier impactTier,
+        float scaleMultiplier,
+        float criticalScale,
+        float devastatingScale,
+        float defeatScale)
+    {
+        float tierScale = impactTier switch
+        {
+            CombatImpactTier.Critical => criticalScale,
+            CombatImpactTier.Devastating => devastatingScale,
+            CombatImpactTier.Defeat => defeatScale,
+            _ => 1f
+        };
+        return Mathf.Max(0f, scaleMultiplier) * Mathf.Max(0f, tierScale);
+    }
+
+    internal static float ResolveMinimumSpawnSeparation(
+        float authoredMinimum,
+        float damageScaleMultiplier,
+        float statusScaleMultiplier)
+    {
+        float largestBaseScale = Mathf.Max(
+            Mathf.Max(0f, damageScaleMultiplier),
+            Mathf.Max(0f, statusScaleMultiplier));
+        return Mathf.Max(
+            Mathf.Max(0f, authoredMinimum),
+            largestBaseScale * SeparationPerScaleUnit);
     }
 
     private void SpawnStatus(DamageNumber prefab, string statusText)
@@ -287,15 +326,22 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
-        Vector3 localOffset = spawnLayout.FindAvailableOffset(
-            statusOffset,
-            minimumSpawnSeparation);
-        Vector3 position = transform.position + localOffset;
+        Vector3 position = SharedSpawnLayout.FindAvailableOffset(
+            transform.position + statusOffset,
+            ResolveMinimumSpawnSeparation(
+                minimumSpawnSeparation,
+                damageNumberScaleMultiplier,
+                statusTextScaleMultiplier));
         DamageNumber number = SpawnWithoutSpamMovement(
             prefab,
             position,
             statusText);
-        ConfigureSpawnedNumber(number, localOffset);
+        ConfigureSpawnedNumber(number, position);
+
+        if (number != null)
+        {
+            number.SetScale(statusTextScaleMultiplier);
+        }
     }
 }
 
@@ -334,11 +380,11 @@ internal sealed class DamageNumberSpawnLayout
             + Vector3.up * separation * (reservations.Count + 1);
     }
 
-    public void Track(Vector3 localOffset, DamageNumber number)
+    public void Track(Vector3 worldPosition, DamageNumber number)
     {
         if (number != null)
         {
-            reservations.Add(new Reservation(localOffset, number));
+            reservations.Add(new Reservation(worldPosition, number));
         }
     }
 
@@ -368,7 +414,9 @@ internal sealed class DamageNumberSpawnLayout
 
         foreach (Reservation reservation in reservations)
         {
-            Vector2 reservedPosition = reservation.LocalOffset;
+            Vector2 reservedPosition = reservation.Number == null
+                ? reservation.WorldPosition
+                : reservation.Number.transform.position;
 
             if (Vector2.Distance(candidatePosition, reservedPosition)
                 < minimumSeparation)
@@ -391,7 +439,13 @@ internal sealed class DamageNumberSpawnLayout
 
         int gridIndex = index - 1;
         int row = gridIndex / 3 + 1;
-        int column = gridIndex % 3 - 1;
+        int columnIndex = gridIndex % 3;
+        int column = columnIndex switch
+        {
+            0 => -1,
+            1 => 1,
+            _ => 0
+        };
         return new Vector3(
             column * separation,
             row * separation,
@@ -400,13 +454,13 @@ internal sealed class DamageNumberSpawnLayout
 
     private readonly struct Reservation
     {
-        public Reservation(Vector3 localOffset, DamageNumber number)
+        public Reservation(Vector3 worldPosition, DamageNumber number)
         {
-            LocalOffset = localOffset;
+            WorldPosition = worldPosition;
             Number = number;
         }
 
-        public Vector3 LocalOffset { get; }
+        public Vector3 WorldPosition { get; }
         public DamageNumber Number { get; }
     }
 }

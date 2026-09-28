@@ -482,17 +482,16 @@ MonoBehaviour:
   comboLowColor: {r: 1, g: 1, b: 1, a: 1}
   comboMidColor: {r: 1, g: 0.42, b: 0.12, a: 1}
   comboCriticalColor: {r: 1, g: 0.18, b: 0.08, a: 1}
-  firingSequenceFeedbackStrengthPerKill: 0.2
   defeatPresentationInterval: 0.18
   killComboTextPrefab: {fileID: 6304521783619051883, guid: e42db836b5444fe59470033ca0bc92a1, type: 3}
   comboGoldPerKill: 2
   killComboTextDuration: 2
   killComboTextDurationPerAdditionalKill: 0.12
-  maximumKillComboTextDurationBonus: 2
+  maximumKillComboTextDurationBonus: 1.2
   killComboTextScale: 1
   maximumComboTextScaleBonus: 0.2
-  secondKillTextColor: {r: 0, g: 1, b: 0.100815535, a: 1}
-  highComboTextColor: {r: 1, g: 0.058823526, b: 0.9856514, a: 1}
+  secondKillTextColor: {r: 1, g: 0.46, b: 0.08, a: 1}
+  highComboTextColor: {r: 1, g: 0.12, b: 0.06, a: 1}
   kickReadyTextColor: {r: 0.5424528, g: 0.8952603, b: 1, a: 1}
   bulletDestroyedTextColor: {r: 0.2, g: 0.22, b: 0.24, a: 1}
   dodgeTextColor: {r: 0.45, g: 0.92, b: 1, a: 1}

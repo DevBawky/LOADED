@@ -86,11 +86,7 @@ Shader "Loaded/Kill Impact Fullscreen"
                 float snapClarity = 0.0;
                 float snapContrast = 0.0;
                 float exposureDip = 0.0;
-                float exposureLift = 0.0;
                 float edgeStyle = 0.0;
-                float screenFlash = 0.0;
-                float screenFlashColorWeight = 0.0;
-                float3 screenFlashColor = 0.0;
 
                 [unroll]
                 for (int impactIndex = 0; impactIndex < 4; impactIndex++)
@@ -112,6 +108,11 @@ Shader "Loaded/Kill Impact Fullscreen"
                     }
 
                     float2 center = _KillImpactCenters[impactIndex].xy;
+#if UNITY_UV_STARTS_AT_TOP
+                    // WorldToViewportPoint uses a bottom-left origin, while
+                    // the fullscreen blit UV uses a top-left origin here.
+                    center.y = 1.0 - center.y;
+#endif
                     float4 directionData = _KillImpactDirections[impactIndex];
                     float2 direction = directionData.xy;
                     float shotPulse = saturate(directionData.z);
@@ -130,9 +131,9 @@ Shader "Loaded/Kill Impact Fullscreen"
                     float3 impactLightColor =
                         _KillImpactColors[impactIndex].rgb;
 
-                    // The firing beat changes the photographed scene itself:
-                    // a warm exposure kick, directional lens shove and quick
-                    // focus pull. It deliberately skips hit-only halos.
+                    // The firing beat changes scene geometry through a
+                    // directional lens shove and quick focus pull. It never
+                    // raises full-frame luminance.
                     if (shotPulse > 0.5)
                     {
                         float shotAttack = smoothstep(
@@ -177,17 +178,9 @@ Shader "Loaded/Kill Impact Fullscreen"
                         snapContrast = max(
                             snapContrast,
                             shotKick * lerp(0.1, 0.16, critical));
-                        exposureLift = max(
-                            exposureLift,
-                            shotKick * lerp(0.018, 0.028, critical));
                         edgeStyle = max(
                             edgeStyle,
                             shotKick * lerp(0.1, 0.18, critical));
-                        float shotFlash = shotKick
-                            * lerp(0.055, 0.078, critical);
-                        screenFlash += shotFlash;
-                        screenFlashColor += impactLightColor * shotFlash;
-                        screenFlashColorWeight += shotFlash;
                         continue;
                     }
 
@@ -234,16 +227,6 @@ Shader "Loaded/Kill Impact Fullscreen"
                         snapMask
                             * snapStrength
                             * lerp(0.32, 0.6, tierStrength));
-                    exposureLift = max(
-                        exposureLift,
-                        snapMask * snapStrength * 0.025);
-                    float hitFlash = snapEnvelope
-                        * impactStrength
-                        * lerp(0.028, 0.058, tierStrength);
-                    screenFlash += hitFlash;
-                    screenFlashColor += impactLightColor * hitFlash;
-                    screenFlashColorWeight += hitFlash;
-
                     // The pressure front is visible only through displaced
                     // scene pixels. No ring color or decal is drawn over it.
                     float maximumRadius = lerp(0.3, 0.84, tierStrength)
@@ -353,9 +336,9 @@ Shader "Loaded/Kill Impact Fullscreen"
                         secondaryWidth,
                         secondaryWidth * 1.9,
                         abs(distanceFromImpact - secondaryRadius));
-                    float secondaryTier = critical * 0.16
-                        + devastating * 0.2
-                        + defeat * 0.23;
+                    float secondaryTier = critical * 0.22
+                        + devastating * 0.28
+                        + defeat * 0.34;
                     float secondaryHalo = secondaryFront
                         * secondaryEnvelope
                         * impactStrength
@@ -370,7 +353,7 @@ Shader "Loaded/Kill Impact Fullscreen"
                         * impactStrength
                         * secondaryTier
                         * _KillImpactShockwave
-                        * 0.011;
+                        * 0.014;
 
                     // A horizontal ballistic plume carries turbulent screen
                     // refraction away from the contact point like desert heat.
@@ -476,19 +459,14 @@ Shader "Loaded/Kill Impact Fullscreen"
                         * echoEnvelope
                         * lerp(0.004, 0.012, tierStrength);
 
-                    float fullFrameTier = 0.02
+                    float darkFrameTier = 0.02
                         + critical * 0.015
                         + devastating * 0.025
                         + defeat * 0.03
                         + finalKill * 0.018;
                     exposureDip = max(
                         exposureDip,
-                        early * impactStrength * fullFrameTier);
-                    exposureLift = max(
-                        exposureLift,
-                        pow(saturate(sin(progress * PI)), 3.0)
-                            * impactStrength
-                            * (fullFrameTier * 0.72));
+                        early * impactStrength * darkFrameTier);
                     edgeStyle = max(
                         edgeStyle,
                         early * impactStrength * wideImpact);
@@ -536,16 +514,7 @@ Shader "Loaded/Kill Impact Fullscreen"
                     * resolvedBloom
                     * 0.09;
 
-                float resolvedFlash = saturate(screenFlash);
-                float3 resolvedFlashColor = screenFlashColor
-                    / max(screenFlashColorWeight, 0.0001);
-                color += resolvedFlashColor
-                    * resolvedFlash
-                    * saturate(1.0 - color);
-
                 color *= 1.0 - saturate(exposureDip);
-                color = 1.0 - (1.0 - color)
-                    * (1.0 - saturate(exposureLift));
                 float edge = smoothstep(0.42, 0.96, length(uv * 2.0 - 1.0));
                 color *= 1.0 - edge * edgeStyle * 0.05;
 
