@@ -883,7 +883,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyDamageNumberDisplay
   normalDamagePrefab: {fileID: 7093171668410684382, guid: 69d3740759199d243aba77143fcdc2b4, type: 3}
   criticalDamagePrefab: {fileID: 7093171668410684382, guid: d687fa0addb64b544a8b80246de4d981, type: 3}
-  devastatingDamagePrefab: {fileID: 0}
   poisonDamagePrefab: {fileID: 7093171668410684382, guid: a49e2b552cb04934d89ca44805ae4a77, type: 3}
   markBonusDamagePrefab: {fileID: 7093171668410684382, guid: 0f2a5a8123d65b74ba098d0fc562e6de, type: 3}
   poisonStatusPrefab: {fileID: 8736109667816764904, guid: 6498f7e1513ff5549baa1df8ebdf4240, type: 3}
@@ -903,12 +902,7 @@ MonoBehaviour:
   maximumSpawnRows: 2
   damageNumberScaleMultiplier: 0.5
   statusTextScaleMultiplier: 0.5
-  criticalDamageColor: {r: 1, g: 0.86, b: 0.28, a: 1}
-  devastatingDamageColor: {r: 1, g: 0.32, b: 0.08, a: 1}
-  defeatDamageColor: {r: 1, g: 0.92, b: 0.78, a: 1}
   criticalDamageScale: 1.18
-  devastatingDamageScale: 1.42
-  defeatDamageScale: 1.58
 --- !u!114 &700000000000000003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -953,3 +947,5 @@ MonoBehaviour:
   opacity: 0.36
   surfaceOffset: 0.012
   groundProbeDistance: 4
+  shadowLengthMultiplier: 0.9
+  groundingTolerance: 0.001

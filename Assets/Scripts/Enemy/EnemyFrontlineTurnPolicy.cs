@@ -60,8 +60,48 @@ internal readonly struct EnemyLanePursuitCandidate
     public int LaneIndex { get; }
 }
 
+internal enum EnemyLaneMismatchIntent
+{
+    ChangeLane,
+    Rotate,
+    Advance
+}
+
 internal static class EnemyLanePursuitPolicy
 {
+    public static EnemyLaneMismatchIntent GetMismatchIntent(
+        bool isLanePursuer,
+        int directionToPlayer,
+        int distanceToPlayer,
+        bool isFacingPlayer)
+    {
+        // Once a rear actor reaches the player's column (or the adjacent
+        // staggered column), horizontal distance can no longer express a
+        // useful approach direction. It must join the player's lane or make
+        // room for that transition instead of waiting forever.
+        if (isLanePursuer || directionToPlayer == 0 || distanceToPlayer <= 1)
+        {
+            return EnemyLaneMismatchIntent.ChangeLane;
+        }
+
+        return isFacingPlayer
+            ? EnemyLaneMismatchIntent.Advance
+            : EnemyLaneMismatchIntent.Rotate;
+    }
+
+    public static int GetPreferredStagingDirection(
+        int directionToPlayer,
+        int currentLaneIndex,
+        int playerLaneIndex)
+    {
+        if (directionToPlayer != 0)
+        {
+            return directionToPlayer > 0 ? 1 : -1;
+        }
+
+        return playerLaneIndex > currentLaneIndex ? 1 : -1;
+    }
+
     public static bool ShouldPursueLane(
         int selfIdentity,
         int playerTileIndex,

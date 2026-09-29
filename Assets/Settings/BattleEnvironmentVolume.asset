@@ -71,7 +71,7 @@ MonoBehaviour:
     m_Value: {x: 0.5, y: 0.5}
   intensity:
     m_OverrideState: 1
-    m_Value: 0.1
+    m_Value: 0.08
   smoothness:
     m_OverrideState: 1
     m_Value: 0.55
@@ -93,16 +93,16 @@ MonoBehaviour:
   active: 1
   m_Grain:
     m_OverrideState: 1
-    m_Value: 0.356
+    m_Value: 0.12
   m_Noise:
     m_OverrideState: 1
     m_Value: 3
   m_NoiseAlpha:
     m_OverrideState: 1
-    m_Value: 1
+    m_Value: 0.16
   m_Jolt:
-    m_OverrideState: 0
-    m_Value: 0.05
+    m_OverrideState: 1
+    m_Value: 0
   m_Fps:
     m_OverrideState: 0
     m_Value: 40.3
@@ -195,10 +195,10 @@ MonoBehaviour:
   active: 1
   postExposure:
     m_OverrideState: 1
-    m_Value: 0.38
+    m_Value: 0.42
   contrast:
     m_OverrideState: 1
-    m_Value: 7
+    m_Value: 8
   colorFilter:
     m_OverrideState: 1
     m_Value: {r: 1, g: 0.985, b: 0.96, a: 1}
@@ -207,7 +207,7 @@ MonoBehaviour:
     m_Value: 0
   saturation:
     m_OverrideState: 1
-    m_Value: -2
+    m_Value: 3
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -229,6 +229,8 @@ MonoBehaviour:
   - {fileID: -2180382543161790453}
   - {fileID: 1057860179753575371}
   - {fileID: -8227637498923036428}
+  - {fileID: 1557590760644693463}
+  - {fileID: 5031222550315239472}
 --- !u!114 &1057860179753575371
 MonoBehaviour:
   m_ObjectHideFlags: 3
@@ -244,10 +246,78 @@ MonoBehaviour:
   active: 1
   temperature:
     m_OverrideState: 1
-    m_Value: 3
+    m_Value: 5
   tint:
     m_OverrideState: 1
     m_Value: 1
+--- !u!114 &1557590760644693463
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 70afe9e12c7a7ed47911bb608a23a8ff, type: 3}
+  m_Name: SplitToning
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.SplitToning
+  active: 1
+  shadows:
+    m_OverrideState: 1
+    m_Value: {r: 0.52, g: 0.49, b: 0.44, a: 1}
+  highlights:
+    m_OverrideState: 1
+    m_Value: {r: 0.58, g: 0.53, b: 0.43, a: 1}
+  balance:
+    m_OverrideState: 1
+    m_Value: 4
+--- !u!114 &5031222550315239472
+MonoBehaviour:
+  m_ObjectHideFlags: 3
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c01700fd266d6914ababb731e09af2eb, type: 3}
+  m_Name: DepthOfField
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.DepthOfField
+  active: 1
+  mode:
+    m_OverrideState: 1
+    m_Value: 1
+  gaussianStart:
+    m_OverrideState: 1
+    m_Value: 20.5
+  gaussianEnd:
+    m_OverrideState: 1
+    m_Value: 104.27357
+  gaussianMaxRadius:
+    m_OverrideState: 1
+    m_Value: 0.5
+  highQualitySampling:
+    m_OverrideState: 1
+    m_Value: 1
+  focusDistance:
+    m_OverrideState: 1
+    m_Value: 10
+  aperture:
+    m_OverrideState: 1
+    m_Value: 5.6
+  focalLength:
+    m_OverrideState: 1
+    m_Value: 50
+  bladeCount:
+    m_OverrideState: 1
+    m_Value: 5
+  bladeCurvature:
+    m_OverrideState: 1
+    m_Value: 1
+  bladeRotation:
+    m_OverrideState: 1
+    m_Value: 0
 --- !u!114 &9168957292856962094
 MonoBehaviour:
   m_ObjectHideFlags: 3

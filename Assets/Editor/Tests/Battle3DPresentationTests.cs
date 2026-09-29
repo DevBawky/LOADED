@@ -8,6 +8,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
+using VolFx;
 
 public sealed class Battle3DPresentationTests
 {
@@ -26,8 +27,36 @@ public sealed class Battle3DPresentationTests
         "Assets/Materials/Battle3DSkybox.mat";
     private const string BattleVolumeProfilePath =
         "Assets/Settings/BattleEnvironmentVolume.asset";
+    private const string TerrainLayerPath =
+        "Assets/Terrain/BattleGround.terrainlayer";
+    private const string TerrainDirtLayerPath =
+        "Assets/Terrain/BattleGroundDirt.terrainlayer";
+    private const string TerrainRockLayerPath =
+        "Assets/Terrain/BattleGroundRock.terrainlayer";
+    private const string TerrainMaterialPath =
+        "Assets/Materials/Battle3DTerrain.mat";
+    private const string TerrainNormalPath =
+        "Assets/Terrain/BattleGroundNormal.asset";
+    private const string TerrainTexturePath =
+        "Assets/Terrain/BattleGroundTexture.asset";
+    private const string TerrainDataPath =
+        "Assets/Terrain/BattleTerrain.asset";
+    private const string BattleLitSpriteMaterialPath =
+        "Assets/Resources/Battle/BattleLitSprite.mat";
+    private const string BattleSunFlarePath =
+        "Assets/Resources/Battle/BattleSunFlare.asset";
     private const string GroundShadowShaderPath =
         "Assets/Shaders/BattleSpriteGroundShadow.shader";
+    private const string WindowGlowShaderPath =
+        "Assets/Shaders/BattleWindowGlow.shader";
+    private const string WindowGlowMaterialPath =
+        "Assets/Materials/BattleWindowGlow.mat";
+    private const string DustShaderPath =
+        "Assets/Shaders/BattleAtmosphericParticle.shader";
+    private const string DustTexturePath =
+        "Assets/Resources/Battle/BattleDustMote.asset";
+    private const string DustMaterialPath =
+        "Assets/Materials/BattleAtmosphericDust.mat";
 
     [Test]
     public void KillImpactShader_AvoidsFullFrameBrightnessPulse()
@@ -48,6 +77,16 @@ public sealed class Battle3DPresentationTests
             Does.Contain(
                 "float2 center = _KillImpactCenters[impactIndex].xy;"));
         Assert.That(source, Does.Not.Contain("center.y = 1.0 - center.y;"));
+    }
+
+    [Test]
+    public void BattleLitSprite_AvoidsMultipartAvatarGpuInstancing()
+    {
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(
+            BattleLitSpriteMaterialPath);
+
+        Assert.That(material, Is.Not.Null);
+        Assert.That(material.enableInstancing, Is.False);
     }
 
     [Test]
@@ -122,7 +161,7 @@ public sealed class Battle3DPresentationTests
         Assert.That(settings, Is.Not.Null);
         Assert.That(
             settings.FindPropertyRelative("Intensity").floatValue,
-            Is.EqualTo(0.85f).Within(0.0001f));
+            Is.EqualTo(0.65f).Within(0.0001f));
         Assert.That(
             settings.FindPropertyRelative("Source").intValue,
             Is.EqualTo(1));
@@ -151,6 +190,10 @@ public sealed class Battle3DPresentationTests
         Assert.That(
             skybox.shader.name,
             Is.EqualTo("LOADED/Battle Gradient Skybox"));
+        Assert.That(skybox.GetFloat("_CloudOpacity"),
+            Is.EqualTo(0.60f).Within(0.0001f));
+        Assert.That(skybox.GetFloat("_SunHalo"),
+            Is.EqualTo(0.7f).Within(0.0001f));
         Assert.That(environment.SkyboxMaterial, Is.SameAs(skybox));
         Assert.That(environment.VolumeProfile, Is.SameAs(volume));
         Assert.That(environment.UsesPerspective, Is.True);
@@ -160,7 +203,7 @@ public sealed class Battle3DPresentationTests
         Assert.That(environment.FogDensity,
             Is.EqualTo(0.006f).Within(0.0001f));
         Assert.That(environment.AmbientIntensity,
-            Is.EqualTo(1.12f).Within(0.0001f));
+            Is.EqualTo(1.25f).Within(0.0001f));
         Assert.That(environment.DirectionalLightIntensity,
             Is.EqualTo(1.65f).Within(0.0001f));
 
@@ -189,11 +232,121 @@ public sealed class Battle3DPresentationTests
             Is.EqualTo(0.28f).Within(0.0001f));
         Assert.That(volume.TryGet(out ColorAdjustments color), Is.True);
         Assert.That(color.postExposure.value,
-            Is.EqualTo(0.38f).Within(0.0001f));
-        Assert.That(color.contrast.value, Is.EqualTo(7f).Within(0.0001f));
+            Is.EqualTo(0.42f).Within(0.0001f));
+        Assert.That(color.contrast.value, Is.EqualTo(8f).Within(0.0001f));
+        Assert.That(volume.TryGet(out SplitToning splitToning), Is.True);
+        Assert.That(splitToning.active, Is.True);
+        Assert.That(splitToning.balance.value,
+            Is.EqualTo(4f).Within(0.0001f));
         Assert.That(volume.TryGet(out Vignette vignette), Is.True);
         Assert.That(vignette.intensity.value,
-            Is.EqualTo(0.1f).Within(0.0001f));
+            Is.EqualTo(0.08f).Within(0.0001f));
+        Assert.That(volume.TryGet(out DepthOfField depthOfField), Is.True);
+        Assert.That(depthOfField.active, Is.True);
+        Assert.That(
+            depthOfField.mode.value,
+            Is.EqualTo(DepthOfFieldMode.Gaussian));
+        Assert.That(depthOfField.gaussianStart.value,
+            Is.EqualTo(20.5f).Within(0.0001f));
+        Assert.That(depthOfField.gaussianEnd.value,
+            Is.GreaterThan(90f));
+        Assert.That(depthOfField.gaussianMaxRadius.value,
+            Is.EqualTo(0.5f).Within(0.0001f));
+        Assert.That(depthOfField.highQualitySampling.value, Is.True);
+        Assert.That(volume.TryGet(out OldMovieVol oldMovie), Is.True);
+        Assert.That(oldMovie.m_Grain.value,
+            Is.EqualTo(0.12f).Within(0.0001f));
+        Assert.That(oldMovie.m_NoiseAlpha.value,
+            Is.EqualTo(0.16f).Within(0.0001f));
+
+        TerrainLayer terrainLayer =
+            AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainLayerPath);
+        TerrainLayer dirtLayer =
+            AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainDirtLayerPath);
+        TerrainLayer rockLayer =
+            AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainRockLayerPath);
+        Material terrainMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+            TerrainMaterialPath);
+        Texture2D terrainNormal =
+            AssetDatabase.LoadAssetAtPath<Texture2D>(TerrainNormalPath);
+        Texture2D terrainTexture =
+            AssetDatabase.LoadAssetAtPath<Texture2D>(TerrainTexturePath);
+        TerrainData terrainData =
+            AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainDataPath);
+        Assert.That(terrainLayer, Is.Not.Null);
+        Assert.That(terrainNormal, Is.Not.Null);
+        Assert.That(terrainNormal.width, Is.EqualTo(128));
+        Assert.That(terrainNormal.height, Is.EqualTo(128));
+        Assert.That(terrainNormal.mipmapCount, Is.GreaterThan(1));
+        Assert.That(terrainLayer.normalMapTexture, Is.SameAs(terrainNormal));
+        Assert.That(terrainTexture, Is.Not.Null);
+        float maximumSoilSmoothness = 0f;
+        foreach (Color pixel in terrainTexture.GetPixels())
+        {
+            maximumSoilSmoothness = Mathf.Max(
+                maximumSoilSmoothness,
+                pixel.a);
+        }
+        Assert.That(maximumSoilSmoothness,
+            Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(terrainLayer.normalScale,
+            Is.EqualTo(0.62f).Within(0.0001f));
+        Assert.That(terrainLayer.specular, Is.EqualTo(Color.black));
+        Assert.That(terrainLayer.smoothness,
+            Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(dirtLayer, Is.Not.Null);
+        Assert.That(dirtLayer.normalScale,
+            Is.EqualTo(0.72f).Within(0.0001f));
+        Assert.That(dirtLayer.smoothness,
+            Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(rockLayer, Is.Not.Null);
+        Assert.That(rockLayer.normalScale,
+            Is.EqualTo(0.86f).Within(0.0001f));
+        Assert.That(rockLayer.smoothness,
+            Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(terrainMaterial, Is.Not.Null);
+        Assert.That(terrainMaterial.GetFloat("_Smoothness0"),
+            Is.EqualTo(0f).Within(0.0001f));
+        Assert.That(terrainData, Is.Not.Null);
+        Assert.That(terrainData.terrainLayers, Has.Length.EqualTo(3));
+        Assert.That(terrainData.alphamapResolution, Is.EqualTo(128));
+
+        Material spriteMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+            BattleLitSpriteMaterialPath);
+        Assert.That(spriteMaterial, Is.Not.Null);
+        Assert.That(spriteMaterial.shader, Is.Not.Null);
+        Assert.That(
+            spriteMaterial.shader.name,
+            Is.EqualTo("LOADED/Battle Lit Sprite"));
+
+        LensFlareDataSRP flare =
+            AssetDatabase.LoadAssetAtPath<LensFlareDataSRP>(
+                BattleSunFlarePath);
+        Assert.That(flare, Is.Not.Null);
+        Assert.That(flare.elements, Has.Length.EqualTo(3));
+
+        Shader windowGlowShader = AssetDatabase.LoadAssetAtPath<Shader>(
+            WindowGlowShaderPath);
+        Material windowGlowMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+            WindowGlowMaterialPath);
+        Shader dustShader = AssetDatabase.LoadAssetAtPath<Shader>(
+            DustShaderPath);
+        Texture2D dustTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+            DustTexturePath);
+        Material dustMaterial = AssetDatabase.LoadAssetAtPath<Material>(
+            DustMaterialPath);
+        Assert.That(windowGlowShader, Is.Not.Null);
+        Assert.That(windowGlowMaterial, Is.Not.Null);
+        Assert.That(windowGlowMaterial.shader, Is.SameAs(windowGlowShader));
+        Assert.That(dustShader, Is.Not.Null);
+        Assert.That(dustTexture, Is.Not.Null);
+        Assert.That(dustTexture.width, Is.EqualTo(32));
+        Assert.That(dustTexture.height, Is.EqualTo(32));
+        Assert.That(dustMaterial, Is.Not.Null);
+        Assert.That(dustMaterial.shader, Is.SameAs(dustShader));
+        Assert.That(
+            dustMaterial.GetTexture("_BaseMap"),
+            Is.SameAs(dustTexture));
     }
 
     [Test]
@@ -598,15 +751,11 @@ public sealed class Battle3DPresentationTests
     [Test]
     public void SceneAuthoredCameraKeepsThePlayerInView()
     {
-        BattleEnvironmentProfile profile =
-            AssetDatabase.LoadAssetAtPath<BattleEnvironmentProfile>(
-                EnvironmentProfilePath);
         SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
         GameObject cameraObject = null;
 
         try
         {
-            Assert.That(profile, Is.Not.Null);
             Scene scene = EditorSceneManager.OpenScene(
                 BattleScenePath,
                 OpenSceneMode.Single);
@@ -619,9 +768,11 @@ public sealed class Battle3DPresentationTests
             Assert.That(avatar, Is.Not.Null);
             cameraObject = new GameObject("Battle Camera Test");
             Camera camera = cameraObject.AddComponent<Camera>();
-            camera.orthographic = !profile.UsesPerspective;
-            camera.fieldOfView = profile.PerspectiveFieldOfView;
-            camera.orthographicSize = profile.OrthographicSize;
+            camera.orthographic = authoredCamera.orthographic;
+            camera.fieldOfView = authoredCamera.fieldOfView;
+            camera.orthographicSize = authoredCamera.orthographicSize;
+            camera.nearClipPlane = authoredCamera.nearClipPlane;
+            camera.farClipPlane = authoredCamera.farClipPlane;
             cameraObject.transform.SetPositionAndRotation(
                 authoredCamera.transform.position,
                 authoredCamera.transform.rotation);
@@ -645,7 +796,7 @@ public sealed class Battle3DPresentationTests
     }
 
     [Test]
-    public void ApplyingEnvironmentProfilePreservesSceneAuthoredCameraPose()
+    public void ApplyingEnvironmentProfilePreservesSceneAuthoredCameraState()
     {
         SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
 
@@ -674,6 +825,22 @@ public sealed class Battle3DPresentationTests
             Vector3 expectedPosition = camera.transform.localPosition;
             Quaternion expectedRotation = camera.transform.localRotation;
             Vector3 expectedFollowOffset = follow.FollowOffset;
+            camera.orthographic = false;
+            camera.fieldOfView = 57f;
+            camera.orthographicSize = 6.25f;
+            camera.nearClipPlane = 0.23f;
+            camera.farClipPlane = 1234f;
+            CinemachineCamera cinemachineCamera =
+                camera.GetComponent<CinemachineCamera>();
+            Assert.That(cinemachineCamera, Is.Not.Null);
+            LensSettings expectedLens = cinemachineCamera.Lens;
+            expectedLens.ModeOverride =
+                LensSettings.OverrideModes.Perspective;
+            expectedLens.FieldOfView = 57f;
+            expectedLens.OrthographicSize = 6.25f;
+            expectedLens.NearClipPlane = 0.23f;
+            expectedLens.FarClipPlane = 1234f;
+            cinemachineCamera.Lens = expectedLens;
 
             controller.ApplyProfile(profile);
 
@@ -686,6 +853,65 @@ public sealed class Battle3DPresentationTests
                 Is.LessThan(0.01f));
             Assert.That(follow.FollowOffset,
                 Is.EqualTo(expectedFollowOffset));
+            Assert.That(camera.orthographic, Is.False);
+            Assert.That(camera.fieldOfView,
+                Is.EqualTo(57f).Within(0.0001f));
+            Assert.That(camera.orthographicSize,
+                Is.EqualTo(6.25f).Within(0.0001f));
+            Assert.That(camera.nearClipPlane,
+                Is.EqualTo(0.23f).Within(0.0001f));
+            Assert.That(camera.farClipPlane,
+                Is.EqualTo(1234f).Within(0.0001f));
+            Assert.That(cinemachineCamera.Lens.ModeOverride,
+                Is.EqualTo(expectedLens.ModeOverride));
+            Assert.That(cinemachineCamera.Lens.FieldOfView,
+                Is.EqualTo(expectedLens.FieldOfView).Within(0.0001f));
+            Assert.That(cinemachineCamera.Lens.OrthographicSize,
+                Is.EqualTo(expectedLens.OrthographicSize).Within(0.0001f));
+            Assert.That(cinemachineCamera.Lens.NearClipPlane,
+                Is.EqualTo(expectedLens.NearClipPlane).Within(0.0001f));
+            Assert.That(cinemachineCamera.Lens.FarClipPlane,
+                Is.EqualTo(expectedLens.FarClipPlane).Within(0.0001f));
+        }
+        finally
+        {
+            if (originalSetup.Length > 0)
+            {
+                EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
+            }
+        }
+    }
+
+    [Test]
+    public void BattleSceneCameraAndCinemachineLensUseTheSameAuthoredValues()
+    {
+        SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
+
+        try
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                BattleScenePath,
+                OpenSceneMode.Single);
+            Camera camera = FindSceneObject(scene, "Main Camera")
+                .GetComponent<Camera>();
+            CinemachineCamera cinemachineCamera =
+                camera.GetComponent<CinemachineCamera>();
+
+            Assert.That(camera, Is.Not.Null);
+            Assert.That(cinemachineCamera, Is.Not.Null);
+            Assert.That(
+                cinemachineCamera.Lens.ModeOverride,
+                Is.EqualTo(camera.orthographic
+                    ? LensSettings.OverrideModes.Orthographic
+                    : LensSettings.OverrideModes.Perspective));
+            Assert.That(cinemachineCamera.Lens.FieldOfView,
+                Is.EqualTo(camera.fieldOfView).Within(0.0001f));
+            Assert.That(cinemachineCamera.Lens.OrthographicSize,
+                Is.EqualTo(camera.orthographicSize).Within(0.0001f));
+            Assert.That(cinemachineCamera.Lens.NearClipPlane,
+                Is.EqualTo(camera.nearClipPlane).Within(0.0001f));
+            Assert.That(cinemachineCamera.Lens.FarClipPlane,
+                Is.EqualTo(camera.farClipPlane).Within(0.0001f));
         }
         finally
         {
@@ -1040,6 +1266,139 @@ public sealed class Battle3DPresentationTests
     }
 
     [Test]
+    public void TerrainDepthOfFieldEndsAtTheTerrainBoundary()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera");
+        GameObject terrainObject = Terrain.CreateTerrainGameObject(
+            new TerrainData
+            {
+                size = new Vector3(100f, 17.6f, 100f)
+            });
+
+        try
+        {
+            Camera camera = cameraObject.AddComponent<Camera>();
+            cameraObject.transform.SetPositionAndRotation(
+                new Vector3(0f, 3.5f, -12f),
+                Quaternion.Euler(9f, 0f, 0f));
+            terrainObject.transform.position =
+                new Vector3(-52.8f, -0.12f, -7f);
+
+            float farDepth = BattleWorld3DController
+                .ResolveTerrainFarDepth(
+                    camera,
+                    terrainObject.GetComponent<Terrain>());
+
+            Assert.That(farDepth, Is.GreaterThan(100f));
+            Assert.That(farDepth, Is.LessThan(106f));
+        }
+        finally
+        {
+            Object.DestroyImmediate(
+                terrainObject.GetComponent<Terrain>().terrainData);
+            Object.DestroyImmediate(terrainObject);
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
+    [Test]
+    public void BattleTrainRouteUsesSceneAuthoredPointsAndTimings()
+    {
+        SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
+
+        try
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                BattleScenePath,
+                OpenSceneMode.Single);
+            GameObject environment = FindSceneObject(
+                scene,
+                "##--ENVIRONMENT--##");
+            GameObject train = FindSceneObject(scene, "Train");
+            GameObject startPoint = FindSceneObject(
+                scene,
+                "Train_StartPoint");
+            GameObject firstDestination = FindSceneObject(
+                scene,
+                "Train_FirstDestination");
+            GameObject secondPoint = FindSceneObject(
+                scene,
+                "Train_SecondPoint");
+            GameObject secondDestination = FindSceneObject(
+                scene,
+                "Train_SecondDestination");
+
+            Assert.That(environment, Is.Not.Null);
+            Assert.That(train, Is.Not.Null);
+            Assert.That(startPoint, Is.Not.Null);
+            Assert.That(firstDestination, Is.Not.Null);
+            Assert.That(secondPoint, Is.Not.Null);
+            Assert.That(secondDestination, Is.Not.Null);
+            Assert.That(train.transform.parent, Is.EqualTo(environment.transform));
+            Assert.That(
+                startPoint.transform.parent,
+                Is.EqualTo(environment.transform));
+            Assert.That(
+                firstDestination.transform.parent,
+                Is.EqualTo(environment.transform));
+            Assert.That(
+                secondPoint.transform.parent,
+                Is.EqualTo(environment.transform));
+            Assert.That(
+                secondDestination.transform.parent,
+                Is.EqualTo(environment.transform));
+
+            BattleTrainRouteController route =
+                train.GetComponent<BattleTrainRouteController>();
+            Assert.That(route, Is.Not.Null);
+
+            SerializedObject serializedRoute = new SerializedObject(route);
+            Assert.That(
+                serializedRoute.FindProperty("startPoint")
+                    .objectReferenceValue,
+                Is.SameAs(startPoint.transform));
+            Assert.That(
+                serializedRoute.FindProperty("firstDestination")
+                    .objectReferenceValue,
+                Is.SameAs(firstDestination.transform));
+            Assert.That(
+                serializedRoute.FindProperty("secondPoint")
+                    .objectReferenceValue,
+                Is.SameAs(secondPoint.transform));
+            Assert.That(
+                serializedRoute.FindProperty("secondDestination")
+                    .objectReferenceValue,
+                Is.SameAs(secondDestination.transform));
+            Assert.That(
+                serializedRoute.FindProperty("travelDuration").floatValue,
+                Is.EqualTo(35f).Within(0.0001f));
+            Assert.That(
+                serializedRoute.FindProperty("destinationWaitDuration")
+                    .floatValue,
+                Is.EqualTo(10f).Within(0.0001f));
+            Assert.That(
+                train.transform.position,
+                Is.EqualTo(startPoint.transform.position));
+            Assert.That(train.transform.localScale.x, Is.GreaterThan(0f));
+        }
+        finally
+        {
+            if (System.Array.Exists(
+                    originalSetup,
+                    setup => setup.isLoaded))
+            {
+                EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
+            }
+            else
+            {
+                EditorSceneManager.NewScene(
+                    NewSceneSetup.EmptyScene,
+                    NewSceneMode.Single);
+            }
+        }
+    }
+
+    [Test]
     public void BattleSceneContainsConfigured3DWorldAndPreservesBackgroundState()
     {
         SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
@@ -1057,8 +1416,8 @@ public sealed class Battle3DPresentationTests
                 "##--ENVIRONMENT--##");
             GameObject board = FindSceneObject(scene, "##--BOARDS--##");
             GameObject player = FindSceneObject(scene, "Player");
-            Camera battleCamera = Object.FindFirstObjectByType<Camera>(
-                FindObjectsInactive.Include);
+            Camera battleCamera = FindSceneObject(scene, "Main Camera")
+                .GetComponent<Camera>();
 
             Assert.That(background, Is.Not.Null);
             Assert.That(background.activeSelf, Is.False);
@@ -1100,6 +1459,18 @@ public sealed class Battle3DPresentationTests
             Assert.That(
                 FindSceneObject(scene, "Global Light 2D"),
                 Is.Null);
+            Light saloonAccent = FindSceneObject(
+                    scene,
+                    "Point Light | Saloon Windows")
+                .GetComponent<Light>();
+            Light churchAccent = FindSceneObject(
+                    scene,
+                    "Point Light | Church Windows")
+                .GetComponent<Light>();
+            Assert.That(saloonAccent.type, Is.EqualTo(LightType.Point));
+            Assert.That(saloonAccent.shadows, Is.EqualTo(LightShadows.None));
+            Assert.That(churchAccent.type, Is.EqualTo(LightType.Point));
+            Assert.That(churchAccent.shadows, Is.EqualTo(LightShadows.None));
 
             Assert.That(FindSceneObject(scene, "Props | Battle"), Is.Not.Null);
             Assert.That(FindSceneObject(scene, "Architecture"), Is.Not.Null);
@@ -1107,6 +1478,29 @@ public sealed class Battle3DPresentationTests
             Assert.That(FindSceneObject(scene, "Background"), Is.Not.Null);
             Assert.That(FindSceneObject(scene, "Foreground"), Is.Not.Null);
             Assert.That(FindSceneObject(scene, "Environment FX"), Is.Not.Null);
+            GameObject dust = FindSceneObject(
+                scene,
+                "Atmosphere | Floating Dust");
+            Assert.That(dust, Is.Not.Null);
+            Assert.That(dust.GetComponent<ParticleSystem>(), Is.Not.Null);
+            Assert.That(
+                dust.GetComponent<ParticleSystemRenderer>().sharedMaterial,
+                Is.SameAs(AssetDatabase.LoadAssetAtPath<Material>(
+                    DustMaterialPath)));
+            Assert.That(
+                FindSceneObject(scene, "Set Dressing | Saloon Barrels"),
+                Is.Not.Null);
+            Assert.That(
+                FindSceneObject(scene, "Set Dressing | Left Cactus"),
+                Is.Not.Null);
+            MeshRenderer churchGlass = FindSceneObject(
+                    scene,
+                    "SM_Bld_Church_Glass_01")
+                .GetComponent<MeshRenderer>();
+            Assert.That(
+                churchGlass.sharedMaterial,
+                Is.SameAs(AssetDatabase.LoadAssetAtPath<Material>(
+                    WindowGlowMaterialPath)));
             Assert.That(
                 Object.FindFirstObjectByType<ReflectionProbe>(
                     FindObjectsInactive.Include),
@@ -1126,9 +1520,8 @@ public sealed class Battle3DPresentationTests
 
             Assert.That(battleCamera, Is.Not.Null);
             Assert.That(battleCamera.orthographic, Is.False);
-            Assert.That(battleCamera.fieldOfView,
-                Is.EqualTo(40f).Within(0.0001f));
-            Assert.That(battleCamera.orthographicSize, Is.EqualTo(5f));
+            Assert.That(battleCamera.fieldOfView, Is.InRange(1f, 179f));
+            Assert.That(battleCamera.orthographicSize, Is.GreaterThan(0f));
             Assert.That(battleCamera.clearFlags,
                 Is.EqualTo(CameraClearFlags.Skybox));
             Assert.That(battleCamera.allowHDR, Is.True);
@@ -1139,6 +1532,21 @@ public sealed class Battle3DPresentationTests
             Assert.That(authoredFollow, Is.Not.Null);
             Assert.That(authoredCinemachineCamera, Is.Not.Null);
             Assert.That(authoredCinemachineCamera.Follow, Is.Not.Null);
+            Assert.That(
+                authoredCinemachineCamera.Lens.ModeOverride,
+                Is.EqualTo(LensSettings.OverrideModes.Perspective));
+            Assert.That(
+                authoredCinemachineCamera.Lens.FieldOfView,
+                Is.EqualTo(battleCamera.fieldOfView).Within(0.0001f));
+            Assert.That(
+                authoredCinemachineCamera.Lens.OrthographicSize,
+                Is.EqualTo(battleCamera.orthographicSize).Within(0.0001f));
+            Assert.That(
+                authoredCinemachineCamera.Lens.NearClipPlane,
+                Is.EqualTo(battleCamera.nearClipPlane).Within(0.0001f));
+            Assert.That(
+                authoredCinemachineCamera.Lens.FarClipPlane,
+                Is.EqualTo(battleCamera.farClipPlane).Within(0.0001f));
             Assert.That(
                 authoredFollow.FollowOffset,
                 Is.EqualTo(
@@ -1158,6 +1566,23 @@ public sealed class Battle3DPresentationTests
                 cameraData.antialiasing,
                 Is.EqualTo(AntialiasingMode
                     .SubpixelMorphologicalAntiAliasing));
+            int uiLayer = LayerMask.NameToLayer("UI");
+            Assert.That(uiLayer, Is.GreaterThanOrEqualTo(0));
+            Assert.That(
+                (battleCamera.cullingMask & (1 << uiLayer)),
+                Is.Zero);
+            BattleUiOverlayCamera uiOverlay = battleCamera
+                .GetComponentInChildren<BattleUiOverlayCamera>(true);
+            Assert.That(uiOverlay, Is.Not.Null);
+            Camera overlayCamera = uiOverlay.GetComponent<Camera>();
+            UniversalAdditionalCameraData overlayData =
+                overlayCamera.GetUniversalAdditionalCameraData();
+            Assert.That(overlayCamera.cullingMask, Is.EqualTo(1 << uiLayer));
+            Assert.That(
+                overlayData.renderType,
+                Is.EqualTo(CameraRenderType.Overlay));
+            Assert.That(overlayData.renderPostProcessing, Is.False);
+            Assert.That(cameraData.cameraStack, Contains.Item(overlayCamera));
             UnityEngine.Rendering.Volume battleVolume =
                 Object.FindFirstObjectByType<UnityEngine.Rendering.Volume>(
                     FindObjectsInactive.Include);
@@ -1200,7 +1625,7 @@ public sealed class Battle3DPresentationTests
                 cinemachineCamera.Lens.ModeOverride,
                 Is.EqualTo(LensSettings.OverrideModes.Perspective));
             Assert.That(cinemachineCamera.Lens.FieldOfView,
-                Is.EqualTo(40f).Within(0.0001f));
+                Is.EqualTo(battleCamera.fieldOfView).Within(0.0001f));
             Assert.That(
                 avatar.GetComponent<BattleSpriteBillboard>(),
                 Is.Not.Null);

@@ -24,8 +24,8 @@ MonoBehaviour:
   rendererIndex: 1
   skyboxMaterial: {fileID: 2100000, guid: 89021ba58c54c41499945b5d3827d870, type: 2}
   volumeProfile: {fileID: 11400000, guid: 2d7b61e0a37416046801d5704d66627a, type: 2}
-  ambientIntensity: 1.12
-  reflectionIntensity: 0.95
+  ambientIntensity: 1.25
+  reflectionIntensity: 1
   fogEnabled: 1
   fogColor: {r: 0.22, g: 0.29, b: 0.4, a: 1}
   fogDensity: 0.006

@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
+using VolFx;
 
 public static class Battle3DSetupBuilder
 {
@@ -21,8 +22,28 @@ public static class Battle3DSetupBuilder
         "Assets/Terrain/BattleGround.terrainlayer";
     private const string TerrainTexturePath =
         "Assets/Terrain/BattleGroundTexture.asset";
+    private const string TerrainNormalPath =
+        "Assets/Terrain/BattleGroundNormal.asset";
+    private const string TerrainDirtTexturePath =
+        "Assets/Terrain/BattleGroundDirtTexture.asset";
+    private const string TerrainDirtNormalPath =
+        "Assets/Terrain/BattleGroundDirtNormal.asset";
+    private const string TerrainDirtLayerPath =
+        "Assets/Terrain/BattleGroundDirt.terrainlayer";
+    private const string TerrainRockTexturePath =
+        "Assets/Terrain/BattleGroundRockTexture.asset";
+    private const string TerrainRockNormalPath =
+        "Assets/Terrain/BattleGroundRockNormal.asset";
+    private const string TerrainRockLayerPath =
+        "Assets/Terrain/BattleGroundRock.terrainlayer";
     private const string TerrainMaterialPath =
         "Assets/Materials/Battle3DTerrain.mat";
+    private const string BattleLitSpriteMaterialPath =
+        "Assets/Resources/Battle/BattleLitSprite.mat";
+    private const string BattleSunFlarePath =
+        "Assets/Resources/Battle/BattleSunFlare.asset";
+    private const string BattleLightingSettingsPath =
+        "Assets/Settings/BattleLightingSettings.lighting";
     private const string ProjectileMaterialPath =
         "Assets/Materials/DefaultSphereProjectile.mat";
     private const string ProjectilePrefabPath =
@@ -41,6 +62,16 @@ public static class Battle3DSetupBuilder
         "Assets/Settings/BattleEnvironmentVolume.asset";
     private const string LegacyVolumeProfilePath =
         "Assets/Scenes/SampleScene/Main Camera Profile.asset";
+    private const string BattleWindowGlowShaderPath =
+        "Assets/Shaders/BattleWindowGlow.shader";
+    private const string BattleWindowGlowMaterialPath =
+        "Assets/Materials/BattleWindowGlow.mat";
+    private const string BattleDustShaderPath =
+        "Assets/Shaders/BattleAtmosphericParticle.shader";
+    private const string BattleDustTexturePath =
+        "Assets/Resources/Battle/BattleDustMote.asset";
+    private const string BattleDustMaterialPath =
+        "Assets/Materials/BattleAtmosphericDust.mat";
 
     private const string EnvironmentRootName = "##--ENVIRONMENT--##";
     private const string BoardRootName = "##--BOARDS--##";
@@ -53,6 +84,16 @@ public static class Battle3DSetupBuilder
     private const string ReflectionProbeName = "Reflection Probe | Battle Arena";
     private const string LightProbeGroupName = "Light Probes | Battle Arena";
     private const string PropsRootName = "Props | Battle";
+    private const string SaloonAccentLightName =
+        "Point Light | Saloon Windows";
+    private const string ChurchAccentLightName =
+        "Point Light | Church Windows";
+    private const string AtmosphericDustName =
+        "Atmosphere | Floating Dust";
+    private const string UiOverlayCameraName =
+        "Camera | Battle UI Overlay";
+    private const int TerrainTextureSize = 128;
+    private const int TerrainAlphamapResolution = 128;
 
     [MenuItem("Tools/LOADED/Apply Battle 3D Prototype")]
     public static void Apply()
@@ -79,9 +120,9 @@ public static class Battle3DSetupBuilder
                 rendererIndex,
                 skyboxMaterial,
                 volumeProfile);
-        Texture2D terrainTexture = EnsureTerrainTexture();
-        TerrainLayer terrainLayer = EnsureTerrainLayer(terrainTexture);
-        TerrainData terrainData = EnsureTerrainData(terrainLayer);
+        EnsureBattleLitSpriteMaterial();
+        TerrainLayer[] terrainLayers = EnsureStylizedTerrainLayers();
+        TerrainData terrainData = EnsureTerrainData(terrainLayers);
 
         AssignProjectileProfileToBullets(projectileProfile);
         AssignEnvironmentProfileToBattles(environmentProfile);
@@ -104,6 +145,11 @@ public static class Battle3DSetupBuilder
     [MenuItem("Tools/LOADED/Apply Battle Lighting Upgrade")]
     public static void ApplyLightingUpgrade()
     {
+        EnsureFolder("Assets", "Terrain");
+        EnsureFolder("Assets", "Materials");
+        EnsureFolder("Assets", "Resources");
+        EnsureFolder("Assets/Resources", "Battle");
+
         int rendererIndex = EnsureBattleRenderer();
         Material skyboxMaterial = EnsureSkyboxMaterial();
         VolumeProfile volumeProfile = EnsureBattleVolumeProfile();
@@ -112,13 +158,27 @@ public static class Battle3DSetupBuilder
                 rendererIndex,
                 skyboxMaterial,
                 volumeProfile);
+        EnsureBattleLitSpriteMaterial();
+        TerrainLayer[] terrainLayers = EnsureStylizedTerrainLayers();
+        EnsureTerrainData(terrainLayers);
+        EnsureTerrainMaterial();
+        EnsureBattleLightingSettings();
 
         EnsureActorContactShadows();
         ApplySceneLighting(environmentProfile);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
-        Debug.Log("Applied the Battle lighting and contact-shadow upgrade.");
+        Debug.Log(
+            "Applied the Battle stylized lighting, terrain, sprite, depth, and HD-2D environment baseline.");
+    }
+
+    [MenuItem("Tools/LOADED/Apply Battle HD-2D Direction Pass")]
+    public static void ApplyHd2DDirectionPass()
+    {
+        ApplyLightingUpgrade();
+        Debug.Log(
+            "Applied the Battle HD-2D depth, local glow, atmosphere, and set-dressing pass.");
     }
 
     [MenuItem("Tools/LOADED/Repair Battle 3D Impact Rendering")]
@@ -417,7 +477,7 @@ public static class Battle3DSetupBuilder
         settings.FindPropertyRelative("AfterOpaque").boolValue = false;
         settings.FindPropertyRelative("Source").intValue = 1;
         settings.FindPropertyRelative("NormalSamples").intValue = 2;
-        settings.FindPropertyRelative("Intensity").floatValue = 0.85f;
+        settings.FindPropertyRelative("Intensity").floatValue = 0.65f;
         settings.FindPropertyRelative("DirectLightingStrength").floatValue =
             0.12f;
         settings.FindPropertyRelative("Radius").floatValue = 0.08f;
@@ -440,7 +500,6 @@ public static class Battle3DSetupBuilder
 
         Material material = AssetDatabase.LoadAssetAtPath<Material>(
             TerrainMaterialPath);
-        bool created = material == null;
         if (material == null)
         {
             material = new Material(shader);
@@ -451,14 +510,46 @@ public static class Battle3DSetupBuilder
             material.shader = shader;
         }
 
-        Color legacyTint = new Color(0.17f, 0.20f, 0.13f, 1f);
-        bool usesLegacyTint = material.HasProperty("_BaseColor")
-            && Approximately(material.GetColor("_BaseColor"), legacyTint);
-        if (created || usesLegacyTint)
+        SetColorIfPresent(material, "_BaseColor", Color.white);
+        SetColorIfPresent(material, "_Color", Color.white);
+        SetFloatIfPresent(material, "_SpecularHighlights", 0f);
+        for (int layerIndex = 0; layerIndex < 4; layerIndex++)
         {
-            SetColorIfPresent(material, "_BaseColor", Color.white);
-            SetColorIfPresent(material, "_Color", Color.white);
+            SetFloatIfPresent(
+                material,
+                $"_Metallic{layerIndex}",
+                0f);
+            SetFloatIfPresent(
+                material,
+                $"_Smoothness{layerIndex}",
+                0f);
         }
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static Material EnsureBattleLitSpriteMaterial()
+    {
+        Shader shader = Shader.Find("LOADED/Battle Lit Sprite");
+        if (shader == null)
+        {
+            throw new InvalidOperationException(
+                "Battle Lit Sprite shader is unavailable.");
+        }
+
+        Material material = GetOrCreateMaterial(
+            BattleLitSpriteMaterialPath,
+            shader);
+        SetColorIfPresent(material, "_Color", Color.white);
+        SetFloatIfPresent(material, "_NormalStrength", 0.28f);
+        SetFloatIfPresent(material, "_DiffuseWrap", 0.55f);
+        SetFloatIfPresent(material, "_AmbientStrength", 0.78f);
+        SetFloatIfPresent(material, "_RimStrength", 0.14f);
+        SetFloatIfPresent(material, "_SpecularStrength", 0.08f);
+        // Multipart avatars use one SpriteRenderer per animated body part.
+        // GPU instancing can reuse the wrong renderer transform for those
+        // parts under the Universal 3D renderer, visually disassembling them.
+        material.enableInstancing = false;
         EditorUtility.SetDirty(material);
         return material;
     }
@@ -476,18 +567,48 @@ public static class Battle3DSetupBuilder
         SetColorIfPresent(
             material,
             "_ZenithColor",
-            new Color(0.055f, 0.11f, 0.22f, 1f));
+            new Color(0.10f, 0.25f, 0.48f, 1f));
         SetColorIfPresent(
             material,
             "_HorizonColor",
-            new Color(0.38f, 0.28f, 0.24f, 1f));
+            new Color(0.48f, 0.63f, 0.82f, 1f));
         SetColorIfPresent(
             material,
             "_GroundColor",
-            new Color(0.09f, 0.07f, 0.06f, 1f));
+            new Color(0.28f, 0.18f, 0.11f, 1f));
+        SetColorIfPresent(
+            material,
+            "_SunColor",
+            new Color(2.4f, 1.25f, 0.55f, 1f));
+        SetColorIfPresent(
+            material,
+            "_CloudColor",
+            new Color(0.90f, 0.72f, 0.64f, 1f));
+        SetColorIfPresent(
+            material,
+            "_CloudShadowColor",
+            new Color(0.18f, 0.23f, 0.34f, 1f));
+        if (material.HasProperty("_SunDirection"))
+        {
+            Vector3 sunDirection = Quaternion.Euler(52f, -32f, 0f)
+                * Vector3.back;
+            material.SetVector("_SunDirection", sunDirection);
+        }
+        if (material.HasProperty("_CloudSpeed"))
+        {
+            material.SetVector(
+                "_CloudSpeed",
+                new Vector4(0.008f, 0.003f, 0f, 0f));
+        }
+        SetFloatIfPresent(material, "_SunSize", 0.025f);
+        SetFloatIfPresent(material, "_SunHalo", 0.7f);
+        SetFloatIfPresent(material, "_CloudScale", 0.85f);
+        SetFloatIfPresent(material, "_CloudCoverage", 0.46f);
+        SetFloatIfPresent(material, "_CloudSoftness", 0.12f);
+        SetFloatIfPresent(material, "_CloudOpacity", 0.60f);
         SetFloatIfPresent(material, "_GradientPower", 0.65f);
-        SetFloatIfPresent(material, "_HorizonSharpness", 8f);
-        SetFloatIfPresent(material, "_Exposure", 1.2f);
+        SetFloatIfPresent(material, "_HorizonSharpness", 6f);
+        SetFloatIfPresent(material, "_Exposure", 1f);
         EditorUtility.SetDirty(material);
         return material;
     }
@@ -528,25 +649,178 @@ public static class Battle3DSetupBuilder
 
         ColorAdjustments color =
             GetOrAddVolumeOverride<ColorAdjustments>(profile);
-        color.postExposure.Override(0.38f);
-        color.contrast.Override(7f);
+        color.postExposure.Override(0.42f);
+        color.contrast.Override(8f);
         color.colorFilter.Override(new Color(1f, 0.985f, 0.96f, 1f));
-        color.saturation.Override(-2f);
+        color.saturation.Override(3f);
 
         WhiteBalance whiteBalance =
             GetOrAddVolumeOverride<WhiteBalance>(profile);
-        whiteBalance.temperature.Override(3f);
+        whiteBalance.temperature.Override(5f);
         whiteBalance.tint.Override(1f);
+
+        SplitToning splitToning =
+            GetOrAddVolumeOverride<SplitToning>(profile);
+        splitToning.shadows.Override(
+            new Color(0.52f, 0.49f, 0.44f, 1f));
+        splitToning.highlights.Override(
+            new Color(0.58f, 0.53f, 0.43f, 1f));
+        splitToning.balance.Override(4f);
 
         Vignette vignette = GetOrAddVolumeOverride<Vignette>(profile);
         vignette.color.Override(new Color(0.025f, 0.03f, 0.045f, 1f));
         vignette.center.Override(new Vector2(0.5f, 0.5f));
-        vignette.intensity.Override(0.1f);
+        vignette.intensity.Override(0.08f);
         vignette.smoothness.Override(0.55f);
         vignette.rounded.Override(false);
 
+        DepthOfField depthOfField =
+            GetOrAddVolumeOverride<DepthOfField>(profile);
+        depthOfField.mode.Override(DepthOfFieldMode.Gaussian);
+        depthOfField.gaussianStart.Override(20.5f);
+        depthOfField.gaussianEnd.Override(100f);
+        depthOfField.gaussianMaxRadius.Override(0.5f);
+        depthOfField.highQualitySampling.Override(true);
+
+        if (profile.TryGet(out OldMovieVol oldMovie))
+        {
+            oldMovie.m_Grain.Override(0.12f);
+            oldMovie.m_NoiseAlpha.Override(0.16f);
+            oldMovie.m_Jolt.Override(0f);
+            EditorUtility.SetDirty(oldMovie);
+        }
+
         EditorUtility.SetDirty(profile);
         return profile;
+    }
+
+    private static LightingSettings EnsureBattleLightingSettings()
+    {
+        LightingSettings settings =
+            AssetDatabase.LoadAssetAtPath<LightingSettings>(
+                BattleLightingSettingsPath);
+        if (settings == null)
+        {
+            settings = new LightingSettings();
+            settings.name = "BattleLightingSettings";
+            AssetDatabase.CreateAsset(settings, BattleLightingSettingsPath);
+        }
+
+        SerializedObject serializedSettings = new SerializedObject(settings);
+        SetSerializedBool(
+            serializedSettings,
+            "m_EnableBakedLightmaps",
+            true);
+        SetSerializedBool(
+            serializedSettings,
+            "m_EnableRealtimeLightmaps",
+            false);
+        SetSerializedFloat(serializedSettings, "m_BakeResolution", 10f);
+        SetSerializedInt(serializedSettings, "m_LightmapMaxSize", 512);
+        SetSerializedBool(serializedSettings, "m_AO", true);
+        SetSerializedFloat(serializedSettings, "m_AOMaxDistance", 2.5f);
+        SetSerializedFloat(serializedSettings, "m_CompAOExponent", 1.15f);
+        SetSerializedFloat(
+            serializedSettings,
+            "m_CompAOExponentDirect",
+            0.35f);
+        SetSerializedInt(serializedSettings, "m_MixedBakeMode", 0);
+        SetSerializedInt(serializedSettings, "m_Padding", 2);
+        serializedSettings.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(settings);
+        return settings;
+    }
+
+    private static void SetSerializedBool(
+        SerializedObject target,
+        string propertyName,
+        bool value)
+    {
+        SerializedProperty property = target.FindProperty(propertyName);
+        if (property != null)
+        {
+            property.boolValue = value;
+        }
+    }
+
+    private static void SetSerializedFloat(
+        SerializedObject target,
+        string propertyName,
+        float value)
+    {
+        SerializedProperty property = target.FindProperty(propertyName);
+        if (property != null)
+        {
+            property.floatValue = value;
+        }
+    }
+
+    private static void SetSerializedInt(
+        SerializedObject target,
+        string propertyName,
+        int value)
+    {
+        SerializedProperty property = target.FindProperty(propertyName);
+        if (property != null)
+        {
+            property.intValue = value;
+        }
+    }
+
+    private static LensFlareDataSRP EnsureBattleSunFlare()
+    {
+        LensFlareDataSRP flare =
+            AssetDatabase.LoadAssetAtPath<LensFlareDataSRP>(
+                BattleSunFlarePath);
+        if (flare == null)
+        {
+            flare = ScriptableObject.CreateInstance<LensFlareDataSRP>();
+            flare.name = "BattleSunFlare";
+            AssetDatabase.CreateAsset(flare, BattleSunFlarePath);
+        }
+
+        flare.elements = new[]
+        {
+            new LensFlareDataElementSRP
+            {
+                flareType = SRPLensFlareType.Circle,
+                blendMode = SRPLensFlareBlendMode.Additive,
+                tint = new Color(1f, 0.72f, 0.32f, 0.28f),
+                localIntensity = 0.42f,
+                sizeXY = new Vector2(0.38f, 0.38f),
+                uniformScale = 1f,
+                fallOff = 3.2f,
+                edgeOffset = 0.18f,
+                modulateByLightColor = true
+            },
+            new LensFlareDataElementSRP
+            {
+                flareType = SRPLensFlareType.Ring,
+                blendMode = SRPLensFlareBlendMode.Screen,
+                tint = new Color(1f, 0.48f, 0.16f, 0.16f),
+                localIntensity = 0.20f,
+                sizeXY = new Vector2(0.62f, 0.62f),
+                uniformScale = 1f,
+                ringThickness = 0.12f,
+                fallOff = 2.2f,
+                edgeOffset = 0.12f,
+                modulateByLightColor = true
+            },
+            new LensFlareDataElementSRP
+            {
+                flareType = SRPLensFlareType.Circle,
+                blendMode = SRPLensFlareBlendMode.Screen,
+                tint = new Color(0.30f, 0.52f, 1f, 0.10f),
+                localIntensity = 0.12f,
+                position = 0.42f,
+                sizeXY = new Vector2(0.12f, 0.12f),
+                uniformScale = 1f,
+                fallOff = 2.8f,
+                edgeOffset = 0.22f
+            }
+        };
+        EditorUtility.SetDirty(flare);
+        return flare;
     }
 
     private static T GetOrAddVolumeOverride<T>(VolumeProfile profile)
@@ -662,17 +936,34 @@ public static class Battle3DSetupBuilder
         {
             BattleContactShadow shadow =
                 prefabRoot.GetComponent<BattleContactShadow>();
+            bool changed = false;
             if (shadow == null)
             {
                 shadow = prefabRoot.AddComponent<BattleContactShadow>();
+                changed = true;
             }
 
             SerializedObject serializedShadow = new SerializedObject(shadow);
-            serializedShadow.FindProperty("worldSize").vector2Value =
-                worldSize;
-            serializedShadow.FindProperty("opacity").floatValue = opacity;
-            serializedShadow.ApplyModifiedPropertiesWithoutUndo();
-            PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
+            SerializedProperty worldSizeProperty =
+                serializedShadow.FindProperty("worldSize");
+            SerializedProperty opacityProperty =
+                serializedShadow.FindProperty("opacity");
+            if (worldSizeProperty.vector2Value != worldSize)
+            {
+                worldSizeProperty.vector2Value = worldSize;
+                changed = true;
+            }
+            if (!Mathf.Approximately(opacityProperty.floatValue, opacity))
+            {
+                opacityProperty.floatValue = opacity;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                serializedShadow.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.SaveAsPrefabAsset(prefabRoot, prefabPath);
+            }
         }
         finally
         {
@@ -709,9 +1000,9 @@ public static class Battle3DSetupBuilder
             .objectReferenceValue = skyboxMaterial;
         serializedProfile.FindProperty("volumeProfile")
             .objectReferenceValue = volumeProfile;
-        serializedProfile.FindProperty("ambientIntensity").floatValue = 1.12f;
+        serializedProfile.FindProperty("ambientIntensity").floatValue = 1.25f;
         serializedProfile.FindProperty("reflectionIntensity").floatValue =
-            0.95f;
+            1f;
         serializedProfile.FindProperty("fogEnabled").boolValue = true;
         serializedProfile.FindProperty("fogColor").colorValue =
             new Color(0.22f, 0.29f, 0.40f, 1f);
@@ -729,26 +1020,29 @@ public static class Battle3DSetupBuilder
 
     private static Texture2D EnsureTerrainTexture()
     {
-        const int textureSize = 32;
         Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(
             TerrainTexturePath);
         if (texture != null)
         {
-            if (texture.width == textureSize
-                && texture.height == textureSize
-                && CalculateAverageLuminance(texture) < 0.3f)
+            if (texture.width != TerrainTextureSize
+                || texture.height != TerrainTextureSize)
             {
-                PaintTerrainTexture(texture);
-                EditorUtility.SetDirty(texture);
+                texture.Reinitialize(
+                    TerrainTextureSize,
+                    TerrainTextureSize,
+                    TextureFormat.RGBA32,
+                    true);
             }
+            PaintTerrainTexture(texture);
+            EditorUtility.SetDirty(texture);
             return texture;
         }
 
         texture = new Texture2D(
-            textureSize,
-            textureSize,
+            TerrainTextureSize,
+            TerrainTextureSize,
             TextureFormat.RGBA32,
-            false)
+            true)
         {
             name = "BattleGroundTexture"
         };
@@ -761,24 +1055,368 @@ public static class Battle3DSetupBuilder
 
     private static void PaintTerrainTexture(Texture2D texture)
     {
-        Color baseColor = new Color(0.42f, 0.39f, 0.26f, 1f);
         int textureSize = texture.width;
         Color[] pixels = new Color[textureSize * textureSize];
         for (int y = 0; y < textureSize; y++)
         {
             for (int x = 0; x < textureSize; x++)
             {
-                float noise = Mathf.PerlinNoise(x * 0.17f, y * 0.17f);
-                pixels[y * textureSize + x] = baseColor
-                    * Mathf.Lerp(0.88f, 1.08f, noise);
-                pixels[y * textureSize + x].a = 1f;
+                float u = x / (float)textureSize;
+                float v = y / (float)textureSize;
+                float surface = EvaluateTerrainSurface(u, v);
+                float fine = EvaluateTerrainFineDetail(u, v);
+                Color drySoil = new Color(0.38f, 0.31f, 0.28f, 1f);
+                Color sunBaked = new Color(0.82f, 0.70f, 0.62f, 1f);
+                Color olive = new Color(0.40f, 0.43f, 0.40f, 1f);
+                Color color = Color.Lerp(drySoil, sunBaked, surface);
+                color = Color.Lerp(color, olive, fine * 0.12f);
+                color *= Mathf.Lerp(0.82f, 1.16f, fine);
+                // Terrain Lit can read albedo alpha as smoothness. Keep the
+                // generated soil fully rough even when that source is active.
+                color.a = 0f;
+                pixels[y * textureSize + x] = color;
             }
         }
 
         texture.SetPixels(pixels);
         texture.wrapMode = TextureWrapMode.Repeat;
         texture.filterMode = FilterMode.Bilinear;
-        texture.Apply(false, false);
+        texture.Apply(true, false);
+    }
+
+    private static Texture2D EnsureTerrainNormalTexture()
+    {
+        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+            TerrainNormalPath);
+        if (texture == null)
+        {
+            texture = new Texture2D(
+                TerrainTextureSize,
+                TerrainTextureSize,
+                TextureFormat.RGBA32,
+                true,
+                true)
+            {
+                name = "BattleGroundNormal"
+            };
+            PaintTerrainNormalTexture(texture);
+            AssetDatabase.CreateAsset(texture, TerrainNormalPath);
+        }
+        else
+        {
+            if (texture.width != TerrainTextureSize
+                || texture.height != TerrainTextureSize)
+            {
+                texture.Reinitialize(
+                    TerrainTextureSize,
+                    TerrainTextureSize,
+                    TextureFormat.RGBA32,
+                    true);
+            }
+            PaintTerrainNormalTexture(texture);
+        }
+
+        EditorUtility.SetDirty(texture);
+        return texture;
+    }
+
+    private static void PaintTerrainNormalTexture(Texture2D texture)
+    {
+        PaintTerrainNormalTexture(
+            texture,
+            EvaluateTerrainSurface,
+            3f);
+    }
+
+    private static TerrainLayer[] EnsureStylizedTerrainLayers()
+    {
+        Texture2D groundTexture = EnsureTerrainTexture();
+        Texture2D groundNormal = EnsureTerrainNormalTexture();
+        TerrainLayer groundLayer = EnsureTerrainLayer(
+            groundTexture,
+            groundNormal);
+
+        Texture2D dirtTexture = EnsureTerrainTexture(
+            TerrainDirtTexturePath,
+            "BattleGroundDirtTexture",
+            PaintTerrainDirtTexture,
+            false);
+        Texture2D dirtNormal = EnsureTerrainTexture(
+            TerrainDirtNormalPath,
+            "BattleGroundDirtNormal",
+                texture => PaintTerrainNormalTexture(
+                    texture,
+                    EvaluateTerrainDirtSurface,
+                    3.5f),
+            true);
+        TerrainLayer dirtLayer = EnsureTerrainLayer(
+            TerrainDirtLayerPath,
+            "BattleGroundDirt",
+            dirtTexture,
+            dirtNormal,
+            new Vector2(7f, 6f),
+            0.72f,
+            0f,
+            Vector4.one);
+
+        Texture2D rockTexture = EnsureTerrainTexture(
+            TerrainRockTexturePath,
+            "BattleGroundRockTexture",
+            PaintTerrainRockTexture,
+            false);
+        Texture2D rockNormal = EnsureTerrainTexture(
+            TerrainRockNormalPath,
+            "BattleGroundRockNormal",
+                texture => PaintTerrainNormalTexture(
+                    texture,
+                    EvaluateTerrainRockSurface,
+                    4f),
+            true);
+        TerrainLayer rockLayer = EnsureTerrainLayer(
+            TerrainRockLayerPath,
+            "BattleGroundRock",
+            rockTexture,
+            rockNormal,
+            new Vector2(11f, 9f),
+            0.86f,
+            0f,
+            Vector4.one);
+
+        return new[] { groundLayer, dirtLayer, rockLayer };
+    }
+
+    private static Texture2D EnsureTerrainTexture(
+        string path,
+        string assetName,
+        Action<Texture2D> painter,
+        bool linear)
+    {
+        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        if (texture == null)
+        {
+            texture = new Texture2D(
+                TerrainTextureSize,
+                TerrainTextureSize,
+                TextureFormat.RGBA32,
+                true,
+                linear)
+            {
+                name = assetName
+            };
+            painter(texture);
+            AssetDatabase.CreateAsset(texture, path);
+        }
+        else
+        {
+            if (texture.width != TerrainTextureSize
+                || texture.height != TerrainTextureSize)
+            {
+                texture.Reinitialize(
+                    TerrainTextureSize,
+                    TerrainTextureSize,
+                    TextureFormat.RGBA32,
+                    true);
+            }
+            painter(texture);
+        }
+
+        EditorUtility.SetDirty(texture);
+        return texture;
+    }
+
+    private static void PaintTerrainDirtTexture(Texture2D texture)
+    {
+        PaintTerrainColorTexture(
+            texture,
+            (u, v) =>
+            {
+                float broad = EvaluateTerrainDirtSurface(u, v);
+                float fleck = EvaluateTerrainFineDetail(
+                    u * 1.7f + 0.13f,
+                    v * 1.7f - 0.21f);
+                Color packedEarth = new Color(0.32f, 0.26f, 0.23f, 1f);
+                Color dryTrack = new Color(0.72f, 0.60f, 0.50f, 1f);
+                Color color = Color.Lerp(packedEarth, dryTrack, broad);
+                color *= Mathf.Lerp(0.84f, 1.14f, fleck);
+                color.a = 0f;
+                return color;
+            });
+    }
+
+    private static void PaintTerrainRockTexture(Texture2D texture)
+    {
+        PaintTerrainColorTexture(
+            texture,
+            (u, v) =>
+            {
+                float facets = EvaluateTerrainRockSurface(u, v);
+                float seams = Mathf.Abs(
+                    Mathf.Sin((u * 5f + v * 2f) * Mathf.PI * 2f));
+                Color shade = new Color(0.28f, 0.27f, 0.26f, 1f);
+                Color sunFace = new Color(0.62f, 0.57f, 0.50f, 1f);
+                Color color = Color.Lerp(shade, sunFace, facets);
+                color *= Mathf.Lerp(0.94f, 1.04f, seams);
+                color.a = 0f;
+                return color;
+            });
+    }
+
+    private static void PaintTerrainColorTexture(
+        Texture2D texture,
+        Func<float, float, Color> evaluator)
+    {
+        int textureSize = texture.width;
+        Color[] pixels = new Color[textureSize * textureSize];
+        for (int y = 0; y < textureSize; y++)
+        {
+            for (int x = 0; x < textureSize; x++)
+            {
+                pixels[y * textureSize + x] = evaluator(
+                    x / (float)textureSize,
+                    y / (float)textureSize);
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.wrapMode = TextureWrapMode.Repeat;
+        texture.filterMode = FilterMode.Bilinear;
+        texture.Apply(true, false);
+    }
+
+    private static void PaintTerrainNormalTexture(
+        Texture2D texture,
+        Func<float, float, float> evaluator,
+        float normalStrength)
+    {
+        int textureSize = texture.width;
+        Color[] pixels = new Color[textureSize * textureSize];
+        float step = 1f / textureSize;
+        for (int y = 0; y < textureSize; y++)
+        {
+            for (int x = 0; x < textureSize; x++)
+            {
+                float u = x / (float)textureSize;
+                float v = y / (float)textureSize;
+                float left = evaluator(u - step, v);
+                float right = evaluator(u + step, v);
+                float down = evaluator(u, v - step);
+                float up = evaluator(u, v + step);
+                Vector3 normal = new Vector3(
+                    (left - right) * normalStrength,
+                    (down - up) * normalStrength,
+                    1f).normalized;
+                float packedX = normal.x * 0.5f + 0.5f;
+                pixels[y * textureSize + x] = new Color(
+                    packedX,
+                    normal.y * 0.5f + 0.5f,
+                    normal.z * 0.5f + 0.5f,
+                    packedX);
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.wrapMode = TextureWrapMode.Repeat;
+        texture.filterMode = FilterMode.Bilinear;
+        texture.Apply(true, false);
+    }
+
+    private static float EvaluateTerrainDirtSurface(float u, float v)
+    {
+        float broad = PeriodicValueNoise(u * 5f, v * 5f, 5);
+        float clods = PeriodicValueNoise(
+            u * 13f + broad * 1.7f,
+            v * 13f - broad * 1.3f,
+            13);
+        float grit = PeriodicValueNoise(u * 31f, v * 31f, 31);
+        return Mathf.Clamp01(
+            0.08f + broad * 0.46f + clods * 0.34f + grit * 0.18f);
+    }
+
+    private static float EvaluateTerrainRockSurface(float u, float v)
+    {
+        float plates = PeriodicValueNoise(u * 4f, v * 4f, 4);
+        float facets = PeriodicValueNoise(
+            u * 11f + plates * 1.4f,
+            v * 11f - plates * 1.1f,
+            11);
+        float chips = PeriodicValueNoise(u * 29f, v * 29f, 29);
+        float edge = Mathf.Abs(facets * 2f - 1f);
+        return Mathf.Clamp01(
+            0.06f + plates * 0.40f + edge * 0.36f + chips * 0.22f);
+    }
+
+    private static float EvaluateTerrainSurface(float u, float v)
+    {
+        float broad = PeriodicValueNoise(u * 4f, v * 4f, 4);
+        float warpedU = u + (broad - 0.5f) * 0.11f;
+        float warpedV = v - (broad - 0.5f) * 0.09f;
+        float clods = PeriodicValueNoise(warpedU * 12f, warpedV * 12f, 12);
+        float grit = PeriodicValueNoise(u * 37f, v * 37f, 37);
+        float brokenCrust = Mathf.Abs(clods * 2f - 1f);
+        return Mathf.Clamp01(
+            0.08f
+            + broad * 0.42f
+            + brokenCrust * 0.30f
+            + grit * 0.20f);
+    }
+
+    private static float EvaluateTerrainFineDetail(float u, float v)
+    {
+        float grains = PeriodicValueNoise(u * 41f, v * 41f, 41);
+        float pebbles = PeriodicValueNoise(
+            u * 19f + grains * 0.8f,
+            v * 19f - grains * 0.6f,
+            19);
+        return Mathf.Clamp01(grains * 0.64f + pebbles * 0.36f);
+    }
+
+    private static float PeriodicValueNoise(
+        float x,
+        float y,
+        int period)
+    {
+        int x0 = Mathf.FloorToInt(x);
+        int y0 = Mathf.FloorToInt(y);
+        int x1 = x0 + 1;
+        int y1 = y0 + 1;
+        float tx = x - x0;
+        float ty = y - y0;
+        tx = tx * tx * (3f - 2f * tx);
+        ty = ty * ty * (3f - 2f * ty);
+
+        float a = TerrainNoiseHash(
+            WrapNoiseCoordinate(x0, period),
+            WrapNoiseCoordinate(y0, period));
+        float b = TerrainNoiseHash(
+            WrapNoiseCoordinate(x1, period),
+            WrapNoiseCoordinate(y0, period));
+        float c = TerrainNoiseHash(
+            WrapNoiseCoordinate(x0, period),
+            WrapNoiseCoordinate(y1, period));
+        float d = TerrainNoiseHash(
+            WrapNoiseCoordinate(x1, period),
+            WrapNoiseCoordinate(y1, period));
+        return Mathf.Lerp(
+            Mathf.Lerp(a, b, tx),
+            Mathf.Lerp(c, d, tx),
+            ty);
+    }
+
+    private static int WrapNoiseCoordinate(int value, int period)
+    {
+        int wrapped = value % period;
+        return wrapped < 0 ? wrapped + period : wrapped;
+    }
+
+    private static float TerrainNoiseHash(int x, int y)
+    {
+        unchecked
+        {
+            uint hash = (uint)(x * 374761393 + y * 668265263);
+            hash = (hash ^ (hash >> 13)) * 1274126177u;
+            hash ^= hash >> 16;
+            return (hash & 0x00ffffffu) / 16777215f;
+        }
     }
 
     private static float CalculateAverageLuminance(Texture2D texture)
@@ -797,27 +1435,30 @@ public static class Battle3DSetupBuilder
         return total / pixels.Length;
     }
 
-    private static TerrainLayer EnsureTerrainLayer(Texture2D terrainTexture)
+    private static TerrainLayer EnsureTerrainLayer(
+        Texture2D terrainTexture,
+        Texture2D terrainNormal)
     {
         TerrainLayer terrainLayer =
             AssetDatabase.LoadAssetAtPath<TerrainLayer>(TerrainLayerPath);
         if (terrainLayer != null)
         {
-            Vector4 legacyRemap = new Vector4(
-                0.17f,
-                0.20f,
-                0.13f,
-                1f);
-            if (Approximately(terrainLayer.diffuseRemapMax, legacyRemap))
+            if (terrainLayer.diffuseTexture == null)
             {
-                terrainLayer.diffuseRemapMax = new Vector4(
-                    0.82f,
-                    0.88f,
-                    0.68f,
-                    1f);
-                terrainLayer.smoothness = 0.1f;
-                EditorUtility.SetDirty(terrainLayer);
+                terrainLayer.diffuseTexture = terrainTexture;
             }
+            terrainLayer.normalMapTexture = terrainNormal;
+            terrainLayer.normalScale = 0.62f;
+            terrainLayer.tileSize = new Vector2(5.5f, 5.5f);
+            terrainLayer.diffuseRemapMax = new Vector4(
+                1f,
+                1f,
+                1f,
+                1f);
+            terrainLayer.specular = Color.black;
+            terrainLayer.metallic = 0f;
+            terrainLayer.smoothness = 0f;
+            EditorUtility.SetDirty(terrainLayer);
             return terrainLayer;
         }
 
@@ -827,25 +1468,71 @@ public static class Battle3DSetupBuilder
         };
 
         terrainLayer.diffuseTexture = terrainTexture;
-        terrainLayer.tileSize = new Vector2(8f, 8f);
+        terrainLayer.normalMapTexture = terrainNormal;
+        terrainLayer.normalScale = 0.62f;
+        terrainLayer.tileSize = new Vector2(5.5f, 5.5f);
         terrainLayer.diffuseRemapMin = Vector4.zero;
         terrainLayer.diffuseRemapMax = new Vector4(
-            0.82f,
-            0.88f,
-            0.68f,
+            1f,
+            1f,
+            1f,
             1f);
-        terrainLayer.smoothness = 0.1f;
+        terrainLayer.specular = Color.black;
+        terrainLayer.metallic = 0f;
+        terrainLayer.smoothness = 0f;
         AssetDatabase.CreateAsset(terrainLayer, TerrainLayerPath);
         EditorUtility.SetDirty(terrainLayer);
         return terrainLayer;
     }
 
-    private static TerrainData EnsureTerrainData(TerrainLayer terrainLayer)
+    private static TerrainLayer EnsureTerrainLayer(
+        string path,
+        string assetName,
+        Texture2D diffuse,
+        Texture2D normal,
+        Vector2 tileSize,
+        float normalScale,
+        float smoothness,
+        Vector4 diffuseRemapMax)
+    {
+        TerrainLayer layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>(path);
+        if (layer == null)
+        {
+            layer = new TerrainLayer
+            {
+                name = assetName
+            };
+            AssetDatabase.CreateAsset(layer, path);
+        }
+
+        layer.diffuseTexture = diffuse;
+        layer.normalMapTexture = normal;
+        layer.tileSize = tileSize;
+        layer.normalScale = normalScale;
+        layer.specular = Color.black;
+        layer.metallic = 0f;
+        layer.smoothness = smoothness;
+        layer.diffuseRemapMin = Vector4.zero;
+        layer.diffuseRemapMax = diffuseRemapMax;
+        EditorUtility.SetDirty(layer);
+        return layer;
+    }
+
+    private static TerrainData EnsureTerrainData(TerrainLayer[] terrainLayers)
     {
         TerrainData terrainData = AssetDatabase.LoadAssetAtPath<TerrainData>(
             TerrainDataPath);
         if (terrainData != null)
         {
+            bool requiresStyleBlend = terrainData.terrainLayers == null
+                || terrainData.terrainLayers.Length < terrainLayers.Length
+                || RequiresTerrainStyleBlendUpgrade(terrainData);
+            terrainData.terrainLayers = terrainLayers;
+            if (requiresStyleBlend)
+            {
+                PaintTerrainLayerBlend(terrainData);
+            }
+            EditorUtility.SetDirty(terrainData);
             return terrainData;
         }
 
@@ -859,23 +1546,106 @@ public static class Battle3DSetupBuilder
         terrainData.size = new Vector3(36f, 2f, 14f);
         int resolution = terrainData.heightmapResolution;
         terrainData.SetHeights(0, 0, new float[resolution, resolution]);
-        terrainData.alphamapResolution = 32;
-        terrainData.terrainLayers = new[] { terrainLayer };
-        float[,,] blend = new float[
-            terrainData.alphamapHeight,
+        terrainData.terrainLayers = terrainLayers;
+        PaintTerrainLayerBlend(terrainData);
+        EditorUtility.SetDirty(terrainData);
+        return terrainData;
+    }
+
+    private static bool RequiresTerrainStyleBlendUpgrade(
+        TerrainData terrainData)
+    {
+        if (terrainData.alphamapLayers < 3)
+        {
+            return true;
+        }
+
+        float[,,] weights = terrainData.GetAlphamaps(
+            0,
+            0,
             terrainData.alphamapWidth,
-            1];
+            terrainData.alphamapHeight);
+        double groundTotal = 0d;
+        double rockTotal = 0d;
+        int sampleCount = terrainData.alphamapWidth
+            * terrainData.alphamapHeight;
         for (int y = 0; y < terrainData.alphamapHeight; y++)
         {
             for (int x = 0; x < terrainData.alphamapWidth; x++)
             {
-                blend[y, x, 0] = 1f;
+                groundTotal += weights[y, x, 0];
+                rockTotal += weights[y, x, 2];
+            }
+        }
+
+        double averageGround = groundTotal / sampleCount;
+        double averageRock = rockTotal / sampleCount;
+        return averageGround < 0.18d || averageRock > 0.25d;
+    }
+
+    private static void PaintTerrainLayerBlend(TerrainData terrainData)
+    {
+        terrainData.alphamapResolution = TerrainAlphamapResolution;
+        int width = terrainData.alphamapWidth;
+        int height = terrainData.alphamapHeight;
+        float[,,] blend = new float[height, width, 3];
+        Terrain terrain = FindTerrainUsingData(terrainData);
+        Vector3 terrainPosition = terrain != null
+            ? terrain.transform.position
+            : new Vector3(-18f, -0.12f, -7f);
+
+        for (int y = 0; y < height; y++)
+        {
+            float v = y / (float)Mathf.Max(1, height - 1);
+            for (int x = 0; x < width; x++)
+            {
+                float u = x / (float)Mathf.Max(1, width - 1);
+                float worldX = terrainPosition.x + u * terrainData.size.x;
+                float worldZ = terrainPosition.z + v * terrainData.size.z;
+                float slope = terrainData.GetSteepness(u, v) / 90f;
+                float height01 = terrainData.GetInterpolatedHeight(u, v)
+                    / Mathf.Max(0.001f, terrainData.size.y);
+                float noise = EvaluateTerrainSurface(u * 3f, v * 3f);
+
+                float duelTrack = 1f - Mathf.SmoothStep(
+                    2.4f,
+                    7.2f,
+                    Mathf.Abs(worldZ));
+                duelTrack *= 1f - Mathf.SmoothStep(
+                    14f,
+                    24f,
+                    Mathf.Abs(worldX));
+                float rock = Mathf.Clamp01(
+                    Mathf.SmoothStep(0.28f, 0.68f, slope)
+                    + Mathf.SmoothStep(0.72f, 0.96f, height01) * 0.30f);
+                float dirt = Mathf.Clamp01(
+                    duelTrack * 0.65f
+                    + Mathf.SmoothStep(0.68f, 0.92f, noise) * 0.16f);
+                dirt *= 1f - rock * 0.80f;
+                float ground = Mathf.Max(0.25f, 1f - dirt - rock);
+                float total = ground + dirt + rock;
+
+                blend[y, x, 0] = ground / total;
+                blend[y, x, 1] = dirt / total;
+                blend[y, x, 2] = rock / total;
             }
         }
 
         terrainData.SetAlphamaps(0, 0, blend);
-        EditorUtility.SetDirty(terrainData);
-        return terrainData;
+    }
+
+    private static Terrain FindTerrainUsingData(TerrainData terrainData)
+    {
+        foreach (Terrain terrain in UnityEngine.Object.FindObjectsByType<
+                     Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (terrain.terrainData == terrainData)
+            {
+                return terrain;
+            }
+        }
+
+        return null;
     }
 
     private static void AssignProjectileProfileToBullets(
@@ -1001,13 +1771,19 @@ public static class Battle3DSetupBuilder
         directionalLight.intensity = profile.DirectionalLightIntensity;
         directionalLight.transform.rotation = profile.DirectionalLightRotation;
         directionalLight.shadows = LightShadows.Soft;
-        directionalLight.shadowStrength = 0.9f;
+        directionalLight.shadowStrength = 0.82f;
         directionalLight.shadowBias = 0.04f;
         directionalLight.shadowNormalBias = 0.35f;
+        directionalLight.lightmapBakeType = LightmapBakeType.Mixed;
         directionalLight.GetUniversalAdditionalLightData();
+        ConfigureSunFlare(lightObject, directionalLight);
         RenderSettings.sun = directionalLight;
 
         EnsureEnvironmentAuthoringHierarchy(environmentRoot.transform);
+        OrganizeEnvironmentProps(scene, environmentRoot.transform);
+        EnsureHd2DDirectionPass(scene, environmentRoot.transform);
+        ConfigureStaticEnvironment(environmentRoot.transform, terrain);
+        Lightmapping.lightingSettings = EnsureBattleLightingSettings();
         ApplyRenderSettings(profile);
 
         Camera battleCamera = cameraObject.GetComponent<Camera>();
@@ -1024,6 +1800,10 @@ public static class Battle3DSetupBuilder
             rendererIndex,
             playerObject.transform,
             profile.VolumeProfile);
+        ConfigureTerrainDepthOfField(
+            profile.VolumeProfile,
+            battleCamera,
+            terrain);
         ConfigureOverlayCanvas(gameplayCanvasObject, 0);
         ConfigureOverlayCanvas(gameStartCanvasObject, 5);
 
@@ -1056,6 +1836,11 @@ public static class Battle3DSetupBuilder
             battleCamera.GetComponent<Volume>());
         SetObjectReference(controller, "directionalLight", directionalLight);
         SetObjectReference(controller, "playerVisualRoot", playerVisual);
+        SetObjectReference(
+            controller,
+            "backgroundPropRoot",
+            FindDescendant(environmentRoot.transform, "Background")
+                ?.transform);
 
         StateManager stateManager = UnityEngine.Object.FindFirstObjectByType<
             StateManager>(FindObjectsInactive.Include);
@@ -1118,16 +1903,38 @@ public static class Battle3DSetupBuilder
         directionalLight.intensity = profile.DirectionalLightIntensity;
         directionalLight.transform.rotation = profile.DirectionalLightRotation;
         directionalLight.shadows = LightShadows.Soft;
-        directionalLight.shadowStrength = 0.9f;
+        directionalLight.shadowStrength = 0.82f;
         directionalLight.shadowBias = 0.04f;
         directionalLight.shadowNormalBias = 0.35f;
+        directionalLight.lightmapBakeType = LightmapBakeType.Mixed;
         directionalLight.GetUniversalAdditionalLightData();
+        ConfigureSunFlare(lightObject, directionalLight);
         RenderSettings.sun = directionalLight;
 
         EnsureEnvironmentAuthoringHierarchy(environmentRoot.transform);
+        OrganizeEnvironmentProps(scene, environmentRoot.transform);
+        EnsureHd2DDirectionPass(scene, environmentRoot.transform);
         Terrain terrain = EnsureTerrainVisibleInEditor(
             FindDescendant(environmentRoot.transform, TerrainObjectName)
                 ?.GetComponent<Terrain>());
+        Camera battleCamera = FindSceneObject(scene, "Main Camera")
+            ?.GetComponent<Camera>();
+        if (battleCamera != null)
+        {
+            UniversalAdditionalCameraData cameraData =
+                battleCamera.GetUniversalAdditionalCameraData();
+            EnsureBattleUiOverlayCamera(
+                battleCamera.gameObject,
+                battleCamera,
+                cameraData,
+                profile.RendererIndex);
+        }
+        ConfigureTerrainDepthOfField(
+            profile.VolumeProfile,
+            battleCamera,
+            terrain);
+        ConfigureStaticEnvironment(environmentRoot.transform, terrain);
+        Lightmapping.lightingSettings = EnsureBattleLightingSettings();
         ApplyRenderSettings(profile);
 
         BattleWorld3DController controller =
@@ -1136,6 +1943,11 @@ public static class Battle3DSetupBuilder
         {
             SetObjectReference(controller, "defaultProfile", profile);
             SetObjectReference(controller, "directionalLight", directionalLight);
+            SetObjectReference(
+                controller,
+                "backgroundPropRoot",
+                FindDescendant(environmentRoot.transform, "Background")
+                    ?.transform);
         }
 
         EditorSceneManager.MarkSceneDirty(scene);
@@ -1153,9 +1965,6 @@ public static class Battle3DSetupBuilder
     {
         Vector3 authoredCameraWorldPosition =
             cameraObject.transform.position;
-        battleCamera.orthographic = !profile.UsesPerspective;
-        battleCamera.fieldOfView = profile.PerspectiveFieldOfView;
-        battleCamera.orthographicSize = profile.OrthographicSize;
         battleCamera.backgroundColor = profile.CameraBackgroundColor;
         battleCamera.clearFlags = CameraClearFlags.Skybox;
         battleCamera.allowHDR = true;
@@ -1173,6 +1982,12 @@ public static class Battle3DSetupBuilder
         cameraData.antialiasingQuality = AntialiasingQuality.High;
         cameraData.dithering = true;
         cameraData.stopNaN = true;
+
+        EnsureBattleUiOverlayCamera(
+            cameraObject,
+            battleCamera,
+            cameraData,
+            rendererIndex);
 
         Volume volume = cameraObject.GetComponent<Volume>();
         if (volume == null)
@@ -1192,11 +2007,13 @@ public static class Battle3DSetupBuilder
         {
             cinemachineCamera.Follow = followTarget;
             LensSettings lens = cinemachineCamera.Lens;
-            lens.ModeOverride = profile.UsesPerspective
-                ? LensSettings.OverrideModes.Perspective
-                : LensSettings.OverrideModes.Orthographic;
-            lens.FieldOfView = profile.PerspectiveFieldOfView;
-            lens.OrthographicSize = profile.OrthographicSize;
+            lens.ModeOverride = battleCamera.orthographic
+                ? LensSettings.OverrideModes.Orthographic
+                : LensSettings.OverrideModes.Perspective;
+            lens.FieldOfView = battleCamera.fieldOfView;
+            lens.OrthographicSize = battleCamera.orthographicSize;
+            lens.NearClipPlane = battleCamera.nearClipPlane;
+            lens.FarClipPlane = battleCamera.farClipPlane;
             cinemachineCamera.Lens = lens;
         }
 
@@ -1224,6 +2041,79 @@ public static class Battle3DSetupBuilder
         }
     }
 
+    private static void EnsureBattleUiOverlayCamera(
+        GameObject cameraObject,
+        Camera battleCamera,
+        UniversalAdditionalCameraData cameraData,
+        int rendererIndex)
+    {
+        Transform overlayTransform = cameraObject.transform.Find(
+            UiOverlayCameraName);
+        GameObject overlayObject;
+        if (overlayTransform == null)
+        {
+            overlayObject = new GameObject(UiOverlayCameraName);
+            overlayObject.transform.SetParent(cameraObject.transform, false);
+        }
+        else
+        {
+            overlayObject = overlayTransform.gameObject;
+        }
+
+        Camera overlayCamera = overlayObject.GetComponent<Camera>();
+        if (overlayCamera == null)
+        {
+            overlayCamera = overlayObject.AddComponent<Camera>();
+        }
+
+        BattleUiOverlayCamera overlayController =
+            overlayObject.GetComponent<BattleUiOverlayCamera>();
+        if (overlayController == null)
+        {
+            overlayController =
+                overlayObject.AddComponent<BattleUiOverlayCamera>();
+        }
+
+        for (int index = cameraData.cameraStack.Count - 1;
+             index >= 0;
+             index--)
+        {
+            Camera stackedCamera = cameraData.cameraStack[index];
+            if (stackedCamera == null
+                || stackedCamera == overlayCamera
+                || stackedCamera.name == UiOverlayCameraName)
+            {
+                cameraData.cameraStack.RemoveAt(index);
+            }
+        }
+
+        overlayController.Configure(battleCamera, rendererIndex);
+        EditorUtility.SetDirty(battleCamera);
+        EditorUtility.SetDirty(overlayCamera);
+        EditorUtility.SetDirty(overlayController);
+    }
+
+    private static void ConfigureTerrainDepthOfField(
+        VolumeProfile profile,
+        Camera battleCamera,
+        Terrain terrain)
+    {
+        if (profile == null || battleCamera == null || terrain == null
+            || !profile.TryGet(out DepthOfField depthOfField))
+        {
+            return;
+        }
+
+        float farDepth = BattleWorld3DController.ResolveTerrainFarDepth(
+            battleCamera,
+            terrain);
+        depthOfField.gaussianEnd.Override(Mathf.Max(
+            depthOfField.gaussianStart.value + 1f,
+            farDepth));
+        EditorUtility.SetDirty(depthOfField);
+        EditorUtility.SetDirty(profile);
+    }
+
     private static void EnsureEnvironmentAuthoringHierarchy(Transform parent)
     {
         RemoveObsoleteLighting(parent);
@@ -1238,6 +2128,486 @@ public static class Battle3DSetupBuilder
         EnsureChild(propsRoot, "Background");
         EnsureChild(propsRoot, "Foreground");
         EnsureChild(propsRoot, "Environment FX");
+    }
+
+    private static void EnsureHd2DDirectionPass(
+        Scene scene,
+        Transform environmentRoot)
+    {
+        Transform lightingRoot = FindDescendant(
+            environmentRoot,
+            LightingRootName).transform;
+        Transform propsRoot = FindDescendant(
+            environmentRoot,
+            PropsRootName).transform;
+        Transform groundDetail = FindDescendant(
+            propsRoot,
+            "Ground Detail").transform;
+        Transform environmentFx = FindDescendant(
+            propsRoot,
+            "Environment FX").transform;
+
+        EnsureAccentLight(
+            lightingRoot,
+            SaloonAccentLightName,
+            new Vector3(5.8f, 2.45f, 4.75f),
+            new Color(1f, 0.47f, 0.16f, 1f),
+            2.2f,
+            5.8f);
+        EnsureAccentLight(
+            lightingRoot,
+            ChurchAccentLightName,
+            new Vector3(-8.8f, 1.95f, 4.65f),
+            new Color(1f, 0.58f, 0.24f, 1f),
+            1.75f,
+            5.2f);
+
+        Material windowGlow = EnsureWindowGlowMaterial();
+        ApplyWindowGlow(propsRoot, windowGlow);
+
+        Material dustMaterial = EnsureAtmosphericDustMaterial();
+        EnsureAtmosphericDust(environmentFx, dustMaterial);
+
+        EnsureDecoration(
+            scene,
+            groundDetail,
+            "Set Dressing | Saloon Barrels",
+            "Assets/Package/Synty/PolygonWestern/Prefabs/Props/SM_Prop_Barrel_01.prefab",
+            new Vector3(11.25f, 0.02f, 5.15f),
+            new Vector3(0f, 18f, 0f),
+            0.84f);
+        EnsureDecoration(
+            scene,
+            groundDetail,
+            "Set Dressing | Saloon Crate",
+            "Assets/Package/Synty/PolygonWestern/Prefabs/Props/SM_Prop_Crate_01.prefab",
+            new Vector3(9.95f, 0.02f, 4.8f),
+            new Vector3(0f, -12f, 0f),
+            0.82f);
+        EnsureDecoration(
+            scene,
+            groundDetail,
+            "Set Dressing | Hitching Post",
+            "Assets/Package/Synty/PolygonWestern/Prefabs/Props/SM_Prop_HitchingPost_01.prefab",
+            new Vector3(12.4f, 0.02f, 6.65f),
+            new Vector3(0f, -20f, 0f),
+            0.9f);
+        EnsureDecoration(
+            scene,
+            groundDetail,
+            "Set Dressing | Church Hay",
+            "Assets/Package/Synty/PolygonWestern/Prefabs/Props/SM_Prop_Hay_Bale_01.prefab",
+            new Vector3(-11.75f, 0.02f, 5.45f),
+            new Vector3(0f, 24f, 0f),
+            0.88f);
+        EnsureDecoration(
+            scene,
+            groundDetail,
+            "Set Dressing | Left Cactus",
+            "Assets/Package/Synty/PolygonWestern/Prefabs/Environments/SM_Env_Cactus_04.prefab",
+            new Vector3(-13.8f, 0.02f, 7.3f),
+            new Vector3(0f, 14f, 0f),
+            0.72f);
+        EnsureDecoration(
+            scene,
+            groundDetail,
+            "Set Dressing | Right Cactus",
+            "Assets/Package/Synty/PolygonWestern/Prefabs/Environments/SM_Env_Cactus_02.prefab",
+            new Vector3(14.2f, 0.02f, 8.1f),
+            new Vector3(0f, -18f, 0f),
+            0.68f);
+        EnsureDecoration(
+            scene,
+            groundDetail,
+            "Set Dressing | Left Grass",
+            "Assets/Package/Synty/PolygonWestern/Prefabs/Environments/SM_Env_Grass_02.prefab",
+            new Vector3(-12.6f, 0.02f, 4.4f),
+            new Vector3(0f, 32f, 0f),
+            0.9f);
+        EnsureDecoration(
+            scene,
+            groundDetail,
+            "Set Dressing | Tumbleweed",
+            "Assets/Package/Synty/PolygonWestern/Prefabs/Props/SM_Prop_Tumbleweed_01.prefab",
+            new Vector3(12.9f, 0.18f, 3.85f),
+            new Vector3(0f, 0f, -8f),
+            0.66f);
+    }
+
+    private static void EnsureAccentLight(
+        Transform parent,
+        string objectName,
+        Vector3 worldPosition,
+        Color color,
+        float intensity,
+        float range)
+    {
+        Transform lightTransform = EnsureChild(parent, objectName);
+        lightTransform.position = worldPosition;
+        lightTransform.rotation = Quaternion.identity;
+
+        Light light = lightTransform.GetComponent<Light>();
+        if (light == null)
+        {
+            light = lightTransform.gameObject.AddComponent<Light>();
+        }
+
+        light.enabled = true;
+        light.type = LightType.Point;
+        light.color = color;
+        light.intensity = intensity;
+        light.range = range;
+        light.shadows = LightShadows.None;
+        light.lightmapBakeType = LightmapBakeType.Realtime;
+        light.renderMode = LightRenderMode.Auto;
+        light.GetUniversalAdditionalLightData();
+        EditorUtility.SetDirty(light);
+    }
+
+    private static Material EnsureWindowGlowMaterial()
+    {
+        Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(
+            BattleWindowGlowShaderPath);
+        if (shader == null)
+        {
+            throw new InvalidOperationException(
+                $"Battle window glow shader not found: {BattleWindowGlowShaderPath}");
+        }
+
+        Material material = GetOrCreateMaterial(
+            BattleWindowGlowMaterialPath,
+            shader);
+        material.SetColor(
+            "_GlowColor",
+            new Color(3.2f, 1.25f, 0.28f, 0.34f));
+        material.enableInstancing = true;
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static void ApplyWindowGlow(
+        Transform propsRoot,
+        Material material)
+    {
+        foreach (MeshRenderer renderer in propsRoot
+                     .GetComponentsInChildren<MeshRenderer>(true))
+        {
+            if (renderer.name.IndexOf(
+                    "Glass",
+                    StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                continue;
+            }
+
+            renderer.sharedMaterial = material;
+            EditorUtility.SetDirty(renderer);
+        }
+    }
+
+    private static Material EnsureAtmosphericDustMaterial()
+    {
+        Shader shader = AssetDatabase.LoadAssetAtPath<Shader>(
+            BattleDustShaderPath);
+        if (shader == null)
+        {
+            throw new InvalidOperationException(
+                $"Battle atmospheric particle shader not found: {BattleDustShaderPath}");
+        }
+
+        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+            BattleDustTexturePath);
+        if (texture == null)
+        {
+            texture = new Texture2D(
+                32,
+                32,
+                TextureFormat.RGBA32,
+                true,
+                true)
+            {
+                name = "BattleDustMote",
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear
+            };
+            AssetDatabase.CreateAsset(texture, BattleDustTexturePath);
+        }
+
+        Color[] pixels = new Color[texture.width * texture.height];
+        for (int y = 0; y < texture.height; y++)
+        {
+            for (int x = 0; x < texture.width; x++)
+            {
+                Vector2 uv = new Vector2(
+                    (x + 0.5f) / texture.width,
+                    (y + 0.5f) / texture.height);
+                float distance = Vector2.Distance(uv, Vector2.one * 0.5f);
+                float alpha = Mathf.Pow(
+                    Mathf.Clamp01(1f - distance * 2f),
+                    2.4f);
+                pixels[y * texture.width + x] =
+                    new Color(1f, 1f, 1f, alpha);
+            }
+        }
+        texture.SetPixels(pixels);
+        texture.Apply(true, false);
+        EditorUtility.SetDirty(texture);
+
+        Material material = GetOrCreateMaterial(
+            BattleDustMaterialPath,
+            shader);
+        material.SetTexture("_BaseMap", texture);
+        material.enableInstancing = true;
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static void EnsureAtmosphericDust(
+        Transform parent,
+        Material material)
+    {
+        Transform dustTransform = EnsureChild(parent, AtmosphericDustName);
+        dustTransform.position = new Vector3(0f, 2.35f, 4.8f);
+        dustTransform.rotation = Quaternion.identity;
+        dustTransform.localScale = Vector3.one;
+
+        ParticleSystem particles =
+            dustTransform.GetComponent<ParticleSystem>();
+        if (particles == null)
+        {
+            particles = dustTransform.gameObject.AddComponent<ParticleSystem>();
+        }
+
+        ParticleSystem.MainModule main = particles.main;
+        main.loop = true;
+        main.duration = 8f;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(5.5f, 9f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.015f, 0.055f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.035f, 0.09f);
+        main.startRotation = new ParticleSystem.MinMaxCurve(
+            0f,
+            Mathf.PI * 2f);
+        main.startColor = new ParticleSystem.MinMaxGradient(
+            new Color(1f, 0.68f, 0.34f, 0.08f),
+            new Color(1f, 0.9f, 0.62f, 0.18f));
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.maxParticles = 56;
+        main.playOnAwake = true;
+        main.cullingMode = ParticleSystemCullingMode.Automatic;
+
+        ParticleSystem.EmissionModule emission = particles.emission;
+        emission.enabled = true;
+        emission.rateOverTime = 3.5f;
+
+        ParticleSystem.ShapeModule shape = particles.shape;
+        shape.enabled = true;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(28f, 4.4f, 6.5f);
+
+        ParticleSystem.VelocityOverLifetimeModule velocity =
+            particles.velocityOverLifetime;
+        velocity.enabled = true;
+        velocity.space = ParticleSystemSimulationSpace.World;
+        velocity.x = new ParticleSystem.MinMaxCurve(0.025f, 0.075f);
+        velocity.y = new ParticleSystem.MinMaxCurve(0.005f, 0.035f);
+        velocity.z = new ParticleSystem.MinMaxCurve(-0.01f, 0.02f);
+
+        ParticleSystem.NoiseModule noise = particles.noise;
+        noise.enabled = true;
+        noise.quality = ParticleSystemNoiseQuality.Low;
+        noise.strength = 0.045f;
+        noise.frequency = 0.22f;
+        noise.scrollSpeed = 0.035f;
+        noise.damping = true;
+
+        ParticleSystem.ColorOverLifetimeModule colorOverLifetime =
+            particles.colorOverLifetime;
+        colorOverLifetime.enabled = true;
+        Gradient gradient = new Gradient();
+        gradient.SetKeys(
+            new[]
+            {
+                new GradientColorKey(new Color(1f, 0.72f, 0.4f), 0f),
+                new GradientColorKey(new Color(1f, 0.9f, 0.68f), 1f)
+            },
+            new[]
+            {
+                new GradientAlphaKey(0f, 0f),
+                new GradientAlphaKey(0.75f, 0.18f),
+                new GradientAlphaKey(0.75f, 0.72f),
+                new GradientAlphaKey(0f, 1f)
+            });
+        colorOverLifetime.color = gradient;
+
+        ParticleSystemRenderer renderer =
+            dustTransform.GetComponent<ParticleSystemRenderer>();
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        renderer.alignment = ParticleSystemRenderSpace.View;
+        renderer.sharedMaterial = material;
+        renderer.shadowCastingMode = ShadowCastingMode.Off;
+        renderer.receiveShadows = false;
+        renderer.lightProbeUsage = LightProbeUsage.Off;
+        renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
+        renderer.sortingFudge = -0.2f;
+
+        particles.useAutoRandomSeed = false;
+        particles.randomSeed = 32771u;
+        EditorUtility.SetDirty(particles);
+        EditorUtility.SetDirty(renderer);
+    }
+
+    private static void EnsureDecoration(
+        Scene scene,
+        Transform parent,
+        string objectName,
+        string prefabPath,
+        Vector3 worldPosition,
+        Vector3 worldEulerAngles,
+        float uniformScale)
+    {
+        GameObject instance = FindDescendant(parent, objectName);
+        if (instance == null)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                prefabPath);
+            if (prefab == null)
+            {
+                Debug.LogWarning(
+                    $"Battle set-dressing prefab not found: {prefabPath}");
+                return;
+            }
+
+            instance = (GameObject)PrefabUtility.InstantiatePrefab(
+                prefab,
+                scene);
+            instance.name = objectName;
+            instance.transform.SetParent(parent, true);
+        }
+
+        instance.transform.SetPositionAndRotation(
+            worldPosition,
+            Quaternion.Euler(worldEulerAngles));
+        instance.transform.localScale = Vector3.one * uniformScale;
+
+        foreach (Collider collider in instance
+                     .GetComponentsInChildren<Collider>(true))
+        {
+            collider.enabled = false;
+            EditorUtility.SetDirty(collider);
+        }
+    }
+
+    private static void OrganizeEnvironmentProps(
+        Scene scene,
+        Transform environmentRoot)
+    {
+        Transform propsRoot = FindDescendant(
+            environmentRoot,
+            PropsRootName).transform;
+        Transform architecture = FindDescendant(
+            propsRoot,
+            "Architecture").transform;
+        Transform background = FindDescendant(
+            propsRoot,
+            "Background").transform;
+
+        foreach (string objectName in new[]
+                 {
+                     "SM_Bld_Church_01",
+                     "SM_Bld_Saloon_01"
+                 })
+        {
+            ReparentSceneRoot(scene, objectName, architecture);
+        }
+
+        foreach (string objectName in new[]
+                 {
+                     "SM_Gen_Env_Cliff_04",
+                     "SM_Gen_Env_Cliff_Arch_01",
+                     "SM_Gen_Env_Cliff_01",
+                     "SM_Gen_Env_Cliff_Pillar_01"
+                 })
+        {
+            ReparentSceneRoot(scene, objectName, background);
+        }
+    }
+
+    private static void ReparentSceneRoot(
+        Scene scene,
+        string objectName,
+        Transform parent)
+    {
+        GameObject root = FindRootObject(scene, objectName);
+        if (root != null)
+        {
+            root.transform.SetParent(parent, true);
+        }
+    }
+
+    private static void ConfigureStaticEnvironment(
+        Transform environmentRoot,
+        Terrain terrain)
+    {
+        Transform propsRoot = FindDescendant(
+            environmentRoot,
+            PropsRootName)?.transform;
+        if (propsRoot != null)
+        {
+            foreach (MeshRenderer renderer in propsRoot
+                         .GetComponentsInChildren<MeshRenderer>(true))
+            {
+                renderer.receiveShadows = true;
+                renderer.lightProbeUsage = LightProbeUsage.BlendProbes;
+                renderer.reflectionProbeUsage =
+                    ReflectionProbeUsage.BlendProbesAndSkybox;
+                renderer.scaleInLightmap = 0.65f;
+                GameObjectUtility.SetStaticEditorFlags(
+                    renderer.gameObject,
+                    StaticEditorFlags.ContributeGI
+                    | StaticEditorFlags.BatchingStatic
+                    | StaticEditorFlags.OccludeeStatic
+                    | StaticEditorFlags.OccluderStatic
+                    | StaticEditorFlags.ReflectionProbeStatic);
+                EditorUtility.SetDirty(renderer);
+            }
+        }
+
+        if (terrain != null)
+        {
+            terrain.shadowCastingMode = ShadowCastingMode.TwoSided;
+            terrain.reflectionProbeUsage = ReflectionProbeUsage.Off;
+            terrain.heightmapPixelError = 3f;
+            terrain.basemapDistance = 80f;
+            GameObjectUtility.SetStaticEditorFlags(
+                terrain.gameObject,
+                StaticEditorFlags.OccludeeStatic
+                | StaticEditorFlags.OccluderStatic
+                | StaticEditorFlags.ReflectionProbeStatic);
+            EditorUtility.SetDirty(terrain);
+        }
+    }
+
+    private static void ConfigureSunFlare(
+        GameObject lightObject,
+        Light directionalLight)
+    {
+        LensFlareComponentSRP flare =
+            lightObject.GetComponent<LensFlareComponentSRP>();
+        if (flare == null)
+        {
+            flare = lightObject.AddComponent<LensFlareComponentSRP>();
+        }
+
+        flare.lensFlareData = EnsureBattleSunFlare();
+        flare.intensity = 0.32f;
+        flare.scale = 0.58f;
+        flare.useOcclusion = true;
+        flare.environmentOcclusion = true;
+        flare.occlusionRadius = 0.14f;
+        flare.sampleCount = 16;
+        flare.attenuationByLightShape = true;
+        flare.lightOverride = directionalLight;
+        flare.allowOffScreen = false;
+        EditorUtility.SetDirty(flare);
     }
 
     private static void RemoveObsoleteLighting(Transform parent)
@@ -1315,7 +2685,6 @@ public static class Battle3DSetupBuilder
     private static void EnsureReflectionProbe(Transform parent)
     {
         GameObject probeObject = FindDescendant(parent, ReflectionProbeName);
-        bool created = probeObject == null;
         if (probeObject == null)
         {
             probeObject = new GameObject(ReflectionProbeName);
@@ -1328,21 +2697,16 @@ public static class Battle3DSetupBuilder
             probe = probeObject.AddComponent<ReflectionProbe>();
         }
 
-        if (!created)
-        {
-            return;
-        }
-
-        probe.mode = ReflectionProbeMode.Realtime;
-        probe.refreshMode = ReflectionProbeRefreshMode.OnAwake;
-        probe.timeSlicingMode = ReflectionProbeTimeSlicingMode.IndividualFaces;
-        probe.resolution = 256;
+        probe.mode = ReflectionProbeMode.Baked;
+        probe.refreshMode = ReflectionProbeRefreshMode.ViaScripting;
+        probe.resolution = 128;
         probe.hdr = true;
         probe.boxProjection = true;
         probe.intensity = 0.8f;
         probe.blendDistance = 3f;
         probe.size = new Vector3(34f, 10f, 16f);
         probe.center = new Vector3(0f, 4f, 0f);
+        EditorUtility.SetDirty(probe);
     }
 
     private static void EnsureLightProbes(Transform parent)

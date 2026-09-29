@@ -97,6 +97,46 @@ public sealed class BattleCameraEffectSpaceTests
     }
 
     [Test]
+    public void ProjectedGroundPointKeepsTheGridCenterOnScreen()
+    {
+        GameObject cameraObject = new GameObject("Battle Camera");
+
+        try
+        {
+            Camera camera = cameraObject.AddComponent<Camera>();
+            camera.orthographic = false;
+            camera.fieldOfView = 50f;
+            camera.aspect = 16f / 9f;
+            cameraObject.transform.SetPositionAndRotation(
+                new Vector3(0f, 3.5f, -12f),
+                Quaternion.Euler(9f, 0f, 0f));
+            Vector3 gridCenter = new Vector3(-1f, 0.03f, -0.46f);
+
+            bool resolved = BattleContactShadow
+                .TryResolveProjectedGroundPoint(
+                    camera,
+                    gridCenter,
+                    -0.12f,
+                    out Vector3 groundPoint);
+            Vector3 gridViewport = camera.WorldToViewportPoint(gridCenter);
+            Vector3 groundViewport = camera.WorldToViewportPoint(groundPoint);
+
+            Assert.That(resolved, Is.True);
+            Assert.That(groundPoint.y,
+                Is.EqualTo(-0.12f).Within(0.0001f));
+            Assert.That(groundViewport.x,
+                Is.EqualTo(gridViewport.x).Within(0.0001f));
+            Assert.That(groundViewport.y,
+                Is.EqualTo(gridViewport.y).Within(0.0001f));
+            Assert.That(groundPoint.z, Is.GreaterThan(gridCenter.z));
+        }
+        finally
+        {
+            Object.DestroyImmediate(cameraObject);
+        }
+    }
+
+    [Test]
     public void VisualCenterFollowsTheBillboardAfterCameraRotation()
     {
         GameObject cameraObject = new GameObject("Battle Camera");

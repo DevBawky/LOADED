@@ -10,7 +10,6 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     [Header("Damage Number Prefabs")]
     [SerializeField] private DamageNumber normalDamagePrefab;
     [SerializeField] private DamageNumber criticalDamagePrefab;
-    [SerializeField] private DamageNumber devastatingDamagePrefab;
     [SerializeField] private DamageNumber poisonDamagePrefab;
     [SerializeField] private DamageNumber markBonusDamagePrefab;
 
@@ -50,41 +49,33 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     [SerializeField, Range(0.1f, 1f)] private float damageNumberScaleMultiplier = 0.5f;
     [SerializeField, Range(0.1f, 1f)] private float statusTextScaleMultiplier = 0.5f;
 
-    [Header("Impact Tier Styling")]
-    [SerializeField] private Color criticalDamageColor =
-        new Color(1f, 0.86f, 0.28f, 1f);
-    [SerializeField] private Color devastatingDamageColor =
-        new Color(1f, 0.32f, 0.08f, 1f);
-    [SerializeField] private Color defeatDamageColor =
-        new Color(1f, 0.92f, 0.78f, 1f);
+    [Header("Attack Styling")]
     [SerializeField] private float criticalDamageScale = 1.18f;
-    [SerializeField] private float devastatingDamageScale = 1.42f;
-    [SerializeField] private float defeatDamageScale = 1.58f;
 
     private static readonly DamageNumberSpawnLayout SharedSpawnLayout =
         new DamageNumberSpawnLayout();
 
-    public void ShowAttackDamage(
-        int damage,
-        CombatImpactTier impactTier,
-        bool isCritical = false)
+    public void ShowAttackDamage(int damage, bool isCritical = false)
     {
-        DamageNumber preferredPrefab = impactTier switch
-        {
-            CombatImpactTier.Defeat => isCritical
-                ? criticalDamagePrefab
-                : normalDamagePrefab,
-            CombatImpactTier.Devastating => devastatingDamagePrefab != null
-                ? devastatingDamagePrefab
-                : criticalDamagePrefab,
-            CombatImpactTier.Critical => criticalDamagePrefab,
-            _ => normalDamagePrefab
-        };
+        DamageNumber preferredPrefab = ResolveAttackDamagePrefab(
+            normalDamagePrefab,
+            criticalDamagePrefab,
+            isCritical);
         SpawnNumber(
             preferredPrefab,
             damage,
             normalDamagePrefab,
-            impactTier);
+            isCritical);
+    }
+
+    internal static DamageNumber ResolveAttackDamagePrefab(
+        DamageNumber normalPrefab,
+        DamageNumber criticalPrefab,
+        bool isCritical)
+    {
+        // Impact tier controls presentation intensity only. The attack's
+        // authoritative critical result is the sole prefab selector.
+        return isCritical ? criticalPrefab : normalPrefab;
     }
 
     public void ShowPoisonDamage(int damage)
@@ -93,7 +84,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             poisonDamagePrefab,
             damage,
             normalDamagePrefab,
-            CombatImpactTier.Normal);
+            false);
     }
 
     public void ShowMarkBonusDamage(int damage)
@@ -102,7 +93,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             markBonusDamagePrefab,
             damage,
             normalDamagePrefab,
-            CombatImpactTier.Normal);
+            false);
     }
 
     public void ShowStatus(StatusEffectType type)
@@ -133,7 +124,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         DamageNumber preferredPrefab,
         int damage,
         DamageNumber fallbackPrefab,
-        CombatImpactTier impactTier)
+        bool isCritical)
     {
         if (damage <= 0)
         {
@@ -169,7 +160,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             position,
             damage);
         ConfigureSpawnedNumber(number, position);
-        ApplyTierStyle(number, impactTier);
+        ApplyAttackStyle(number, isCritical);
     }
 
     private void ConfigureSpawnedNumber(
@@ -271,9 +262,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         BattleSpriteBillboard.FaceTransform(number.transform, battleCamera);
     }
 
-    private void ApplyTierStyle(
-        DamageNumber number,
-        CombatImpactTier impactTier)
+    private void ApplyAttackStyle(DamageNumber number, bool isCritical)
     {
         if (number == null)
         {
@@ -281,41 +270,19 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         }
 
         number.SetScale(ResolveDamageNumberScale(
-            impactTier,
+            isCritical,
             damageNumberScaleMultiplier,
-            criticalDamageScale,
-            devastatingDamageScale,
-            defeatDamageScale));
-
-        switch (impactTier)
-        {
-            case CombatImpactTier.Critical:
-                number.SetColor(criticalDamageColor);
-                break;
-            case CombatImpactTier.Devastating:
-                number.SetColor(devastatingDamageColor);
-                break;
-            case CombatImpactTier.Defeat:
-                number.SetColor(defeatDamageColor);
-                break;
-        }
+            criticalDamageScale));
     }
 
     internal static float ResolveDamageNumberScale(
-        CombatImpactTier impactTier,
+        bool isCritical,
         float scaleMultiplier,
-        float criticalScale,
-        float devastatingScale,
-        float defeatScale)
+        float criticalScale)
     {
-        float tierScale = impactTier switch
-        {
-            CombatImpactTier.Critical => criticalScale,
-            CombatImpactTier.Devastating => devastatingScale,
-            CombatImpactTier.Defeat => defeatScale,
-            _ => 1f
-        };
-        return Mathf.Max(0f, scaleMultiplier) * Mathf.Max(0f, tierScale);
+        float attackScale = isCritical ? criticalScale : 1f;
+        return Mathf.Max(0f, scaleMultiplier)
+            * Mathf.Max(0f, attackScale);
     }
 
     internal static float ResolveMinimumSpawnSeparation(

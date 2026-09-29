@@ -759,22 +759,138 @@ public sealed class EnemyDamageNumberDisplayTests
             Is.EqualTo(1f).Within(0.0001f));
     }
 
-    [TestCase(CombatImpactTier.Normal, 0.5f)]
-    [TestCase(CombatImpactTier.Critical, 0.59f)]
-    [TestCase(CombatImpactTier.Devastating, 0.71f)]
-    [TestCase(CombatImpactTier.Defeat, 0.79f)]
-    public void DamageNumberScale_HalvesEveryTierWhilePreservingHierarchy(
-        CombatImpactTier impactTier,
+    [TestCase(false, 0.5f)]
+    [TestCase(true, 0.59f)]
+    public void DamageNumberScale_UsesOnlyNormalAndCriticalHierarchy(
+        bool isCritical,
         float expectedScale)
     {
         float scale = EnemyDamageNumberDisplay.ResolveDamageNumberScale(
-            impactTier,
+            isCritical,
             0.5f,
-            1.18f,
-            1.42f,
-            1.58f);
+            1.18f);
 
         Assert.That(scale, Is.EqualTo(expectedScale).Within(0.0001f));
+    }
+
+    [Test]
+    public void ShowAttackDamage_DoesNotAcceptImpactTier()
+    {
+        MethodInfo method = typeof(EnemyDamageNumberDisplay).GetMethod(
+            nameof(EnemyDamageNumberDisplay.ShowAttackDamage),
+            BindingFlags.Instance | BindingFlags.Public);
+
+        Assert.That(method, Is.Not.Null);
+        Assert.That(
+            method.GetParameters().Select(parameter => parameter.ParameterType),
+            Is.EqualTo(new[] { typeof(int), typeof(bool) }));
+    }
+
+    [Test]
+    public void NonCriticalTwentyDamageAgainstTwentyFiveHealth_UsesNormalPrefab()
+    {
+        DamageNumbersPro.DamageNumber normal = CreateDamageNumber();
+        DamageNumbersPro.DamageNumber critical = CreateDamageNumber();
+        CombatImpactTier impactTier = CombatImpactTierUtility.Resolve(
+            false,
+            20,
+            25,
+            false);
+
+        DamageNumbersPro.DamageNumber resolved =
+            EnemyDamageNumberDisplay.ResolveAttackDamagePrefab(
+                normal,
+                critical,
+                false);
+
+        Assert.That(impactTier, Is.EqualTo(CombatImpactTier.Devastating));
+        Assert.That(resolved, Is.SameAs(normal));
+    }
+
+    [Test]
+    public void NonCriticalTwentyDamageAgainstEightyHealth_UsesNormalPrefab()
+    {
+        DamageNumbersPro.DamageNumber normal = CreateDamageNumber();
+        DamageNumbersPro.DamageNumber critical = CreateDamageNumber();
+        CombatImpactTier impactTier = CombatImpactTierUtility.Resolve(
+            false,
+            20,
+            80,
+            false);
+
+        DamageNumbersPro.DamageNumber resolved =
+            EnemyDamageNumberDisplay.ResolveAttackDamagePrefab(
+                normal,
+                critical,
+                false);
+
+        Assert.That(impactTier, Is.EqualTo(CombatImpactTier.Normal));
+        Assert.That(resolved, Is.SameAs(normal));
+    }
+
+    [Test]
+    public void CriticalDevastatingDamage_UsesCriticalPrefab()
+    {
+        DamageNumbersPro.DamageNumber normal = CreateDamageNumber();
+        DamageNumbersPro.DamageNumber critical = CreateDamageNumber();
+
+        DamageNumbersPro.DamageNumber resolved =
+            EnemyDamageNumberDisplay.ResolveAttackDamagePrefab(
+                normal,
+                critical,
+                true);
+
+        Assert.That(resolved, Is.SameAs(critical));
+    }
+
+    [Test]
+    public void NonCriticalAttack_AlwaysUsesNormalPrefab()
+    {
+        DamageNumbersPro.DamageNumber normal = CreateDamageNumber();
+        DamageNumbersPro.DamageNumber critical = CreateDamageNumber();
+
+        DamageNumbersPro.DamageNumber resolved =
+            EnemyDamageNumberDisplay.ResolveAttackDamagePrefab(
+                normal,
+                critical,
+                false);
+
+        Assert.That(resolved, Is.SameAs(normal));
+    }
+
+    [Test]
+    public void EnemyPrefab_ExposesOnlyNormalAndCriticalAttackDamagePrefabs()
+    {
+        GameObject enemyPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/Enemy/Enemy.prefab");
+        EnemyDamageNumberDisplay display =
+            enemyPrefab.GetComponent<EnemyDamageNumberDisplay>();
+        SerializedObject serializedDisplay = new SerializedObject(display);
+
+        Assert.That(display, Is.Not.Null);
+        Assert.That(
+            serializedDisplay.FindProperty("normalDamagePrefab")
+                .objectReferenceValue,
+            Is.Not.Null);
+        Assert.That(
+            serializedDisplay.FindProperty("criticalDamagePrefab")
+                .objectReferenceValue,
+            Is.Not.Null);
+        Assert.That(
+            serializedDisplay.FindProperty("devastatingDamagePrefab"),
+            Is.Null);
+        Assert.That(
+            serializedDisplay.FindProperty("devastatingDamageColor"),
+            Is.Null);
+        Assert.That(
+            serializedDisplay.FindProperty("defeatDamageColor"),
+            Is.Null);
+        Assert.That(
+            serializedDisplay.FindProperty("devastatingDamageScale"),
+            Is.Null);
+        Assert.That(
+            serializedDisplay.FindProperty("defeatDamageScale"),
+            Is.Null);
     }
 
     [Test]

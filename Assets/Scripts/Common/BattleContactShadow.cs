@@ -34,6 +34,7 @@ public sealed class BattleContactShadow : MonoBehaviour
     private MaterialPropertyBlock propertyBlock;
 
     private ActorMotion actorMotion;
+    private BoardManager boardManager;
     private BattleSpriteBillboard billboard;
     private Transform visualRoot;
     private Transform shadowRoot;
@@ -53,6 +54,7 @@ public sealed class BattleContactShadow : MonoBehaviour
         }
 
         actorMotion = GetComponent<ActorMotion>();
+        boardManager = FindFirstObjectByType<BoardManager>();
         propertyBlock = new MaterialPropertyBlock();
         EnsureVisualRoot();
         RefreshPresentation();
@@ -217,37 +219,48 @@ public sealed class BattleContactShadow : MonoBehaviour
 
     private void AlignFeetToTerrain()
     {
-        if (!TryGetStableFootAnchor(out Vector3 footAnchor)
-            || !TrySampleTerrain(transform.position, out Vector3 groundPoint))
+        if (!TryGetStableFootAnchor(out Vector3 footAnchor))
         {
             return;
         }
 
-        Vector3 correction = ResolveGridGroundingCorrection(
-            footAnchor,
-            transform.position,
-            groundPoint.y);
+        Camera battleCamera = Camera.main;
+        Vector3 gridCenter = transform.position;
+        TryResolveGridCenter(out gridCenter);
+
+        Vector3 targetFootPoint;
+        if (!TryResolveProjectedTerrainAnchor(
+                gridCenter,
+                battleCamera,
+                out targetFootPoint)
+            && !TrySampleTerrain(gridCenter, out targetFootPoint))
+        {
+            return;
+        }
+
+        Vector3 correction = targetFootPoint - footAnchor;
         if (correction.sqrMagnitude
             > groundingTolerance * groundingTolerance)
         {
             visualRoot.position += correction;
         }
 
-        AlignVisualCenterToGrid();
+        AlignVisualCenterToGrid(gridCenter, battleCamera);
     }
 
-    private void AlignVisualCenterToGrid()
+    private void AlignVisualCenterToGrid(
+        Vector3 gridCenter,
+        Camera battleCamera)
     {
-        Camera battleCamera = Camera.main;
         if (!TryGetStableVisualCenter(out Vector3 visualCenter))
         {
             return;
         }
 
         Vector3 targetCenterLine = new Vector3(
-            transform.position.x,
+            gridCenter.x,
             visualCenter.y,
-            transform.position.z);
+            gridCenter.z);
         visualRoot.position += BattleCameraEffectSpace
             .ResolveHorizontalViewportCorrection(
                 visualCenter,
@@ -476,10 +489,12 @@ public sealed class BattleContactShadow : MonoBehaviour
 
         Vector3 viewportPoint = battleCamera.WorldToViewportPoint(
             effectAnchor);
+        Vector3 gridCenter = transform.position;
+        TryResolveGridCenter(out gridCenter);
         Vector3 targetCenterLine = new Vector3(
-            transform.position.x,
+            gridCenter.x,
             effectAnchor.y,
-            transform.position.z);
+            gridCenter.z);
         Vector3 targetViewport = battleCamera.WorldToViewportPoint(
             targetCenterLine);
         if (viewportPoint.z <= 0f || targetViewport.z <= 0f)
@@ -489,6 +504,102 @@ public sealed class BattleContactShadow : MonoBehaviour
 
         viewportPoint.x = targetViewport.x;
         effectAnchor = battleCamera.ViewportToWorldPoint(viewportPoint);
+        return true;
+    }
+
+    private bool TryResolveGridCenter(out Vector3 gridCenter)
+    {
+        gridCenter = transform.position;
+        boardManager ??= FindFirstObjectByType<BoardManager>();
+        if (boardManager == null)
+        {
+            return false;
+        }
+
+        float nearestPlanarDistance = float.PositiveInfinity;
+        bool found = false;
+        for (int laneIndex = 0;
+             laneIndex < boardManager.LaneCount;
+             laneIndex++)
+        {
+            if (!boardManager.TryGetTileIndex(
+                    transform.position,
+                    laneIndex,
+                    out int tileIndex)
+                || !boardManager.TryGetTilePosition(
+                    tileIndex,
+                    laneIndex,
+                    out Vector3 candidate))
+            {
+                continue;
+            }
+
+            Vector2 planarDelta = new Vector2(
+                candidate.x - transform.position.x,
+                candidate.z - transform.position.z);
+            float planarDistance = planarDelta.sqrMagnitude;
+            if (planarDistance >= nearestPlanarDistance)
+            {
+                continue;
+            }
+
+            nearestPlanarDistance = planarDistance;
+            gridCenter = candidate;
+            found = true;
+        }
+
+        return found;
+    }
+
+    private bool TryResolveProjectedTerrainAnchor(
+        Vector3 gridCenter,
+        Camera battleCamera,
+        out Vector3 terrainAnchor)
+    {
+        terrainAnchor = gridCenter;
+        if (battleCamera == null
+            || !ResolveTerrain(gridCenter))
+        {
+            return false;
+        }
+
+        Vector3 viewportPoint = battleCamera.WorldToViewportPoint(gridCenter);
+        if (viewportPoint.z <= 0f || !IsFinite(viewportPoint))
+        {
+            return false;
+        }
+
+        Ray viewportRay = battleCamera.ViewportPointToRay(viewportPoint);
+        if (activeTerrainCollider != null
+            && activeTerrainCollider.Raycast(
+                viewportRay,
+                out RaycastHit hit,
+                Mathf.Max(
+                    battleCamera.farClipPlane,
+                    groundProbeDistance)))
+        {
+            terrainAnchor = hit.point;
+            return true;
+        }
+
+        float terrainHeight = activeTerrain.SampleHeight(gridCenter)
+            + activeTerrain.GetPosition().y;
+        for (int iteration = 0; iteration < 4; iteration++)
+        {
+            if (!TryResolveProjectedGroundPoint(
+                    battleCamera,
+                    gridCenter,
+                    terrainHeight,
+                    out terrainAnchor))
+            {
+                return false;
+            }
+
+            terrainHeight = activeTerrain.SampleHeight(terrainAnchor)
+                + activeTerrain.GetPosition().y;
+        }
+
+        terrainAnchor.y = terrainHeight;
         return true;
     }
 
@@ -724,6 +835,38 @@ public sealed class BattleContactShadow : MonoBehaviour
             gridCenter.z - footAnchor.z);
     }
 
+    internal static bool TryResolveProjectedGroundPoint(
+        Camera battleCamera,
+        Vector3 projectedTarget,
+        float groundHeight,
+        out Vector3 groundPoint)
+    {
+        groundPoint = projectedTarget;
+        if (battleCamera == null)
+        {
+            return false;
+        }
+
+        Vector3 viewportPoint = battleCamera.WorldToViewportPoint(
+            projectedTarget);
+        if (viewportPoint.z <= 0f || !IsFinite(viewportPoint))
+        {
+            return false;
+        }
+
+        Ray viewportRay = battleCamera.ViewportPointToRay(viewportPoint);
+        Plane groundPlane = new Plane(
+            Vector3.up,
+            new Vector3(0f, groundHeight, 0f));
+        if (!groundPlane.Raycast(viewportRay, out float distance))
+        {
+            return false;
+        }
+
+        groundPoint = viewportRay.GetPoint(distance);
+        return IsFinite(groundPoint);
+    }
+
     internal static Vector2 ResolveFlippedVertex(
         Vector2 vertex,
         Bounds spriteBounds,
@@ -739,6 +882,16 @@ public sealed class BattleContactShadow : MonoBehaviour
             vertex.y = spriteBounds.center.y * 2f - vertex.y;
         }
         return vertex;
+    }
+
+    private static bool IsFinite(Vector3 value)
+    {
+        return !float.IsNaN(value.x)
+            && !float.IsNaN(value.y)
+            && !float.IsNaN(value.z)
+            && !float.IsInfinity(value.x)
+            && !float.IsInfinity(value.y)
+            && !float.IsInfinity(value.z);
     }
 
     private sealed class ShadowPart

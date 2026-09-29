@@ -677,14 +677,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         // Damage popups communicate the attack's full power, not the amount
         // clamped by the enemy's remaining health.
-        damageNumberDisplay?.ShowAttackDamage(
-            damage,
-            CombatImpactTierUtility.Resolve(
-                isCritical,
-                modifiedDamage,
-                MaxHealth,
-                currentHealth <= 0),
-            isCritical);
+        damageNumberDisplay?.ShowAttackDamage(damage, isCritical);
         damageNumberDisplay?.ShowMarkBonusDamage(markBonusDamage);
         return appliedDamage;
     }
@@ -766,11 +759,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(
-                damage,
-                currentHealth <= 0
-                    ? CombatImpactTier.Defeat
-                    : CombatImpactTier.Normal);
+            damageNumberDisplay?.ShowAttackDamage(damage);
         }
 
         return appliedDamage > 0;
@@ -786,11 +775,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(
-                damage,
-                currentHealth <= 0
-                    ? CombatImpactTier.Defeat
-                    : CombatImpactTier.Normal);
+            damageNumberDisplay?.ShowAttackDamage(damage);
         }
 
         return appliedDamage;
@@ -802,11 +787,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(
-                damage,
-                currentHealth <= 0
-                    ? CombatImpactTier.Defeat
-                    : CombatImpactTier.Normal);
+            damageNumberDisplay?.ShowAttackDamage(damage);
         }
 
         return appliedDamage;
@@ -3069,45 +3050,25 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         int directionToPlayer,
         int distanceToPlayer)
     {
-        if (ShouldPursuePlayerLane())
+        EnemyLaneMismatchIntent intent =
+            EnemyLanePursuitPolicy.GetMismatchIntent(
+                ShouldPursuePlayerLane(),
+                directionToPlayer,
+                distanceToPlayer,
+                IsFacing(directionToPlayer));
+
+        if (intent == EnemyLaneMismatchIntent.ChangeLane)
         {
-            if (!TryMoveTowardPlayerLane())
+            if (!TryMoveTowardPlayerLane()
+                && !TryMoveToLaneStagingCell(directionToPlayer))
             {
-                // At an exposed corner there is no vertical neighbour. Step
-                // inward first so pursuit cannot stall at the board's edge.
-                if (boardManager.TryGetTileIndex(transform.position,
-                        currentLaneIndex, out int tileIndex)
-                    && !boardManager.TryGetAdjacentLanePosition(tileIndex,
-                        currentLaneIndex,
-                        playerMove.CurrentLaneIndex > currentLaneIndex ? 1 : -1,
-                        out _, out _))
-                {
-                    int inwardDirection = playerMove.CurrentLaneIndex > currentLaneIndex ? 1 : -1;
-                    if (TryBuildMovePath(inwardDirection, 1, out Vector3[] inwardPath))
-                    {
-                        StartCoroutine(MoveRoutine(inwardPath, false));
-                    }
-                    else
-                    {
-                        CompleteAction(EnemyTurnActionType.Wait);
-                    }
-                }
-                else
-                {
-                    CompleteAction(EnemyTurnActionType.Wait);
-                }
+                CompleteAction(EnemyTurnActionType.Wait);
             }
 
             return;
         }
 
-        if (directionToPlayer == 0 || distanceToPlayer <= 1)
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        if (!IsFacing(directionToPlayer))
+        if (intent == EnemyLaneMismatchIntent.Rotate)
         {
             RotateToward(directionToPlayer);
             return;
@@ -3116,6 +3077,35 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         MoveTowardPlayerUntilAdjacent(
             directionToPlayer,
             distanceToPlayer);
+    }
+
+    private bool TryMoveToLaneStagingCell(int directionToPlayer)
+    {
+        int preferredDirection =
+            EnemyLanePursuitPolicy.GetPreferredStagingDirection(
+                directionToPlayer,
+                currentLaneIndex,
+                playerMove.CurrentLaneIndex);
+
+        if (TryBuildMovePath(
+                preferredDirection,
+                1,
+                out Vector3[] preferredPath))
+        {
+            StartCoroutine(MoveRoutine(preferredPath, false));
+            return true;
+        }
+
+        if (TryBuildMovePath(
+                -preferredDirection,
+                1,
+                out Vector3[] fallbackPath))
+        {
+            StartCoroutine(MoveRoutine(fallbackPath, false));
+            return true;
+        }
+
+        return false;
     }
 
     private bool ShouldPursuePlayerLane()
