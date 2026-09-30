@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7216652100572924119
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5965681645629772294}
+  - component: {fileID: 3689948925623426366}
+  m_Layer: 0
+  m_Name: VFX_EnemyDefeatCoinBurst
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5965681645629772294
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7216652100572924119}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &3689948925623426366
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7216652100572924119}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68074291bf0b48fb93ad56ace1f715bb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyDefeatCoinBurstEffect
+  coinPrefab: {fileID: 1498403948531744, guid: fa2c57d3f28a5e6419393e8bc3eeb32a, type: 3}
+  coinMaterial: {fileID: 2100000, guid: 1af2c6e9f0bcb2a44965727c2fcf3868, type: 2}
+  baseCoinCount: 10
+  comboGrowthRate: 0.2
+  playOnStart: 1
+  previewComboKillCount: 1
+  destroyOnComplete: 1
+  playbackSpeed: 2
+  rootScale: 1.2
+  lifetimeRange: {x: 1.5, y: 2}
+  horizontalSpeedRange: {x: 0.7, y: 1.45}
+  upwardSpeedRange: {x: 2.5, y: 3.5}
+  gravity: 6.2
+  spawnRadius: 0.06
+  depthScatter: 0.09
+  coinScaleRange: {x: 18, y: 24}
+  angularSpeedRange: {x: 420, y: 840}
+  shrinkDurationRatio: 0.24

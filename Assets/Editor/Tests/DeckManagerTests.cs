@@ -1232,10 +1232,30 @@ public sealed class ComboFeedbackProgressionTests
         float first = SoundManager.CalculateFiringSequenceKillPitch(1);
         float second = SoundManager.CalculateFiringSequenceKillPitch(2);
         float third = SoundManager.CalculateFiringSequenceKillPitch(3);
+        float veryHighCombo = SoundManager.CalculateFiringSequenceKillPitch(
+            1000);
 
         Assert.That(first, Is.EqualTo(1f));
         Assert.That(second, Is.GreaterThan(first));
         Assert.That(third, Is.GreaterThan(second));
+        Assert.That(veryHighCombo, Is.LessThanOrEqualTo(1.65f));
+    }
+
+    [Test]
+    public void ComboPitch_StartsAtConfiguredMinimumAndNeverExceedsMaximum()
+    {
+        float first = SoundManager.CalculateComboPitch(0.8f, 3f, 1);
+        float second = SoundManager.CalculateComboPitch(0.8f, 3f, 2);
+        float third = SoundManager.CalculateComboPitch(0.8f, 3f, 3);
+        float veryHighCombo = SoundManager.CalculateComboPitch(
+            0.8f,
+            3f,
+            int.MaxValue);
+
+        Assert.That(first, Is.EqualTo(0.8f).Within(0.0001f));
+        Assert.That(second, Is.GreaterThan(first));
+        Assert.That(third, Is.GreaterThan(second));
+        Assert.That(veryHighCombo, Is.LessThanOrEqualTo(3f));
     }
 
     [Test]

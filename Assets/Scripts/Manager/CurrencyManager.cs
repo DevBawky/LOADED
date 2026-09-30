@@ -71,12 +71,26 @@ public class CurrencyManager : MonoBehaviour
 
     public bool AddMoney(int amount)
     {
+        return AddMoneyInternal(amount, true);
+    }
+
+    internal bool AddMoneyWithoutSfx(int amount)
+    {
+        return AddMoneyInternal(amount, false);
+    }
+
+    private bool AddMoneyInternal(int amount, bool playSfx)
+    {
         if (amount <= 0)
         {
             return false;
         }
 
-        SoundManager.PlaySfx("SFX_GainGold");
+        if (playSfx)
+        {
+            SoundManager.PlaySfx("SFX_GainGold");
+        }
+
         CommitMoney(amount);
         return true;
     }

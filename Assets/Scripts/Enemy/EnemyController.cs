@@ -1095,144 +1095,122 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             }
         }
 
-        if (GetAvailableAttackCount(EnemyActionType.MeleeAttack) == 0)
-        {
-            ClearAttackQueue();
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
+        bool hasAttack = GetAvailableAttackCount(
+            EnemyActionType.MeleeAttack) > 0;
+        EnemyStandardTurnIntent intent =
+            EnemyTurnDecisionPolicy.GetMeleeIntent(
+                hasAttack,
+                isQueueCreated,
+                queuedAttackActions.Count,
+                distanceToPlayer);
 
-        if (!isQueueCreated)
+        switch (intent)
         {
-            CreateAttackQueueWithAction(
-                EnemyActionType.MeleeAttack,
-                0);
-            return;
-        }
+            case EnemyStandardTurnIntent.CreateAttackQueue:
+                CreateAttackQueueWithAction(
+                    EnemyActionType.MeleeAttack,
+                    0);
+                break;
 
-        if (queuedAttackActions.Count == 0)
-        {
-            RegisterAction(EnemyActionType.MeleeAttack, 0);
-            return;
-        }
+            case EnemyStandardTurnIntent.RegisterAttack:
+                RegisterAction(EnemyActionType.MeleeAttack, 0);
+                break;
 
-        if (distanceToPlayer > 1)
-        {
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
+            case EnemyStandardTurnIntent.PrepareAttack:
+                PrepareCurrentAttackQueue();
+                break;
 
-        PrepareCurrentAttackQueue();
+            case EnemyStandardTurnIntent.MoveTowardPlayer:
+                if (!hasAttack)
+                {
+                    ClearAttackQueue();
+                }
+
+                MoveTowardPlayer(directionToPlayer);
+                break;
+
+            default:
+                CompleteAction(EnemyTurnActionType.Wait);
+                break;
+        }
     }
 
     private void TakeGunnerTurn(int directionToPlayer, int distanceToPlayer)
     {
-        int definedAttackCount = GetAvailableAttackCount(
-            EnemyActionType.RangedAttack);
+        bool hasAttack = GetAvailableAttackCount(
+            EnemyActionType.RangedAttack) > 0;
+        bool canPrepareAttack = hasAttack
+            && isQueueCreated
+            && queuedAttackActions.Count > 0
+            && CanPrepareGunnerAttack(
+                directionToPlayer,
+                distanceToPlayer);
+        EnemyStandardTurnIntent intent =
+            EnemyTurnDecisionPolicy.GetGunnerIntent(
+                hasAttack,
+                isQueueCreated,
+                queuedAttackActions.Count,
+                canPrepareAttack,
+                distanceToPlayer,
+                enemyData.FiringRange);
 
-        if (definedAttackCount == 0)
+        switch (intent)
         {
-            ClearAttackQueue();
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
+            case EnemyStandardTurnIntent.CreateAttackQueue:
+                CreateAttackQueueWithAction(
+                    EnemyActionType.RangedAttack,
+                    0);
+                break;
 
-        if (!isQueueCreated)
-        {
-            CreateAttackQueueWithAction(
-                EnemyActionType.RangedAttack,
-                0);
-            return;
-        }
+            case EnemyStandardTurnIntent.RegisterAttack:
+                RegisterAction(EnemyActionType.RangedAttack, 0);
+                break;
 
-        if (queuedAttackActions.Count == 0)
-        {
-            RegisterAction(EnemyActionType.RangedAttack, 0);
-            return;
-        }
+            case EnemyStandardTurnIntent.PrepareAttack:
+                PrepareCurrentAttackQueue();
+                break;
 
-        if (CanPrepareGunnerAttack(directionToPlayer, distanceToPlayer))
-        {
-            PrepareCurrentAttackQueue();
-            return;
-        }
+            case EnemyStandardTurnIntent.MoveTowardPlayer:
+                if (!hasAttack)
+                {
+                    ClearAttackQueue();
+                }
 
-        if (distanceToPlayer > enemyData.FiringRange)
-        {
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
+                MoveTowardPlayer(directionToPlayer);
+                break;
 
-        CompleteAction(EnemyTurnActionType.Wait);
+            default:
+                CompleteAction(EnemyTurnActionType.Wait);
+                break;
+        }
     }
 
     private void TakeThrowerTurn()
     {
-        if (GetAvailableAttackCount(EnemyActionType.RangedAttack) == 0)
+        bool hasAttack = GetAvailableAttackCount(
+            EnemyActionType.RangedAttack) > 0;
+        EnemyStandardTurnIntent intent =
+            EnemyTurnDecisionPolicy.GetThrowerIntent(
+                hasAttack,
+                isQueueCreated,
+                queuedAttackActions.Count);
+
+        switch (intent)
         {
-            ClearAttackQueue();
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
+            case EnemyStandardTurnIntent.CreateAttackQueue:
+                CreateAttackQueueWithAction(
+                    EnemyActionType.RangedAttack,
+                    0);
+                break;
 
-        if (!isQueueCreated)
-        {
-            CreateAttackQueueWithAction(
-                EnemyActionType.RangedAttack,
-                0);
-            return;
-        }
+            case EnemyStandardTurnIntent.RegisterAttack:
+                RegisterAction(EnemyActionType.RangedAttack, 0);
+                break;
 
-        if (queuedAttackActions.Count == 0)
-        {
-            RegisterAction(EnemyActionType.RangedAttack, 0);
-            return;
-        }
-
-        if (!CaptureThrowerTargetTile())
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        PrepareCurrentAttackQueue();
-    }
-
-    private void TakeBigBarrelTurn()
-    {
-        if (!TryGetTurnContext(
-                out int directionToPlayer,
-                out int distanceToPlayer))
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        if (bigBarrelStep != BigBarrelStep.ExecuteBomb
-            && bigBarrelStep != BigBarrelStep.ExecuteShotgun
-            && currentLaneIndex != playerMove.CurrentLaneIndex)
-        {
-            TakeLaneMismatchPursuitTurn(
-                directionToPlayer,
-                distanceToPlayer);
-            return;
-        }
-
-        if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
-        {
-            RotateToward(directionToPlayer);
-            return;
-        }
-
-        switch (bigBarrelStep)
-        {
-            case BigBarrelStep.RotateToPlayer:
-                TryEnterBigBarrelPhaseTwo();
-                bigBarrelStep = BigBarrelStep.CreateBombQueue;
-
-                if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
+            case EnemyStandardTurnIntent.CaptureThrowerTarget:
+                if (CaptureThrowerTargetTile())
                 {
-                    RotateToward(directionToPlayer);
+                    PrepareCurrentAttackQueue();
                 }
                 else
                 {
@@ -1240,17 +1218,56 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 }
                 break;
 
-            case BigBarrelStep.CreateBombQueue:
+            default:
+                ClearAttackQueue();
+                CompleteAction(EnemyTurnActionType.Wait);
+                break;
+        }
+    }
+
+    private void TakeBigBarrelTurn()
+    {
+        bool hasTurnContext = TryGetTurnContext(
+            out int directionToPlayer,
+            out int distanceToPlayer);
+        EnemyBigBarrelTurnIntent intent =
+            EnemyTurnDecisionPolicy.GetBigBarrelIntent(
+                hasTurnContext,
+                hasTurnContext
+                    && currentLaneIndex != playerMove.CurrentLaneIndex,
+                !hasTurnContext || directionToPlayer == 0
+                    || IsFacing(directionToPlayer),
+                bigBarrelStep);
+
+        switch (intent)
+        {
+            case EnemyBigBarrelTurnIntent.PursuePlayerLane:
+                TakeLaneMismatchPursuitTurn(
+                    directionToPlayer,
+                    distanceToPlayer);
+                break;
+
+            case EnemyBigBarrelTurnIntent.RotateTowardPlayer:
+                RotateToward(directionToPlayer);
+                break;
+
+            case EnemyBigBarrelTurnIntent.AdvanceOpeningStep:
+                TryEnterBigBarrelPhaseTwo();
+                bigBarrelStep = BigBarrelStep.CreateBombQueue;
+                CompleteAction(EnemyTurnActionType.Wait);
+                break;
+
+            case EnemyBigBarrelTurnIntent.CreateBombQueue:
                 TryEnterBigBarrelPhaseTwo();
                 bigBarrelActionUsesPhaseTwo = isBigBarrelPhaseTwo;
                 CreateBigBarrelBombQueueWithFirstAction();
                 break;
 
-            case BigBarrelStep.RegisterBomb:
+            case EnemyBigBarrelTurnIntent.RegisterBomb:
                 RegisterBigBarrelBombAction();
                 break;
 
-            case BigBarrelStep.PrepareBomb:
+            case EnemyBigBarrelTurnIntent.PrepareBomb:
                 CaptureBigBarrelBombTargets();
                 preparedBigBarrelFuse = bigBarrelActionUsesPhaseTwo
                     ? enemyData.BigBarrel.PhaseTwoBombFuseTurns
@@ -1259,44 +1276,48 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 PrepareCurrentAttackQueue();
                 break;
 
-            case BigBarrelStep.ExecuteBomb:
+            case EnemyBigBarrelTurnIntent.ExecuteBomb:
                 isAttackPrepared = false;
                 HideAttackTelegraph();
                 StartCoroutine(FireBigBarrelBombs());
                 break;
 
-            case BigBarrelStep.AdjustDistance:
+            case EnemyBigBarrelTurnIntent.AdjustDistance:
                 ApproachPlayerAndPrepareShotgun(
                     directionToPlayer,
                     distanceToPlayer);
                 break;
 
-            case BigBarrelStep.CreateShotgunQueue:
+            case EnemyBigBarrelTurnIntent.CreateShotgunQueue:
                 CreateBigBarrelQueueWithAction(
                     EnemyActionType.ShotgunAttack,
                     BigBarrelStep.AdjustDistance,
                     BigBarrelStep.Reload);
                 break;
 
-            case BigBarrelStep.RegisterShotgun:
+            case EnemyBigBarrelTurnIntent.RegisterShotgun:
                 RegisterBigBarrelAction(
                     EnemyActionType.ShotgunAttack,
                     BigBarrelStep.AdjustDistance,
                     BigBarrelStep.Reload);
                 break;
 
-            case BigBarrelStep.PrepareShotgun:
+            case EnemyBigBarrelTurnIntent.PrepareShotgun:
                 PrepareBigBarrelShotgun();
                 break;
 
-            case BigBarrelStep.ExecuteShotgun:
+            case EnemyBigBarrelTurnIntent.ExecuteShotgun:
                 isAttackPrepared = false;
                 HideAttackTelegraph();
                 StartCoroutine(FireBigBarrelShotgun());
                 break;
 
-            case BigBarrelStep.Reload:
+            case EnemyBigBarrelTurnIntent.Reload:
                 TakeBigBarrelReloadTurn();
+                break;
+
+            default:
+                CompleteAction(EnemyTurnActionType.Wait);
                 break;
         }
     }

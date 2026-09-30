@@ -38,7 +38,7 @@ internal readonly struct EnemyBattleProgress
     public long RemainingCount => Math.Max(0L, TotalCount - DefeatedCount);
 }
 
-public class WaveManager : MonoBehaviour
+public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 {
     private const int EnemyCapacityPercentage = 40;
     private const int ImmediateEnemyPercentage = 10;
@@ -124,6 +124,8 @@ public class WaveManager : MonoBehaviour
         new Dictionary<int, Component>();
     private readonly List<int> movementReservationCleanupBuffer =
         new List<int>();
+    private readonly EnemyTurnCycleRunner enemyTurnCycleRunner =
+        new EnemyTurnCycleRunner();
 
     public event Action StateChanged;
     public event Action BattleCompleted;
@@ -188,6 +190,26 @@ public class WaveManager : MonoBehaviour
     internal long PendingEnemyTurnCycles => pendingEnemyTurnCycles;
     internal int PendingDetachedEnemyAttackCount =>
         pendingDetachedEnemyAttacks;
+
+    IReadOnlyList<EnemyController> IEnemyTurnCycleRuntime.ActiveEnemies =>
+        activeEnemies;
+    bool IEnemyTurnCycleRuntime.IsBattleCompleted => isBattleCompleted;
+    bool IEnemyTurnCycleRuntime.IsPlayerDefeated =>
+        playerHealth != null && playerHealth.IsDefeated;
+    bool IEnemyTurnCycleRuntime.HasPendingDetachedEnemyAttacks =>
+        pendingDetachedEnemyAttacks > 0;
+    bool IEnemyTurnCycleRuntime.IsResolvingBossBombExplosions =>
+        bossBombManager != null && bossBombManager.IsResolvingExplosions;
+
+    void IEnemyTurnCycleRuntime.RemoveMissingEnemies()
+    {
+        RemoveMissingEnemies();
+    }
+
+    void IEnemyTurnCycleRuntime.ProcessBossBombs(int enemyTurnCycle)
+    {
+        bossBombManager?.ProcessEnemyTurnCycleEnd(enemyTurnCycle);
+    }
 
     private readonly EnemyAttackHoverPresenter attackHover = new EnemyAttackHoverPresenter();
 
@@ -1265,78 +1287,12 @@ public class WaveManager : MonoBehaviour
 
     private IEnumerator ResolveOneEnemyTurnCycle()
     {
-        RemoveMissingEnemies();
+        yield return enemyTurnCycleRunner.Resolve(
+            this,
+            currentEnemyTurnCycle,
+            enemyTurnDelay,
+            enemyActionInterval);
 
-        EnemyController[] enemiesThisTurn = activeEnemies.ToArray();
-        List<EnemyController> concurrentActions = new List<EnemyController>();
-        float turnStartedAt = Time.time;
-
-        for (int enemyIndex = 0;
-             enemyIndex < enemiesThisTurn.Length;
-             enemyIndex++)
-        {
-            EnemyController enemy = enemiesThisTurn[enemyIndex];
-
-            if (enemy != null && activeEnemies.Contains(enemy))
-            {
-                bool usesDedicatedMotion =
-                    enemy.WillExecuteDedicatedTurnMotion;
-
-                if (usesDedicatedMotion)
-                {
-                    yield return WaitForEnemyActions(concurrentActions);
-                    concurrentActions.Clear();
-                }
-
-                enemy.TakeTurn();
-
-                if (!usesDedicatedMotion)
-                {
-                    if (enemy != null && enemy.IsActing)
-                    {
-                        concurrentActions.Add(enemy);
-                    }
-
-                    continue;
-                }
-
-                yield return WaitForEnemyAction(enemy);
-
-                if (playerHealth.IsDefeated)
-                {
-                    break;
-                }
-
-                if (ShouldWaitBetweenEnemyActions(
-                        enemy == null
-                            ? EnemyTurnActionType.None
-                            : enemy.LastTurnAction,
-                        enemyIndex < enemiesThisTurn.Length - 1))
-                {
-                    yield return WaitForTurnTime(enemyActionInterval);
-                }
-            }
-        }
-
-        yield return WaitForEnemyActions(concurrentActions);
-        yield return WaitForDetachedEnemyAttacks();
-
-        float remainingTurnDelay = Mathf.Max(
-            0f,
-            enemyTurnDelay - (Time.time - turnStartedAt));
-        yield return WaitForTurnTime(remainingTurnDelay);
-
-        RemoveMissingEnemies();
-        bossBombManager?.ProcessEnemyTurnCycleEnd(currentEnemyTurnCycle);
-
-        while (bossBombManager != null
-               && bossBombManager.IsResolvingExplosions
-               && !isBattleCompleted && !playerHealth.IsDefeated)
-        {
-            yield return null;
-        }
-
-        RemoveMissingEnemies();
         EnemyTurnCycleCompleted?.Invoke(currentEnemyTurnCycle);
         AdvanceWaveCountdown();
         StateChanged?.Invoke();
@@ -1346,63 +1302,9 @@ public class WaveManager : MonoBehaviour
         EnemyTurnActionType completedAction,
         bool hasFollowingEnemy)
     {
-        return hasFollowingEnemy
-            && completedAction == EnemyTurnActionType.Fire;
-    }
-
-    private IEnumerator WaitForTurnTime(float duration)
-    {
-        float elapsedTime = 0f;
-
-        while (elapsedTime < duration)
-        {
-            yield return null;
-
-            if (!GamePauseController.IsPaused)
-            {
-                elapsedTime += Time.deltaTime;
-            }
-        }
-    }
-
-    private static IEnumerator WaitForEnemyAction(EnemyController enemy)
-    {
-        while (enemy != null && enemy.IsActing)
-        {
-            yield return null;
-        }
-    }
-
-    private static IEnumerator WaitForEnemyActions(
-        IReadOnlyList<EnemyController> enemies)
-    {
-        if (enemies == null || enemies.Count == 0)
-        {
-            yield break;
-        }
-
-        bool hasRunningAction = true;
-
-        while (hasRunningAction)
-        {
-            hasRunningAction = false;
-
-            for (int index = 0; index < enemies.Count; index++)
-            {
-                EnemyController enemy = enemies[index];
-
-                if (enemy != null && enemy.IsActing)
-                {
-                    hasRunningAction = true;
-                    break;
-                }
-            }
-
-            if (hasRunningAction)
-            {
-                yield return null;
-            }
-        }
+        return EnemyTurnCycleRunner.ShouldWaitBetweenEnemyActions(
+            completedAction,
+            hasFollowingEnemy);
     }
 
     private bool TrySpawnNextWave()
@@ -2646,15 +2548,6 @@ public class WaveManager : MonoBehaviour
             }
 
             StateChanged?.Invoke();
-        }
-    }
-
-    private IEnumerator WaitForDetachedEnemyAttacks()
-    {
-        while (pendingDetachedEnemyAttacks > 0
-               && !isBattleCompleted && !playerHealth.IsDefeated)
-        {
-            yield return null;
         }
     }
 

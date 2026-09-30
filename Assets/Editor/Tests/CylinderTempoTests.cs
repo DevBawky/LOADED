@@ -520,3 +520,72 @@ public sealed class CylinderTempoTests
         return (bool)method.Invoke(playerMove, null);
     }
 }
+
+public sealed class EnemyTurnCycleRunnerTests
+{
+    [Test]
+    public void EmptyCycleSettlesEnemiesAroundBossBombProcessing()
+    {
+        RecordingEnemyTurnCycleRuntime runtime =
+            new RecordingEnemyTurnCycleRuntime();
+        EnemyTurnCycleRunner runner = new EnemyTurnCycleRunner();
+
+        Drain(runner.Resolve(runtime, 7, 0f, 0f));
+
+        Assert.That(
+            runtime.Operations,
+            Is.EqualTo(new[]
+            {
+                "remove-missing",
+                "remove-missing",
+                "process-bombs:7",
+                "remove-missing"
+            }));
+    }
+
+    private static void Drain(IEnumerator root)
+    {
+        Stack<IEnumerator> routines = new Stack<IEnumerator>();
+        routines.Push(root);
+
+        while (routines.Count > 0)
+        {
+            IEnumerator current = routines.Peek();
+
+            if (!current.MoveNext())
+            {
+                routines.Pop();
+                continue;
+            }
+
+            if (current.Current is IEnumerator nested)
+            {
+                routines.Push(nested);
+            }
+        }
+    }
+
+    private sealed class RecordingEnemyTurnCycleRuntime
+        : IEnemyTurnCycleRuntime
+    {
+        private readonly List<EnemyController> activeEnemies =
+            new List<EnemyController>();
+
+        public List<string> Operations { get; } = new List<string>();
+        public IReadOnlyList<EnemyController> ActiveEnemies => activeEnemies;
+        public bool IsBattleCompleted => false;
+        public bool IsPlayerDefeated => false;
+        public bool HasPendingDetachedEnemyAttacks => false;
+        public bool IsResolvingBossBombExplosions => false;
+
+        public void RemoveMissingEnemies()
+        {
+            Operations.Add("remove-missing");
+        }
+
+        public void ProcessBossBombs(int enemyTurnCycle)
+        {
+            Operations.Add($"process-bombs:{enemyTurnCycle}");
+        }
+    }
+}

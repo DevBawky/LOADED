@@ -355,11 +355,17 @@ public partial class PlayerShoot : MonoBehaviour
             : enemy.transform.position.x >= playerMove.transform.position.x
                 ? 1
                 : -1;
+        CombatPresentation.EnemySnapshot snapshot = combatPresentation == null
+            ? default
+            : combatPresentation.CaptureEnemy(enemy);
+        Vector3 defeatPosition = snapshot.Captured
+            ? snapshot.Position
+            : enemy.transform.position;
         CombatFeedbackController.DefeatPresentationCue presentationCue =
             combatFeedback == null
                 ? default
                 : combatFeedback.RecordDefeat(
-                    enemy.transform.position,
+                    defeatPosition,
                     horizontalDirection,
                     damage,
                     enemy.MaxHealth,
@@ -370,9 +376,6 @@ public partial class PlayerShoot : MonoBehaviour
                     healthBeforeDamage,
                     true,
                     enemy.LastDamageAbsorbed);
-        CombatPresentation.EnemySnapshot snapshot = combatPresentation == null
-            ? default
-            : combatPresentation.CaptureEnemy(enemy);
         snapshot.OverkillStrength = presentationCue.OverkillStrength;
         combatPresentation?.PlayImpact(
             snapshot,
@@ -391,7 +394,7 @@ public partial class PlayerShoot : MonoBehaviour
             damage,
             healthBeforeDamage,
             enemy.MaxHealth,
-            enemy.transform.position,
+            defeatPosition,
             presentationCue,
             true);
     }

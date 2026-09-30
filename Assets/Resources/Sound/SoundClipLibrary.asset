@@ -132,7 +132,7 @@ MonoBehaviour:
     - {fileID: 8300000, guid: 3516c279da18eaa40b97de96d4d0356d, type: 3}
     volume: 2
     minPitch: 1
-    maxPitch: 1.05
+    maxPitch: 2
   - id: SFX_Attack_Thief
     category: 3
     clip: {fileID: 8300000, guid: 174ed32535941a24a9b227cd42bc70e8, type: 3}
@@ -174,7 +174,7 @@ MonoBehaviour:
     variants: []
     volume: 1.5
     minPitch: 1.2
-    maxPitch: 2
+    maxPitch: 2.5
   - id: SFX_Critical
     category: 2
     clip: {fileID: 8300000, guid: 30f24674f0fd6d34f95e12339b945cd5, type: 3}
@@ -198,11 +198,11 @@ MonoBehaviour:
     maxPitch: 1
   - id: SFX_GainGold
     category: 0
-    clip: {fileID: 8300000, guid: 80e82ebeab50dac4cbbc50d04c3c6bb0, type: 3}
+    clip: {fileID: 8300000, guid: aa496dd9a54214e419660414bb5e2aab, type: 3}
     variants: []
     volume: 1.5
-    minPitch: 1
-    maxPitch: 1
+    minPitch: 0.8
+    maxPitch: 2
   - id: UI_Button_Hover_Click
     category: 0
     clip: {fileID: 8300000, guid: 14213cd704b01d44e87dc88bd1f5c8d4, type: 3}
@@ -294,3 +294,10 @@ MonoBehaviour:
     volume: 1.5
     minPitch: 0.9
     maxPitch: 0.9
+  - id: SFX_Combo_Kill
+    category: 2
+    clip: {fileID: 8300000, guid: 11b6c854a08c5c0429d9c8f15a2edbbb, type: 3}
+    variants: []
+    volume: 2
+    minPitch: 0.9
+    maxPitch: 2

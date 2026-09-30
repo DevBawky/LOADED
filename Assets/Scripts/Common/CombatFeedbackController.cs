@@ -167,6 +167,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             float baseIntensity,
             float amplifiedIntensity,
             bool showCylinderChainText,
+            bool playComboGoldSfx,
             float overkillStrength)
         {
             WorldPosition = worldPosition;
@@ -176,6 +177,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             BaseIntensity = baseIntensity;
             AmplifiedIntensity = amplifiedIntensity;
             ShowCylinderChainText = showCylinderChainText;
+            PlayComboGoldSfx = playComboGoldSfx;
             OverkillStrength = overkillStrength;
         }
 
@@ -186,6 +188,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         public float BaseIntensity { get; }
         public float AmplifiedIntensity { get; }
         public bool ShowCylinderChainText { get; }
+        public bool PlayComboGoldSfx { get; }
         public float OverkillStrength { get; }
     }
 
@@ -208,6 +211,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
 
     [Header("Kill Combo Bonus")]
     [SerializeField] private TextMeshPro killComboTextPrefab;
+    [SerializeField] private EnemyDefeatCoinBurstEffect defeatCoinBurstPrefab;
     [Min(0)]
     [SerializeField] private int comboGoldPerKill = 10;
     [Min(0.1f)]
@@ -963,6 +967,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         RefreshComboCountValues();
         UpdateComboText();
 
+        bool playComboGoldSfx = false;
         if (comboCount > 1 && comboGoldPerKill > 0)
         {
             currencyManager ??= FindFirstObjectByType<CurrencyManager>();
@@ -971,7 +976,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
             int comboBonus = calculatedBonus >= int.MaxValue
                 ? int.MaxValue
                 : (int)calculatedBonus;
-            currencyManager?.AddMoneyFromWorld(comboBonus, worldPosition);
+            playComboGoldSfx = currencyManager != null
+                && currencyManager.AddMoneyWithoutSfx(comboBonus);
         }
 
         float specialBoost = (wasCritical ? 0.12f : 0f)
@@ -1014,6 +1020,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             baseIntensity,
             amplifiedIntensity,
             countsForFiringSequence,
+            playComboGoldSfx,
             overkillStrength);
 
         if (presentationDelay <= 0f)
@@ -1098,9 +1105,13 @@ public sealed class CombatFeedbackController : MonoBehaviour
         FiringSequenceDefeatFeedbackProfile profile =
             FiringSequenceDefeatFeedbackProfile.Resolve(
                 request.FiringSequenceDefeatCount);
-        SoundManager.PlayOverkillAccent(request.OverkillStrength);
-        SoundManager.PlayComboDie(
-            Mathf.Max(1, request.FiringSequenceDefeatCount));
+        SoundManager.PlayDefeatCue(
+            Mathf.Max(1, request.FiringSequenceDefeatCount),
+            request.PlayComboGoldSfx,
+            request.OverkillStrength);
+        PlayDefeatCoinBurst(
+            request.WorldPosition,
+            request.FiringSequenceDefeatCount);
         comboPunchRemaining = 0.3f;
         comboPunchStrengthMultiplier = request.FeedbackMultiplier;
 
@@ -1134,6 +1145,22 @@ public sealed class CombatFeedbackController : MonoBehaviour
             profile.IntensityMultiplier);
     }
 
+    private void PlayDefeatCoinBurst(
+        Vector3 worldPosition,
+        int firingSequenceDefeatCount)
+    {
+        if (defeatCoinBurstPrefab == null)
+        {
+            return;
+        }
+
+        EnemyDefeatCoinBurstEffect effect = Instantiate(
+            defeatCoinBurstPrefab,
+            worldPosition,
+            Quaternion.identity);
+        effect.Play(Mathf.Max(1, firingSequenceDefeatCount));
+    }
+
     private void HandlePlayerStatusDefeated(
         EnemyController enemy,
         int damage,
@@ -1164,7 +1191,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
             ? default
             : presentation.CaptureEnemy(enemy);
         DefeatPresentationCue cue = RecordDefeat(
-            enemy.transform.position,
+            snapshot.Captured ? snapshot.Position : enemy.transform.position,
             horizontalDirection,
             Mathf.Max(0, damage),
             enemy.MaxHealth,

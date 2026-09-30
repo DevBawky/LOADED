@@ -3,6 +3,46 @@ using UnityEngine;
 
 public sealed class CurrencyManagerTests
 {
+    [TestCase("SFX_Combo_Kill")]
+    [TestCase("SFX_Combo_Die")]
+    [TestCase("SFX_GainGold")]
+    [TestCase("SFX_Enemy_Hit")]
+    [TestCase("SFX_Enemy_Die")]
+    public void DefeatSfxPitchStartsAtAuthoredMinimumAndStaysWithinMaximum(
+        string id)
+    {
+        SoundClipLibrary library = Resources.Load<SoundClipLibrary>(
+            "Sound/SoundClipLibrary");
+        Assert.That(library, Is.Not.Null);
+        Assert.That(
+            library.TryGetFixedSfx(
+                id,
+                out AudioClip clip,
+                out _,
+                out float minPitch,
+                out float maxPitch,
+                out _),
+            Is.True);
+        Assert.That(clip, Is.Not.Null);
+
+        float first = SoundManager.CalculateComboPitch(
+            minPitch,
+            maxPitch,
+            1);
+        float second = SoundManager.CalculateComboPitch(
+            minPitch,
+            maxPitch,
+            2);
+        float veryHighCombo = SoundManager.CalculateComboPitch(
+            minPitch,
+            maxPitch,
+            int.MaxValue);
+
+        Assert.That(first, Is.EqualTo(minPitch).Within(0.0001f));
+        Assert.That(second, Is.InRange(minPitch, maxPitch));
+        Assert.That(veryHighCombo, Is.LessThanOrEqualTo(maxPitch));
+    }
+
     [Test]
     public void GoldArrivalClipLookupDoesNotConsumeGameplayRandom()
     {
@@ -13,8 +53,18 @@ public sealed class CurrencyManagerTests
         {
             float expected = Random.value;
             Random.state = before;
-            Assert.That(library.TryGetFixedSfx("SFX_GainGold", out AudioClip clip, out _, out _), Is.True);
+            Assert.That(
+                library.TryGetFixedSfx(
+                    "SFX_GainGold",
+                    out AudioClip clip,
+                    out _,
+                    out float minPitch,
+                    out float maxPitch,
+                    out _),
+                Is.True);
             Assert.That(clip, Is.Not.Null);
+            Assert.That(minPitch, Is.GreaterThan(0f));
+            Assert.That(maxPitch, Is.GreaterThanOrEqualTo(minPitch));
             Assert.That(Random.value, Is.EqualTo(expected));
         }
         finally { Random.state = before; }

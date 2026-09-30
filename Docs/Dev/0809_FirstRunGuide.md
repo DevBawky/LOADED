@@ -140,6 +140,9 @@ loaded.guide.first_run_started.v1 (legacy)
 ## 구현 파일
 
 - `Assets/Scripts/Manager/FirstRunGuideController.cs`
+- `Assets/Scripts/Manager/FirstRunGuideRuntimeView.cs`
+- `Assets/Scripts/Manager/FirstRunGuideHighlightPresenter.cs`
+- `Assets/Scripts/Manager/FirstRunGuideVideoPresenter.cs`
 - `Assets/Scripts/Manager/StateManager.cs`
 - `Assets/Scripts/Manager/GamePauseController.cs`
 - `Assets/Scripts/Player/PlayerMove.cs`

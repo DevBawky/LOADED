@@ -7,8 +7,12 @@ using UnityEngine.UI;
 public sealed class SoundManager : MonoBehaviour
 {
     private const string DefaultLibraryPath = "Sound/SoundClipLibrary";
-    private const float ComboPitchGrowthRate = 0.22f;
-    private const float ComboPitchRange = 1.5f;
+    private const float ComboPitchGrowthRate = 0.18f;
+    private const float ComboPitchRange = 0.65f;
+    private const float DefeatCoreLayerDelay = 0.045f;
+    private const float DefeatGoldLayerDelay = 0.055f;
+    private const float DefeatAccentLayerDelay = 0.035f;
+    private const int CriticalSfxPriority = 16;
     private const float BgmCompletionToleranceSeconds = 0.25f;
     private const float BgmFadeOutDuration = 0.45f;
     private const float BgmFadeInDuration = 0.65f;
@@ -37,6 +41,7 @@ public sealed class SoundManager : MonoBehaviour
     private AudioClip lastKnownBgmClip;
     private float nextPenetrationAccentTime;
     private float nextOverkillAccentTime;
+    private int defeatCueGeneration;
     private int lastKnownBgmTimeSamples;
     private SoundtrackDirector soundtrackDirector;
     private UiButtonFeedbackInstaller uiButtonFeedbackInstaller;
@@ -60,6 +65,7 @@ public sealed class SoundManager : MonoBehaviour
         EnsureClipLibrary();
         LoadVolumePreferences();
         EnsureAudioSources();
+        PreloadDefeatSfx();
         soundtrackDirector = new SoundtrackDirector(this);
         uiButtonFeedbackInstaller = new UiButtonFeedbackInstaller();
     }
@@ -210,19 +216,21 @@ public sealed class SoundManager : MonoBehaviour
         FiringSequenceDefeatFeedbackProfile profile =
             FiringSequenceDefeatFeedbackProfile.Resolve(
                 firingSequenceKillCount);
-        float pitch = CalculateFiringSequenceKillPitch(
-            firingSequenceKillCount);
         if (manager.clipLibrary != null
-            && manager.clipLibrary.TryGetSfx(
+            && manager.clipLibrary.TryGetFixedSfx(
                 "SFX_Combo_Die",
                 out AudioClip clip,
                 out float volume,
-                out _,
+                out float minPitch,
+                out float maxPitch,
                 out UnityEngine.Audio.AudioMixerGroup mixerGroup))
         {
             manager.PlayOneShot(
                 clip,
-                pitch,
+                CalculateComboPitch(
+                    minPitch,
+                    maxPitch,
+                    firingSequenceKillCount),
                 volume * Mathf.Lerp(
                     1f,
                     1.12f,
@@ -230,46 +238,176 @@ public sealed class SoundManager : MonoBehaviour
                         1f,
                         1.68f,
                         profile.IntensityMultiplier)),
-                mixerGroup);
+                mixerGroup,
+                CriticalSfxPriority);
         }
 
         if (profile.Tier >= FiringSequenceDefeatTier.Chain)
         {
-            manager.PlayFixedCombatLayer(
-                "SFX_Enemy_Hit",
-                Mathf.Lerp(1.28f, 1.58f, Mathf.InverseLerp(
-                    2f,
-                    5f,
-                    profile.KillCount)),
-                Mathf.Lerp(0.18f, 0.3f, Mathf.InverseLerp(
-                    2f,
-                    5f,
-                    profile.KillCount)));
             manager.StartCombatDuck(profile);
-        }
-
-        if (profile.Tier >= FiringSequenceDefeatTier.Rupture)
-        {
-            manager.PlayFixedCombatLayer(
-                "SFX_Enemy_Die",
-                Mathf.Lerp(0.76f, 0.62f, Mathf.InverseLerp(
-                    3f,
-                    5f,
-                    profile.KillCount)),
-                Mathf.Lerp(0.2f, 0.38f, Mathf.InverseLerp(
-                    3f,
-                    5f,
-                    profile.KillCount)));
         }
     }
 
-    private void PlayFixedCombatLayer(string id, float pitch, float volume)
+    public static void PlayComboKill(int firingSequenceKillCount)
+    {
+        SoundManager manager = Instance;
+
+        if (GamePauseController.IsPaused
+            || manager.clipLibrary == null
+            || !manager.clipLibrary.TryGetFixedSfx(
+                "SFX_Combo_Kill",
+                out AudioClip clip,
+                out float volume,
+                out float minPitch,
+                out float maxPitch,
+                out UnityEngine.Audio.AudioMixerGroup mixerGroup))
+        {
+            return;
+        }
+
+        manager.PlayOneShot(
+            clip,
+            CalculateComboPitch(
+                minPitch,
+                maxPitch,
+                firingSequenceKillCount),
+            volume,
+            mixerGroup,
+            CriticalSfxPriority);
+    }
+
+    public static void PlayDefeatCue(
+        int firingSequenceKillCount,
+        bool playComboGoldSfx,
+        float overkillStrength)
+    {
+        SoundManager manager = Instance;
+
+        if (GamePauseController.IsPaused)
+        {
+            return;
+        }
+
+        manager.StartCoroutine(manager.PlayDefeatCueRoutine(
+            Mathf.Max(1, firingSequenceKillCount),
+            playComboGoldSfx,
+            Mathf.Clamp01(overkillStrength),
+            manager.defeatCueGeneration));
+    }
+
+    private IEnumerator PlayDefeatCueRoutine(
+        int firingSequenceKillCount,
+        bool playComboGoldSfx,
+        float overkillStrength,
+        int generation)
+    {
+        PlayComboKill(firingSequenceKillCount);
+        yield return WaitForDefeatCueDelay(DefeatCoreLayerDelay);
+
+        if (generation != defeatCueGeneration)
+        {
+            yield break;
+        }
+
+        PlayComboDie(firingSequenceKillCount);
+
+        if (playComboGoldSfx)
+        {
+            yield return WaitForDefeatCueDelay(DefeatGoldLayerDelay);
+
+            if (generation != defeatCueGeneration)
+            {
+                yield break;
+            }
+
+            PlayComboGold(firingSequenceKillCount);
+        }
+
+        FiringSequenceDefeatFeedbackProfile profile =
+            FiringSequenceDefeatFeedbackProfile.Resolve(
+                firingSequenceKillCount);
+        bool hasAccent = overkillStrength > 0f
+            || profile.Tier >= FiringSequenceDefeatTier.Chain;
+
+        if (!hasAccent)
+        {
+            yield break;
+        }
+
+        yield return WaitForDefeatCueDelay(DefeatAccentLayerDelay);
+
+        if (generation != defeatCueGeneration)
+        {
+            yield break;
+        }
+
+        string accentId = overkillStrength > 0f
+            || profile.Tier >= FiringSequenceDefeatTier.Rupture
+            ? "SFX_Enemy_Die"
+            : "SFX_Enemy_Hit";
+        float accentVolume = overkillStrength > 0f
+            ? Mathf.Lerp(0.15f, 0.32f, overkillStrength)
+            : 0.16f;
+        PlayComboCombatLayer(
+            accentId,
+            firingSequenceKillCount,
+            accentVolume);
+    }
+
+    private static IEnumerator WaitForDefeatCueDelay(float duration)
+    {
+        float remaining = Mathf.Max(0f, duration);
+
+        while (remaining > 0f)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                remaining -= Time.unscaledDeltaTime;
+            }
+        }
+    }
+
+    private static void PlayComboGold(int firingSequenceKillCount)
+    {
+        SoundManager manager = Instance;
+
+        if (manager.clipLibrary == null
+            || !manager.clipLibrary.TryGetFixedSfx(
+                "SFX_GainGold",
+                out AudioClip clip,
+                out float volume,
+                out float minPitch,
+                out float maxPitch,
+                out UnityEngine.Audio.AudioMixerGroup mixerGroup))
+        {
+            return;
+        }
+
+        manager.PlayOneShot(
+            clip,
+            CalculateComboPitch(
+                minPitch,
+                maxPitch,
+                firingSequenceKillCount),
+            volume,
+            mixerGroup,
+            CriticalSfxPriority);
+    }
+
+    private void PlayComboCombatLayer(
+        string id,
+        int firingSequenceKillCount,
+        float volume)
     {
         if (clipLibrary == null
             || !clipLibrary.TryGetFixedSfx(
                 id,
                 out AudioClip clip,
                 out float authoredVolume,
+                out float minPitch,
+                out float maxPitch,
                 out UnityEngine.Audio.AudioMixerGroup mixerGroup))
         {
             return;
@@ -277,9 +415,13 @@ public sealed class SoundManager : MonoBehaviour
 
         PlayOneShot(
             clip,
-            pitch,
+            CalculateComboPitch(
+                minPitch,
+                maxPitch,
+                firingSequenceKillCount),
             authoredVolume * Mathf.Clamp(volume, 0f, 0.5f),
-            mixerGroup);
+            mixerGroup,
+            CriticalSfxPriority);
     }
 
     private void StartCombatDuck(
@@ -370,9 +512,32 @@ public sealed class SoundManager : MonoBehaviour
     internal static float CalculateFiringSequenceKillPitch(
         int firingSequenceKillCount)
     {
+        return CalculateComboPitch(
+            1f,
+            1f + ComboPitchRange,
+            firingSequenceKillCount);
+    }
+
+    internal static float CalculateComboPitch(
+        float configuredMinPitch,
+        float configuredMaxPitch,
+        int firingSequenceKillCount)
+    {
+        float minimum = Mathf.Clamp(
+            Mathf.Min(configuredMinPitch, configuredMaxPitch),
+            0.01f,
+            3f);
+        float maximum = Mathf.Clamp(
+            Mathf.Max(configuredMinPitch, configuredMaxPitch),
+            minimum,
+            3f);
         int additionalKills = Mathf.Max(0, firingSequenceKillCount - 1);
-        return 1f + ComboPitchRange
-            * (1f - Mathf.Exp(-additionalKills * ComboPitchGrowthRate));
+        float progress = 1f - Mathf.Exp(
+            -additionalKills * ComboPitchGrowthRate);
+        return Mathf.Clamp(
+            Mathf.Lerp(minimum, maximum, progress),
+            minimum,
+            maximum);
     }
 
     public static void ResetComboPitch()
@@ -439,6 +604,7 @@ public sealed class SoundManager : MonoBehaviour
 
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        defeatCueGeneration++;
         soundtrackDirector.RefreshForScene(scene);
         uiButtonFeedbackInstaller.ScanNow();
     }
@@ -609,7 +775,8 @@ public sealed class SoundManager : MonoBehaviour
         AudioClip clip,
         float pitch = 1f,
         float volumeScale = 1f,
-        UnityEngine.Audio.AudioMixerGroup mixerGroup = null)
+        UnityEngine.Audio.AudioMixerGroup mixerGroup = null,
+        int priority = 128)
     {
         if (clip == null) return;
         RequestAudioData(clip);
@@ -619,7 +786,8 @@ public sealed class SoundManager : MonoBehaviour
                 clip,
                 pitch,
                 volumeScale,
-                mixerGroup));
+                mixerGroup,
+                priority));
             return;
         }
 
@@ -627,6 +795,7 @@ public sealed class SoundManager : MonoBehaviour
         source.outputAudioMixerGroup = GetWebCompatibleMixerGroup(
             mixerGroup != null ? mixerGroup : clipLibrary?.SfxMixerGroup);
         source.pitch = Mathf.Clamp(pitch, 0.01f, 3f);
+        source.priority = Mathf.Clamp(priority, 0, 256);
         source.volume = sfxVolume;
         source.clip = null;
         source.PlayOneShot(clip, Mathf.Clamp(volumeScale, 0f, 2f));
@@ -636,7 +805,8 @@ public sealed class SoundManager : MonoBehaviour
         AudioClip clip,
         float pitch,
         float volumeScale,
-        UnityEngine.Audio.AudioMixerGroup mixerGroup)
+        UnityEngine.Audio.AudioMixerGroup mixerGroup,
+        int priority)
     {
         float deadline = Time.realtimeSinceStartup + 5f;
         while (clip != null && clip.loadState == AudioDataLoadState.Loading
@@ -647,7 +817,29 @@ public sealed class SoundManager : MonoBehaviour
 
         if (clip != null && clip.loadState == AudioDataLoadState.Loaded)
         {
-            PlayOneShot(clip, pitch, volumeScale, mixerGroup);
+            PlayOneShot(clip, pitch, volumeScale, mixerGroup, priority);
+        }
+    }
+
+    private void PreloadDefeatSfx()
+    {
+        PreloadFixedSfx("SFX_Combo_Kill");
+        PreloadFixedSfx("SFX_Combo_Die");
+        PreloadFixedSfx("SFX_GainGold");
+        PreloadFixedSfx("SFX_Enemy_Hit");
+        PreloadFixedSfx("SFX_Enemy_Die");
+    }
+
+    private void PreloadFixedSfx(string id)
+    {
+        if (clipLibrary != null
+            && clipLibrary.TryGetFixedSfx(
+                id,
+                out AudioClip clip,
+                out _,
+                out _))
+        {
+            RequestAudioData(clip);
         }
     }
 
