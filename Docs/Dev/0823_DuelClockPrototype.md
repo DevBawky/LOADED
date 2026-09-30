@@ -1,5 +1,43 @@
 # Duel Clock Prototype
 
+> Superseded by Cylinder Tempo. The legacy type, enum, and save-field names are
+> intentionally retained for Unity serialization and active-run compatibility.
+> Runtime combat no longer advances from elapsed time or a separate spawn
+> gauge.
+
+## Cylinder Tempo contract
+
+- The meter has six slots and advances only from completed player choices.
+- Horizontal or vertical movement costs `2`, player rotation costs `1`, wait
+  costs `1`, reload costs `3`, and firing costs `3`.
+- A reload that does not complete a turn, automatic effect movement, automatic
+  rotation, and a successful reactive dodge cost `0`.
+- At six slots, the meter remains visibly full while the current living-enemy
+  snapshot resolves one action each. Slot signals switch immediately without
+  interpolation. Overflow stays hidden until that complete enemy cycle and its
+  reinforcement check finish; carried slots remain lit while every other slot
+  switches off together.
+- After each completed six-slot cycle, one enemy spawns when the living count
+  is below the board's maximum and the authored pool is not exhausted. The new
+  enemy joins the next cycle, never the snapshot already resolving.
+- When no living enemy remains, the board immediately spawns
+  `ceil(total tile count * 0.10)`, clamped by the remaining pool, maximum living
+  count, and available cells. This immediate batch replaces the ordinary
+  one-enemy reinforcement for that cycle.
+- The maximum living count remains `floor(total tile count * 0.40)`.
+- Enemy defeats do not reduce Cylinder Tempo. There is no natural charge and
+  no independent spawn meter.
+- The persistent kill-combo window uses four gauge cells and consumes one as
+  soon as each six-slot enemy-action cycle is committed.
+- `CylinderTempoHUD` is presentation-only. Its six images, count labels, phase
+  label, resolve material, controller, and `WaveManager` are serialized on the
+  Battle scene instance. Runtime code does not search the hierarchy to wire
+  them. `Text | Phase` displays cyan `PLAYER PHASE` while the player can issue
+  normal actions, then switches to a bold pulsing red-orange `ENEMY PHASE`
+  while the six-slot enemy cycle remains reserved. It returns to the player
+  phase only after the complete enemy-action presentation settles and the
+  carried Tempo becomes visible.
+
 ## Scope
 
 This document records the M0 through M44-2 implementation gates for GitHub
@@ -177,7 +215,7 @@ required serialized references; neither command writes the prefab or Battle
 scene. Visual edits are authored directly in the prefab.
 
 The former `Turn N` run display now renders `COUNT N` from completed enemy
-cycles. The persistent combo window starts consuming one of eight gauge cells
+cycles. The persistent combo window starts consuming one of four gauge cells
 as soon as the Duel Clock commits a Beat at 100%, using its existing
 `0.1`-second drain timing instead of waiting for enemy turn resolution. Player
 actions do not consume combo gauge cells directly.

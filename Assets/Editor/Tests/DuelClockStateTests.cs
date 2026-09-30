@@ -353,6 +353,7 @@ public sealed class DuelClockBattleAssetTests
     }
 }
 
+[Ignore("Superseded by CylinderTempoTests after the Duel Clock prototype was replaced.")]
 public sealed class DuelClockControllerTests
 {
     private readonly List<GameObject> createdObjects = new List<GameObject>();
@@ -1945,7 +1946,7 @@ public sealed class WaveManagerPacingDispatchTests
     }
 
     [Test]
-    public void DuelClockCapsPendingQueueWithoutBlockingPlayerInput()
+    public void CylinderTempoCapsPendingQueueAndBlocksTurnActions()
     {
         CreateWaveSetup(
             CombatPacingMode.DuelClock,
@@ -1961,7 +1962,7 @@ public sealed class WaveManagerPacingDispatchTests
 
         Assert.That(waveManager.PendingEnemyTurnCycles, Is.EqualTo(1));
         Assert.That(notifiedBeats, Is.EqualTo(1));
-        Assert.That(playerMove.CanStartAction, Is.True);
+        Assert.That(playerMove.CanStartAction, Is.False);
 
         DrainEnemyTurnResolver(waveManager);
 
@@ -1969,7 +1970,7 @@ public sealed class WaveManagerPacingDispatchTests
         Assert.That(playerMove.CanStartAction, Is.True);
     }
 
-    [Test]
+    [Test, Ignore("Natural charging was removed by Cylinder Tempo.")]
     public void EnemyCycleStartReleasesReservationForNextBeat()
     {
         CreateWaveSetup(
@@ -2007,7 +2008,7 @@ public sealed class WaveManagerPacingDispatchTests
         Assert.That(waveManager.PendingEnemyTurnCycles, Is.EqualTo(1));
     }
 
-    [Test]
+    [Test, Ignore("Natural charging and the spawn gauge were removed by Cylinder Tempo.")]
     public void ShootBeatPausesNaturalClockAndWaitsForFiringSequence()
     {
         CreateWaveSetup(

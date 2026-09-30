@@ -21,6 +21,88 @@ public sealed class PlayerShootInputReaderTests
                 shootPressed),
             Is.EqualTo((PlayerShootInputAction)expected));
     }
+
+    [Test]
+    public void PresentationGraphicDoesNotBlockWorldShooting()
+    {
+        GameObject graphic = new GameObject(
+            "Presentation Graphic",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(UnityEngine.UI.Image));
+
+        try
+        {
+            Assert.That(
+                PlayerShootInputReader.IsInteractiveUiTarget(graphic),
+                Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(graphic);
+        }
+    }
+
+    [Test]
+    public void ButtonChildBlocksWorldShooting()
+    {
+        GameObject button = new GameObject(
+            "Button",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(UnityEngine.UI.Image),
+            typeof(UnityEngine.UI.Button));
+        GameObject childGraphic = new GameObject(
+            "Icon",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(UnityEngine.UI.Image));
+        childGraphic.transform.SetParent(button.transform, false);
+
+        try
+        {
+            Assert.That(
+                PlayerShootInputReader.IsInteractiveUiTarget(childGraphic),
+                Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(button);
+        }
+    }
+}
+
+public sealed class PlayerActionInputBufferTests
+{
+    [Test]
+    public void LatestInputReplacesPreviousBufferedAction()
+    {
+        PlayerActionInputBuffer buffer = new PlayerActionInputBuffer();
+        buffer.Store(PlayerBehaviourAction.MoveLeft, 1f, 0.3f);
+        buffer.Store(PlayerBehaviourAction.Shoot, 1.1f, 0.3f);
+
+        Assert.That(
+            buffer.TryPeek(1.2f, out PlayerBehaviourAction action),
+            Is.True);
+        Assert.That(action, Is.EqualTo(PlayerBehaviourAction.Shoot));
+        Assert.That(
+            buffer.TryConsume(PlayerBehaviourAction.MoveLeft, 1.2f),
+            Is.False);
+        Assert.That(
+            buffer.TryConsume(PlayerBehaviourAction.Shoot, 1.2f),
+            Is.True);
+        Assert.That(buffer.TryPeek(1.2f, out _), Is.False);
+    }
+
+    [Test]
+    public void InputExpiresAfterConfiguredWindow()
+    {
+        PlayerActionInputBuffer buffer = new PlayerActionInputBuffer();
+        buffer.Store(PlayerBehaviourAction.Reload, 2f, 0.3f);
+
+        Assert.That(buffer.TryPeek(2.3f, out _), Is.True);
+        Assert.That(buffer.TryPeek(2.31f, out _), Is.False);
+    }
 }
 
 public class DeckManagerTests
@@ -191,7 +273,7 @@ public class DeckManagerTests
     }
 
     [Test]
-    public void CombatGuideExplainsDuelClockAndEightCellCombo()
+    public void CombatGuideExplainsCylinderTempoAndFourCellCombo()
     {
         FirstRunGuideContent.GuidePage[] pages =
             FirstRunGuideContent.CombatSystemPages;
@@ -199,15 +281,16 @@ public class DeckManagerTests
         Assert.That(
             System.Array.Exists(
                 pages,
-                page => page.Title.Contains("DUEL CLOCK")
-                    && page.Description.Contains("COUNT")),
+                page => page.Title.Contains("실린더 템포")
+                    && page.Description.Contains("6칸")
+                    && page.Description.Contains("이동은 2칸")),
             Is.True);
         Assert.That(
             System.Array.Exists(
                 pages,
-                page => page.Title.Contains("8칸")
-                    && page.Description.Contains("100%")
-                    && page.Description.Contains("COUNT가 완료")),
+                page => page.Title.Contains("4칸")
+                    && page.Description.Contains("템포 6칸")
+                    && page.Description.Contains("적 행동 주기")),
             Is.True);
     }
 

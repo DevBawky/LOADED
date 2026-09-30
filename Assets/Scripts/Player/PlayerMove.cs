@@ -25,6 +25,9 @@ public class PlayerMove : MonoBehaviour
     [Tooltip("대기와 재장전 사이에 적용하는 최소 입력 간격입니다.")]
     [SerializeField] private float instantActionCooldown =
         DefaultInstantActionCooldown;
+    [Min(0f)]
+    [Tooltip("실행 잠금 직전에 누른 최신 행동을 보존하는 시간입니다.")]
+    [SerializeField] private float inputBufferDuration = 0.3f;
 
     [Header("Push")]
     [Range(0f, 1f)]
@@ -77,6 +80,8 @@ public class PlayerMove : MonoBehaviour
     private readonly List<Vector3> pushPathBuffer = new List<Vector3>();
     private readonly List<int> movementReservationTileBuffer =
         new List<int>();
+    private readonly PlayerActionInputBuffer actionInputBuffer =
+        new PlayerActionInputBuffer();
 
     public event Action TurnCompleted;
     public event Action<int> TurnCountChanged;
@@ -150,6 +155,7 @@ public class PlayerMove : MonoBehaviour
         isActing = false;
         isEnemyTurnResolving = false;
         nextInstantActionAllowedAt = 0f;
+        actionInputBuffer.Clear();
         RestorePushVisualPosition();
         TurnCountChanged?.Invoke(TurnCount);
         PositionChanged?.Invoke();
@@ -169,6 +175,11 @@ public class PlayerMove : MonoBehaviour
     public void SetInputLocked(bool inputLocked)
     {
         isInputLocked = inputLocked;
+
+        if (inputLocked)
+        {
+            actionInputBuffer.Clear();
+        }
     }
 
     internal void SetDuelClockActive(bool active)
@@ -204,53 +215,66 @@ public class PlayerMove : MonoBehaviour
         isActing = false;
         isEnemyTurnResolving = false;
         nextInstantActionAllowedAt = 0f;
+        actionInputBuffer.Clear();
     }
 
     private void Update()
     {
-        if (!CanPerformAction())
+        if (!CanAcceptBufferedInput())
         {
+            actionInputBuffer.Clear();
             return;
         }
 
+        if (TryReadLocalInput(out PlayerBehaviourAction inputAction))
+        {
+            BufferInputAction(inputAction);
+        }
+
+        TryExecuteBufferedLocalAction();
+    }
+
+    private static bool TryReadLocalInput(
+        out PlayerBehaviourAction action)
+    {
         Keyboard keyboard = Keyboard.current;
 
         if (keyboard != null)
         {
             if (keyboard.aKey.wasPressedThisFrame)
             {
-                MoveLeft();
-                return;
+                action = PlayerBehaviourAction.MoveLeft;
+                return true;
             }
 
             if (keyboard.dKey.wasPressedThisFrame)
             {
-                MoveRight();
-                return;
+                action = PlayerBehaviourAction.MoveRight;
+                return true;
             }
 
             if (keyboard.wKey.wasPressedThisFrame)
             {
-                MoveUp();
-                return;
+                action = PlayerBehaviourAction.MoveUp;
+                return true;
             }
 
             if (keyboard.sKey.wasPressedThisFrame)
             {
-                MoveDown();
-                return;
+                action = PlayerBehaviourAction.MoveDown;
+                return true;
             }
 
             if (keyboard.qKey.wasPressedThisFrame)
             {
-                Rotate();
-                return;
+                action = PlayerBehaviourAction.Rotate;
+                return true;
             }
 
             if (keyboard.eKey.wasPressedThisFrame)
             {
-                Wait();
-                return;
+                action = PlayerBehaviourAction.Wait;
+                return true;
             }
         }
 
@@ -258,13 +282,105 @@ public class PlayerMove : MonoBehaviour
 
         if (mouse != null && mouse.middleButton.wasPressedThisFrame)
         {
-            Rotate();
+            action = PlayerBehaviourAction.Rotate;
+            return true;
         }
+
+        action = default;
+        return false;
+    }
+
+    private void TryExecuteBufferedLocalAction()
+    {
+        if (!TryPeekBufferedInput(out PlayerBehaviourAction action)
+            || action == PlayerBehaviourAction.Reload
+            || action == PlayerBehaviourAction.Shoot
+            || !CanExecuteBufferedLocalAction(action)
+            || !TryConsumeBufferedInput(action))
+        {
+            return;
+        }
+
+        switch (action)
+        {
+            case PlayerBehaviourAction.MoveLeft:
+                MoveLeft();
+                break;
+            case PlayerBehaviourAction.MoveRight:
+                MoveRight();
+                break;
+            case PlayerBehaviourAction.MoveUp:
+                MoveUp();
+                break;
+            case PlayerBehaviourAction.MoveDown:
+                MoveDown();
+                break;
+            case PlayerBehaviourAction.Rotate:
+                Rotate();
+                break;
+            case PlayerBehaviourAction.Wait:
+                Wait();
+                break;
+        }
+    }
+
+    private bool CanExecuteBufferedLocalAction(
+        PlayerBehaviourAction action)
+    {
+        return action switch
+        {
+            PlayerBehaviourAction.MoveLeft => CanPerformMovementAction(),
+            PlayerBehaviourAction.MoveRight => CanPerformMovementAction(),
+            PlayerBehaviourAction.MoveUp => CanPerformMovementAction(),
+            PlayerBehaviourAction.MoveDown => CanPerformMovementAction(),
+            PlayerBehaviourAction.Wait => CanPerformInstantAction(),
+            PlayerBehaviourAction.Rotate => CanPerformAction(),
+            _ => false
+        };
+    }
+
+    internal void BufferInputAction(PlayerBehaviourAction action)
+    {
+        if (!CanAcceptBufferedInput())
+        {
+            actionInputBuffer.Clear();
+            return;
+        }
+
+        actionInputBuffer.Store(
+            action,
+            Time.unscaledTime,
+            inputBufferDuration);
+    }
+
+    internal bool TryPeekBufferedInput(out PlayerBehaviourAction action)
+    {
+        return actionInputBuffer.TryPeek(Time.unscaledTime, out action);
+    }
+
+    internal bool TryConsumeBufferedInput(PlayerBehaviourAction action)
+    {
+        return actionInputBuffer.TryConsume(
+            action,
+            Time.unscaledTime);
+    }
+
+    internal void ClearBufferedInput()
+    {
+        actionInputBuffer.Clear();
+    }
+
+    private bool CanAcceptBufferedInput()
+    {
+        return !GamePauseController.IsPaused
+            && !LoadingTransitionController.IsTransitioning
+            && !isInputLocked
+            && (!isDuelClockActive || !IsStunned);
     }
 
     public void MoveForward()
     {
-        if (!CanPerformAction())
+        if (!CanPerformMovementAction())
         {
             return;
         }
@@ -275,7 +391,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveLeft()
     {
-        if (!CanPerformAction())
+        if (!CanPerformMovementAction())
         {
             return;
         }
@@ -285,7 +401,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveRight()
     {
-        if (!CanPerformAction())
+        if (!CanPerformMovementAction())
         {
             return;
         }
@@ -393,6 +509,11 @@ public class PlayerMove : MonoBehaviour
                 currentLaneIndex,
                 out EnemyController adjacentEnemy))
         {
+            if (isEnemyTurnResolving)
+            {
+                return;
+            }
+
             if (waveManager.HasMovementReservation(adjacentEnemy))
             {
                 return;
@@ -436,7 +557,7 @@ public class PlayerMove : MonoBehaviour
 
     private void MoveVertical(int direction)
     {
-        if (!CanPerformAction())
+        if (!CanPerformMovementAction())
         {
             return;
         }
@@ -1323,7 +1444,18 @@ public class PlayerMove : MonoBehaviour
         bool isDuelClockActive,
         bool isEnemyTurnResolving)
     {
-        return isEnemyTurnResolving && !isDuelClockActive;
+        return isEnemyTurnResolving;
+    }
+
+    private bool CanPerformMovementAction()
+    {
+        return !GamePauseController.IsPaused
+            && !LoadingTransitionController.IsTransitioning
+            && !isInputLocked
+            && !isShooting
+            && !isActing
+            && (!isEnemyTurnResolving || isDuelClockActive)
+            && (!isDuelClockActive || !IsStunned);
     }
 
     private static int MultiplyDamage(int damage, double multiplier)

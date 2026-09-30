@@ -100,11 +100,13 @@ public class BattleData : ScriptableObject
     [Header("Combat Pacing")]
     [SerializeField] private CombatPacingMode combatPacingMode =
         CombatPacingMode.Legacy;
+    [HideInInspector]
     [Min(0f)]
-    [Tooltip("Natural Duel Clock charge per unscaled second. A value of 4 fills one 100-point cycle in 25 seconds.")]
+    [Tooltip("Legacy Duel Clock value retained for serialized asset compatibility. Cylinder Tempo has no natural charge.")]
     [SerializeField] private float duelClockNaturalProgressPerSecond = 4f;
+    [HideInInspector]
     [Min(0f)]
-    [Tooltip("Duel Clock charge committed when one paid player action completes.")]
+    [Tooltip("Legacy Duel Clock value retained for serialized asset compatibility. Cylinder Tempo uses fixed per-action costs.")]
     [SerializeField] private float duelClockPaidActionProgress = 45f;
     [HideInInspector]
     [Min(1)]

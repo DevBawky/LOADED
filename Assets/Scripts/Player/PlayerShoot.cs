@@ -415,13 +415,67 @@ public partial class PlayerShoot : MonoBehaviour
     private void Update()
     {
         if (GamePauseController.IsPaused
-            || LoadingTransitionController.IsTransitioning
-            || isFiring)
+            || LoadingTransitionController.IsTransitioning)
+        {
+            playerMove?.ClearBufferedInput();
+            return;
+        }
+
+        PlayerShootInputAction inputAction =
+            PlayerShootInputReader.Read(eventSystem);
+
+        if (inputAction != PlayerShootInputAction.None
+            && (cylinderUI == null || !cylinderUI.IsDragging))
+        {
+            if (playerMove == null)
+            {
+                ExecuteInputAction(inputAction);
+                return;
+            }
+
+            playerMove.BufferInputAction(ToBehaviourAction(inputAction));
+        }
+
+        TryExecuteBufferedInputAction();
+    }
+
+    private void TryExecuteBufferedInputAction()
+    {
+        if (playerMove == null || isFiring
+            || cylinderUI != null && cylinderUI.IsDragging
+            || !playerMove.TryPeekBufferedInput(
+                out PlayerBehaviourAction action))
         {
             return;
         }
 
-        switch (PlayerShootInputReader.Read(eventSystem))
+        PlayerShootInputAction inputAction = action switch
+        {
+            PlayerBehaviourAction.Reload => PlayerShootInputAction.Reload,
+            PlayerBehaviourAction.Shoot => PlayerShootInputAction.Shoot,
+            _ => PlayerShootInputAction.None
+        };
+
+        bool canExecute = inputAction switch
+        {
+            PlayerShootInputAction.Reload =>
+                playerMove.CanStartInstantAction,
+            PlayerShootInputAction.Shoot => playerMove.CanStartAction,
+            _ => false
+        };
+
+        if (!canExecute
+            || !playerMove.TryConsumeBufferedInput(action))
+        {
+            return;
+        }
+
+        ExecuteInputAction(inputAction);
+    }
+
+    private void ExecuteInputAction(PlayerShootInputAction inputAction)
+    {
+        switch (inputAction)
         {
             case PlayerShootInputAction.Reload:
                 Reload();
@@ -432,13 +486,20 @@ public partial class PlayerShoot : MonoBehaviour
         }
     }
 
+    private static PlayerBehaviourAction ToBehaviourAction(
+        PlayerShootInputAction inputAction)
+    {
+        return inputAction == PlayerShootInputAction.Reload
+            ? PlayerBehaviourAction.Reload
+            : PlayerBehaviourAction.Shoot;
+    }
+
     public void Reload()
     {
         if (GamePauseController.IsPaused
             || LoadingTransitionController.IsTransitioning
             || isFiring
-            || cylinderUI != null && cylinderUI.IsDragging
-            || !TryBeginAction())
+            || cylinderUI != null && cylinderUI.IsDragging)
         {
             return;
         }
@@ -450,6 +511,14 @@ public partial class PlayerShoot : MonoBehaviour
         }
 
         if (!playerMove.CanStartInstantAction)
+        {
+            return;
+        }
+
+        if (deckManager.ReloadableBulletCount <= 0
+            || deckManager.LoadedBullets.Count
+                >= deckManager.MaxReloadAmount
+            || !TryBeginAction())
         {
             return;
         }
@@ -482,8 +551,8 @@ public partial class PlayerShoot : MonoBehaviour
     public void Shoot()
     {
         if (GamePauseController.IsPaused || isFiring
-            || cylinderUI != null && cylinderUI.IsDragging
-            || !TryBeginAction())
+            || LoadingTransitionController.IsTransitioning
+            || cylinderUI != null && cylinderUI.IsDragging)
         {
             return;
         }
@@ -513,7 +582,11 @@ public partial class PlayerShoot : MonoBehaviour
         BulletInstance firstBullet = deckManager.LoadedBullets[firstBulletIndex];
 
         if (firstBullet == null
-            || !boardManager.TryGetTileIndex(transform.position, playerMove == null ? 0 : playerMove.CurrentLaneIndex, out _))
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                playerMove.CurrentLaneIndex,
+                out _)
+            || !TryBeginAction())
         {
             return;
         }
@@ -551,8 +624,7 @@ public partial class PlayerShoot : MonoBehaviour
         if (GamePauseController.IsPaused
             || LoadingTransitionController.IsTransitioning
             || isFiring
-            || cylinderUI != null && cylinderUI.IsDragging
-            || !TryBeginAction())
+            || cylinderUI != null && cylinderUI.IsDragging)
         {
             return false;
         }
@@ -567,7 +639,8 @@ public partial class PlayerShoot : MonoBehaviour
 
         if (!playerMove.CanStartAction
             || loadedBulletIndex < 0
-            || loadedBulletIndex >= deckManager.LoadedBullets.Count)
+            || loadedBulletIndex >= deckManager.LoadedBullets.Count
+            || !TryBeginAction())
         {
             return false;
         }

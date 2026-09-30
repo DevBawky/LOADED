@@ -41,6 +41,7 @@ internal readonly struct EnemyBattleProgress
 public class WaveManager : MonoBehaviour
 {
     private const int EnemyCapacityPercentage = 40;
+    private const int ImmediateEnemyPercentage = 10;
 
     private readonly struct SpawnCell
     {
@@ -77,6 +78,7 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private Transform enemyParent;
     [SerializeField] private RewardManager rewardManager;
     [SerializeField] private BossBombManager bossBombManager;
+    [SerializeField] private DuelClockController duelClockController;
 
     [Header("Runtime State")]
     [SerializeField] private List<EnemyController> activeEnemies =
@@ -114,8 +116,8 @@ public class WaveManager : MonoBehaviour
         Array.Empty<EnemyData>();
     private int duelClockEnemySpawnCount;
     private int pendingDuelClockEnemySpawns;
+    private bool immediateSpawnOccurredDuringEnemyCycle;
     private bool isDuelClockEnemyPoolConfigured;
-    private DuelClockController duelClockController;
     private readonly List<EnemyTargetData> enemyTargetBuffer =
         new List<EnemyTargetData>();
     private readonly Dictionary<int, Component> movementTileReservations =
@@ -302,7 +304,7 @@ public class WaveManager : MonoBehaviour
         if (usesDuelClock)
         {
             if (!ConfigureDuelClockEnemyPoolFresh(battleData)
-                || !TrySpawnOneDuelClockEnemy())
+                || !TrySpawnInitialCylinderTempoEnemies())
             {
                 ResetBattleRuntime();
                 return false;
@@ -1118,6 +1120,7 @@ public class WaveManager : MonoBehaviour
             }
 
             pendingEnemyTurnCycles--;
+            immediateSpawnOccurredDuringEnemyCycle = false;
 
             if (usesDuelClock)
             {
@@ -1127,6 +1130,11 @@ public class WaveManager : MonoBehaviour
 
             currentEnemyTurnCycle++;
             yield return ResolveOneEnemyTurnCycle();
+
+            if (usesDuelClock)
+            {
+                duelClockController?.HandleEnemyCycleCompleted();
+            }
         }
 
         pendingEnemyTurnCycles = 0;
@@ -1571,6 +1579,47 @@ public class WaveManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    private bool TrySpawnInitialCylinderTempoEnemies()
+    {
+        int requestedCount = CalculateImmediateCylinderTempoSpawnCount(
+            boardManager == null ? 0 : boardManager.TotalTileCount,
+            duelClockEnemySpawnPool.RemainingCount,
+            GetLivingEnemyCount(),
+            maximumActiveEnemyCount,
+            GetAvailableSpawnTileCount());
+        return requestedCount > 0
+            && SpawnCylinderTempoEnemies(requestedCount) == requestedCount;
+    }
+
+    private int SpawnCylinderTempoEnemies(int requestedCount)
+    {
+        int spawnCount = Mathf.Min(
+            Mathf.Max(0, requestedCount),
+            duelClockEnemySpawnPool.RemainingCount,
+            CalculateAvailableEnemySlots(
+                GetLivingEnemyCount(),
+                maximumActiveEnemyCount),
+            GetAvailableSpawnTileCount());
+        int spawnedCount = 0;
+
+        while (spawnedCount < spawnCount)
+        {
+            if (!TrySpawnOneDuelClockEnemy())
+            {
+                break;
+            }
+
+            spawnedCount++;
+        }
+
+        if (spawnedCount > 0)
+        {
+            StateChanged?.Invoke();
+        }
+
+        return spawnedCount;
     }
 
     private bool TryGetWaveEnemyCount(EnemyWave wave, out int enemyCount)
@@ -2261,10 +2310,7 @@ public class WaveManager : MonoBehaviour
         if (restored)
         {
             isDuelClockEnemyPoolConfigured = true;
-            pendingDuelClockEnemySpawns = Mathf.Clamp(
-                saveData.duelClockPendingEnemySpawns,
-                0,
-                duelClockEnemySpawnPool.RemainingCount);
+            pendingDuelClockEnemySpawns = 0;
             return true;
         }
 
@@ -2292,8 +2338,7 @@ public class WaveManager : MonoBehaviour
 
         saveData.duelClockSpawnPoolInitialized = true;
         saveData.duelClockWeightedSpawnStateInitialized = true;
-        saveData.duelClockPendingEnemySpawns =
-            pendingDuelClockEnemySpawns;
+        saveData.duelClockPendingEnemySpawns = 0;
         duelClockEnemySpawnPool.Capture(
             saveData.duelClockEnemySpawnCounts,
             saveData.duelClockEnemyMissedSpawnCounts,
@@ -2607,17 +2652,37 @@ public class WaveManager : MonoBehaviour
 
     private void AdvanceDuelClockEnemySpawns()
     {
-        if (isBattleCompleted || !isDuelClockEnemyPoolConfigured)
+        if (isBattleCompleted || !isDuelClockEnemyPoolConfigured
+            || playerHealth == null || playerHealth.IsDefeated)
         {
             return;
         }
 
-        if (!TryResolvePendingDuelClockEnemySpawns())
+        if (GetLivingEnemyCount() <= 0)
         {
+            ResolveEmptyDuelClockBattle();
             return;
         }
 
-        ResolveEmptyDuelClockBattle();
+        if (immediateSpawnOccurredDuringEnemyCycle)
+        {
+            TryCompleteDuelClockBattle();
+            return;
+        }
+
+        if (duelClockEnemySpawnPool.RemainingCount > 0
+            && CalculateAvailableEnemySlots(
+                GetLivingEnemyCount(),
+                maximumActiveEnemyCount) > 0
+            && GetAvailableSpawnTileCount() > 0
+            && SpawnCylinderTempoEnemies(1) <= 0)
+        {
+            FailBattle(
+                "A Cylinder Tempo reinforcement could not be spawned.");
+            return;
+        }
+
+        TryCompleteDuelClockBattle();
     }
 
     private void HandleDuelClockSpawnCyclesCommitted(long spawnCycleCount)
@@ -2684,32 +2749,34 @@ public class WaveManager : MonoBehaviour
 
         int livingEnemyCount = GetLivingEnemyCount();
 
-        if (!TryResolvePendingDuelClockEnemySpawns())
-        {
-            return;
-        }
-
-        livingEnemyCount = GetLivingEnemyCount();
-
         if (ShouldImmediatelySpawnDuelClockEnemy(
                 duelClockEnemySpawnPool.RemainingCount,
                 livingEnemyCount,
                 maximumActiveEnemyCount))
         {
-            if (GetAvailableSpawnTileCount() <= 0)
+            int requestedCount = CalculateImmediateCylinderTempoSpawnCount(
+                boardManager == null ? 0 : boardManager.TotalTileCount,
+                duelClockEnemySpawnPool.RemainingCount,
+                livingEnemyCount,
+                maximumActiveEnemyCount,
+                GetAvailableSpawnTileCount());
+
+            if (requestedCount <= 0)
             {
                 return;
             }
 
-            if (!TrySpawnOneDuelClockEnemy())
+            int spawnedCount = SpawnCylinderTempoEnemies(requestedCount);
+
+            if (spawnedCount != requestedCount)
             {
                 FailBattle(
-                    "An immediate Duel Clock enemy reinforcement could not be spawned.");
+                    "Immediate Cylinder Tempo reinforcements could not be spawned.");
             }
 
-            if (pendingDuelClockEnemySpawns > 0)
+            if (spawnedCount > 0 && isResolvingTurn)
             {
-                pendingDuelClockEnemySpawns--;
+                immediateSpawnOccurredDuringEnemyCycle = true;
             }
 
             return;
@@ -2728,6 +2795,36 @@ public class WaveManager : MonoBehaviour
             && CalculateAvailableEnemySlots(
                 livingEnemyCount,
                 configuredMaximumEnemyCount) > 0;
+    }
+
+    internal static int CalculateMinimumCylinderTempoEnemyCount(
+        int totalTileCount)
+    {
+        long sanitizedTileCount = Mathf.Max(0, totalTileCount);
+        long scaledCount = sanitizedTileCount * ImmediateEnemyPercentage;
+        long roundedUpCount = (scaledCount + 99L) / 100L;
+        return (int)Math.Max(1L, roundedUpCount);
+    }
+
+    internal static int CalculateImmediateCylinderTempoSpawnCount(
+        int totalTileCount,
+        int remainingSpawnCount,
+        int livingEnemyCount,
+        int configuredMaximumEnemyCount,
+        int availableSpawnCellCount)
+    {
+        if (livingEnemyCount > 0)
+        {
+            return 0;
+        }
+
+        return Mathf.Min(
+            CalculateMinimumCylinderTempoEnemyCount(totalTileCount),
+            Mathf.Max(0, remainingSpawnCount),
+            CalculateAvailableEnemySlots(
+                livingEnemyCount,
+                configuredMaximumEnemyCount),
+            Mathf.Max(0, availableSpawnCellCount));
     }
 
     internal static int CalculatePendingDuelClockSpawns(
@@ -3021,10 +3118,6 @@ public class WaveManager : MonoBehaviour
         duelClockController.Initialize(playerMove, this);
         duelClockController.BeatsCommitted -= HandleDuelClockBeatsCommitted;
         duelClockController.BeatsCommitted += HandleDuelClockBeatsCommitted;
-        duelClockController.SpawnCyclesCommitted -=
-            HandleDuelClockSpawnCyclesCommitted;
-        duelClockController.SpawnCyclesCommitted +=
-            HandleDuelClockSpawnCyclesCommitted;
     }
 
     private void DeactivateCombatPacing()
@@ -3032,12 +3125,11 @@ public class WaveManager : MonoBehaviour
         combatPacingMode = CombatPacingMode.Legacy;
         pendingEnemyTurnCycles = 0;
         pendingDuelClockEnemySpawns = 0;
+        immediateSpawnOccurredDuringEnemyCycle = false;
 
         if (duelClockController != null)
         {
             duelClockController.BeatsCommitted -= HandleDuelClockBeatsCommitted;
-            duelClockController.SpawnCyclesCommitted -=
-                HandleDuelClockSpawnCyclesCommitted;
             duelClockController.Deactivate();
         }
         else

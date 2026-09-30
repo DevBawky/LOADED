@@ -97,13 +97,13 @@ internal static class FirstRunGuideContent
     internal static readonly GuidePage[] CombatSystemPages =
     {
         new GuidePage(
-            "DUEL CLOCK과 카운트",
-            "시간이 흐르거나 이동, 회전, 대기, 장전, 발사를 하면 <color=#FFD05A><b>DUEL CLOCK</b></color>이 충전됩니다.\n시계가 <color=#FFD05A><b>100%</b></color>에 도달하면 <color=#FFD05A><b>COUNT가 1 증가</b></color>하고 모든 적이 행동합니다.\n툴팁과 전투 연출 중에도 시간은 흐르며 <color=#FF5757><b>일시정지 메뉴</b></color>에서만 멈춥니다.",
+            "실린더 템포",
+            "시간은 저절로 흐르지 않고 <color=#FFD05A><b>플레이어 행동</b></color>으로만 실린더 템포가 충전됩니다.\n이동은 2칸, 회전과 대기는 1칸, 장전과 발사는 3칸을 사용합니다.\n템포가 <color=#FF5757><b>6칸</b></color>에 도달하면 모든 적이 한 번씩 행동하며, 공격 순간에 이동하면 회피할 수 있습니다.",
             null,
-            "Layout | Duel Clock"),
+            "Panel | Cylinder Tempo"),
         new GuidePage(
             "적의 공격 예고",
-            "공격 준비 시 <color=#FF5757><b>경고음</b></color>이 울립니다.\n<color=#FF5757><b>적 아래의 행동 패널</b></color>도 붉어집니다.\n원거리 공격은 경로와 범위도 표시됩니다.\n다음 COUNT 전에 피하거나 대비하세요.",
+            "공격 준비 시 <color=#FF5757><b>경고음</b></color>이 울립니다.\n<color=#FF5757><b>적 아래의 행동 패널</b></color>도 붉어집니다.\n원거리 공격은 경로와 범위도 표시됩니다.\n다음 적 행동 주기 전에 피하거나 대비하세요.",
             null,
             "Image | Queue",
             TargetKind.TutorialEnemyAction),
@@ -126,13 +126,13 @@ internal static class FirstRunGuideContent
             null,
             TargetKind.Cylinder),
         new GuidePage(
-            "콤보와 8칸 게이지",
-            "적을 처치하면 <color=#FFD05A><b>콤보 게이지 8칸</b></color>이 충전됩니다.\nDUEL CLOCK이 100%에 도달해 <color=#FF5757><b>COUNT가 완료</b></color>될 때마다 한 칸씩 줄어듭니다.\n게이지가 사라지기 전에 추가 적을 처치하면 다시 8칸이 되고 콤보가 이어집니다.",
+            "콤보와 4칸 게이지",
+            "적을 처치하면 <color=#FFD05A><b>콤보 게이지 4칸</b></color>이 충전됩니다.\n실린더 템포 6칸이 차서 <color=#FF5757><b>적 행동 주기가 확정</b></color>될 때마다 한 칸씩 줄어듭니다.\n게이지가 사라지기 전에 추가 적을 처치하면 다시 4칸이 되고 콤보가 이어집니다.",
             null,
             "Image | Combo Timer BG"),
         new GuidePage(
             "디버프 종류",
-            "<color=#FF7D7D><b>표식: 받는 피해 50% 증가</b></color>\n<color=#78D987><b>독: COUNT 종료 시 스택만큼 피해, 이후 1 감소</b></color>\n<color=#75C7FF><b>기절: COUNT마다 행동 불가, 이후 1 감소</b></color>\n<color=#C69CFF><b>약화: 공격력 30% 감소</b></color>\n<color=#FF9F5A><b>무방비: 회피 성공 시 공격한 적에게 적용되는 비스택 디버프. 다음 피격이 크리티컬로 확정되며, 첫 피격 또는 다른 행동 시 해제</b></color>\n적에게 디버프가 있다면 아래와 같은 상태 아이콘이 표시됩니다.\n아이콘에 <color=#FF5757><b>마우스 커서를 올리면</b></color> 효과를 확인할 수 있습니다.",
+            "<color=#FF7D7D><b>표식: 받는 피해 50% 증가</b></color>\n<color=#78D987><b>독: 적 행동 주기 종료 시 스택만큼 피해, 이후 1 감소</b></color>\n<color=#75C7FF><b>기절: 적 행동 주기마다 행동 불가, 이후 1 감소</b></color>\n<color=#C69CFF><b>약화: 공격력 30% 감소</b></color>\n<color=#FF9F5A><b>무방비: 회피 성공 시 공격한 적에게 적용되는 비스택 디버프. 다음 피격이 크리티컬로 확정되며, 첫 피격 또는 다른 행동 시 해제</b></color>\n적에게 디버프가 있다면 아래와 같은 상태 아이콘이 표시됩니다.\n아이콘에 <color=#FF5757><b>마우스 커서를 올리면</b></color> 효과를 확인할 수 있습니다.",
             null,
             null)
     };
@@ -163,7 +163,7 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.Move,
             "이동",
-            "<color=#FF5757><b>WASD 키</b></color>로 상하좌우 한 칸씩 이동합니다. A/D는 전장을 따라 이동하고 W/S는 레인을 바꿉니다.\n이동은 <color=#FFD05A><b>DUEL CLOCK을 충전</b></color>하며, 100%에 도달하면 적이 행동합니다.",
+            "<color=#FF5757><b>WASD 키</b></color>로 상하좌우 한 칸씩 이동합니다. A/D는 전장을 따라 이동하고 W/S는 레인을 바꿉니다.\n이동은 <color=#FFD05A><b>실린더 템포 2칸</b></color>을 사용하며, 6칸에 도달하면 적이 행동합니다.",
             "한 칸 이동",
             "Videos/Movement.mp4",
             null,
@@ -178,14 +178,14 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.Wait,
             "대기",
-            "<color=#FF5757><b>E 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 제자리에서 DUEL CLOCK을 충전합니다.",
+            "<color=#FF5757><b>E 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 제자리에서 실린더 템포 1칸을 사용합니다.",
             "한 번 대기",
             "Videos/Wait.mp4",
             "Button | Wait"),
         new GuideStepDefinition(
             CombatStep.InspectEnemyAction,
             "적 행동 확인",
-            "<color=#FFD05A><b>적 아래의 행동 아이콘</b></color>에서 다음 행동을 확인하세요.\n아이콘이 없다면 DUEL CLOCK을 진행한 뒤 <color=#FF5757><b>마우스 커서를 올리거나 클릭</b></color>하세요.",
+            "<color=#FFD05A><b>적 아래의 행동 아이콘</b></color>에서 다음 행동을 확인하세요.\n아이콘이 없다면 실린더 템포를 진행한 뒤 <color=#FF5757><b>마우스 커서를 올리거나 클릭</b></color>하세요.",
             "적 행동 아이콘 확인",
             null,
             "Image | Queue",
@@ -193,14 +193,14 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.ReloadThree,
             "장전",
-            "<color=#FF5757><b>R 키</b></color> 또는 <color=#FF5757><b>장전 버튼 클릭</b></color>으로 다음 탄환을 장전합니다.\n장전은 <color=#FFD05A><b>DUEL CLOCK을 충전</b></color>합니다.\n시계와 적 행동을 먼저 확인하세요.",
+            "<color=#FF5757><b>R 키</b></color> 또는 <color=#FF5757><b>장전 버튼 클릭</b></color>으로 다음 탄환을 장전합니다.\n장전은 <color=#FFD05A><b>실린더 템포 3칸</b></color>을 사용합니다.\n남은 템포와 적 행동을 먼저 확인하세요.",
             "탄환 3회 장전",
             "Videos/Reload.mp4",
             "Button | Reload"),
         new GuideStepDefinition(
             CombatStep.EjectChamber,
             "약실 제거",
-            "실린더에서 제거할 탄환을 <color=#FF5757><b>마우스 우클릭</b></color>하세요.\n제거한 탄환은 파괴되지 않고 <color=#FFD05A><b>사용한 탄환 순환</b></color>으로 이동합니다.\n약실 제거는 <color=#FFD05A><b>DUEL CLOCK을 충전하지 않습니다.</b></color>",
+            "실린더에서 제거할 탄환을 <color=#FF5757><b>마우스 우클릭</b></color>하세요.\n제거한 탄환은 파괴되지 않고 <color=#FFD05A><b>사용한 탄환 순환</b></color>으로 이동합니다.\n약실 제거는 <color=#FFD05A><b>실린더 템포를 사용하지 않습니다.</b></color>",
             "실린더 탄환 한 발 우클릭해 제거",
             null,
             null,
