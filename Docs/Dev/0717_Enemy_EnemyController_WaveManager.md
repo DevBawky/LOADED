@@ -117,7 +117,7 @@ Enemy 루트의 X Scale이 반전될 때 `ActorMotion > Orientation Locked Trans
 
 `Assets/Scripts/Manager/BoardManager.cs`에는 타일 인덱스와 월드 위치를 변환하는 `TryGetTilePosition`, `TryGetTileIndex`, 두 위치의 타일 거리를 계산하는 `TryGetTileDistance`, 읽기 전용 `BoardCount`와 `BoardDistance`를 추가했다.
 
-`Assets/Scripts/Manager/WaveManager.cs`는 `PlayerMove.TurnCompleted`를 구독하고 플레이어 입력을 잠근 뒤 `Enemy Turn Delay`만큼 기다린다. 이후 현재 활성 적의 스냅샷을 등록 순서대로 처리하며 각 적의 이동·회전 모션 완료를 기다리고 다음 적 전에 `Enemy Action Interval`을 적용한다. `Stage 1` 기본값은 각각 0.35초와 0.15초다. 모든 적 행동과 웨이브 카운트 처리가 끝난 뒤 플레이어 입력을 다시 허용한다.
+`Assets/Scripts/Manager/WaveManager.cs`는 현재 활성 적의 스냅샷을 등록 순서대로 처리한다. 이동·회전처럼 전용 공격 연출이 아닌 행동은 함께 시작해 불필요한 대기열을 줄이고, 전용 공격은 피격·회피 연출을 포함한 행동 Coroutine이 끝날 때까지 기다린다. 공격 뒤 다음 적이 남아 있을 때만 `Enemy Action Interval` 0.05초를 적용하며, 적 주기의 최소 표시 시간인 `Enemy Turn Delay`는 0.1초다. 분리 실행된 공격과 보스 폭탄까지 모두 끝난 뒤에만 플레이어 턴을 복구하고 Cylinder Tempo 이월값을 공개한다.
 
 기존 `Stage Enemy Pool`과 `Max Active Enemies` 기반의 무작위 보충 로직은 제거했다. 대신 직렬화 가능한 `EnemyWave[]`와 각 웨이브의 `EnemyWaveEntry[]`를 추가해 `Enemy Prefab + Count` 조합을 원하는 순서와 종류로 구성한다. 첫 웨이브는 게임 시작 시 일괄 생성하며, 현재 웨이브가 전멸하기 전에는 다음 웨이브 카운트다운을 시작하지 않는다. 전멸 후 플레이어가 소비한 턴마다 `Remaining Spawn Turns`가 감소하고 0이 되면 다음 웨이브의 모든 적을 같은 프레임에 생성한다. 전멸 공격으로 소비된 플레이어 턴도 카운트다운에 포함된다. 새로 생성된 적은 생성된 턴의 적 행동 스냅샷에는 포함되지 않으므로 다음 플레이어 소비 턴부터 행동한다.
 
@@ -197,7 +197,7 @@ Enemy 루트의 X Scale이 반전될 때 `ActorMotion > Orientation Locked Trans
   * 적 사이클 처리 중에도 자연 Duel Clock은 계속 증가한다. 실린더 사격 중에는 기존대로 자연 증가가 멈추며, 플레이어 입력 가능 여부는 적 사이클 간격과 독립적이다.
   * Duel Clock이 100%에 도달하면 다음 적 사이클 하나만 예약하고 실제 사이클이 시작될 때까지 100%를 유지한다. 예약 중의 자연 증가와 플레이어 행동은 추가 COUNT나 숨은 게이지를 누적하지 않는다.
   * Duel Clock 전용 입력 장벽은 사용하지 않는다. 진행 중인 적 사이클 외에는 대기 사이클을 최대 하나만 허용하므로 플레이어가 행동을 멈춘 뒤 여러 적 사이클이 오래 이어지는 현상을 막으면서 회피 이동과 다른 조작은 계속 허용한다.
-  * 플레이어 이동·회전 연출이 끝난 뒤 0.35초 후 첫 적이 행동하며, 각 적 행동 사이에는 기본 0.15초 간격이 적용된다.
+  * 적 주기는 최소 0.1초 동안 유지된다. 공격 연출과 회피 판정 시간은 기존 길이를 유지하고, 공격이 끝난 뒤 다음 적이 남아 있을 때만 0.05초 간격을 둔다. 이동·회전·대기에는 별도 적간 지연을 추가하지 않는다.
   * 적 이동은 여러 칸이어도 타일마다 `Move Duration`과 `sin(πt)` 점프를 반복하고 회전 완료 전에는 다음 적 행동으로 넘어가지 않는다.
   * 실패한 플레이어 행동과 `doesNotConsumeTurn` 탄환 발사는 `PlayerMove.TurnCompleted`를 발생시키지 않으므로 적 턴도 실행되지 않는다.
   * WaveManager는 플레이어 타일과 이미 활성 적이 있는 타일을 제외한 후보에서 무작위 스폰 위치를 선택한다.
@@ -295,8 +295,8 @@ Scene에 빈 GameObject `@_WaveManager`와 선택적인 적 부모 Transform `@_
 * `Count`: 해당 프리팹을 이 웨이브에 생성할 수량, 1 이상
 * `Spawn Position Offset`: 타일 중앙 위치에 더할 월드 좌표 오프셋, `Stage 1` 설정값 `(0, 0.7, 0)`
 * `Spawn Term`: 현재 웨이브 전멸 후 다음 웨이브까지 기다릴 플레이어 소비 턴 수, 기본값 2
-* `Enemy Turn Delay`: 플레이어 행동 완료 후 첫 적 행동까지 기다릴 시간, `Stage 1` 기본값 0.35초
-* `Enemy Action Interval`: 한 적의 행동 완료 후 다음 적 행동까지 기다릴 시간, `Stage 1` 기본값 0.15초
+* `Enemy Turn Delay`: 적 주기의 최소 표시 시간, Battle 기본값 0.1초
+* `Enemy Action Interval`: 공격 연출 완료 후 다음 적 공격 전의 짧은 호흡, Battle 기본값 0.05초. 이동·회전·대기에는 적용하지 않는다.
 * `Board Manager`: Scene의 `@_BoardManager`
 * `Player Move`: Player 오브젝트의 `PlayerMove`
 * `Player Health`: Player 오브젝트의 `PlayerHealth`
@@ -343,8 +343,8 @@ Player의 `PlayerShoot > Wave Manager`에도 Scene의 `@_WaveManager`를 연결�
 14. Enemy가 좌우로 회전해도 HP Canvas와 Fill 방향이 뒤집히지 않는지 확인한다.
 15. A, D, S, 회전, 정상 장전, 턴을 소비하는 발사를 실행하고 적마다 `Last Turn Action`이 한 번만 변경되는지 확인한다.
 16. 실패한 이동 및 장전, 미장전 발사, `doesNotConsumeTurn` 탄환 발사에는 적 상태 및 Spawn Term이 진행되지 않는지 확인한다.
-17. 플레이어 이동과 회전이 폴짝 이동 및 Scale 보간으로 완료된 뒤 `Enemy Turn Delay`만큼 지나 첫 적이 행동하는지 확인한다.
-18. 적들이 `Enemy Action Interval` 간격으로 목록 순서대로 행동하고, 이동·회전 중에는 다음 적이 시작하지 않는지 확인한다.
+17. Cylinder Tempo 6칸이 채워지면 즉시 적 주기가 시작되고 `ENEMY PHASE`가 최소 0.1초 동안 유지되는지 확인한다.
+18. 이동·회전·대기는 불필요한 적간 지연 없이 진행되고, 공격 연출은 회피 가능 시간을 끝까지 보장한 뒤 다음 적 공격 전에만 0.05초 간격을 두는지 확인한다.
 19. 웨이브의 일부 적만 제거했을 때 카운트다운이 시작되지 않고, 전멸시킨 뒤에만 `Spawn Term`이 감소하며 0이 되는 턴에 다음 웨이브 전체가 한 번에 생성되는지 확인한다.
 20. Melee가 플레이어를 바라보지 않으면 회전만 하고, 다음 적 턴에 `Image | Queue`만 활성화하는지 확인한다.
 21. Queue 생성 다음 턴에 거리와 관계없이 첫 MeleeAttack 아이콘이 반드시 하나 등록되는지 확인한다.

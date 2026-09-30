@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
 using TMPro;
@@ -5,6 +6,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.TestTools;
 
 public sealed class CylinderTempoTests
 {
@@ -198,6 +200,200 @@ public sealed class CylinderTempoTests
             Is.False);
     }
 
+    [TestCase(EnemyTurnActionType.Fire, true, true)]
+    [TestCase(EnemyTurnActionType.Fire, false, false)]
+    [TestCase(EnemyTurnActionType.Move, true, false)]
+    [TestCase(EnemyTurnActionType.Rotate, true, false)]
+    [TestCase(EnemyTurnActionType.Wait, true, false)]
+    public void EnemySpacingOnlyFollowsAnAttackWithAnotherEnemy(
+        EnemyTurnActionType completedAction,
+        bool hasFollowingEnemy,
+        bool expected)
+    {
+        Assert.That(
+            WaveManager.ShouldWaitBetweenEnemyActions(
+                completedAction,
+                hasFollowingEnemy),
+            Is.EqualTo(expected));
+    }
+
+    [UnityTest]
+    public IEnumerator EnemyCycleWaitsForPresentationThenExecutesBufferedReloadOnce()
+    {
+        EditorSceneManager.NewScene(
+            NewSceneSetup.EmptyScene,
+            NewSceneMode.Single);
+
+        yield return new EnterPlayMode();
+
+        GameObject deckObject = new GameObject("Tempo Test Deck");
+        DeckManager deckManager = deckObject.AddComponent<DeckManager>();
+        GameObject playerObject = new GameObject("Tempo Test Player");
+        playerObject.SetActive(false);
+        PlayerMove playerMove = playerObject.AddComponent<PlayerMove>();
+        playerObject.AddComponent<PlayerHealth>();
+        PlayerShoot playerShoot = playerObject.AddComponent<PlayerShoot>();
+        SerializedObject serializedMove = new SerializedObject(playerMove);
+        serializedMove.FindProperty("instantActionCooldown").floatValue = 0f;
+        serializedMove.FindProperty("inputBufferDuration").floatValue = 1f;
+        serializedMove.ApplyModifiedPropertiesWithoutUndo();
+        SerializedObject serializedShoot = new SerializedObject(playerShoot);
+        serializedShoot.FindProperty("deckManager").objectReferenceValue =
+            deckManager;
+        serializedShoot.FindProperty("playerMove").objectReferenceValue =
+            playerMove;
+        serializedShoot.ApplyModifiedPropertiesWithoutUndo();
+
+        GameObject boardObject = new GameObject("Tempo Test Board");
+        boardObject.SetActive(false);
+        BoardManager boardManager = boardObject.AddComponent<BoardManager>();
+        GameObject enemyTemplateObject =
+            new GameObject("Tempo Test Enemy Template");
+        enemyTemplateObject.SetActive(false);
+        EnemyController enemyTemplate =
+            enemyTemplateObject.AddComponent<EnemyController>();
+        GameObject waveObject = new GameObject("Tempo Test Wave Manager");
+        waveObject.SetActive(false);
+        WaveManager waveManager = waveObject.AddComponent<WaveManager>();
+        DuelClockController tempoController =
+            waveObject.AddComponent<DuelClockController>();
+        SerializedObject serializedWave = new SerializedObject(waveManager);
+        serializedWave.FindProperty("enemyPrefabTemplate")
+            .objectReferenceValue = enemyTemplate;
+        serializedWave.FindProperty("boardManager").objectReferenceValue =
+            boardManager;
+        serializedWave.FindProperty("playerMove").objectReferenceValue =
+            playerMove;
+        serializedWave.FindProperty("playerHealth").objectReferenceValue =
+            playerObject.GetComponent<PlayerHealth>();
+        serializedWave.FindProperty("enemyTurnDelay").floatValue = 0f;
+        serializedWave.FindProperty("enemyActionInterval").floatValue = 0f;
+        serializedWave.FindProperty("combatPacingMode").enumValueIndex =
+            (int)CombatPacingMode.DuelClock;
+        serializedWave.ApplyModifiedPropertiesWithoutUndo();
+
+        BulletData bullet = ScriptableObject.CreateInstance<BulletData>();
+        BattleData battle = ScriptableObject.CreateInstance<BattleData>();
+
+        try
+        {
+            playerObject.SetActive(true);
+            waveObject.SetActive(true);
+            playerMove.SetWaveManager(waveManager);
+            tempoController.Initialize(playerMove, waveManager);
+            tempoController.BeatsCommitted +=
+                waveManager.QueueDuelClockBeats;
+            tempoController.ConfigureFresh(
+                battle,
+                CombatPacingMode.DuelClock);
+            Assert.That(deckManager.TryAddBullet(bullet), Is.True);
+
+            yield return null;
+
+            for (int actionIndex = 0; actionIndex < 5; actionIndex++)
+            {
+                playerMove.Wait();
+            }
+
+            Assert.That(playerMove.TurnCount, Is.EqualTo(5));
+            Assert.That(
+                tempoController.TempoProgress,
+                Is.EqualTo(5d).Within(0.0001d));
+
+            bool presentationCompleted = false;
+
+            IEnumerator CompletePresentation()
+            {
+                for (int frame = 0; frame < 4; frame++)
+                {
+                    yield return null;
+                }
+
+                presentationCompleted = true;
+            }
+
+            Assert.That(
+                waveManager.TryStartDetachedEnemyAttack(
+                    CompletePresentation(),
+                    null),
+                Is.True);
+            tempoController.HandlePlayerActionStarted(
+                PlayerBehaviourAction.Shoot);
+            playerMove.BufferInputAction(PlayerBehaviourAction.Reload);
+
+            Assert.That(waveManager.IsResolvingTurn, Is.True);
+            Assert.That(playerMove.IsEnemyTurnResolving, Is.True);
+            Assert.That(playerMove.CanStartAction, Is.False);
+            Assert.That(
+                InvokeCanPerformMovementAction(playerMove),
+                Is.True);
+            Assert.That(tempoController.IsTempoCycleReserved, Is.True);
+            Assert.That(tempoController.TempoProgress, Is.EqualTo(6d));
+
+            yield return null;
+
+            Assert.That(presentationCompleted, Is.False);
+            Assert.That(deckManager.LoadedBullets, Is.Empty);
+            Assert.That(playerMove.TurnCount, Is.EqualTo(5));
+            Assert.That(tempoController.IsTempoCycleReserved, Is.True);
+
+            int remainingFrames = 120;
+
+            while (waveManager.IsResolvingTurn && remainingFrames-- > 0)
+            {
+                yield return null;
+            }
+
+            Assert.That(remainingFrames, Is.GreaterThan(0));
+            Assert.That(presentationCompleted, Is.True);
+            Assert.That(playerMove.IsEnemyTurnResolving, Is.False);
+
+            remainingFrames = 30;
+
+            while (deckManager.LoadedBullets.Count == 0
+                   && remainingFrames-- > 0)
+            {
+                yield return null;
+            }
+
+            Assert.That(remainingFrames, Is.GreaterThan(0));
+            Assert.That(deckManager.LoadedBullets, Has.Count.EqualTo(1));
+            Assert.That(playerMove.TurnCount, Is.EqualTo(6));
+            Assert.That(tempoController.IsTempoCycleReserved, Is.False);
+            Assert.That(
+                tempoController.TempoProgress,
+                Is.EqualTo(5d).Within(0.0001d));
+            Assert.That(
+                playerMove.TryPeekBufferedInput(out _),
+                Is.False);
+
+            yield return null;
+            yield return null;
+
+            Assert.That(deckManager.LoadedBullets, Has.Count.EqualTo(1));
+            Assert.That(playerMove.TurnCount, Is.EqualTo(6));
+        }
+        finally
+        {
+            tempoController.BeatsCommitted -=
+                waveManager.QueueDuelClockBeats;
+            Object.Destroy(waveObject);
+            Object.Destroy(enemyTemplateObject);
+            Object.Destroy(boardObject);
+            Object.Destroy(playerObject);
+            Object.Destroy(deckObject);
+            Object.Destroy(bullet);
+            Object.Destroy(battle);
+        }
+
+        yield return null;
+        yield return new ExitPlayMode();
+
+        EditorSceneManager.OpenScene(
+            "Assets/Scenes/MainMenu.unity",
+            OpenSceneMode.Single);
+    }
+
     [Test]
     public void BattleHudKeepsPhaseLabelAndSixComboCounts()
     {
@@ -263,6 +459,17 @@ public sealed class CylinderTempoTests
                     .FindProperty("comboCountLimit")
                     .intValue,
                 Is.EqualTo(6));
+
+            WaveManager waveManager =
+                Object.FindFirstObjectByType<WaveManager>(
+                    FindObjectsInactive.Include);
+            Assert.That(waveManager, Is.Not.Null);
+            Assert.That(
+                waveManager.EnemyTurnDelay,
+                Is.EqualTo(0.1f).Within(0.0001f));
+            Assert.That(
+                waveManager.EnemyActionInterval,
+                Is.EqualTo(0.05f).Within(0.0001f));
         }
         finally
         {
@@ -300,5 +507,16 @@ public sealed class CylinderTempoTests
     {
         controller.HandlePlayerActionStarted(action);
         playerMove.CompleteTurn();
+    }
+
+    private static bool InvokeCanPerformMovementAction(
+        PlayerMove playerMove)
+    {
+        System.Reflection.MethodInfo method = typeof(PlayerMove).GetMethod(
+            "CanPerformMovementAction",
+            System.Reflection.BindingFlags.Instance
+            | System.Reflection.BindingFlags.NonPublic);
+        Assert.That(method, Is.Not.Null);
+        return (bool)method.Invoke(playerMove, null);
     }
 }

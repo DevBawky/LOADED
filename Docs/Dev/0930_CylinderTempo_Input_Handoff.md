@@ -93,6 +93,14 @@ UI 규칙:
 - `Docs/Dev/0715_Player_PlayerMove.md`
 - `Docs/Dev/0717_Combat_DeckManager_PlayerShoot.md`
 
+### 후속 안정화 및 적 페이즈 템포 조정
+
+- 전체 EditMode 테스트의 기존 실패 11개를 현재 에셋과 런타임 규칙에 맞게 정리했다.
+- 실제 Play Mode 전환을 포함하는 Cylinder Tempo 통합 테스트를 추가했다. 6칸 도달, 적 페이즈 중 이동 회피 허용, 비이동 입력 차단, 분리된 공격 연출 완료 대기, 이월 공개, 버퍼 장전 1회 실행을 한 흐름으로 검증한다.
+- 적 이동·회전·대기의 불필요한 순차 대기는 제거된 기존 병렬 처리를 유지한다. 공격 연출과 회피 가능 시간은 줄이지 않고, 완료된 공격 뒤 다음 적이 있을 때의 간격만 0.05초로 줄였다.
+- 적 페이즈는 모든 공격·폭탄 연출이 끝날 때까지 유지하며 최소 표시 시간은 0.1초다.
+- Treasure UI는 기존 빌더로 재생성해 선택 버튼의 비활성 Transition과 Relic Panel 외곽선을 복구했다.
+
 ## 4. 이전 Battle 연출 및 3D 전환 작업 요약
 
 다음 항목은 이전 대화에서 지속적으로 조정한 영역이다. 후속 수정 전에는 씬과 현재 코드 상태를 다시 조회한다.
@@ -118,8 +126,9 @@ UI 규칙:
 - Unity Console 컴파일 오류: 0
 - `PlayerActionInputBufferTests`: 2/2 통과
 - `PlayerShootInputReaderTests`: 5/5 통과
-- `CylinderTempoTests`: 20/20 통과
+- `CylinderTempoTests`: 27/27 통과
 - `DeckManagerTests`: 27/27 통과
+- 전체 EditMode: 720개 중 678개 통과, 0개 실패, 42개 의도적 Skip
 
 현재 콘솔의 남은 경고는 이번 입력 수정에서 새로 발생한 것이 아니다.
 

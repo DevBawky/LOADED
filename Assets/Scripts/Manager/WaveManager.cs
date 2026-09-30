@@ -64,10 +64,10 @@ public class WaveManager : MonoBehaviour
     [Header("COUNT Timing")]
     [Min(0f)]
     [Tooltip("모든 적이 즉시 행동을 마칠 때 적 전체가 공유하는 기본 COUNT 연출 시간입니다.")]
-    [SerializeField] private float enemyTurnDelay = 0.35f;
+    [SerializeField] private float enemyTurnDelay = 0.1f;
     [Min(0f)]
-    [Tooltip("실제 공격 행동 뒤에만 추가하는 간격입니다.")]
-    [SerializeField] private float enemyActionInterval = 0.15f;
+    [Tooltip("공격 판정과 회피 연출이 모두 끝난 뒤 다음 적으로 넘어가기 전의 짧은 간격입니다.")]
+    [SerializeField] private float enemyActionInterval = 0.05f;
 
     [Header("References")]
     [Tooltip("모든 EnemyData를 실행하는 공용 적 템플릿 프리팹입니다.")]
@@ -1307,11 +1307,11 @@ public class WaveManager : MonoBehaviour
                     break;
                 }
 
-                bool performedAttack = enemy != null
-                    && enemy.LastTurnAction == EnemyTurnActionType.Fire;
-
-                if (performedAttack
-                    && enemyIndex < enemiesThisTurn.Length - 1)
+                if (ShouldWaitBetweenEnemyActions(
+                        enemy == null
+                            ? EnemyTurnActionType.None
+                            : enemy.LastTurnAction,
+                        enemyIndex < enemiesThisTurn.Length - 1))
                 {
                     yield return WaitForTurnTime(enemyActionInterval);
                 }
@@ -1340,6 +1340,14 @@ public class WaveManager : MonoBehaviour
         EnemyTurnCycleCompleted?.Invoke(currentEnemyTurnCycle);
         AdvanceWaveCountdown();
         StateChanged?.Invoke();
+    }
+
+    internal static bool ShouldWaitBetweenEnemyActions(
+        EnemyTurnActionType completedAction,
+        bool hasFollowingEnemy)
+    {
+        return hasFollowingEnemy
+            && completedAction == EnemyTurnActionType.Fire;
     }
 
     private IEnumerator WaitForTurnTime(float duration)

@@ -129,9 +129,11 @@ public sealed class BulletEffectDescriptionFormatterTests
 
             try
             {
+                string description = bullet.GetBulletTypeDescription(0);
                 Assert.That(
-                    bullet.GetBulletTypeDescription(0),
-                    Does.EndWith("합니다."),
+                    description.EndsWith("합니다.")
+                    || description.EndsWith("습니다."),
+                    Is.True,
                     bulletType.ToString());
             }
             finally

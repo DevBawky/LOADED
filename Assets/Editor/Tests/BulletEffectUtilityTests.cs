@@ -43,8 +43,8 @@ public sealed class BulletEffectUtilityTests
         BulletGrade.Rare, 6, 10, 20, 40)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Reverse Shot.asset",
         BulletGrade.Rare, 6, 10, 20, 40)]
-    [TestCase("Assets/Scripts/Bullet/SO/Rare/Rotation Shot.asset",
-        BulletGrade.Rare, 6, 10, 20, 40)]
+    [TestCase("Assets/Scripts/Bullet/SO/Normal/Rotation Shot.asset",
+        BulletGrade.Normal, 6, 5, 10, 15)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Evasion.asset",
         BulletGrade.Rare, 6, 10, 20, 40)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Immersion.asset",
@@ -168,7 +168,7 @@ public sealed class BulletEffectUtilityTests
     public void RotationShotAssetRotatesPlayerAfterShot()
     {
         BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(
-            "Assets/Scripts/Bullet/SO/Rare/Rotation Shot.asset");
+            "Assets/Scripts/Bullet/SO/Normal/Rotation Shot.asset");
 
         Assert.That(data, Is.Not.Null);
         Assert.That(

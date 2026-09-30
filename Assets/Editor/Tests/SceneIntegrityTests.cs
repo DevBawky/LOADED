@@ -218,7 +218,9 @@ public sealed class SceneIntegrityTests
             }
 
             Assert.That(activeTitle, Is.Not.Null);
-            Assert.That(activeTitle.text, Is.EqualTo("상점. 마을"));
+            Assert.That(
+                activeTitle.text,
+                Is.EqualTo(StageProgressUI.ShopStageTitle));
         }
         finally
         {

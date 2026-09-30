@@ -81,18 +81,19 @@ public sealed class VeteranEnemyAssetTests
     [Test]
     public void FinaleLastWavesContainEveryVeteranType()
     {
-        string[] finaleNames =
-        {
-            "Stage 1 Finale 1",
-            "Stage 1 Finale 2",
-            "Stage 1 Finale 3"
-        };
+        string finaleFolder = $"{BattleFolder}/3 Finale";
+        string[] finaleGuids = AssetDatabase.FindAssets(
+            "t:BattleData",
+            new[] { finaleFolder });
 
-        foreach (string finaleName in finaleNames)
+        Assert.That(finaleGuids, Is.Not.Empty);
+
+        foreach (string finaleGuid in finaleGuids)
         {
             BattleData battle = AssetDatabase.LoadAssetAtPath<BattleData>(
-                $"{BattleFolder}/3 Finale/{finaleName}.asset");
+                AssetDatabase.GUIDToAssetPath(finaleGuid));
             Assert.That(battle, Is.Not.Null);
+            Assert.That(battle.Waves, Is.Not.Empty, battle.name);
             EnemyWave finalWave = battle.Waves[battle.Waves.Count - 1];
             string[] ids = finalWave.Enemies
                 .Select(entry => entry.EnemyData.EnemyId)
