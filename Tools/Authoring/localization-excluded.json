@@ -1,0 +1,46 @@
+[
+  {
+    "key": "code.ba917a4c06fbf54ce1b1.0",
+    "scope": "Code",
+    "source": "Assets/Scripts/Bullet/BulletEffectDescriptionFormatter.cs:487",
+    "field": "literal",
+    "ko": "니다. ",
+    "en": "",
+    "status": "Draft",
+    "note": "Arguments:  | return string.IsNullOrEmpty(description)             ? string.Empty             : description.Replace(\"니다. \", \"니다.\\n• \");",
+    "reason": "Text-processing pattern, not displayed UI text"
+  },
+  {
+    "key": "code.c26d1ff2e02ec6547f2a.0",
+    "scope": "Code",
+    "source": "Assets/Scripts/Event/EventChoiceTextFormatter.cs:108",
+    "field": "literal",
+    "ko": "\\d+\\s*(?:골드|원)",
+    "en": "",
+    "status": "Draft",
+    "note": "Arguments:  | patterns.Add(@\"\\d+\\s*(?:골드|원)\");",
+    "reason": "Text-processing pattern, not displayed UI text"
+  },
+  {
+    "key": "code.1705dedfc52660cbeb70.0",
+    "scope": "Code",
+    "source": "Assets/Scripts/Event/EventChoiceTextFormatter.cs:109",
+    "field": "literal",
+    "ko": "강화|제거|무료|비용|골드|탄환|아이템",
+    "en": "",
+    "status": "Draft",
+    "note": "Arguments:  | patterns.Add(@\"강화|제거|무료|비용|골드|탄환|아이템\");",
+    "reason": "Text-processing pattern, not displayed UI text"
+  },
+  {
+    "key": "code.4b283564f22db424acee.0",
+    "scope": "Code",
+    "source": "Assets/Scripts/Item/ItemData.cs:25",
+    "field": "literal",
+    "ko": "(?<poison>중독|독)|(?<stun>기절)|(?<mark>표식)|(?<weakness>약화)|(?<exposed>무방비)|(?<debuff>상태\\s*이상|디버프)|(?<lifesteal>흡혈)|(?<damage>최종\\s*대미지|대미지|피해)|(?<critical>치명타|치명|크리티컬)|(?<range>유효\\s*범위|사거리|범위|거리|약실)|(?<stack>스택|중첩|누적|포식|유산|집중|충전|축전|탄피)|(?<gold>골드)|(?<health>최대\\s*체력|잃은\\s*체력|체력)|(?<bonus>보너스|증가|추가)|(?<criticalStat>확률|배율|배수|퍼센트|위력)|(?<money>\\$[ \\t]*\\d+(?:\\.\\d+)?)|(?<rangeValue>[+-]?[ \\t]*\\d+(?:\\.\\d+)?[ \\t]*칸)|(?<percent>[+-]?[ \\t]*\\d+(?:\\.\\d+)?[ \\t]*%p?|x[ \\t]*\\d+(?:\\.\\d+)?)|(?<number>[+-]?[ \\t]*\\d+(?:\\.\\d+)?)",
+    "en": "",
+    "status": "Draft",
+    "note": "Arguments:  | ",
+    "reason": "Text-processing pattern, not displayed UI text"
+  }
+]

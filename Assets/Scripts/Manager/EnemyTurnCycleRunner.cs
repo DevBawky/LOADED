@@ -26,57 +26,77 @@ internal sealed class EnemyTurnCycleRunner
 
         EnemyController[] enemiesThisTurn = CopyActiveEnemies(runtime);
         List<EnemyController> concurrentActions = new List<EnemyController>();
+        List<EnemyController> attacks = new List<EnemyController>();
         float turnStartedAt = Time.time;
 
-        for (int enemyIndex = 0;
-             enemyIndex < enemiesThisTurn.Length;
-             enemyIndex++)
+        // Classify before any turn runs: preparing an attack this cycle must
+        // not also execute it when the attack pass begins.
+        foreach (EnemyController enemy in enemiesThisTurn)
         {
-            EnemyController enemy = enemiesThisTurn[enemyIndex];
-
-            if (enemy == null || !Contains(runtime.ActiveEnemies, enemy))
+            if (enemy == null)
             {
                 continue;
             }
-
-            bool usesDedicatedMotion = enemy.WillExecuteDedicatedTurnMotion;
-
-            if (usesDedicatedMotion)
+            bool attacksPlayer = enemy.WillExecuteDedicatedTurnMotion
+                && (enemy.Data == null
+                    || enemy.Data.BehaviorType != EnemyBehaviorType.Porter);
+            if (attacksPlayer)
             {
-                yield return WaitForEnemyActions(concurrentActions);
-                concurrentActions.Clear();
+                attacks.Add(enemy);
             }
+            else
+            {
+                concurrentActions.Add(enemy);
+            }
+        }
 
+        // Queue reveals, preparation, support and movement all start in the
+        // same frame, retaining spawn order for reservations and decisions.
+        foreach (EnemyController enemy in concurrentActions)
+        {
+            if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
+            {
+                yield break;
+            }
+            if (CanAct(runtime, enemy))
+            {
+                enemy.TakeTurn();
+            }
+        }
+        // Settle movement once so attacks never target intermediate positions.
+        yield return WaitForEnemyActions(runtime, concurrentActions);
+        if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
+        {
+            yield break;
+        }
+
+        for (int enemyIndex = 0; enemyIndex < attacks.Count; enemyIndex++)
+        {
+            if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
+            {
+                yield break;
+            }
+            EnemyController enemy = attacks[enemyIndex];
+            if (!CanAct(runtime, enemy))
+            {
+                continue;
+            }
             enemy.TakeTurn();
-
-            if (!usesDedicatedMotion)
+            yield return WaitForEnemyAction(runtime, enemy);
+            if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
             {
-                if (enemy != null && enemy.IsActing)
-                {
-                    concurrentActions.Add(enemy);
-                }
-
-                continue;
+                yield break;
             }
-
-            yield return WaitForEnemyAction(enemy);
-
-            if (runtime.IsPlayerDefeated)
-            {
-                break;
-            }
-
             if (ShouldWaitBetweenEnemyActions(
                     enemy == null
                         ? EnemyTurnActionType.None
                         : enemy.LastTurnAction,
-                    enemyIndex < enemiesThisTurn.Length - 1))
+                    enemyIndex < attacks.Count - 1))
             {
                 yield return WaitForTurnTime(actionInterval);
             }
         }
 
-        yield return WaitForEnemyActions(concurrentActions);
         yield return WaitForDetachedEnemyAttacks(runtime);
 
         float remainingTurnDelay = Mathf.Max(
@@ -142,15 +162,24 @@ internal sealed class EnemyTurnCycleRunner
         }
     }
 
-    private static IEnumerator WaitForEnemyAction(EnemyController enemy)
+    private static bool CanAct(IEnemyTurnCycleRuntime runtime, EnemyController enemy)
     {
-        while (enemy != null && enemy.IsActing)
+        return enemy != null && enemy.isActiveAndEnabled
+            && Contains(runtime.ActiveEnemies, enemy);
+    }
+
+    private static IEnumerator WaitForEnemyAction(
+        IEnemyTurnCycleRuntime runtime, EnemyController enemy)
+    {
+        while (!runtime.IsBattleCompleted && !runtime.IsPlayerDefeated
+               && CanAct(runtime, enemy) && enemy.IsActing)
         {
             yield return null;
         }
     }
 
     private static IEnumerator WaitForEnemyActions(
+        IEnemyTurnCycleRuntime runtime,
         IReadOnlyList<EnemyController> enemies)
     {
         if (enemies == null || enemies.Count == 0)
@@ -160,7 +189,8 @@ internal sealed class EnemyTurnCycleRunner
 
         bool hasRunningAction = true;
 
-        while (hasRunningAction)
+        while (hasRunningAction && !runtime.IsBattleCompleted
+               && !runtime.IsPlayerDefeated)
         {
             hasRunningAction = false;
 
@@ -168,7 +198,7 @@ internal sealed class EnemyTurnCycleRunner
             {
                 EnemyController enemy = enemies[index];
 
-                if (enemy != null && enemy.IsActing)
+                if (CanAct(runtime, enemy) && enemy.IsActing)
                 {
                     hasRunningAction = true;
                     break;

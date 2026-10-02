@@ -17,6 +17,7 @@ public class BoardManager : MonoBehaviour
     [SerializeField] private Transform tileParent;
 
     private bool isGenerated;
+    private Color? gridBorderColor;
     private Component focusedWarningOwner;
     private readonly HashSet<int> urgentWarningOwners = new HashSet<int>();
     private readonly List<BoardTile> spawnedTiles = new List<BoardTile>();
@@ -261,6 +262,23 @@ public class BoardManager : MonoBehaviour
         }
         spawnedTiles[index].SetPreviewColor(color);
         return true;
+    }
+
+    internal void SetGridBorderColor(Color? color)
+    {
+        if (gridBorderColor == color)
+        {
+            return;
+        }
+
+        gridBorderColor = color;
+        foreach (BoardTile tile in spawnedTiles)
+        {
+            if (tile != null)
+            {
+                tile.SetGridBorderColor(color);
+            }
+        }
     }
 
     public bool TryGetTilePosition(int tileIndex, out Vector3 worldPosition)
@@ -536,6 +554,7 @@ public class BoardManager : MonoBehaviour
                     tileIndex == 0, tileIndex == boardCount - 1,
                     laneIndex == 0 || LaneColumnOffset > 0 && tileIndex == boardCount - 1,
                     laneIndex == laneCount - 1 || LaneColumnOffset > 0 && tileIndex == 0);
+                tile.SetGridBorderColor(gridBorderColor);
                 spawnedTiles.Add(tile);
             }
         }

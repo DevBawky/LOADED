@@ -37,6 +37,32 @@
   while the six-slot enemy cycle remains reserved. It returns to the player
   phase only after the complete enemy-action presentation settles and the
   carried Tempo becomes visible.
+  The Battle HUD also has an explicit BoardManager reference. It applies the
+  same authored phase color to grid edges at that transition: cyan for player,
+  red-orange for enemy. Grid edges keep their existing inner/outer opacity;
+  floor fills, enemy warning colors, and bullet range previews are independent.
+  The border uses the steady phase color while the text retains its pulse.
+  Disabling the HUD restores neutral edges; re-enabling reads the current
+  controller state. Board generation retains the current presentation tint.
+
+## Enemy-cycle presentation scheduling (2026-10-02)
+
+- At the start of a cycle, the runner snapshots and classifies its enemies.
+  Queue creation/registration, preparation, movement, rotation, reload, and
+  Porter support start together, in stable spawn order without intervening
+  frame waits. Movement reservations retain that deterministic ordering.
+- The runner waits for that group once, then resolves prepared attacks in
+  their existing relative order. Settling movement first avoids attacking
+  intermediate tile positions. A newly prepared action cannot attack twice
+  in the same cycle. Detached projectiles and boss bombs still settle before
+  the normal cycle-complete notification.
+- Previously each attack split the concurrent group and inserted another
+  queue-reveal wait. Alternating attackers and registering enemies could
+  accumulate multiple reveal delays. Those repeated barriers are removed.
+- Disabled/removed enemies and battle completion/player defeat no longer
+  hold the runner's action waits open.
+- Grid inner/outer line widths are now 3.0%/5.4% of the smaller tile dimension
+  (previously 1.8%/3.24%). Warning-fill inset remains unchanged.
 
 ## Scope
 
@@ -450,3 +476,10 @@ duplicated by this gate.
   `0`, firing-sequence ordering, and accessibility behavior.
 - Issue #45 follow-up: optional pre-spawn tile warnings and encounter-specific
   pool/interval balance passes.
+
+Verification: Unity compilation succeeded. EnemyTurnSchedulingTests passed 5/5;
+EnemyControllerTurnDecisionPlayModeTests passed 2/2, including a live mixed
+2-attacker/2-queue-reveal cycle; CylinderTempoTests passed 27/27, including
+presentation settlement and buffered input returning after the enemy cycle.
+The change removes accumulated reveal barriers; complete battle runs with every
+boss/projectile combination and subjective border visibility remain manual checks.

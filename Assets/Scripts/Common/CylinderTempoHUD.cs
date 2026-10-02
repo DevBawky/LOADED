@@ -14,6 +14,7 @@ public sealed class CylinderTempoHUD : MonoBehaviour
     [Header("State References")]
     [SerializeField] private DuelClockController tempoController;
     [SerializeField] private WaveManager waveManager;
+    [SerializeField] private BoardManager boardManager;
 
     [Header("Tempo Slots")]
     [SerializeField] private Image[] tempoImages =
@@ -322,6 +323,11 @@ public sealed class CylinderTempoHUD : MonoBehaviour
 
     private void ApplyPhasePresentation(bool enemyPhase)
     {
+        if (boardManager != null)
+        {
+            boardManager.SetGridBorderColor(
+                enemyPhase ? enemyPhaseColor : playerPhaseColor);
+        }
         if (phaseText == null)
         {
             return;
@@ -350,6 +356,10 @@ public sealed class CylinderTempoHUD : MonoBehaviour
 
     private void ResetPhasePresentation()
     {
+        if (boardManager != null)
+        {
+            boardManager.SetGridBorderColor(null);
+        }
         isEnemyPhase = false;
         phasePulseElapsed = 0f;
 

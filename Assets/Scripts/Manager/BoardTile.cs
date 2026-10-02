@@ -5,6 +5,8 @@ public class BoardTile : MonoBehaviour
 {
     [SerializeField] private GameObject warningObject;
     private Mesh gridMesh;
+    private Color[] gridBaseColors;
+    private Color[] gridDisplayColors;
     private Mesh warningMesh;
     private Material gridMaterial;
     private MeshRenderer warningRenderer;
@@ -130,6 +132,23 @@ public class BoardTile : MonoBehaviour
         UpdatePreviewInset();
     }
 
+    internal void SetGridBorderColor(Color? color)
+    {
+        if (gridMesh == null || gridBaseColors == null)
+        {
+            return;
+        }
+
+        // The first quad is the neutral floor fill; subsequent quads are edges.
+        for (int index = 4; index < gridBaseColors.Length; index++)
+        {
+            Color value = color ?? gridBaseColors[index];
+            value.a = gridBaseColors[index].a;
+            gridDisplayColors[index] = value;
+        }
+        gridMesh.colors = gridDisplayColors;
+    }
+
     private void UpdatePreviewInset()
     {
         if (previewRenderer == null || previewProperties == null)
@@ -170,7 +189,7 @@ public class BoardTile : MonoBehaviour
 
         Color inner = new Color(0.72f, 0.79f, 0.84f, 0.28f);
         Color outer = new Color(0.84f, 0.89f, 0.93f, 0.65f);
-        float innerWidth = Mathf.Min(width, height) * 0.018f;
+        float innerWidth = Mathf.Min(width, height) * 0.03f;
         float outerWidth = innerWidth * 1.8f;
 
         // Shared edges are drawn once: right/top, plus exposed left/bottom.
@@ -191,13 +210,15 @@ public class BoardTile : MonoBehaviour
             top - (outerTop ? outerWidth : innerWidth), right, top,
             outerTop ? outer : inner);
         gridMesh = CreateMesh(vertices, colors, triangles, "Battle Grid");
+        gridBaseColors = colors.ToArray();
+        gridDisplayColors = colors.ToArray();
         CreateRenderer("Grid", gridMesh, sortingLayer, -2);
 
         vertices.Clear();
         colors.Clear();
         triangles.Clear();
         // Keep the grid visible while the unlit fill stays red over bright backgrounds.
-        float warningInset = innerWidth * 1.3f;
+        float warningInset = Mathf.Min(width, height) * 0.018f * 1.3f;
         AddQuad(vertices, colors, triangles,
             left + warningInset, bottom + warningInset,
             right - warningInset, top - warningInset,

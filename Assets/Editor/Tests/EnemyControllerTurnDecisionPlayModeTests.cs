@@ -12,6 +12,104 @@ public sealed class EnemyControllerTurnDecisionPlayModeTests
         BindingFlags.Instance | BindingFlags.NonPublic;
 
     [UnityTest]
+    public IEnumerator MixedAttackAndQueueCycleStartsBothRevealsBeforeAttacks()
+    {
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        yield return new EnterPlayMode();
+        var created = new List<Object>();
+        try
+        {
+            var board = CreateComponent<BoardManager>("Scheduling Board", created);
+            var tiles = new GameObject("Scheduling Tiles"); created.Add(tiles);
+            SetField(board, "tileParent", tiles.transform);
+            var template = CreateComponent<BoardTile>("Scheduling Tile Template", created);
+            Assert.That(board.ConfigureBoard(7, 1, template), Is.True);
+            var player = CreateComponent<PlayerMove>("Scheduling Player", created);
+            var health = player.gameObject.AddComponent<PlayerHealth>();
+            Place(board, player.transform, 6);
+            var waveObject = new GameObject("Scheduling Wave"); created.Add(waveObject);
+            waveObject.SetActive(false);
+            var wave = waveObject.AddComponent<WaveManager>();
+            SetField(wave, "boardManager", board);
+            var action = CreateAttackAction(EnemyActionType.RangedAttack, 1, created);
+            var enemies = new List<EnemyController>();
+            for (int i = 0; i < 4; i++)
+            {
+                var enemy = CreateEnemy(EnemyBehaviorType.Gunner, new[] { action },
+                    board, player, health, wave, created);
+                Place(board, enemy.transform, i);
+                enemy.transform.localScale = Vector3.one;
+                // Queue-only enemies ignore frontline gating in this fixture.
+                if (i % 2 == 1) SetField(enemy.Data, "behaviorType", EnemyBehaviorType.Thrower);
+                var queue = enemy.GetComponent<EnemyActionQueueUI>();
+                var queueObject = new GameObject("Queue", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+                queueObject.transform.SetParent(enemy.transform, false);
+                var icon = new GameObject("Icon Template", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+                created.Add(icon);
+                SetField(queue, "queueImage", queueObject.GetComponent<UnityEngine.UI.Image>());
+                SetField(queue, "iconParent", queueObject.GetComponent<RectTransform>());
+                SetField(queue, "attackIconPrefab", icon.GetComponent<UnityEngine.UI.Image>());
+                SetField(enemy.Data, "queueElementRevealDuration", 0.1f);
+                if (i % 2 == 0)
+                {
+                    SetQueue(enemy, action);
+                    SetField(enemy, "isAttackPrepared", true);
+                }
+                enemies.Add(enemy);
+            }
+            SetActiveEnemies(wave, enemies.ToArray());
+            var runtime = new SchedulingRuntime(enemies);
+            var routine = new EnemyTurnCycleRunner().Resolve(runtime, 1, 0f, 0f);
+            Assert.That(routine.MoveNext(), Is.True);
+            Assert.That(enemies[1].GetComponent<EnemyActionQueueUI>().IconCount, Is.EqualTo(1));
+            Assert.That(enemies[3].GetComponent<EnemyActionQueueUI>().IconCount, Is.EqualTo(1));
+            Assert.That(enemies[1].IsActing && enemies[3].IsActing, Is.True);
+            Assert.That(enemies[0].IsAttackPrepared && enemies[2].IsAttackPrepared, Is.True);
+
+            // Drive nested waits frame by frame so a regression reports a failure
+            // instead of hanging the test runner indefinitely.
+            var stack = new Stack<IEnumerator>();
+            stack.Push(routine);
+            stack.Push((IEnumerator)routine.Current);
+            float deadline = Time.realtimeSinceStartup + 5f;
+            while (stack.Count > 0)
+            {
+                Assert.That(Time.realtimeSinceStartup, Is.LessThan(deadline), "Enemy cycle did not settle");
+                var current = stack.Peek();
+                if (!current.MoveNext()) { stack.Pop(); continue; }
+                if (current.Current is IEnumerator nested) stack.Push(nested);
+                else yield return current.Current;
+            }
+            Assert.That(runtime.BombPasses, Is.EqualTo(1));
+            Assert.That(enemies.TrueForAll(e => !e.IsActing), Is.True);
+            Assert.That(enemies[0].LastTurnAction, Is.EqualTo(EnemyTurnActionType.Fire));
+            Assert.That(enemies[2].LastTurnAction, Is.EqualTo(EnemyTurnActionType.Fire));
+            Assert.That(enemies[1].LastTurnAction, Is.EqualTo(EnemyTurnActionType.RegisterAttack));
+            Assert.That(enemies[3].LastTurnAction, Is.EqualTo(EnemyTurnActionType.RegisterAttack));
+        }
+        finally
+        {
+            for (int i = created.Count - 1; i >= 0; i--)
+                if (created[i] != null) Object.Destroy(created[i]);
+        }
+        yield return null;
+        yield return new ExitPlayMode();
+    }
+
+    private sealed class SchedulingRuntime : IEnemyTurnCycleRuntime
+    {
+        public SchedulingRuntime(IReadOnlyList<EnemyController> enemies) { ActiveEnemies = enemies; }
+        public IReadOnlyList<EnemyController> ActiveEnemies { get; }
+        public bool IsBattleCompleted => false;
+        public bool IsPlayerDefeated => false;
+        public bool HasPendingDetachedEnemyAttacks => false;
+        public bool IsResolvingBossBombExplosions => false;
+        public int BombPasses { get; private set; }
+        public void RemoveMissingEnemies() { }
+        public void ProcessBossBombs(int cycle) { BombPasses++; }
+    }
+
+    [UnityTest]
     public IEnumerator QueuedBehaviorsKeepTheirTurnOutcomes()
     {
         EditorSceneManager.NewScene(

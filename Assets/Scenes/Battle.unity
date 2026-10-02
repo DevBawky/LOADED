@@ -10690,6 +10690,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 1522463505}
     - target: {fileID: 8965963983663329588, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
+      propertyPath: boardManager
+      value: 
+      objectReference: {fileID: 561211666}
+    - target: {fileID: 8965963983663329588, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: tempoController
       value: 
       objectReference: {fileID: 1522463506}
