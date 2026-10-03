@@ -289,6 +289,11 @@ public sealed class BulletTypeTextEffectTests
     [TestCase(BulletType.Storm, true)]
     [TestCase(BulletType.Shotgun, true)]
     [TestCase(BulletType.Piercing, true)]
+    [TestCase(BulletType.Kinetic, true)]
+    [TestCase(BulletType.Combo, true)]
+    [TestCase(BulletType.Economy, true)]
+    [TestCase(BulletType.Growth, true)]
+    [TestCase(BulletType.Blood, true)]
     public void OnlySpecialNonDebuffTypesShowTypeDescription(
         BulletType bulletType,
         bool expected)
@@ -296,6 +301,21 @@ public sealed class BulletTypeTextEffectTests
         Assert.That(
             InventoryTooltipUI.ShouldShowBulletTypeDescription(bulletType),
             Is.EqualTo(expected));
+    }
+
+    [TestCase(BulletType.Kinetic, "기동")]
+    [TestCase(BulletType.Combo, "연계")]
+    [TestCase(BulletType.Economy, "경제")]
+    [TestCase(BulletType.Growth, "성장")]
+    [TestCase(BulletType.Blood, "혈투")]
+    public void PlannedTypeTextUsesDistinctRuntimeEffectModes(
+        BulletType bulletType,
+        string expectedName)
+    {
+        Assert.That(
+            BulletData.GetBulletTypeDisplayName(bulletType),
+            Is.EqualTo(expectedName));
+        Assert.That((int)bulletType, Is.InRange(7, 11));
     }
 
     [TestCase(BulletType.Debuff, false, true)]

@@ -71,6 +71,21 @@ internal sealed class PlayerCombatPreviewResources
         return true;
     }
 
+    public bool TrySpendMaxHealth(int amount)
+    {
+        int cost = Mathf.Max(0, amount);
+
+        if (cost <= 0 || CurrentHealth <= 0 || MaxHealth <= 1)
+        {
+            return false;
+        }
+
+        int spent = Mathf.Min(cost, MaxHealth - 1);
+        MaxHealth -= spent;
+        CurrentHealth = Mathf.Min(CurrentHealth, MaxHealth);
+        return spent > 0;
+    }
+
     public bool TryAddGold(int amount)
     {
         if (amount <= 0)

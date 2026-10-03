@@ -180,12 +180,36 @@ Shader "LOADED/UI/Bullet Type Text"
                         electricJitter,
                         -electricJitter * 0.35) * 0.32 * motion;
                 }
-                else if (_EffectMode > 5.5)
+                else if (_EffectMode > 5.5 && _EffectMode < 6.5)
                 {
                     float glitch = sin(
                         floor(localVertex.y * 0.16) * 2.7
                         + time * 11.0);
                     localVertex.x += glitch * 0.2 * motion;
+                }
+                else if (_EffectMode > 6.5 && _EffectMode < 7.5)
+                {
+                    float dash = sin(
+                        time * 10.0 + localVertex.y * 0.21);
+                    localVertex.x += dash * 0.32 * motion;
+                }
+                else if (_EffectMode > 7.5 && _EffectMode < 8.5)
+                {
+                    float relay = sin(
+                        localVertex.x * 0.16 - time * 4.5);
+                    localVertex.y += relay * 0.22 * motion;
+                }
+                else if (_EffectMode > 9.5 && _EffectMode < 10.5)
+                {
+                    float rise = sin(
+                        localVertex.x * 0.05 + time * 1.4);
+                    localVertex.y += rise * 0.14 * motion;
+                }
+                else if (_EffectMode > 10.5)
+                {
+                    float heartbeat = sin(time * 4.8)
+                        * sin(time * 2.4);
+                    localVertex.x += heartbeat * 0.16 * motion;
                 }
 
                 float4 clipPosition = UnityObjectToClipPos(localVertex);
@@ -410,7 +434,7 @@ Shader "LOADED/UI/Bullet Type Text"
                     tintStrength = 0.64 + streak * 0.24;
                     baseBrightness = 0.68 + streak * 0.18;
                 }
-                else
+                else if (_EffectMode < 6.5)
                 {
                     float corruption = ValueNoise(
                         position * 0.065 + float2(time * 0.16, -time * 0.21));
@@ -430,6 +454,98 @@ Shader "LOADED/UI/Bullet Type Text"
                     tintStrength = 0.58 + corruption * 0.22;
                     alphaMultiplier = 0.82 + corruption * 0.18;
                     baseBrightness = 0.66 + pulse * 0.16;
+                }
+                else if (_EffectMode < 7.5)
+                {
+                    float speedLine = pow(saturate(
+                        1.0 - abs(frac(
+                            (position.x + position.y * 0.45) * 0.014
+                            - time * 0.78) - 0.5) * 18.0), 2.0);
+                    float impact = pow(saturate(
+                        sin(time * 4.2) * 0.5 + 0.5), 12.0);
+                    effectColor = lerp(
+                        float3(0.02, 0.68, 0.94),
+                        float3(1.0, 0.88, 0.12),
+                        saturate(speedLine + impact * 0.7));
+                    innerLightStrength = 0.12 + speedLine * 0.82
+                        + impact * 0.45;
+                    tintStrength = 0.62 + speedLine * 0.24;
+                    baseBrightness = 0.65 + speedLine * 0.2;
+                }
+                else if (_EffectMode < 8.5)
+                {
+                    float relay = 0.5 + 0.5 * sin(
+                        position.x * 0.12 - time * 4.8);
+                    float link = pow(saturate(
+                        1.0 - abs(sin(
+                            position.x * 0.09 + position.y * 0.13
+                            - time * 3.2)) * 5.0), 7.0);
+                    effectColor = lerp(
+                        float3(0.08, 0.88, 1.0),
+                        float3(1.0, 0.12, 0.72),
+                        saturate(relay * 0.65 + link * 0.5));
+                    innerLightStrength = 0.14 + relay * 0.28
+                        + link * 0.75;
+                    tintStrength = 0.64 + link * 0.22;
+                    baseBrightness = 0.64 + relay * 0.18;
+                }
+                else if (_EffectMode < 9.5)
+                {
+                    float sweep = pow(saturate(
+                        1.0 - abs(frac(position.x * 0.012 - time * 0.3)
+                            - 0.5) * 14.0), 3.0);
+                    float sparkleSeed = Hash21(floor(position * 0.09));
+                    float sparkle = pow(saturate(
+                        sin(time * 5.0 + sparkleSeed * 6.283)
+                            * 0.5 + 0.5), 18.0)
+                        * step(0.72, sparkleSeed);
+                    effectColor = lerp(
+                        float3(0.82, 0.42, 0.015),
+                        float3(1.0, 0.97, 0.46),
+                        saturate(sweep + sparkle));
+                    innerLightStrength = 0.14 + sweep * 0.72
+                        + sparkle * 0.9;
+                    tintStrength = 0.68 + sparkle * 0.2;
+                    baseBrightness = 0.68 + sweep * 0.2;
+                }
+                else if (_EffectMode < 10.5)
+                {
+                    float growth = saturate(frac(
+                        position.y * 0.018 - time * 0.16));
+                    float leaf = pow(saturate(
+                        1.0 - abs(sin(
+                            position.x * 0.13 - position.y * 0.08
+                            + time * 1.8)) * 4.0), 5.0);
+                    float bloom = pow(saturate(
+                        sin(time * 1.6) * 0.5 + 0.5), 6.0);
+                    effectColor = lerp(
+                        float3(0.02, 0.5, 0.18),
+                        float3(0.62, 1.0, 0.18),
+                        saturate(growth * 0.65 + leaf * 0.55 + bloom * 0.2));
+                    innerLightStrength = 0.12 + leaf * 0.58
+                        + bloom * 0.38;
+                    tintStrength = 0.64 + growth * 0.2;
+                    baseBrightness = 0.62 + bloom * 0.18;
+                }
+                else
+                {
+                    float flow = ValueNoise(
+                        position * 0.055 + float2(time * 0.12, -time * 0.32));
+                    float beat = pow(saturate(
+                        sin(time * 4.8) * sin(time * 2.4)
+                            * 0.5 + 0.5), 10.0);
+                    float vein = pow(saturate(
+                        1.0 - abs(sin(
+                            position.x * 0.1 + position.y * 0.19
+                            + flow * 4.0 - time * 2.1)) * 4.0), 7.0);
+                    effectColor = lerp(
+                        float3(0.32, 0.005, 0.015),
+                        float3(1.0, 0.12, 0.08),
+                        saturate(flow * 0.45 + beat * 0.8 + vein * 0.5));
+                    innerLightStrength = 0.12 + beat * 0.78
+                        + vein * 0.62;
+                    tintStrength = 0.72 + beat * 0.16;
+                    baseBrightness = 0.58 + beat * 0.24;
                 }
 
                 innerLightStrength *= lerp(0.45, 1.0, motion);

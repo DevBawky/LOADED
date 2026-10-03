@@ -284,21 +284,11 @@ public sealed class BulletInstance
             switch (effect.EffectType)
             {
                 case BulletEffectType.Jackpot:
-                {
-                    float jackpotMultiplier =
-                        BulletDynamicCombatRules.GetDamageFactor(
-                            effect,
-                            dynamicContext);
-
-                    if (jackpotMultiplier > 1f)
-                    {
-                        stateLines.Add(
-                            $"마지막 약실 조건 충족 "
-                            + $"(피해 x{jackpotMultiplier:0.##})");
-                    }
-
+                    stateLines.Add(
+                        $"대박 확률 {effect.ActivationChance:0.##}% "
+                        + $"(피해 x{BulletEffectUtility.GetJackpotDamageMultiplier(effect):0.##}, "
+                        + $"골드 +{Mathf.Max(0, effect.StackCount)})");
                     break;
-                }
                 case BulletEffectType.Gilded:
                 {
                     float bonus = BulletDynamicCombatRules.GetDamageFactor(
@@ -311,14 +301,14 @@ public sealed class BulletInstance
                 }
                 case BulletEffectType.Coagulation:
                 {
-                    float missingPercent = dynamicContext.MissingHealthPercent;
-                    float bonus =
-                        BulletDynamicCombatRules.GetCriticalChanceBonus(
-                            effect,
-                            dynamicContext);
+                    int bloodCount = CountOwnedBulletType(
+                        context,
+                        BulletType.Blood);
+                    float recovery = BulletEffectUtility
+                        .GetCoagulationRecoveryPercent(effect, bloodCount);
                     stateLines.Add(
-                        $"잃은 체력: {missingPercent:0.##}% "
-                        + $"(치명타 +{bonus:0.##}%p)");
+                        $"혈투 탄환: {bloodCount} "
+                        + $"(잃은 체력의 {recovery:0.##}% 회복)");
                     break;
                 }
                 case BulletEffectType.Heart:
@@ -332,66 +322,19 @@ public sealed class BulletInstance
                     break;
                 }
                 case BulletEffectType.Loader:
-                {
-                    if (!isLoaded)
-                    {
-                        break;
-                    }
-
-                    int emptyChambers = dynamicContext.EmptyChamberCount;
-                    float bonus = BulletDynamicCombatRules.GetDamageFactor(
-                        effect,
-                        dynamicContext) - 1f;
                     stateLines.Add(
-                        $"빈 약실: {emptyChambers} "
-                        + $"(피해 +{bonus * 100f:0.##}%)");
+                        "발사 후 다음 재장전이 턴을 소모하지 않음");
                     break;
-                }
                 case BulletEffectType.Resonance:
-                {
-                    if (!isLoaded)
-                    {
-                        break;
-                    }
-
-                    int otherCount = dynamicContext.OtherResonanceCount;
-                    float bonus = BulletDynamicCombatRules.GetDamageFactor(
-                        effect,
-                        dynamicContext) - 1f;
                     stateLines.Add(
-                        $"다른 공명탄: {otherCount} "
-                        + $"(피해 +{bonus * 100f:0.##}%)");
+                        $"직전 탄환의 상태이상 종류마다 "
+                        + $"{Mathf.Max(0, effect.StackCount)}스택 부여");
                     break;
-                }
                 case BulletEffectType.Crescendo:
-                {
-                    int ownedBulletCount = context.DeckBullets.Count
-                        + context.LoadedBullets.Count
-                        + context.GraveyardBullets.Count;
-
-                    if (ContainsReference(context.DeckBullets, this)
-                        || ContainsReference(context.LoadedBullets, this)
-                        || ContainsReference(context.GraveyardBullets, this))
-                    {
-                        ownedBulletCount = Mathf.Max(0, ownedBulletCount - 1);
-                    }
-
-                    int effectiveBaseDamage = Mathf.Max(
-                        0,
-                        Mathf.CeilToInt(
-                            Damage
-                            - ownedBulletCount * effect.Amount));
-
-                    if (Damage > 0)
-                    {
-                        damageMultiplier *= effectiveBaseDamage / (float)Damage;
-                    }
-
                     stateLines.Add(
-                        $"보유 탄환: {ownedBulletCount} "
-                        + $"(기본 피해 {effectiveBaseDamage})");
+                        "독·표식·약화·기절 중 무작위 1종 "
+                        + $"{BulletEffectUtility.GetCrescendoStatusStacks(effect)}스택");
                     break;
-                }
                 case BulletEffectType.Focus:
                 {
                     float bonus =
@@ -463,60 +406,39 @@ public sealed class BulletInstance
                     break;
                 }
                 case BulletEffectType.Collection:
-                {
-                    int count = dynamicContext.DistinctOwnedBulletTypeCount;
-                    float bonus = BulletDynamicCombatRules.GetDamageFactor(
-                        effect,
-                        dynamicContext) - 1f;
                     stateLines.Add(
-                        $"보유 탄환 종류: {count} "
-                        + $"(피해 +{bonus * 100f:0.##}%)");
+                        $"처치 연쇄 최대 {Mathf.Max(0, effect.StackCount)}회");
                     break;
-                }
                 case BulletEffectType.MixedGrade:
-                {
-                    int count = dynamicContext.OtherLoadedGradeCount;
-                    float bonus = BulletDynamicCombatRules.GetDamageFactor(
-                        effect,
-                        dynamicContext) - 1f;
                     stateLines.Add(
-                        $"실린더의 다른 등급 탄환: {count} "
-                        + $"(피해 +{bonus * 100f:0.##}%)");
+                        $"독·표식·약화 각각 "
+                        + $"{Mathf.Max(0, effect.StackCount)}스택");
                     break;
-                }
                 case BulletEffectType.Masterpiece:
                 {
                     int count = dynamicContext.OwnedHighGradeCount;
-                    float bonus = BulletDynamicCombatRules.GetDamageFactor(
-                        effect,
-                        dynamicContext) - 1f;
+                    float bonus = BulletEffectUtility
+                        .GetMasterpieceCriticalDamageBonus(effect, count);
                     stateLines.Add(
                         $"에이스 이상 탄환: {count} "
-                        + $"(피해 +{bonus * 100f:0.##}%)");
+                        + $"(치명타 배율 +{bonus:0.##})");
                     break;
                 }
                 case BulletEffectType.MassProduced:
                 {
                     int count = dynamicContext.OwnedLowGradeCount;
-                    float bonus = BulletDynamicCombatRules.GetDamageFactor(
-                        effect,
-                        dynamicContext) - 1f;
+                    int shots = BulletEffectUtility
+                        .GetMassProducedAdditionalShots(effect, count);
                     stateLines.Add(
                         $"노멀·레어 탄환: {count} "
-                        + $"(피해 +{bonus * 100f:0.##}%)");
+                        + $"(추가 공격 {shots}회)");
                     break;
                 }
                 case BulletEffectType.Monopoly:
-                {
-                    int count = dynamicContext.MostCommonOwnedGradeCount;
-                    float bonus = BulletDynamicCombatRules.GetDamageFactor(
-                        effect,
-                        dynamicContext) - 1f;
                     stateLines.Add(
-                        $"최다 보유 등급 탄환: {count} "
-                        + $"(피해 +{bonus * 100f:0.##}%)");
+                        $"귀환 경로 피해 "
+                        + $"{effect.Amount:0.##}%");
                     break;
-                }
                 case BulletEffectType.Seismometer:
                 {
                     float bonus = BulletDynamicCombatRules.GetDamageFactor(
@@ -529,11 +451,10 @@ public sealed class BulletInstance
                 }
                 case BulletEffectType.Ritual:
                     stateLines.Add(
-                        $"집중 스택: {AbilityStacks} "
-                        + $"(치명타 배율 +{AbilityStacks * effect.Amount:0.##})");
+                        $"영구 성장: {PermanentStacks}회 "
+                        + $"(기본 피해 +{BulletEffectUtility.GetRitualDamageBonus(effect, PermanentStacks)})");
                     break;
                 case BulletEffectType.Tracking:
-                    stateLines.Add($"추적 횟수: {AbilityStacks}");
                     break;
                 case BulletEffectType.HighRoller:
                 {
@@ -720,6 +641,39 @@ public sealed class BulletInstance
                     count++;
                     break;
                 }
+            }
+        }
+
+        return count;
+    }
+
+    private static int CountOwnedBulletType(
+        BulletTooltipContext context,
+        BulletType bulletType)
+    {
+        int count = 0;
+        count += CountBulletType(context.DeckBullets, bulletType);
+        count += CountBulletType(context.LoadedBullets, bulletType);
+        count += CountBulletType(context.GraveyardBullets, bulletType);
+        return count;
+    }
+
+    private static int CountBulletType(
+        IReadOnlyList<BulletInstance> bullets,
+        BulletType bulletType)
+    {
+        if (bullets == null)
+        {
+            return 0;
+        }
+
+        int count = 0;
+
+        foreach (BulletInstance bullet in bullets)
+        {
+            if (bullet != null && bullet.BulletType == bulletType)
+            {
+                count++;
             }
         }
 

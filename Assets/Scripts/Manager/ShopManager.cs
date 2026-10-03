@@ -902,11 +902,8 @@ public class ShopManager : MonoBehaviour
         if (slot.BulletIcon != null)
         {
             slot.BulletIcon.gameObject.SetActive(offer != null);
-            slot.BulletIcon.sprite = offer == null ? null : offer.CylinderIcon;
-            slot.BulletIcon.enabled = offer != null
-                && offer.CylinderIcon != null;
             slot.BulletIcon.color = Color.white;
-            slot.BulletIcon.preserveAspect = true;
+            BulletIconPresenter.Apply(slot.BulletIcon, offer);
         }
 
         if (slot.CostText != null)

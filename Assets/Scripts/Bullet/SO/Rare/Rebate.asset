@@ -15,10 +15,10 @@ MonoBehaviour:
   bulletId: bullet_rebate
   displayName: "\uD658\uAE09\uD0C4"
   description: "\uCE58\uBA85\uD0C0 \uC2DC \uACE8\uB4DC +1"
-  cylinderIcon: {fileID: -2931169152607838512, guid: 5609f010aca98ca438dd8092c77b5192, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 45d6c69e0a085544589cd2d1e84c2091, type: 3}
   price: 6
   grade: 1
-  bulletType: 0
+  bulletType: 9
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}

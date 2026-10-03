@@ -14,29 +14,30 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_resonance
   displayName: "\uACF5\uBA85\uD0C4"
-  description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978 \uACF5\uBA85\uD0C4
-    \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +25%"
-  cylinderIcon: {fileID: 7042858435584613796, guid: 7b79d6a48f71d2f44bc1338af5e892f5, type: 3}
+  description: "\uC9C1\uC804 \uD0C4\uD658\uC774 \uBD80\uC5EC\uD55C \uC0C1\uD0DC\uC774\uC0C1
+    \uC885\uB958\uB97C \uBA85\uC911 \uB300\uC0C1\uC5D0\uAC8C \uAC01\uAC01 1\uC2A4\uD0DD
+    \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 21300000, guid: 1d0a71014ea11764a81348722f542165, type: 3}
   price: 6
   grade: 1
-  bulletType: 0
+  bulletType: 8
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
   levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
-  damage: 30
+  damage: 15
   maxRange: 3
   criticalChance: 15
   criticalDamageMultiplier: 1.5
   effects:
   - effectType: 15
-    target: 1
+    target: 0
     activationChance: 100
     stackCount: 1
-    knockbackDistance: 1
-    amount: 25
+    knockbackDistance: 0
+    amount: 0
     secondTransferPercent: 0
     thirdTransferPercent: 0
   conditionalEvents: []
@@ -50,19 +51,20 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 10
   upgradeLevels:
-  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +30%"
-    damage: 35
+  - description: "\uC9C1\uC804 \uD0C4\uD658\uC774 \uBD80\uC5EC\uD55C \uC0C1\uD0DC\uC774\uC0C1
+      \uC885\uB958\uB97C \uBA85\uC911 \uB300\uC0C1\uC5D0\uAC8C \uAC01\uAC01 2\uC2A4\uD0DD
+      \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    damage: 20
     maxRange: 3
     criticalChance: 21
     criticalDamageMultiplier: 1.7
     effects:
     - effectType: 15
-      target: 1
+      target: 0
       activationChance: 100
-      stackCount: 1
-      knockbackDistance: 1
-      amount: 30
+      stackCount: 2
+      knockbackDistance: 0
+      amount: 0
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []
@@ -72,19 +74,20 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 20
-  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +40%"
-    damage: 40
+  - description: "\uC9C1\uC804 \uD0C4\uD658\uC774 \uBD80\uC5EC\uD55C \uC0C1\uD0DC\uC774\uC0C1
+      \uC885\uB958\uB97C \uBA85\uC911 \uB300\uC0C1\uC5D0\uAC8C \uAC01\uAC01 3\uC2A4\uD0DD
+      \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    damage: 27
     maxRange: 4
     criticalChance: 29
     criticalDamageMultiplier: 2
     effects:
     - effectType: 15
-      target: 1
+      target: 0
       activationChance: 100
-      stackCount: 1
-      knockbackDistance: 1
-      amount: 40
+      stackCount: 3
+      knockbackDistance: 0
+      amount: 0
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []
@@ -94,19 +97,20 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.15
     upgradeCost: 40
-  - description: "\uC2E4\uB9B0\uB354\uC5D0 \uB0A8\uC544 \uC788\uB294 \uB2E4\uB978
-      \uACF5\uBA85\uD0C4 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +50%"
-    damage: 50
+  - description: "\uC9C1\uC804 \uD0C4\uD658\uC774 \uBD80\uC5EC\uD55C \uC0C1\uD0DC\uC774\uC0C1
+      \uC885\uB958\uB97C \uBA85\uC911 \uB300\uC0C1\uC5D0\uAC8C \uAC01\uAC01 4\uC2A4\uD0DD
+      \uBD80\uC5EC\uD569\uB2C8\uB2E4."
+    damage: 35
     maxRange: 5
     criticalChance: 40
     criticalDamageMultiplier: 2.3
     effects:
     - effectType: 15
-      target: 1
+      target: 0
       activationChance: 100
-      stackCount: 1
-      knockbackDistance: 1
-      amount: 50
+      stackCount: 4
+      knockbackDistance: 0
+      amount: 0
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []

@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_masterpiece
   displayName: "\uBA85\uD488\uD0C4"
-  description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
-    \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +25%\n\uCE58\uBA85\uD0C0
-    \uC2DC \uACE8\uB4DC +1"
-  cylinderIcon: {fileID: 3980920622273506909, guid: 545c7c4fbc9be074ea6a254309f79abe, type: 3}
+  description: "\uCE58\uBA85\uD0C0 \uD655\uC815. \uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
+    \uD0C4\uD658 \uD558\uB098\uB2F9 \uCE58\uBA85\uD0C0 \uBC30\uC728 +0.15 (\uCD5C\uB300
+    5\uAC1C)."
+  cylinderIcon: {fileID: 21300000, guid: fb6dbc9525fc1a44e96b724e87ba44f0, type: 3}
   price: 10
   grade: 2
-  bulletType: 0
+  bulletType: 10
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
@@ -29,28 +29,18 @@ MonoBehaviour:
   projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 16
   maxRange: 4
-  criticalChance: 20
+  criticalChance: 100
   criticalDamageMultiplier: 1.8
   effects:
   - effectType: 38
-    target: 1
+    target: 0
     activationChance: 100
-    stackCount: 1
-    knockbackDistance: 1
-    amount: 25
+    stackCount: 5
+    knockbackDistance: 0
+    amount: 0.15
     secondTransferPercent: 0
     thirdTransferPercent: 0
-  conditionalEvents:
-  - trigger: 1
-    events:
-    - effectType: 9
-      target: 1
-      activationChance: 100
-      stackCount: 0
-      knockbackDistance: 0
-      amount: 1
-      secondTransferPercent: 0
-      thirdTransferPercent: 0
+  conditionalEvents: []
   penetrationChances: []
   shotgunShotCount: 2
   lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
@@ -61,66 +51,46 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
-      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +50%\n\uCE58\uBA85\uD0C0
-      \uC2DC \uACE8\uB4DC +2"
+  - description: "\uCE58\uBA85\uD0C0 \uD655\uC815. \uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCE58\uBA85\uD0C0 \uBC30\uC728 +0.2 (\uCD5C\uB300
+      6\uAC1C)."
     damage: 20
     maxRange: 4
-    criticalChance: 24
+    criticalChance: 100
     criticalDamageMultiplier: 2
     effects:
     - effectType: 38
-      target: 1
+      target: 0
       activationChance: 100
-      stackCount: 1
-      knockbackDistance: 1
-      amount: 35
+      stackCount: 6
+      knockbackDistance: 0
+      amount: 0.2
       secondTransferPercent: 0
       thirdTransferPercent: 0
-    conditionalEvents:
-    - trigger: 1
-      events:
-      - effectType: 9
-        target: 1
-        activationChance: 100
-        stackCount: 0
-        knockbackDistance: 0
-        amount: 2
-        secondTransferPercent: 0
-        thirdTransferPercent: 0
+    conditionalEvents: []
     penetrationChances: []
     shotgunShotCount: 0
     lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
-      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +50%\n\uCE58\uBA85\uD0C0
-      \uC2DC \uACE8\uB4DC +3\n\uAD00\uD1B5 1\uD68C (30%)"
+  - description: "\uCE58\uBA85\uD0C0 \uD655\uC815. \uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCE58\uBA85\uD0C0 \uBC30\uC728 +0.25 (\uCD5C\uB300
+      7\uAC1C)."
     damage: 26
     maxRange: 5
-    criticalChance: 29
+    criticalChance: 100
     criticalDamageMultiplier: 2.2
     effects:
     - effectType: 38
-      target: 1
+      target: 0
       activationChance: 100
-      stackCount: 1
-      knockbackDistance: 1
-      amount: 50
+      stackCount: 7
+      knockbackDistance: 0
+      amount: 0.25
       secondTransferPercent: 0
       thirdTransferPercent: 0
-    conditionalEvents:
-    - trigger: 1
-      events:
-      - effectType: 9
-        target: 1
-        activationChance: 100
-        stackCount: 0
-        knockbackDistance: 0
-        amount: 3
-        secondTransferPercent: 0
-        thirdTransferPercent: 0
+    conditionalEvents: []
     penetrationChances:
     - chance: 30
     shotgunShotCount: 0
@@ -128,34 +98,23 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "\uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
-      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +50%\n\uCE58\uBA85\uD0C0
-      \uC2DC \uACE8\uB4DC +5\n\uAD00\uD1B5 1\uD68C\n\uC7AC\uC7A5\uC804 \uC2DC \uD134
-      \uC18C\uBAA8 \uC5C6\uC74C"
+  - description: "\uCE58\uBA85\uD0C0 \uD655\uC815. \uBCF4\uC720\uD55C \uC5D0\uC774\uC2A4\xB7\uB808\uC804\uB4DC\uB9AC
+      \uD0C4\uD658 \uD558\uB098\uB2F9 \uCE58\uBA85\uD0C0 \uBC30\uC728 +0.3 (\uCD5C\uB300
+      8\uAC1C)."
     damage: 34
     maxRange: 5
-    criticalChance: 36
+    criticalChance: 100
     criticalDamageMultiplier: 2.5
     effects:
     - effectType: 38
-      target: 1
+      target: 0
       activationChance: 100
-      stackCount: 1
-      knockbackDistance: 1
-      amount: 50
+      stackCount: 8
+      knockbackDistance: 0
+      amount: 0.3
       secondTransferPercent: 0
       thirdTransferPercent: 0
-    conditionalEvents:
-    - trigger: 1
-      events:
-      - effectType: 9
-        target: 1
-        activationChance: 100
-        stackCount: 0
-        knockbackDistance: 0
-        amount: 5
-        secondTransferPercent: 0
-        thirdTransferPercent: 0
+    conditionalEvents: []
     penetrationChances:
     - chance: 100
     shotgunShotCount: 0

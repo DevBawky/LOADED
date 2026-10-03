@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_conscious
   displayName: "\uC758\uC2DD"
-  description: "\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 +1\n\uC9D1\uC911\uB2F9 \uCE58\uBA85\uD0C0
-    \uBC30\uC728 +0.25\n\uBE44\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 \uC18C\uBAA8,
-    \uD30C\uAD34 (25%)"
-  cylinderIcon: {fileID: -8566870937137478152, guid: 5f250a5053ab8974a9f3d27f631a0185, type: 3}
+  description: "\uBC1C\uC0AC \uC2DC \uCD5C\uB300 \uCCB4\uB825 1 \uC9C0\uBD88. \uC774\uBC88
+    \uB7F0 \uB3D9\uC548 \uC774 \uD0C4\uD658\uC758 \uAE30\uBCF8 \uD53C\uD574 \uC601\uAD6C
+    +2."
+  cylinderIcon: {fileID: 21300000, guid: 65e134857998fa44db4447f3c37941c9, type: 3}
   price: 10
   grade: 2
-  bulletType: 0
+  bulletType: 11
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
@@ -33,11 +33,11 @@ MonoBehaviour:
   criticalDamageMultiplier: 2
   effects:
   - effectType: 48
-    target: 1
-    activationChance: 25
+    target: 0
+    activationChance: 100
     stackCount: 1
-    knockbackDistance: 1
-    amount: 0.25
+    knockbackDistance: 0
+    amount: 2
     secondTransferPercent: 0
     thirdTransferPercent: 0
   conditionalEvents: []
@@ -51,20 +51,20 @@ MonoBehaviour:
   recoilStrength: 0.1
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 +1\n\uC9D1\uC911\uB2F9 \uCE58\uBA85\uD0C0
-      \uBC30\uC728 +0.3\n\uBE44\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 \uC18C\uBAA8,
-      \uD30C\uAD34 (20%)"
+  - description: "\uBC1C\uC0AC \uC2DC \uCD5C\uB300 \uCCB4\uB825 1 \uC9C0\uBD88. \uC774\uBC88
+      \uB7F0 \uB3D9\uC548 \uC774 \uD0C4\uD658\uC758 \uAE30\uBCF8 \uD53C\uD574 \uC601\uAD6C
+      +3."
     damage: 15
     maxRange: 4
     criticalChance: 30
     criticalDamageMultiplier: 2
     effects:
     - effectType: 48
-      target: 1
-      activationChance: 20
+      target: 0
+      activationChance: 100
       stackCount: 1
-      knockbackDistance: 1
-      amount: 0.3
+      knockbackDistance: 0
+      amount: 3
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []
@@ -74,20 +74,20 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 50
-  - description: "\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 +1\n\uC9D1\uC911\uB2F9 \uCE58\uBA85\uD0C0
-      \uBC30\uC728 +0.4\n\uBE44\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 \uC18C\uBAA8,
-      \uD30C\uAD34 (10%)"
+  - description: "\uBC1C\uC0AC \uC2DC \uCD5C\uB300 \uCCB4\uB825 1 \uC9C0\uBD88. \uC774\uBC88
+      \uB7F0 \uB3D9\uC548 \uC774 \uD0C4\uD658\uC758 \uAE30\uBCF8 \uD53C\uD574 \uC601\uAD6C
+      +5."
     damage: 18
     maxRange: 5
     criticalChance: 38
     criticalDamageMultiplier: 2
     effects:
     - effectType: 48
-      target: 1
-      activationChance: 10
+      target: 0
+      activationChance: 100
       stackCount: 1
-      knockbackDistance: 1
-      amount: 0.4
+      knockbackDistance: 0
+      amount: 5
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []
@@ -97,19 +97,20 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.1
     upgradeCost: 100
-  - description: "\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 +2\n\uC9D1\uC911\uB2F9 \uCE58\uBA85\uD0C0
-      \uBC30\uC728 +0.5\n\uBE44\uCE58\uBA85\uD0C0 \uC2DC \uC9D1\uC911 \uC18C\uBAA8"
+  - description: "\uBC1C\uC0AC \uC2DC \uCD5C\uB300 \uCCB4\uB825 1 \uC9C0\uBD88. \uC774\uBC88
+      \uB7F0 \uB3D9\uC548 \uC774 \uD0C4\uD658\uC758 \uAE30\uBCF8 \uD53C\uD574 \uC601\uAD6C
+      +8."
     damage: 22
     maxRange: 5
     criticalChance: 50
     criticalDamageMultiplier: 2
     effects:
     - effectType: 48
-      target: 1
-      activationChance: 0
-      stackCount: 2
-      knockbackDistance: 1
-      amount: 0.5
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 0
+      amount: 8
       secondTransferPercent: 0
       thirdTransferPercent: 0
     conditionalEvents: []

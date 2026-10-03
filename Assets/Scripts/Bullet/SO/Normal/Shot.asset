@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_buckshot
   displayName: "\uC0B0\uD0C4"
   description: "\uAE30\uBCF8 \uC0B0\uD0C4"
-  cylinderIcon: {fileID: -4775050287358454370, guid: c2fddaa8c2d3d9d439522ec2f93eb93b, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 45df40d385e1e764fbb8b16a3da16d9e, type: 3}
   price: 3
   grade: 0
   bulletType: 4

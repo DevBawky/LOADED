@@ -26,7 +26,7 @@ public static class LoadedAuthoringCapture
             var path = AssetDatabase.GUIDToAssetPath(guid);
             var data = AssetDatabase.LoadAssetAtPath<BulletData>(path);
             var json = EditorJsonUtility.ToJson(data);
-            var bytes = Icon(data.CylinderIcon);
+            var bytes = BulletBalanceWorkbook.CaptureIcon(data);
             var iconPath = bytes == null ? "" : output + "/icons/" + guid + ".png";
             if (bytes != null) File.WriteAllBytes(iconPath, bytes);
             result.bullets.Add(new Bullet { guid = guid, path = path, name = data.DisplayName, json = json, hash = Hash(Encoding.UTF8.GetBytes(json)), icon = iconPath, iconHash = bytes == null ? "" : Hash(bytes) });

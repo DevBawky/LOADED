@@ -127,7 +127,8 @@ internal static class CylinderBulletEffectPolicy
 
         if (bullet.PermanentStacks > 0
             && (HasPositiveEffect(bullet, BulletEffectType.Devourer)
-                || HasPositiveEffect(bullet, BulletEffectType.Legacy)))
+                || HasPositiveEffect(bullet, BulletEffectType.Legacy)
+                || HasPositiveEffect(bullet, BulletEffectType.Ritual)))
         {
             return true;
         }
@@ -149,48 +150,38 @@ internal static class CylinderBulletEffectPolicy
             bullet,
             BulletEffectType.Jackpot);
 
-        if (effect != null && effect.Amount > 100f && bulletIndex == 0)
+        if (effect != null && effect.ActivationChance > 0f)
         {
             return true;
         }
 
         effect = BulletEffectUtility.Find(bullet, BulletEffectType.Resonance);
 
-        if (effect != null && effect.Amount > 0f
-            && CountOtherLoadedEffects(
-                loadedBullets,
-                bulletIndex,
-                BulletEffectType.Resonance) > 0)
+        if (effect != null && effect.StackCount > 0 && bulletIndex + 1
+            < loadedBullets.Count
+            && BulletEffectUtility.GetInflictedStatusMask(
+                loadedBullets[bulletIndex + 1]) != 0)
         {
             return true;
         }
 
         effect = BulletEffectUtility.Find(bullet, BulletEffectType.Loader);
 
-        if (effect != null && effect.Amount > 0f
-            && deckManager != null
-            && deckManager.MaxReloadAmount
-                > (playerShoot == null
-                    ? loadedBullets.Count
-                    : playerShoot.InitialLoadedBulletCount))
+        if (effect != null)
         {
             return true;
         }
 
         effect = BulletEffectUtility.Find(bullet, BulletEffectType.Crescendo);
 
-        if (effect != null && effect.Amount > 0f
-            && deckManager != null
-            && deckManager.TotalBulletCount
-                < DeckManager.MaximumOwnedBulletCount)
+        if (effect != null && effect.StackCount > 0)
         {
             return true;
         }
 
         effect = BulletEffectUtility.Find(bullet, BulletEffectType.MixedGrade);
 
-        if (effect != null && effect.Amount > 0f
-            && HasOtherLoadedGrade(loadedBullets, bullet, bulletIndex))
+        if (effect != null && effect.StackCount > 0)
         {
             return true;
         }
@@ -207,12 +198,10 @@ internal static class CylinderBulletEffectPolicy
 
         effect = BulletEffectUtility.Find(bullet, BulletEffectType.Coagulation);
 
-        if (effect != null && effect.Amount > 0f
+        if (effect != null
             && playerHealth != null
             && playerHealth.MaxHealth > 0
-            && 100f * (playerHealth.MaxHealth - playerHealth.CurrentHealth)
-                / playerHealth.MaxHealth
-                >= Mathf.Max(1, effect.StackCount))
+            && playerHealth.CurrentHealth < playerHealth.MaxHealth)
         {
             return true;
         }
@@ -248,7 +237,8 @@ internal static class CylinderBulletEffectPolicy
             switch (effect.EffectType)
             {
                 case BulletEffectType.Collection:
-                    return CountDistinctOwnedBulletTypes(deckManager) > 0;
+                case BulletEffectType.Monopoly:
+                    return true;
                 case BulletEffectType.Masterpiece:
                     return CountOwnedGrades(
                         deckManager,
@@ -259,10 +249,6 @@ internal static class CylinderBulletEffectPolicy
                         deckManager,
                         BulletGrade.Normal,
                         BulletGrade.Rare) > 0;
-                case BulletEffectType.Monopoly:
-                    return deckManager.Deck.Count
-                        + deckManager.LoadedBullets.Count
-                        + deckManager.Graveyard.Count > 0;
             }
         }
 

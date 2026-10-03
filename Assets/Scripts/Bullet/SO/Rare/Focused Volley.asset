@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Focused Volley
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_focused_volley
+  displayName: "\uC9D1\uC18D\uD0C4"
+  description: "8\uAC1C \uD330\uB9BF. \uC801\uC774 \uD55C \uB808\uC778\uC5D0\uB9CC
+    \uC788\uC73C\uBA74 \uD55C \uC801\uC5D0\uAC8C \uC9D1\uC911\uD558\uACE0, \uC5EC\uB7EC
+    \uB808\uC778\uC774\uBA74 \uAE30\uC900 \uB808\uC778 4\uBC1C\uACFC \uB098\uBA38\uC9C0
+    \uADE0\uB4F1 \uBD84\uBC30."
+  cylinderIcon: {fileID: 21300000, guid: 9c704d22c6281634898eb55e799a3c74, type: 3}
+  price: 6
+  grade: 1
+  bulletType: 4
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
+  damage: 3
+  maxRange: 4
+  criticalChance: 5
+  criticalDamageMultiplier: 2
+  effects:
+  - effectType: 57
+    target: 0
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 0
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
+  conditionalEvents: []
+  penetrationChances: []
+  shotgunShotCount: 8
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0, g: 0.35, b: 1, a: 1}
+  secondaryLineColor: {r: 0.45, g: 0.85, b: 1, a: 1}
+  lineWidthMultiplier: 0.7
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.12
+  upgradeCost: 10
+  upgradeLevels:
+  - description: "8\uAC1C \uD330\uB9BF. \uAE30\uC900 \uB808\uC778 4\uBC1C, \uB098\uBA38\uC9C0
+      \uB808\uC778 \uADE0\uB4F1 \uBD84\uBC30."
+    damage: 4
+    maxRange: 4
+    criticalChance: 6
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 57
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 8
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 20
+  - description: "8\uAC1C \uD330\uB9BF. \uAE30\uC900 \uB808\uC778 4\uBC1C, \uB098\uBA38\uC9C0
+      \uB808\uC778 \uADE0\uB4F1 \uBD84\uBC30."
+    damage: 5
+    maxRange: 5
+    criticalChance: 7
+    criticalDamageMultiplier: 2
+    effects:
+    - effectType: 57
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 8
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 40
+  - description: "8\uAC1C \uD330\uB9BF. \uAE30\uC900 \uB808\uC778 4\uBC1C, \uB098\uBA38\uC9C0
+      \uB808\uC778 \uADE0\uB4F1 \uBD84\uBC30."
+    damage: 6
+    maxRange: 5
+    criticalChance: 8
+    criticalDamageMultiplier: 2.2
+    effects:
+    - effectType: 57
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 8
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.12
+    upgradeCost: 0

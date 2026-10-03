@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_stun
   displayName: "\uBC88\uAC1C"
   description: "\uAE30\uC808 +2"
-  cylinderIcon: {fileID: 1695419753724365386, guid: 214810496b6e64b4aafeb20294d44b99, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 33a6c07801bcf3c4c88d911075cdb5de, type: 3}
   price: 6
   grade: 1
   bulletType: 6

@@ -72,6 +72,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private static readonly int GridColorId =
         Shader.PropertyToID("_GridColor");
     private const int DefaultProjectileResolution = 32;
+    private const string DamagePreviewBulletIconName =
+        "Image | Damage Preview Bullet";
+    private const float DamagePreviewBulletIconAlpha = 0.28f;
+    private static readonly Vector2 DamagePreviewBulletIconSize =
+        new Vector2(4.25f, 4.25f);
     private static Sprite defaultThrownProjectileSprite;
 
     [Header("Data")]
@@ -134,6 +139,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             new List<EnemySupportTargetCandidate<EnemyController>>();
     private EnemyHealthBarFeedback healthBarFeedback;
     private EnemyHealthTextFeedback healthTextFeedback;
+    private UnityEngine.UI.Image damagePreviewBulletIcon;
     private BossHudController bossHud;
     private Animator avatarAnimator;
     private EnemyAnimationSfx avatarEffects;
@@ -163,6 +169,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     internal int LastDamageAbsorbed { get; private set; }
     public int RemainingSupportCharges => remainingSupportCharges;
     public int MaxHealth => enemyData == null ? 0 : enemyData.MaxHealth;
+    public bool IsBoss => enemyData != null
+        && enemyData.BehaviorType == EnemyBehaviorType.BigBarrel;
     internal SpriteRenderer HoverRenderer => avatarSortingRenderer;
     internal EnemyActionQueueUI ActionQueueView => actionQueueUI;
     internal int HoverSortingOrder => laneSortingGroup == null
@@ -682,6 +690,29 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return appliedDamage;
     }
 
+    public int ExecuteByPlayer()
+    {
+        if (currentHealth <= 0 || IsBoss)
+        {
+            return 0;
+        }
+
+        long lethalDamage = (long)currentHealth + Mathf.Max(0, currentShield);
+        int requestedDamage = lethalDamage >= int.MaxValue
+            ? int.MaxValue
+            : (int)lethalDamage;
+        int appliedDamage = ApplyDamageInternal(
+            requestedDamage,
+            false,
+            1.6f);
+        if (appliedDamage > 0)
+        {
+            damageNumberDisplay?.ShowAttackDamage(requestedDamage);
+        }
+
+        return appliedDamage;
+    }
+
     public int PredictAttackDamage(int damage)
     {
         if (damage <= 0 || currentHealth <= 0)
@@ -695,7 +726,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     }
 
     public void ShowDamagePreview(
-        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments)
+        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments,
+        Sprite bulletIcon = null)
     {
         healthBarFeedback?.ShowDamagePreview(
             currentHealth,
@@ -705,12 +737,134 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             currentHealth,
             MaxHealth,
             segments);
+        ShowDamagePreviewBulletIcon(bulletIcon);
+    }
+
+    public void ShowDamagePreview(
+        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments,
+        BulletData bullet)
+    {
+        healthBarFeedback?.ShowDamagePreview(
+            currentHealth,
+            MaxHealth,
+            segments);
+        healthTextFeedback?.ShowDamagePreview(
+            currentHealth,
+            MaxHealth,
+            segments);
+        ShowDamagePreviewBulletIcon(bullet);
     }
 
     public void ClearDamagePreview()
     {
         healthBarFeedback?.ClearDamagePreview();
         healthTextFeedback?.ClearDamagePreview();
+        HideDamagePreviewBulletIcon();
+    }
+
+    private void ShowDamagePreviewBulletIcon(Sprite bulletIcon)
+    {
+        if (bulletIcon == null)
+        {
+            HideDamagePreviewBulletIcon();
+            return;
+        }
+
+        UnityEngine.UI.Image previewIcon = EnsureDamagePreviewBulletIcon();
+        if (previewIcon == null)
+        {
+            return;
+        }
+
+        previewIcon.sprite = bulletIcon;
+        previewIcon.color = new Color(
+            1f,
+            1f,
+            1f,
+            DamagePreviewBulletIconAlpha);
+        previewIcon.preserveAspect = true;
+        previewIcon.raycastTarget = false;
+        previewIcon.gameObject.SetActive(true);
+        previewIcon.transform.SetAsLastSibling();
+    }
+
+    private void ShowDamagePreviewBulletIcon(BulletData bullet)
+    {
+        if (bullet == null)
+        {
+            HideDamagePreviewBulletIcon();
+            return;
+        }
+
+        UnityEngine.UI.Image previewIcon = EnsureDamagePreviewBulletIcon();
+        if (previewIcon == null)
+        {
+            return;
+        }
+
+        BulletIconPresenter.Apply(previewIcon, bullet, true);
+        previewIcon.color = new Color(
+            1f,
+            1f,
+            1f,
+            DamagePreviewBulletIconAlpha);
+        previewIcon.raycastTarget = false;
+        previewIcon.gameObject.SetActive(true);
+        previewIcon.transform.SetAsLastSibling();
+    }
+
+    private void HideDamagePreviewBulletIcon()
+    {
+        if (damagePreviewBulletIcon != null)
+        {
+            damagePreviewBulletIcon.gameObject.SetActive(false);
+        }
+    }
+
+    private UnityEngine.UI.Image EnsureDamagePreviewBulletIcon()
+    {
+        if (damagePreviewBulletIcon != null)
+        {
+            return damagePreviewBulletIcon;
+        }
+
+        if (canvasTransform == null)
+        {
+            return null;
+        }
+
+        Transform existing = canvasTransform.Find(
+            DamagePreviewBulletIconName);
+        if (existing != null)
+        {
+            damagePreviewBulletIcon =
+                existing.GetComponent<UnityEngine.UI.Image>();
+        }
+
+        if (damagePreviewBulletIcon == null)
+        {
+            GameObject previewObject = new GameObject(
+                DamagePreviewBulletIconName,
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(UnityEngine.UI.Image));
+            previewObject.layer = canvasTransform.gameObject.layer;
+            RectTransform previewRect =
+                previewObject.GetComponent<RectTransform>();
+            previewRect.SetParent(canvasTransform, false);
+            previewRect.anchorMin = new Vector2(0.5f, 0.5f);
+            previewRect.anchorMax = new Vector2(0.5f, 0.5f);
+            previewRect.pivot = new Vector2(0.5f, 0.5f);
+            previewRect.anchoredPosition = Vector2.zero;
+            previewRect.sizeDelta = DamagePreviewBulletIconSize;
+            previewRect.localScale = Vector3.one;
+            damagePreviewBulletIcon =
+                previewObject.GetComponent<UnityEngine.UI.Image>();
+        }
+
+        damagePreviewBulletIcon.raycastTarget = false;
+        damagePreviewBulletIcon.preserveAspect = true;
+        return damagePreviewBulletIcon;
     }
 
     public bool ApplyStatusDamage(int damage, bool creditedToPlayer)

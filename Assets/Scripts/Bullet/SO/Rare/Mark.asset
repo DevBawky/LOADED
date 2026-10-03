@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_normal
   displayName: "\uD45C\uC2DD\uD0C4"
   description: "\uD45C\uC2DD +3"
-  cylinderIcon: {fileID: 1595270075398747777, guid: 8c1eef77076d12243ba0b1858c78e94a, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 886164124840457468624500622bbc83, type: 3}
   price: 6
   grade: 1
   bulletType: 6

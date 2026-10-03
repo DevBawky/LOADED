@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_amplifier
   displayName: "\uC99D\uD3ED"
   description: "\uC0C1\uD0DC\uC774\uC0C1 \uC2A4\uD0DD x2 (65%)"
-  cylinderIcon: {fileID: 2641190778768216385, guid: 2c63fd166474af84597b03192c176150, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: ddaeee6aa279ab84bb3065c525c016bb, type: 3}
   price: 10
   grade: 2
   bulletType: 6

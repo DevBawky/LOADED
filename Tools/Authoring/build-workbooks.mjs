@@ -8,6 +8,8 @@ const snapshot=JSON.parse(await fs.readFile(path.join(output,'snapshot.json'),'u
 const icons=new Map(snapshot.bullets.map(b=>[b.guid,b.icon]));
 const jobs=[['bullet-native.xlsx','LOADED_BulletData.xlsx'],['localization-native.xlsx','LOADED_Localization_ko_en.xlsx']];
 if(process.argv.includes('--bullets')) jobs.splice(1);
+const targetIndex=process.argv.indexOf('--target');
+const targetOverride=targetIndex>=0?path.resolve(process.argv[targetIndex+1]):null;
 const col=n=>{let s='';for(n++;n>0;n=Math.floor((n-1)/26))s=String.fromCharCode(65+(n-1)%26)+s;return s;};
 for(const [source,target] of jobs){
   const wb=await SpreadsheetFile.importXlsx(await FileBlob.load(path.join(output,source)));
@@ -110,7 +112,7 @@ for(const [source,target] of jobs){
         sheet.getRange(`A2:F${rows}`).format.rowHeight=66;
         sheet.getRange(`F2:F${rows}`).format={fill:'#EDF0F4',columnWidth:38};
         sheet.getRange(`C2:C${rows}`).dataValidation={rule:{type:'list',values:['Normal','Rare','Ace','Legendary']}};
-        sheet.getRange(`D2:D${rows}`).dataValidation={rule:{type:'list',values:['Normal','Ghost','Sniper','Storm','Shotgun','Piercing','Debuff']}};
+        sheet.getRange(`D2:D${rows}`).dataValidation={rule:{type:'list',values:['Normal','Ghost','Sniper','Storm','Shotgun','Piercing','Debuff','Kinetic','Combo','Economy','Growth','Blood']}};
       }else if(sheet.name==='레벨'){
         sheet.getRange(`A1:A${rows}`).format.columnWidth=22; sheet.getRange(`C1:C${rows}`).format.columnWidth=65;
         sheet.getRange(`A2:B${rows}`).format.fill='#EDF0F4'; sheet.getRange(`L2:L${rows}`).format={fill:'#EDF0F4',columnWidth:38};
@@ -140,7 +142,9 @@ for(const [source,target] of jobs){
     catch(error){console.log('Render failed',sheet.name,String(error));throw error;}
   }
   console.log((await wb.inspect({kind:'match',searchTerm:'#REF!|#DIV/0!|#VALUE!|#NAME\\?|#N/A|#NUM!|#NULL!|#SPILL!|#CALC!',options:{useRegex:true,maxResults:10},maxChars:1500})).ndjson);
-  console.log((await wb.inspect({kind:'table',range:source.startsWith('bullet')?'일반형!A1:H6':'현지화!A1:D3',tableMaxRows:6,tableMaxCols:8,maxChars:1500})).ndjson);
-  await (await SpreadsheetFile.exportXlsx(wb)).save(path.join(output,target));
-  console.log('Saved',target,sheets.length,'sheets');
+  console.log((await wb.inspect({kind:'table',range:source.startsWith('bullet')?'표준형!A1:H6':'현지화!A1:D3',tableMaxRows:6,tableMaxCols:8,maxChars:1500})).ndjson);
+  const destination=targetOverride&&source.startsWith('bullet')?targetOverride:path.join(output,target);
+  await fs.mkdir(path.dirname(destination),{recursive:true});
+  await (await SpreadsheetFile.exportXlsx(wb)).save(destination);
+  console.log('Saved',destination,sheets.length,'sheets');
 }

@@ -29,13 +29,13 @@ public sealed class LoadedWorkbookTests
     private static void AssertPictureProtection(System.IO.Compression.ZipArchive zip)
     {
         System.Xml.Linq.XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
-        // Guide is sheet1; the seven type sheets are protected, the icon sheet is not.
-        for (int i = 2; i <= 9; i++)
+        // Guide is sheet1; the twelve type sheets are protected, the icon sheet is not.
+        for (int i = 2; i <= 14; i++)
         {
             using (var stream = zip.GetEntry("xl/worksheets/sheet" + i + ".xml").Open())
             {
                 var xml = System.Xml.Linq.XDocument.Load(stream);
-                Assert.That(xml.Root.Element(ns + "sheetProtection") != null, Is.EqualTo(i <= 8));
+                Assert.That(xml.Root.Element(ns + "sheetProtection") != null, Is.EqualTo(i <= 13));
             }
         }
     }
@@ -136,7 +136,7 @@ public sealed class LoadedWorkbookTests
         try
         {
             string guid = AssetDatabase.AssetPathToGUID(path); string before = EditorJsonUtility.ToJson(data);
-            var book = BulletBalanceWorkbook.Export(); var icons = book.Require("아이콘"); var levels = book.Require("일반형");
+            var book = BulletBalanceWorkbook.Export(); var icons = book.Require("아이콘"); var levels = book.Require("표준형");
             var row = icons.Rows.Skip(1).Single(r => icons.Get(r, "GUID") == guid);
             icons.Images[icons.Rows.IndexOf(row)] = texture.EncodeToPNG();
             var stats = levels.Rows.Skip(1).Single(r => levels.Get(r, "GUID") == guid && levels.Get(r, "레벨") == "0");

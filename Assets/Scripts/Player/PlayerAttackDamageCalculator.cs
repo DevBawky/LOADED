@@ -84,24 +84,19 @@ internal static class PlayerAttackDamageCalculator
                     fleshForBoneEffect.Amount));
         }
 
-        BulletEffectData crescendoEffect = BulletEffectUtility.Find(
+        BulletEffectData ritualEffect = BulletEffectUtility.Find(
             bullet,
-            BulletEffectType.Crescendo);
+            BulletEffectType.Ritual);
 
-        if (crescendoEffect == null || deckManager == null)
+        if (ritualEffect != null)
         {
-            return baseDamage;
+            baseDamage = BulletEffectUtility.SaturatingAdd(
+                baseDamage,
+                BulletEffectUtility.GetRitualDamageBonus(
+                    ritualEffect,
+                    bullet.PermanentStacks));
         }
 
-        int otherOwnedBulletCount = Mathf.Max(
-            0,
-            deckManager.TotalBulletCount
-                - (deckManager.Contains(bullet) ? 1 : 0));
-
-        return Mathf.Max(
-            0,
-            Mathf.CeilToInt(
-                baseDamage
-                - otherOwnedBulletCount * crescendoEffect.Amount));
+        return baseDamage;
     }
 }

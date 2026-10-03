@@ -15,10 +15,10 @@ MonoBehaviour:
   bulletId: bullet_spread
   displayName: "\uD655\uC0B0\uD0C4"
   description: "\uC774\uD6C4 \uD0C4\uD658 \uCD5C\uC885 \uD53C\uD574 +15%"
-  cylinderIcon: {fileID: 6459364409021095807, guid: 1e448a4270ef93e47bfb7ca96b21808e, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 53262c55ea90b1c4b8c71febfb7d1bfb, type: 3}
   price: 10
   grade: 2
-  bulletType: 0
+  bulletType: 8
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}

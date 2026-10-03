@@ -18,10 +18,10 @@ MonoBehaviour:
     \uBC1C\uC0DD\uD558\uC9C0 \uC54A\uC744 \uB54C \uC9D1\uC911 +1\n\uC9D1\uC911 \uD558\uB098\uB2F9
     \uCE58\uBA85\uD0C0 \uD655\uB960 +20%p\n\uCE58\uBA85\uD0C0 \uC2DC \uBAA8\uB450
     \uC18C\uBAA8"
-  cylinderIcon: {fileID: 437931843702538465, guid: c089d7c1b75375d49a10f260b93feec2, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 2150058990f6c134c89bfba37d130e46, type: 3}
   price: 6
   grade: 1
-  bulletType: 0
+  bulletType: 8
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}

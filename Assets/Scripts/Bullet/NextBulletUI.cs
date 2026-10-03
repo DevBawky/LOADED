@@ -84,9 +84,7 @@ public class NextBulletUI : MonoBehaviour
 
         if (nextBulletImage != null)
         {
-            nextBulletImage.sprite = sprite;
-            nextBulletImage.enabled = sprite != null;
-            nextBulletImage.preserveAspect = true;
+            BulletIconPresenter.Apply(nextBulletImage, displayedBullet);
         }
 
         if (reloadableBulletCountText != null)

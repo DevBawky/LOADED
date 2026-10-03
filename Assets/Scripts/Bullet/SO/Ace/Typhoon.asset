@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BulletData
   bulletId: bullet_quick_draw
   displayName: "\uD0DC\uD48D"
-  description: "\uC0DD\uC874 \uC801 \uC804\uCCB4 \uACF5\uACA9\n\uBC1C\uC0AC \uC2DC
-    \uD30C\uAD34 (50%)"
-  cylinderIcon: {fileID: 6895671342812299232, guid: 2ba24d181d8b0e744ab0e56d44b8e03d, type: 3}
+  description: "\uD604\uC7AC \uD50C\uB808\uC774\uC5B4 \uB808\uC778\uC758 \uBAA8\uB4E0
+    \uC801\uC744 \uACF5\uACA9\uD569\uB2C8\uB2E4.\n\uBC1C\uC0AC \uD6C4 \uD30C\uAD34
+    (50%)"
+  cylinderIcon: {fileID: 21300000, guid: fd4a59a5a22aee343b4a77a2d36350bf, type: 3}
   price: 10
   grade: 2
   bulletType: 3
@@ -58,8 +59,9 @@ MonoBehaviour:
   recoilStrength: 0.12
   upgradeCost: 20
   upgradeLevels:
-  - description: "\uC0DD\uC874 \uC801 \uC804\uCCB4 \uACF5\uACA9\n\uBC1C\uC0AC \uC2DC
-      \uD30C\uAD34 (30%)"
+  - description: "\uD604\uC7AC \uD50C\uB808\uC774\uC5B4 \uB808\uC778\uC758 \uBAA8\uB4E0
+      \uC801\uC744 \uACF5\uACA9\uD569\uB2C8\uB2E4.\n\uBC1C\uC0AC \uD6C4 \uD30C\uAD34
+      (30%)"
     damage: 30
     maxRange: 4
     criticalChance: 85
@@ -88,8 +90,9 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 50
-  - description: "\uC0DD\uC874 \uC801 \uC804\uCCB4 \uACF5\uACA9\n\uBC1C\uC0AC \uC2DC
-      \uD30C\uAD34 (20%)"
+  - description: "\uD604\uC7AC \uD50C\uB808\uC774\uC5B4 \uB808\uC778\uC758 \uBAA8\uB4E0
+      \uC801\uC744 \uACF5\uACA9\uD569\uB2C8\uB2E4.\n\uBC1C\uC0AC \uD6C4 \uD30C\uAD34
+      (20%)"
     damage: 40
     maxRange: 5
     criticalChance: 90
@@ -118,8 +121,9 @@ MonoBehaviour:
     doesNotConsumeTurn: 0
     recoilStrength: 0.12
     upgradeCost: 100
-  - description: "\uC0DD\uC874 \uC801 \uC804\uCCB4 \uACF5\uACA9\n\uBC1C\uC0AC \uC2DC
-      \uD30C\uAD34 (10%)"
+  - description: "\uD604\uC7AC \uD50C\uB808\uC774\uC5B4 \uB808\uC778\uC758 \uBAA8\uB4E0
+      \uC801\uC744 \uACF5\uACA9\uD569\uB2C8\uB2E4.\n\uBC1C\uC0AC \uD6C4 \uD30C\uAD34
+      (10%)"
     damage: 50
     maxRange: 5
     criticalChance: 100

@@ -18,10 +18,10 @@ MonoBehaviour:
     \uC804\uB825 +1\n\uC804\uB825 \uD558\uB098\uB2F9 \uCD5C\uC885 \uD53C\uD574 +20%,
     \uBC1C\uC0AC \uD6C4 50%\uB97C \uBCF4\uC874\n\uBC1C\uC0AC \uC2DC \uD30C\uAD34
     (8%)"
-  cylinderIcon: {fileID: 6396061427510755365, guid: 125bc83cf0534c64aaea6b7f4d16d2f6, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: c8f52eca990bbb842b80fd8e4562078a, type: 3}
   price: 10
   grade: 2
-  bulletType: 0
+  bulletType: 8
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}

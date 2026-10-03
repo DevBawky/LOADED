@@ -70,6 +70,32 @@ public sealed class PlayerShootInputReaderTests
             Object.DestroyImmediate(button);
         }
     }
+
+    [Test]
+    public void InventoryItemSlotBlocksWorldShooting()
+    {
+        GameObject inventory = new GameObject(
+            "Inventory",
+            typeof(RectTransform),
+            typeof(InventoryUI));
+        GameObject slotGraphic = new GameObject(
+            "Image | ItemSlot0",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(UnityEngine.UI.Image));
+        slotGraphic.transform.SetParent(inventory.transform, false);
+
+        try
+        {
+            Assert.That(
+                PlayerShootInputReader.IsInteractiveUiTarget(slotGraphic),
+                Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(inventory);
+        }
+    }
 }
 
 public sealed class PlayerActionInputBufferTests

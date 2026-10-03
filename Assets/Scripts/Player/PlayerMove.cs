@@ -746,6 +746,74 @@ public class PlayerMove : MonoBehaviour
         isActing = wasActing;
     }
 
+    public IEnumerator BlinkFromBullet()
+    {
+        if (boardManager == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                currentLaneIndex,
+                out int startTileIndex)
+            || !boardManager.TryGetTilePosition(
+                startTileIndex,
+                currentLaneIndex,
+                out Vector3 startTilePosition))
+        {
+            yield break;
+        }
+
+        List<(int Tile, int Lane, Vector3 Position)> candidates =
+            new List<(int, int, Vector3)>();
+        for (int laneIndex = 0; laneIndex < boardManager.LaneCount; laneIndex++)
+        {
+            for (int tileIndex = 0; tileIndex < boardManager.BoardCount; tileIndex++)
+            {
+                if (laneIndex == currentLaneIndex && tileIndex == startTileIndex
+                    || waveManager.TryGetEnemyAtTile(tileIndex, laneIndex, out _)
+                    || waveManager.IsTileReservedForSpawn(tileIndex, laneIndex)
+                    || waveManager.IsTileReservedForMovement(tileIndex, laneIndex)
+                    || !boardManager.TryGetTilePosition(
+                        tileIndex,
+                        laneIndex,
+                        out Vector3 tilePosition))
+                {
+                    continue;
+                }
+
+                candidates.Add((tileIndex, laneIndex, tilePosition));
+            }
+        }
+
+        if (candidates.Count == 0)
+        {
+            yield break;
+        }
+
+        (int Tile, int Lane, Vector3 Position) target =
+            candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        if (!waveManager.TryReserveMovementTile(this, target.Tile, target.Lane))
+        {
+            yield break;
+        }
+
+        bool wasActing = isActing;
+        isActing = true;
+        Vector3 offset = transform.position - startTilePosition;
+        int startLaneIndex = currentLaneIndex;
+        currentLaneIndex = target.Lane;
+        transform.position = target.Position + offset;
+        SoundManager.PlaySfx("SFX_Move");
+        waveManager.ReleaseMovementTiles(this);
+        NotifyPlayerMoved(
+            startTileIndex,
+            startLaneIndex,
+            target.Tile,
+            target.Lane,
+            PlayerMovementSource.BulletBlink);
+        PositionChanged?.Invoke();
+        isActing = wasActing;
+        yield return null;
+    }
+
     public IEnumerator PushPlayerFromBullet(int direction, int distance)
     {
         if (direction == 0 || distance <= 0 || boardManager == null

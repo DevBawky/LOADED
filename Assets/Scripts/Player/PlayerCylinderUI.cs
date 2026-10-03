@@ -893,13 +893,8 @@ public class PlayerCylinderUI : MonoBehaviour
 
     private void ApplyBulletImage(Image bulletImage, BulletInstance bulletData)
     {
-        Sprite cylinderIcon = bulletData == null
-            ? null
-            : bulletData.CylinderIcon;
-        bulletImage.sprite = cylinderIcon;
         bulletImage.color = new Color(1f, 1f, 1f, 1f);
-        bulletImage.preserveAspect = true;
-        bulletImage.enabled = cylinderIcon != null;
+        BulletIconPresenter.Apply(bulletImage, bulletData);
     }
 
     private void RefreshBulletEffects()

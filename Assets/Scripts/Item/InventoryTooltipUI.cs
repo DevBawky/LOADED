@@ -702,7 +702,7 @@ public class InventoryTooltipUI : MonoBehaviour
         bulletDescriptionText.richText = true;
         bulletDescriptionText.text = bullet.GetDetailedDescription(level);
         ApplyIcon(bulletIcon, null);
-        ApplyIcon(bulletCylinderIcon, bullet.CylinderIcon);
+        BulletIconPresenter.Apply(bulletCylinderIcon, bullet);
         bulletTooltip.gameObject.SetActive(true);
         PositionInsideScreen(bulletTooltip, pointerPosition, pointerAnchor);
         ShowBulletHelpDescriptions(

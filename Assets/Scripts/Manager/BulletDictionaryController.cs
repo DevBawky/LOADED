@@ -348,7 +348,7 @@ public sealed class BulletDictionaryController : MonoBehaviour
         Image icon = FindComponentInChildren<Image>(buttonObject.transform, "Image | Bullet Sprite");
         if (icon != null)
         {
-            icon.sprite = data.CylinderIcon;
+            BulletIconPresenter.Apply(icon, data);
             icon.preserveAspect = true;
         }
 
@@ -465,8 +465,7 @@ public sealed class BulletDictionaryController : MonoBehaviour
 
         if (bulletIcon != null)
         {
-            bulletIcon.sprite = selectedBullet.CylinderIcon;
-            bulletIcon.preserveAspect = true;
+            BulletIconPresenter.Apply(bulletIcon, selectedBullet);
         }
 
         if (bulletNameText != null)

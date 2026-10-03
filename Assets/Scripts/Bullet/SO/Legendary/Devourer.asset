@@ -16,10 +16,10 @@ MonoBehaviour:
   displayName: "\uD3EC\uC2DD\uC790"
   description: "\uC801 \uCC98\uCE58 \uC2DC \uC601\uAD6C \uD3EC\uC2DD +1\n\uD3EC\uC2DD\uB2F9
     \uCD5C\uC885 \uD53C\uD574 +10%"
-  cylinderIcon: {fileID: 7299877752034667788, guid: 94e5d446387ed6e41a9824ac2a861afe, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 1f88d73a5c1295b449873c257caee218, type: 3}
   price: 20
   grade: 3
-  bulletType: 0
+  bulletType: 10
   useCustomGradeNameColor: 0
   customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
   levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}

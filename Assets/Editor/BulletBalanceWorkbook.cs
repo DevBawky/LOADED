@@ -63,7 +63,7 @@ public static class BulletBalanceWorkbook
         {
             var data = AssetDatabase.LoadAssetAtPath<BulletData>(AssetDatabase.GUIDToAssetPath(guid));
             string json = Json(data); JObject body = Body(json);
-            byte[] icon = CaptureIcon(data.CylinderIcon);
+            byte[] icon = CaptureIcon(data);
             bullets.Add("", data.DisplayName, data.Grade.ToString(), data.BulletType.ToString(), body["price"], guid);
             if (icon != null) bullets.Images.Add(bullets.Rows.Count - 1, icon);
             metadata.Add("baseline." + guid, json); metadata.Add("icon." + guid, icon == null ? "" : Hash(icon));
@@ -297,6 +297,23 @@ public static class BulletBalanceWorkbook
         var rt = RenderTexture.GetTemporary(texture.width, texture.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB); Texture2D copy = null;
         try { Graphics.Blit(texture, rt); RenderTexture.active = rt; var rect = sprite.rect; copy = new Texture2D((int)rect.width, (int)rect.height, TextureFormat.RGBA32, false); copy.ReadPixels(rect, 0, 0); copy.Apply(); return copy.EncodeToPNG(); }
         finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(rt); if (copy != null) UnityEngine.Object.DestroyImmediate(copy); }
+    }
+    public static byte[] CaptureIcon(BulletData data)
+    {
+        if (data == null || data.CylinderIcon == null) return null;
+        Sprite sprite = data.CylinderIcon;
+        string spritePath = AssetDatabase.GetAssetPath(sprite);
+        bool isStandalonePng = spritePath.EndsWith(
+                ".png", StringComparison.OrdinalIgnoreCase)
+            && File.Exists(spritePath)
+            && Mathf.Approximately(sprite.rect.width, sprite.texture.width)
+            && Mathf.Approximately(sprite.rect.height, sprite.texture.height);
+        // The workbook intentionally contains only the authored illustration.
+        // Type/rarity borders belong to the runtime shader and are never baked
+        // into Excel previews.
+        return isStandalonePng
+            ? File.ReadAllBytes(spritePath)
+            : CaptureIcon(sprite);
     }
     public static bool Equivalent(JToken a, JToken b)
     {

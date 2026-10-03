@@ -194,6 +194,21 @@ public class DeckManager : MonoBehaviour
         return true;
     }
 
+    public bool TryReturnFiredBulletToDeckTop(BulletInstance bullet)
+    {
+        if (bullet == null || !graveyard.Remove(bullet))
+        {
+            return false;
+        }
+
+        nextCycleOrder.Remove(bullet);
+        priorityReloadBullets.Remove(bullet);
+        deck.Remove(bullet);
+        deck.Add(bullet);
+        StateChanged?.Invoke();
+        return true;
+    }
+
     public bool TryEjectNextLoadedBullet(out BulletInstance bullet)
     {
         return TryEjectLoadedBullet(

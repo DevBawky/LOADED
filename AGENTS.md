@@ -202,6 +202,33 @@ Changes to bullet effects should trace at least `BulletData`, `BulletInstance`,
 and the related UI. Prefer extending an existing effect pipeline over adding a
 parallel special-case path.
 
+### Bullet catalog synchronization
+
+Any task that adds, removes, renames, regrades, retypes, rebalances, or changes
+the description, icon, upgrade data, or effects of a `BulletData` asset must
+update every authored bullet catalog in the same task. Do not consider the
+bullet work complete until all of the following are true:
+
+1. Regenerate `outputs/authoring-20261002/LOADED_BulletData.xlsx` from the
+   current Unity `BulletData` assets. Preserve the workbook's established
+   sheets, formatting, embedded icons, hidden identifiers, and validation
+   metadata; do not patch stale rows by hand when the Unity exporter can
+   produce a fresh source-of-truth workbook.
+2. Synchronize every `ShopManager.bulletPool` and
+   `BulletDictionaryController.bullets` owner by using
+   `BulletPoolSyncBuilder.SyncAllBulletPools()` or its menu command. The Main
+   Menu dictionary and every shop/event/treasure catalog must contain each
+   authored bullet exactly once with no null entries.
+3. Run `LoadedWorkbookTests` and `BulletPoolIntegrityTests`, then validate the
+   exported workbook against `BulletBalanceWorkbook` with zero errors and zero
+   pending changes.
+4. Update the directly relevant bullet documentation when the gameplay rule,
+   authoring workflow, type definition, or catalog count changed.
+
+This synchronization requirement also applies when the requested gameplay
+change is implemented primarily in runtime code rather than in the
+`BulletData` asset itself.
+
 ## Scene, lifecycle, and event safety
 
 - Prefer serialized scene references and explicit initialization. Existing

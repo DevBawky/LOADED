@@ -15,7 +15,7 @@ MonoBehaviour:
   bulletId: bullet_power
   displayName: "\uAC15\uD654\uD0C4"
   description: "\uBC1C\uC0AC \uC2DC \uD30C\uAD34 (5%)"
-  cylinderIcon: {fileID: -1511212471940627665, guid: 642dc24acacca0c419a6cb6d26f207f6, type: 3}
+  cylinderIcon: {fileID: 21300000, guid: 3a2177355bdfa714d8bbfa6a63b9b9d8, type: 3}
   price: 10
   grade: 2
   bulletType: 0

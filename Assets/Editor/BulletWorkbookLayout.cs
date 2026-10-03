@@ -9,12 +9,32 @@ using System.Xml.Linq;
 // Icon ownership stays in one sheet; repeated pictures never become input data.
 public static class BulletWorkbookLayout
 {
-    public const string Schema = "LOADED.Bullets.2";
-    public static readonly string[] TypeNames = { "일반형", "유령형", "저격형", "폭풍형", "샷건형", "관통형", "디버프형" };
-    public static readonly string[] Types = { "Normal", "Ghost", "Sniper", "Storm", "Shotgun", "Piercing", "Debuff" };
+    public const string Schema = "LOADED.Bullets.3";
+    public const string LegacySchema = "LOADED.Bullets.2";
+    public static readonly string[] TypeNames =
+    {
+        "표준형", "유령형", "저격형", "폭풍형", "산탄형", "관통형",
+        "상태이상형", "기동형", "연계형", "경제형", "성장형", "혈투형"
+    };
+    public static readonly string[] Types =
+    {
+        "Normal", "Ghost", "Sniper", "Storm", "Shotgun", "Piercing",
+        "Debuff", "Kinetic", "Combo", "Economy", "Growth", "Blood"
+    };
+    static readonly string[] LegacyTypeNames =
+    {
+        "일반형", "유령형", "저격형", "폭풍형", "샷건형", "관통형",
+        "디버프형"
+    };
+    static readonly string[] LegacyTypes =
+    {
+        "Normal", "Ghost", "Sniper", "Storm", "Shotgun", "Piercing",
+        "Debuff"
+    };
     static readonly string[] Grades = { "Normal", "Rare", "Ace", "Legendary" };
     static readonly string[] Headers = { "아이콘", "이름", "등급", "레벨", "피해", "사거리", "치명타 확률 (%)", "치명타 배율", "발수 (0=기본값)", "턴 소모 없음", "반동", "다음 강화 비용", "가격", "설명", "GUID" };
-    public static bool IsTypeSheet(string name) => TypeNames.Contains(name);
+    public static bool IsTypeSheet(string name) =>
+        TypeNames.Contains(name) || LegacyTypeNames.Contains(name);
     public static LoadedWorkbook Group(LoadedWorkbook source)
     {
         var result = new LoadedWorkbook();
@@ -62,7 +82,11 @@ public static class BulletWorkbookLayout
     }
     public static LoadedWorkbook Flatten(LoadedWorkbook source)
     {
-        if (source.Require("메타데이터").Rows.Single(r => r[0] == "schema")[1] != Schema) return source;
+        string schema = source.Require("메타데이터").Rows
+            .Single(r => r[0] == "schema")[1];
+        if (schema != Schema && schema != LegacySchema) return source;
+        string[] typeNames = schema == Schema ? TypeNames : LegacyTypeNames;
+        string[] types = schema == Schema ? Types : LegacyTypes;
         var result = new LoadedWorkbook();
         var bullets = result.Add("탄환", "아이콘", "이름", "등급", "발사 유형", "가격", "GUID");
         var levels = result.Add("레벨", new[] { "이름", "레벨" }.Concat(BulletBalanceWorkbook.LevelHeaders).Concat(new[] { "GUID" }).ToArray());
@@ -71,9 +95,9 @@ public static class BulletWorkbookLayout
         var iconRows = icons.Rows.Skip(1).Select((row, index) => new { Row = row, Index = index + 1 }).Where(r => r.Row.Any(v => !string.IsNullOrEmpty(v))).ToDictionary(r => icons.Get(r.Row, "GUID"));
         if (icons.Images.Keys.Except(iconRows.Values.Select(r => r.Index)).Any()) throw new InvalidDataException("아이콘 탭의 그림은 탄환 행에 배치하세요.");
         var seen = new HashSet<string>();
-        foreach (int type in Enumerable.Range(0, Types.Length))
+        foreach (int type in Enumerable.Range(0, types.Length))
         {
-            var sheet = source.Require(TypeNames[type]);
+            var sheet = source.Require(typeNames[type]);
             for (int index = 1; index < sheet.Rows.Count; index++)
             {
                 var row = sheet.Rows[index]; string guid = sheet.Get(row, "GUID");
@@ -86,7 +110,7 @@ public static class BulletWorkbookLayout
                 if (level == "0")
                 {
                     if (!seen.Add(guid)) throw new InvalidDataException("Duplicate bullet: " + guid);
-                    bullets.Add("", sheet.Get(row, "이름"), sheet.Get(row, "등급"), Types[type], sheet.Get(row, "가격"), guid);
+                    bullets.Add("", sheet.Get(row, "이름"), sheet.Get(row, "등급"), types[type], sheet.Get(row, "가격"), guid);
                     if (!iconRows.TryGetValue(guid, out var iconRow)) throw new InvalidDataException("아이콘 탭에 없는 탄환: " + guid);
                     if (icons.Images.TryGetValue(iconRow.Index, out byte[] image)) bullets.Images.Add(bullets.Rows.Count - 1, image);
                     string baseline = meta["icon." + guid];

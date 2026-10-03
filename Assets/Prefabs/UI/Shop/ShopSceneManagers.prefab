@@ -161,6 +161,7 @@ MonoBehaviour:
   playerHealth: {fileID: 0}
   relicManager: {fileID: 0}
   gameStartUI: {fileID: 0}
+  battleWorld3DController: {fileID: 0}
   mainGamePanel: {fileID: 0}
   stageClearPanel: {fileID: 0}
   shopPanel: {fileID: 0}
@@ -248,6 +249,18 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6c63dfb642ef48a2a102e75c4f345001, type: 2}
   - {fileID: 11400000, guid: 2838b42f520519147b57cc3f93b5e3e0, type: 2}
   - {fileID: 11400000, guid: 304f04b86c179a84a93fb9ab819456c5, type: 2}
+  - {fileID: 11400000, guid: 3f47f50a2b8a8b845b52528a338678f2, type: 2}
+  - {fileID: 11400000, guid: 2f48ea6cba0a21e4cb4a6c8c3c04662e, type: 2}
+  - {fileID: 11400000, guid: 7184ae71c73f2d24cbacd24de9323a6e, type: 2}
+  - {fileID: 11400000, guid: 518944386c36dbd4bb0e47d28f6c4aee, type: 2}
+  - {fileID: 11400000, guid: 2ff775c8fc1fcdb499aff093085b74a1, type: 2}
+  - {fileID: 11400000, guid: 43c5fa5691e3d594d911d2a46e355ce4, type: 2}
+  - {fileID: 11400000, guid: 37a953c2b8871da4caf91f27d10228ff, type: 2}
+  - {fileID: 11400000, guid: 2adbc194001dfc24d9a413c2b8106656, type: 2}
+  - {fileID: 11400000, guid: 2939d52d6ee23cb48895c1e27aed7a59, type: 2}
+  - {fileID: 11400000, guid: 7f04d4ef3cfb34b4f9be106cafaa59e3, type: 2}
+  - {fileID: 11400000, guid: 37dd8cbbd0b12184d89d33494f8c98af, type: 2}
+  - {fileID: 11400000, guid: a6b6e8b92aed5f844b110ed7f938cdae, type: 2}
   gradeWeights:
   - grade: 0
     appearanceWeight: 30
@@ -408,6 +421,7 @@ MonoBehaviour:
   enemyParent: {fileID: 8683860507033806063}
   rewardManager: {fileID: 3928233756838063870}
   bossBombManager: {fileID: 0}
+  duelClockController: {fileID: 0}
   activeEnemies: []
   reservedSpawnTileIndices: 
   currentWaveIndex: -1
@@ -518,6 +532,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BoardManager
   boardCount: 7
+  laneCount: 2
   boardDistance: 2
+  laneDistance: 0.92
   tilePrefab: {fileID: 6102437938462105721, guid: a8a92d97c094e1b42bdbf5fbb08aa209, type: 3}
   tileParent: {fileID: 0}

@@ -3,6 +3,17 @@ using UnityEngine;
 
 internal static class BulletEffectUtility
 {
+    public const int MarkStatusMask = 1 << (int)StatusEffectType.Mark;
+    public const int PoisonStatusMask = 1 << (int)StatusEffectType.Poison;
+    public const int StunStatusMask = 1 << (int)StatusEffectType.Stun;
+    public const int WeaknessStatusMask = 1 << (int)StatusEffectType.Weakness;
+    public const int AllStackableStatusMask = MarkStatusMask
+        | PoisonStatusMask
+        | StunStatusMask
+        | WeaknessStatusMask;
+    public const int MixedGradeStatusMask = MarkStatusMask
+        | PoisonStatusMask
+        | WeaknessStatusMask;
     public static BulletEffectData Find(
         BulletInstance bullet,
         BulletEffectType effectType)
@@ -42,6 +53,49 @@ internal static class BulletEffectUtility
         return bullet != null
             && (bullet.BulletType == BulletType.Storm
                 || Find(bullet, BulletEffectType.QuickDraw) != null);
+    }
+
+    public static bool IsAutoTargetingShot(BulletInstance bullet)
+    {
+        return bullet != null && bullet.BulletType == BulletType.Sniper;
+    }
+
+    public static bool IsTrackingStorm(BulletInstance bullet)
+    {
+        return bullet != null
+            && bullet.BulletType == BulletType.Storm
+            && Find(bullet, BulletEffectType.Tracking) != null;
+    }
+
+    public static bool IsCataclysmStorm(BulletInstance bullet)
+    {
+        return bullet != null
+            && bullet.BulletType == BulletType.Storm
+            && Find(bullet, BulletEffectType.Cataclysm) != null;
+    }
+
+    public static bool CanStormTarget(
+        BulletInstance bullet,
+        int playerLaneIndex,
+        int enemyLaneIndex,
+        int totalStatusStackCount)
+    {
+        if (bullet == null || bullet.BulletType != BulletType.Storm)
+        {
+            return false;
+        }
+
+        if (IsCataclysmStorm(bullet))
+        {
+            return true;
+        }
+
+        if (IsTrackingStorm(bullet))
+        {
+            return totalStatusStackCount > 0;
+        }
+
+        return playerLaneIndex == enemyLaneIndex;
     }
 
     public static float GetWallImpactTransferPercent(
@@ -113,7 +167,19 @@ internal static class BulletEffectUtility
             || effectType == BulletEffectType.Assassination
             || effectType == BulletEffectType.FleshForBone
             || effectType == BulletEffectType.HighRoller
-            || effectType == BulletEffectType.RotatePlayer;
+            || effectType == BulletEffectType.RotatePlayer
+            || effectType == BulletEffectType.Mastery
+            || effectType == BulletEffectType.Cataclysm
+            || effectType == BulletEffectType.FocusedShotgun
+            || effectType == BulletEffectType.Vanguard
+            || effectType == BulletEffectType.Finisher
+            || effectType == BulletEffectType.SpecterReturn
+            || effectType == BulletEffectType.Necromancy
+            || effectType == BulletEffectType.Hunt
+            || effectType == BulletEffectType.LockOn
+            || effectType == BulletEffectType.Execution
+            || effectType == BulletEffectType.Blink
+            || effectType == BulletEffectType.RandomPelletDamage;
     }
 
     public static int ResolveShotDirection(
@@ -158,6 +224,161 @@ internal static class BulletEffectUtility
         return bonusDamage >= int.MaxValue
             ? int.MaxValue
             : (int)bonusDamage;
+    }
+
+    public static int GetInflictedStatusMask(BulletInstance bullet)
+    {
+        if (bullet == null)
+        {
+            return 0;
+        }
+
+        int mask = 0;
+
+        foreach (BulletEffectData effect in bullet.Effects)
+        {
+            if (effect == null)
+            {
+                continue;
+            }
+
+            switch (effect.EffectType)
+            {
+                case BulletEffectType.Mark:
+                    mask |= MarkStatusMask;
+                    break;
+                case BulletEffectType.Poison:
+                    mask |= PoisonStatusMask;
+                    break;
+                case BulletEffectType.Stun:
+                    mask |= StunStatusMask;
+                    break;
+                case BulletEffectType.Weakness:
+                    mask |= WeaknessStatusMask;
+                    break;
+                case BulletEffectType.MixedGrade:
+                    mask |= MixedGradeStatusMask;
+                    break;
+            }
+        }
+
+        return mask;
+    }
+
+    public static bool IncludesStatus(int mask, StatusEffectType type)
+    {
+        return (mask & (1 << (int)type)) != 0;
+    }
+
+    public static int GetCrescendoStatusStacks(BulletEffectData effect)
+    {
+        return effect == null ? 0 : Mathf.Max(0, effect.StackCount);
+    }
+
+    public static int GetMassProducedAdditionalShots(
+        BulletEffectData effect,
+        int ownedLowGradeCount)
+    {
+        return effect == null
+            ? 0
+            : Mathf.Min(
+                Mathf.Max(0, effect.StackCount),
+                Mathf.Max(0, ownedLowGradeCount));
+    }
+
+    public static float GetMasterpieceCriticalDamageBonus(
+        BulletEffectData effect,
+        int ownedHighGradeCount)
+    {
+        if (effect == null)
+        {
+            return 0f;
+        }
+
+        int cappedCount = Mathf.Min(
+            Mathf.Max(0, effect.StackCount),
+            Mathf.Max(0, ownedHighGradeCount));
+        return cappedCount * Mathf.Max(0f, effect.Amount);
+    }
+
+    public static float GetCoagulationRecoveryPercent(
+        BulletEffectData effect,
+        int ownedBloodBulletCount)
+    {
+        if (effect == null)
+        {
+            return 0f;
+        }
+
+        float recoveryPercent = Mathf.Max(0f, effect.Amount)
+            + Mathf.Max(0, ownedBloodBulletCount)
+            * Mathf.Max(0, effect.StackCount);
+        return Mathf.Min(
+            Mathf.Max(0, effect.KnockbackDistance),
+            recoveryPercent);
+    }
+
+    public static int GetRitualDamageBonus(
+        BulletEffectData effect,
+        int permanentStacks)
+    {
+        if (effect == null)
+        {
+            return 0;
+        }
+
+        double bonus = Math.Ceiling(
+            Mathf.Max(0, permanentStacks) * Mathf.Max(0f, effect.Amount));
+        return bonus >= int.MaxValue ? int.MaxValue : (int)bonus;
+    }
+
+    public static float GetJackpotDamageMultiplier(BulletEffectData effect)
+    {
+        return effect == null ? 1f : Mathf.Max(1f, effect.Amount / 100f);
+    }
+
+    public static float GetReturnDamageMultiplier(BulletEffectData effect)
+    {
+        return effect == null ? 0f : Mathf.Max(0f, effect.Amount / 100f);
+    }
+
+    public static float GetRandomPelletDamageMultiplier(
+        BulletInstance bullet,
+        bool useExpectedValue)
+    {
+        BulletEffectData effect = Find(
+            bullet,
+            BulletEffectType.RandomPelletDamage);
+        if (effect == null || bullet == null || bullet.Damage <= 0)
+        {
+            return 1f;
+        }
+
+        int minimum = Mathf.Max(0, Mathf.RoundToInt(effect.Amount));
+        int maximum = Mathf.Max(minimum, effect.StackCount);
+        float rolledDamage = useExpectedValue
+            ? (minimum + maximum) * 0.5f
+            : UnityEngine.Random.Range(minimum, maximum + 1);
+        return rolledDamage / bullet.Damage;
+    }
+
+    public static float GetPositionDamageMultiplier(
+        BulletInstance bullet,
+        bool isFirstPhysicalBullet,
+        bool isLastPhysicalBullet)
+    {
+        BulletEffectData effect = Find(
+            bullet,
+            BulletEffectType.Vanguard);
+        if (effect != null && isFirstPhysicalBullet)
+        {
+            return 1f + Mathf.Max(0f, effect.Amount) / 100f;
+        }
+
+        effect = Find(bullet, BulletEffectType.Finisher);
+        return effect != null && isLastPhysicalBullet
+            ? 1f + Mathf.Max(0f, effect.Amount) / 100f
+            : 1f;
     }
 
     public static int SaturatingAdd(int left, int right)

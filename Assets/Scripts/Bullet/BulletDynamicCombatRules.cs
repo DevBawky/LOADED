@@ -75,12 +75,32 @@ internal readonly struct BulletOwnedCompositionSnapshot
         int ownedHighGradeCount,
         int ownedLowGradeCount,
         int mostCommonOwnedGradeCount)
+        : this(
+            otherResonanceCount,
+            distinctOwnedBulletTypeCount,
+            otherLoadedGradeCount,
+            0,
+            ownedHighGradeCount,
+            ownedLowGradeCount,
+            mostCommonOwnedGradeCount)
+    {
+    }
+
+    public BulletOwnedCompositionSnapshot(
+        int otherResonanceCount,
+        int distinctOwnedBulletTypeCount,
+        int otherLoadedGradeCount,
+        int otherLoadedGhostCount,
+        int ownedHighGradeCount,
+        int ownedLowGradeCount,
+        int mostCommonOwnedGradeCount)
     {
         OtherResonanceCount = Mathf.Max(0, otherResonanceCount);
         DistinctOwnedBulletTypeCount = Mathf.Max(
             0,
             distinctOwnedBulletTypeCount);
         OtherLoadedGradeCount = Mathf.Max(0, otherLoadedGradeCount);
+        OtherLoadedGhostCount = Mathf.Max(0, otherLoadedGhostCount);
         OwnedHighGradeCount = Mathf.Max(0, ownedHighGradeCount);
         OwnedLowGradeCount = Mathf.Max(0, ownedLowGradeCount);
         MostCommonOwnedGradeCount = Mathf.Max(
@@ -91,6 +111,7 @@ internal readonly struct BulletOwnedCompositionSnapshot
     public int OtherResonanceCount { get; }
     public int DistinctOwnedBulletTypeCount { get; }
     public int OtherLoadedGradeCount { get; }
+    public int OtherLoadedGhostCount { get; }
     public int OwnedHighGradeCount { get; }
     public int OwnedLowGradeCount { get; }
     public int MostCommonOwnedGradeCount { get; }
@@ -156,6 +177,7 @@ internal readonly struct BulletOwnedCompositionSnapshot
     {
         int otherResonanceCount = 0;
         int otherLoadedGradeCount = 0;
+        int otherLoadedGhostCount = 0;
 
         if (loadedBullets != null)
         {
@@ -177,6 +199,11 @@ internal readonly struct BulletOwnedCompositionSnapshot
                 {
                     otherLoadedGradeCount++;
                 }
+
+                if (bullet.BulletType == BulletType.Ghost)
+                {
+                    otherLoadedGhostCount++;
+                }
             }
         }
 
@@ -191,6 +218,7 @@ internal readonly struct BulletOwnedCompositionSnapshot
             otherResonanceCount,
             distinctOwnedBulletTypeCount,
             otherLoadedGradeCount,
+            otherLoadedGhostCount,
             ownedHighGradeCount,
             ownedLowGradeCount,
             mostCommonOwnedGradeCount);
@@ -260,6 +288,7 @@ internal readonly struct BulletDynamicCombatContext
         DistinctOwnedBulletTypeCount =
             composition.DistinctOwnedBulletTypeCount;
         OtherLoadedGradeCount = composition.OtherLoadedGradeCount;
+        OtherLoadedGhostCount = composition.OtherLoadedGhostCount;
         OwnedHighGradeCount = composition.OwnedHighGradeCount;
         OwnedLowGradeCount = composition.OwnedLowGradeCount;
         MostCommonOwnedGradeCount = composition.MostCommonOwnedGradeCount;
@@ -281,6 +310,7 @@ internal readonly struct BulletDynamicCombatContext
     public int OtherResonanceCount { get; }
     public int DistinctOwnedBulletTypeCount { get; }
     public int OtherLoadedGradeCount { get; }
+    public int OtherLoadedGhostCount { get; }
     public int OwnedHighGradeCount { get; }
     public int OwnedLowGradeCount { get; }
     public int MostCommonOwnedGradeCount { get; }
@@ -311,16 +341,21 @@ internal readonly struct BulletTargetDamageContext
     public BulletTargetDamageContext(
         int tileDistance,
         int totalStatusStackCount,
-        bool wasHitThisTurn)
+        bool wasHitThisTurn,
+        int sniperBulletsFiredThisCylinder = 0)
     {
         TileDistance = tileDistance;
         TotalStatusStackCount = Mathf.Max(0, totalStatusStackCount);
         WasHitThisTurn = wasHitThisTurn;
+        SniperBulletsFiredThisCylinder = Mathf.Max(
+            0,
+            sniperBulletsFiredThisCylinder);
     }
 
     public int TileDistance { get; }
     public int TotalStatusStackCount { get; }
     public bool WasHitThisTurn { get; }
+    public int SniperBulletsFiredThisCylinder { get; }
 }
 
 internal static class BulletDynamicCombatRules
@@ -358,16 +393,6 @@ internal static class BulletDynamicCombatRules
             context);
         multiplier *= GetDamageFactor(
             BulletEffectUtility.Find(
-                resolvedBullet,
-                BulletEffectType.Jackpot),
-            context);
-        multiplier *= GetDamageFactor(
-            BulletEffectUtility.Find(
-                resolvedBullet,
-                BulletEffectType.Resonance),
-            context);
-        multiplier *= GetDamageFactor(
-            BulletEffectUtility.Find(
                 firedBullet,
                 BulletEffectType.ClonePreviousShot),
             context);
@@ -381,11 +406,6 @@ internal static class BulletDynamicCombatRules
             BulletEffectUtility.Find(
                 resolvedBullet,
                 BulletEffectType.Heart),
-            context);
-        multiplier *= GetDamageFactor(
-            BulletEffectUtility.Find(
-                resolvedBullet,
-                BulletEffectType.Loader),
             context);
         multiplier *= GetDamageFactor(
             BulletEffectUtility.Find(
@@ -410,27 +430,7 @@ internal static class BulletDynamicCombatRules
         multiplier *= GetDamageFactor(
             BulletEffectUtility.Find(
                 resolvedBullet,
-                BulletEffectType.Collection),
-            context);
-        multiplier *= GetDamageFactor(
-            BulletEffectUtility.Find(
-                resolvedBullet,
-                BulletEffectType.MixedGrade),
-            context);
-        multiplier *= GetDamageFactor(
-            BulletEffectUtility.Find(
-                resolvedBullet,
-                BulletEffectType.Masterpiece),
-            context);
-        multiplier *= GetDamageFactor(
-            BulletEffectUtility.Find(
-                resolvedBullet,
-                BulletEffectType.MassProduced),
-            context);
-        multiplier *= GetDamageFactor(
-            BulletEffectUtility.Find(
-                resolvedBullet,
-                BulletEffectType.Monopoly),
+                BulletEffectType.Necromancy),
             context);
 
         return multiplier;
@@ -441,11 +441,6 @@ internal static class BulletDynamicCombatRules
         BulletDynamicCombatContext context)
     {
         float criticalChanceBonus = context.TemporaryCriticalChanceBonus;
-        criticalChanceBonus += GetCriticalChanceBonus(
-            BulletEffectUtility.Find(
-                resolvedBullet,
-                BulletEffectType.Coagulation),
-            context);
         criticalChanceBonus += GetCriticalChanceBonus(
             BulletEffectUtility.Find(
                 resolvedBullet,
@@ -462,16 +457,6 @@ internal static class BulletDynamicCombatRules
         float multiplier = 1f;
         BulletEffectData effect = BulletEffectUtility.Find(
             bullet,
-            BulletEffectType.Rangefinder);
-
-        if (effect != null && context.TileDistance >= 0)
-        {
-            multiplier *= 1f
-                + context.TileDistance * effect.Amount / 100f;
-        }
-
-        effect = BulletEffectUtility.Find(
-            bullet,
             BulletEffectType.Judgment);
 
         if (effect != null)
@@ -484,9 +469,21 @@ internal static class BulletDynamicCombatRules
             bullet,
             BulletEffectType.Assassination);
 
-        if (effect != null && context.WasHitThisTurn)
+        if (effect != null)
         {
-            multiplier *= 1f + Mathf.Max(0f, effect.Amount) / 100f;
+            multiplier *= 1f + context.TotalStatusStackCount
+                * Mathf.Max(0f, effect.Amount) / 100f;
+        }
+
+        effect = BulletEffectUtility.Find(
+            bullet,
+            BulletEffectType.Mastery);
+
+        if (effect != null && context.SniperBulletsFiredThisCylinder > 0)
+        {
+            multiplier *= Mathf.Pow(
+                Mathf.Max(1f, effect.Amount),
+                context.SniperBulletsFiredThisCylinder);
         }
 
         return multiplier;
@@ -516,26 +513,20 @@ internal static class BulletDynamicCombatRules
 
         switch (effect.EffectType)
         {
-            case BulletEffectType.Jackpot:
             case BulletEffectType.ClonePreviousShot:
                 return unitCount > 0
                     ? Mathf.Max(1f, effect.Amount / 100f)
                     : 1f;
             case BulletEffectType.Gilded:
             case BulletEffectType.Heart:
-            case BulletEffectType.Loader:
-            case BulletEffectType.Resonance:
             case BulletEffectType.Charge:
             case BulletEffectType.Accumulator:
             case BulletEffectType.Devourer:
             case BulletEffectType.Legacy:
-            case BulletEffectType.Collection:
-            case BulletEffectType.MixedGrade:
-            case BulletEffectType.Masterpiece:
-            case BulletEffectType.MassProduced:
-            case BulletEffectType.Monopoly:
                 return 1f + unitCount * effect.Amount / 100f;
             case BulletEffectType.Seismometer:
+                return 1f + unitCount * Mathf.Max(0f, effect.Amount) / 100f;
+            case BulletEffectType.Necromancy:
                 return 1f + unitCount * Mathf.Max(0f, effect.Amount) / 100f;
             default:
                 return 1f;
@@ -552,8 +543,7 @@ internal static class BulletDynamicCombatRules
             return 0f;
         }
 
-        return effect.EffectType == BulletEffectType.Coagulation
-            || effect.EffectType == BulletEffectType.Focus
+        return effect.EffectType == BulletEffectType.Focus
                 ? unitCount * effect.Amount
                 : 0f;
     }
@@ -571,9 +561,6 @@ internal static class BulletDynamicCombatRules
 
         switch (effect.EffectType)
         {
-            case BulletEffectType.Jackpot:
-                unitCount = context.IsLoaded && context.IsLastChamber ? 1 : 0;
-                return true;
             case BulletEffectType.ClonePreviousShot:
                 unitCount = context.IsClone ? 1 : 0;
                 return true;
@@ -581,22 +568,9 @@ internal static class BulletDynamicCombatRules
                 unitCount = context.CurrentGold
                     / Mathf.Max(1, effect.StackCount);
                 return true;
-            case BulletEffectType.Coagulation:
-                unitCount = Mathf.FloorToInt(
-                    context.MissingHealthPercent
-                    / Mathf.Max(1, effect.StackCount));
-                return true;
             case BulletEffectType.Heart:
                 unitCount = context.MaxHealth
                     / Mathf.Max(1, effect.StackCount);
-                return true;
-            case BulletEffectType.Loader:
-                unitCount = context.IsLoaded ? context.EmptyChamberCount : 0;
-                return true;
-            case BulletEffectType.Resonance:
-                unitCount = context.IsLoaded
-                    ? context.OtherResonanceCount
-                    : 0;
                 return true;
             case BulletEffectType.Focus:
             case BulletEffectType.Accumulator:
@@ -604,6 +578,11 @@ internal static class BulletDynamicCombatRules
             case BulletEffectType.Ritual:
             case BulletEffectType.Tracking:
                 unitCount = context.AbilityStacks;
+                return true;
+            case BulletEffectType.Necromancy:
+                unitCount = Mathf.Min(
+                    context.OtherLoadedGhostCount,
+                    Mathf.Max(0, effect.StackCount));
                 return true;
             case BulletEffectType.Charge:
                 unitCount = context.IsLoaded
@@ -615,23 +594,6 @@ internal static class BulletDynamicCombatRules
             case BulletEffectType.Devourer:
             case BulletEffectType.Legacy:
                 unitCount = context.PermanentStacks;
-                return true;
-            case BulletEffectType.Collection:
-                unitCount = context.DistinctOwnedBulletTypeCount;
-                return true;
-            case BulletEffectType.MixedGrade:
-                unitCount = context.IsLoaded
-                    ? context.OtherLoadedGradeCount
-                    : 0;
-                return true;
-            case BulletEffectType.Masterpiece:
-                unitCount = context.OwnedHighGradeCount;
-                return true;
-            case BulletEffectType.MassProduced:
-                unitCount = context.OwnedLowGradeCount;
-                return true;
-            case BulletEffectType.Monopoly:
-                unitCount = context.MostCommonOwnedGradeCount;
                 return true;
             default:
                 unitCount = 0;

@@ -60,7 +60,19 @@ public enum BulletEffectType
     Assassination = 51,
     FleshForBone = 52,
     HighRoller = 53,
-    RotatePlayer = 54
+    RotatePlayer = 54,
+    Mastery = 55,
+    Cataclysm = 56,
+    FocusedShotgun = 57,
+    Vanguard = 58,
+    Finisher = 59,
+    SpecterReturn = 60,
+    Necromancy = 61,
+    Hunt = 62,
+    LockOn = 63,
+    Execution = 64,
+    Blink = 65,
+    RandomPelletDamage = 66
 }
 
 public enum BulletEffectTarget
@@ -88,7 +100,7 @@ public enum BulletGrade
 
 public enum BulletType
 {
-    [InspectorName("일반")]
+    [InspectorName("표준")]
     Normal = 0,
     [InspectorName("유령")]
     Ghost = 1,
@@ -96,12 +108,22 @@ public enum BulletType
     Sniper = 2,
     [InspectorName("폭풍")]
     Storm = 3,
-    [InspectorName("샷건")]
+    [InspectorName("산탄")]
     Shotgun = 4,
     [InspectorName("관통")]
     Piercing = 5,
-    [InspectorName("디버프")]
-    Debuff = 6
+    [InspectorName("상태이상")]
+    Debuff = 6,
+    [InspectorName("기동")]
+    Kinetic = 7,
+    [InspectorName("연계")]
+    Combo = 8,
+    [InspectorName("경제")]
+    Economy = 9,
+    [InspectorName("성장")]
+    Growth = 10,
+    [InspectorName("혈투")]
+    Blood = 11
 }
 
 public readonly struct BulletRuntimeTooltipStats
@@ -515,10 +537,15 @@ public class BulletData : ScriptableObject
             BulletType.Ghost => "유령",
             BulletType.Sniper => "저격",
             BulletType.Storm => "폭풍",
-            BulletType.Shotgun => "샷건",
+            BulletType.Shotgun => "산탄",
             BulletType.Piercing => "관통",
-            BulletType.Debuff => "디버프",
-            _ => "일반"
+            BulletType.Debuff => "상태이상",
+            BulletType.Kinetic => "기동",
+            BulletType.Combo => "연계",
+            BulletType.Economy => "경제",
+            BulletType.Growth => "성장",
+            BulletType.Blood => "혈투",
+            _ => "표준"
         };
     }
 
@@ -529,15 +556,25 @@ public class BulletData : ScriptableObject
             BulletType.Ghost =>
                 "장전 시 DUEL CLOCK을 충전하지 않습니다.",
             BulletType.Sniper =>
-                "관통 확률에 따라 뒤쪽 적을 추가로 공격합니다.",
+                "조건에 맞는 적을 자동 조준하여 강하게 공격합니다.",
             BulletType.Storm =>
-                "방향과 관계없이 생존한 모든 적을 공격합니다.",
+                "조건에 맞는 여러 적을 동시에 공격합니다.",
             BulletType.Shotgun =>
                 $"탄환 1발을 소모하여 한 번에 {GetShotCount(level)}발 발사합니다.",
             BulletType.Piercing =>
                 "관통 횟수와 확률에 따라 뒤쪽 적을 추가로 공격합니다.",
             BulletType.Debuff =>
                 "독·기절·표식·약화를 부여하거나 활용합니다.",
+            BulletType.Kinetic =>
+                "플레이어와 적의 위치·방향·이동을 조작합니다.",
+            BulletType.Combo =>
+                "발사 순서와 다른 탄환의 효과를 연결합니다.",
+            BulletType.Economy =>
+                "골드의 획득·보유·소비로 경제적 이득을 제공합니다.",
+            BulletType.Growth =>
+                "덱 구성과 전투 누적을 장기 성장으로 전환합니다.",
+            BulletType.Blood =>
+                "체력을 지불·회복하거나 최대 체력을 피해로 전환합니다.",
             _ => string.Empty
         };
     }
@@ -894,7 +931,7 @@ public class BulletData : ScriptableObject
             upgradeCost);
     }
 
-    private static Color GetDefaultGradeColor(BulletGrade bulletGrade)
+    public static Color GetDefaultGradeColor(BulletGrade bulletGrade)
     {
         return bulletGrade switch
         {

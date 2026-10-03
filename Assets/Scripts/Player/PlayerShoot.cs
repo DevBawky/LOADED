@@ -193,10 +193,12 @@ public partial class PlayerShoot : MonoBehaviour
     private BulletInstance currentConsumedBullet;
     private int initialLoadedBulletCount;
     private int bulletsFiredThisCylinder;
+    private int sniperBulletsFiredThisCylinder;
     private int criticalShotsThisCylinder;
     private int activeShotIndex;
     private bool bulletDestroyedThisCylinder;
     private int pendingSaverGold;
+    private bool pendingEmergencyReload;
     private PlayerShotRangePreview rangePreview;
     private BulletProjectileView activeProjectileView;
 
@@ -537,12 +539,14 @@ public partial class PlayerShoot : MonoBehaviour
 
             relicManager ??= FindFirstObjectByType<RelicManager>(
                 FindObjectsInactive.Include);
-            bool consumesTurn = relicManager == null
+            bool usesEmergencyReload = pendingEmergencyReload;
+            pendingEmergencyReload = false;
+            bool consumesTurn = !usesEmergencyReload && (relicManager == null
                 ? loadedBullet == null
                     || !loadedBullet.DoesNotConsumeReloadTurn
                 : relicManager.ShouldReloadConsumeTurn(
                     loadedBullet,
-                    wasCylinderEmpty);
+                    wasCylinderEmpty));
 
             if (consumesTurn)
             {
