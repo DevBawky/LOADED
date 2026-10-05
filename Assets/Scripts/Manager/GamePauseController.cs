@@ -21,7 +21,12 @@ public class GamePauseController : MonoBehaviour
     private GameObject pauseOverlayRoot;
     private bool exitRequested;
 
-    public static bool IsPaused { get; private set; }
+    private static bool menuPaused;
+    public static bool IsPaused
+    {
+        get => menuPaused || BattleTestContext.IsPaused;
+        private set => menuPaused = value;
+    }
 
     private void Awake()
     {
@@ -139,7 +144,7 @@ public class GamePauseController : MonoBehaviour
             Time.timeScale = 1f;
         }
 
-        if (IsPaused == isPaused)
+        if (menuPaused == isPaused)
         {
             if (pausedPanel != null)
             {

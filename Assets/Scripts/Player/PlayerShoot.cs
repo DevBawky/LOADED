@@ -203,6 +203,16 @@ public partial class PlayerShoot : MonoBehaviour
     private BulletProjectileView activeProjectileView;
 
     public bool IsFiring => isFiring;
+    internal bool TestPendingEmergencyReload => pendingEmergencyReload;
+
+    internal void RestoreTestShotState(bool emergencyReload)
+    {
+        if (!BattleTestContext.IsActive || isFiring) return;
+        pendingEmergencyReload = emergencyReload;
+        firingSequence?.ResetTurnTargetHistory();
+        ClearLoadedBulletDamagePreview();
+    }
+
     public int InitialLoadedBulletCount => isFiring
         ? Mathf.Max(0, initialLoadedBulletCount)
         : deckManager == null ? 0 : deckManager.LoadedBullets.Count;

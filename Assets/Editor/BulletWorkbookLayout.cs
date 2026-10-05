@@ -21,6 +21,21 @@ public static class BulletWorkbookLayout
         "Normal", "Ghost", "Sniper", "Storm", "Shotgun", "Piercing",
         "Debuff", "Kinetic", "Combo", "Economy", "Growth", "Blood"
     };
+    static readonly string[] TypeDescriptions =
+    {
+        "기본 전투 성능과 범용 효과를 갖춘 탄환 유형입니다.",
+        "턴 소모 완화, 귀환, 무덤 상호작용을 활용하는 탄환 유형입니다.",
+        "장거리 조준과 특정 대상 집중 공격에 특화된 탄환 유형입니다.",
+        "여러 적이나 레인을 동시에 공격하는 광역 탄환 유형입니다.",
+        "여러 팰릿을 근거리에서 분산 또는 집중 발사하는 탄환 유형입니다.",
+        "같은 레인의 여러 대상을 꿰뚫거나 왕복 경로를 공격하는 탄환 유형입니다.",
+        "독·표식·약화·기절 등 상태이상을 부여하고 증폭하는 탄환 유형입니다.",
+        "회전·이동·밀치기 등 위치와 방향을 바꾸는 탄환 유형입니다.",
+        "이전·다음 탄환과 장전 순서를 활용해 효과를 이어가는 탄환 유형입니다.",
+        "골드 획득과 보유 자원을 전투 성능으로 전환하는 탄환 유형입니다.",
+        "보유 탄환 구성과 전투 진행에 따라 성능이 커지는 탄환 유형입니다.",
+        "체력을 비용·회복·피해 증폭에 활용하는 고위험 탄환 유형입니다."
+    };
     static readonly string[] LegacyTypeNames =
     {
         "일반형", "유령형", "저격형", "폭풍형", "샷건형", "관통형",
@@ -32,7 +47,8 @@ public static class BulletWorkbookLayout
         "Debuff"
     };
     static readonly string[] Grades = { "Normal", "Rare", "Ace", "Legendary" };
-    static readonly string[] Headers = { "아이콘", "이름", "등급", "레벨", "피해", "사거리", "치명타 확률 (%)", "치명타 배율", "발수 (0=기본값)", "턴 소모 없음", "반동", "다음 강화 비용", "가격", "설명", "GUID" };
+    const string MotifBorderColor = "FF7B8490";
+    static readonly string[] Headers = { "아이콘", "이름", "등급", "설명", "레벨", "피해", "사거리", "치명타 확률 (%)", "치명타 배율", "발수 (0=기본값)", "턴 소모 없음", "반동", "다음 강화 비용", "가격", "GUID" };
     public static bool IsTypeSheet(string name) =>
         TypeNames.Contains(name) || LegacyTypeNames.Contains(name);
     public static LoadedWorkbook Group(LoadedWorkbook source)
@@ -97,7 +113,7 @@ public static class BulletWorkbookLayout
         var seen = new HashSet<string>();
         foreach (int type in Enumerable.Range(0, types.Length))
         {
-            var sheet = source.Require(typeNames[type]);
+            var sheet = NormalizeTypeSheet(source.Require(typeNames[type]));
             for (int index = 1; index < sheet.Rows.Count; index++)
             {
                 var row = sheet.Rows[index]; string guid = sheet.Get(row, "GUID");
@@ -128,8 +144,24 @@ public static class BulletWorkbookLayout
         return result;
     }
 
-    // The artifact renderer has no worksheet-protection API. Patch only protection,
-    // locked-cell styles and column visibility; values and drawings remain intact.
+    static LoadedWorkbook.Sheet NormalizeTypeSheet(LoadedWorkbook.Sheet source)
+    {
+        int headerIndex = source.Rows.FindIndex(row => Headers.All(header => row.Contains(header)));
+        if (headerIndex <= 0)
+            return source;
+
+        var normalized = new LoadedWorkbook.Sheet(
+            source.Name,
+            (string[])source.Rows[headerIndex].Clone());
+        for (int index = headerIndex + 1; index < source.Rows.Count; index++)
+            normalized.Rows.Add((string[])source.Rows[index].Clone());
+        foreach (var image in source.Images.Where(pair => pair.Key > headerIndex))
+            normalized.Images.Add(image.Key - headerIndex, image.Value);
+        return normalized;
+    }
+
+    // The artifact renderer has no worksheet-protection API. Patch the type-sheet
+    // presentation, protection, editable styles, and column visibility without changing data.
     public static void ProtectViews(string path)
     {
         XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
@@ -140,6 +172,49 @@ public static class BulletWorkbookLayout
             Func<string, XDocument> read = name => { using (var stream = zip.GetEntry(name).Open()) return XDocument.Load(stream); };
             Action<string, XDocument> write = (name, doc) => { zip.GetEntry(name).Delete(); using (var stream = zip.CreateEntry(name).Open()) doc.Save(stream); };
             var styles = read("xl/styles.xml"); var xfs = styles.Root.Element(ns + "cellXfs");
+            var borders = styles.Root.Element(ns + "borders");
+            var fonts = styles.Root.Element(ns + "fonts");
+            int titleFont = fonts.Elements().Count();
+            fonts.Add(new XElement(ns + "font",
+                new XElement(ns + "b"),
+                new XElement(ns + "color", new XAttribute("rgb", "FF243447")),
+                new XElement(ns + "sz", new XAttribute("val", 11)),
+                new XElement(ns + "name", new XAttribute("val", "Malgun Gothic"))));
+            fonts.SetAttributeValue("count", fonts.Elements().Count());
+            var fills = styles.Root.Element(ns + "fills");
+            Func<string, int> addFill = color =>
+            {
+                int id = fills.Elements().Count();
+                fills.Add(new XElement(ns + "fill",
+                    new XElement(ns + "patternFill",
+                        new XAttribute("patternType", "solid"),
+                        new XElement(ns + "fgColor", new XAttribute("rgb", color)),
+                        new XElement(ns + "bgColor", new XAttribute("indexed", 64)))));
+                return id;
+            };
+            int descriptionFill = addFill("FFEAF0F7");
+            var gradeFills = new Dictionary<string, int>
+            {
+                { "Normal", addFill("FFF2F4F7") },
+                { "Rare", addFill("FFE8F2FF") },
+                { "Ace", addFill("FFFFF3D6") },
+                { "Legendary", addFill("FFF3E8FF") }
+            };
+            fills.SetAttributeValue("count", fills.Elements().Count());
+            Func<int, int, int, int> copyStyle = (source, font, fill) =>
+            {
+                var clone = new XElement(xfs.Elements().ElementAt(source));
+                clone.SetAttributeValue("fontId", font);
+                clone.SetAttributeValue("fillId", fill);
+                clone.SetAttributeValue("applyFont", 1);
+                clone.SetAttributeValue("applyFill", 1);
+                int id = xfs.Elements().Count();
+                xfs.Add(clone);
+                return id;
+            };
+            int descriptionStyle = copyStyle(0, titleFont, descriptionFill);
+            xfs.Elements().ElementAt(descriptionStyle).Element(ns + "alignment")
+                ?.SetAttributeValue("vertical", "center");
             var unlocked = new Dictionary<int, int>();
             Func<int, int> unlock = id =>
             {
@@ -148,7 +223,70 @@ public static class BulletWorkbookLayout
                 clone.SetAttributeValue("applyProtection", 1); clone.Add(new XElement(ns + "protection", new XAttribute("locked", 0)));
                 value = xfs.Elements().Count(); xfs.Add(clone); unlocked.Add(id, value); return value;
             };
+            var tinted = new Dictionary<string, int>();
+            Func<int, int, int> tint = (style, fill) =>
+            {
+                string key = style + ":" + fill;
+                if (tinted.TryGetValue(key, out int value)) return value;
+                value = copyStyle(style, (int)xfs.Elements().ElementAt(style).Attribute("fontId"), fill);
+                tinted.Add(key, value);
+                return value;
+            };
+            var sectionStyles = gradeFills.ToDictionary(
+                pair => pair.Key,
+                pair => copyStyle(0, titleFont, pair.Value));
+            var clearedBorders = new Dictionary<int, int>();
+            Func<int, int> clearBorder = style =>
+            {
+                var sourceStyle = xfs.Elements().ElementAt(style);
+                if ((int?)sourceStyle.Attribute("borderId") == 0) return style;
+                if (clearedBorders.TryGetValue(style, out int value)) return value;
+                var clone = new XElement(sourceStyle);
+                clone.SetAttributeValue("borderId", 0);
+                clone.SetAttributeValue("applyBorder", 1);
+                value = xfs.Elements().Count();
+                xfs.Add(clone);
+                clearedBorders.Add(style, value);
+                return value;
+            };
+            var decoratedBorders = new Dictionary<string, int>();
+            Func<int, string, bool, bool, bool, bool, bool, bool, int> decorate =
+                (style, lineStyle, top, bottom, left, right, diagonalUp, diagonalDown) =>
+            {
+                if (!top && !bottom && !left && !right && !diagonalUp && !diagonalDown) return style;
+                string key = string.Join(":", style, lineStyle, top, bottom, left, right, diagonalUp, diagonalDown);
+                if (decoratedBorders.TryGetValue(key, out int value)) return value;
+                Func<string, bool, XElement> edge = (name, enabled) => enabled
+                    ? new XElement(ns + name,
+                        new XAttribute("style", lineStyle),
+                        new XElement(ns + "color", new XAttribute("rgb", MotifBorderColor)))
+                    : new XElement(ns + name);
+                int borderId = borders.Elements().Count();
+                var border = new XElement(ns + "border",
+                    edge("left", left), edge("right", right), edge("top", top),
+                    edge("bottom", bottom),
+                    diagonalUp || diagonalDown
+                        ? new XElement(ns + "diagonal",
+                            new XAttribute("style", lineStyle),
+                            new XElement(ns + "color", new XAttribute("rgb", MotifBorderColor)))
+                        : new XElement(ns + "diagonal"));
+                if (diagonalUp) border.SetAttributeValue("diagonalUp", 1);
+                if (diagonalDown) border.SetAttributeValue("diagonalDown", 1);
+                borders.Add(border);
+                var clone = new XElement(xfs.Elements().ElementAt(style));
+                clone.SetAttributeValue("borderId", borderId);
+                clone.SetAttributeValue("applyBorder", 1);
+                value = xfs.Elements().Count();
+                xfs.Add(clone);
+                decoratedBorders.Add(key, value);
+                return value;
+            };
             var workbook = read("xl/workbook.xml");
+            var sharedStrings = zip.GetEntry("xl/sharedStrings.xml") == null
+                ? Array.Empty<string>()
+                : read("xl/sharedStrings.xml").Root.Elements(ns + "si")
+                    .Select(item => string.Concat(item.Descendants(ns + "t").Select(text => text.Value)))
+                    .ToArray();
             var relationships = read("xl/_rels/workbook.xml.rels").Root.Elements(pkg + "Relationship").ToDictionary(e => (string)e.Attribute("Id"), e => (string)e.Attribute("Target"));
             foreach (var def in workbook.Descendants(ns + "sheet"))
             {
@@ -158,21 +296,172 @@ public static class BulletWorkbookLayout
                 string target = relationships[(string)def.Attribute(rel + "id")];
                 string part = new Uri(new Uri("https://local/xl/workbook.xml"), target).AbsolutePath.TrimStart('/');
                 var doc = read(part); var data = doc.Root.Element(ns + "sheetData");
+                Func<XElement, string> cellValue = cell =>
+                {
+                    if (cell == null) return "";
+                    string value = cell.Element(ns + "v")?.Value;
+                    if ((string)cell.Attribute("t") == "s" &&
+                        int.TryParse(value, out int sharedIndex) &&
+                        sharedIndex >= 0 && sharedIndex < sharedStrings.Length)
+                        return sharedStrings[sharedIndex];
+                    return value ?? string.Concat(cell.Descendants(ns + "t").Select(text => text.Value));
+                };
+                string descriptionPrefix = name + " — ";
+                var initialRows = data.Elements(ns + "row").Take(2).ToArray();
+                bool removedDuplicateDescriptionRow = initialRows.Length == 2 &&
+                    cellValue(initialRows[0].Elements(ns + "c").FirstOrDefault()).StartsWith(descriptionPrefix, StringComparison.Ordinal) &&
+                    cellValue(initialRows[1].Elements(ns + "c").FirstOrDefault()).StartsWith(descriptionPrefix, StringComparison.Ordinal);
+                if (removedDuplicateDescriptionRow)
+                {
+                    initialRows[1].Remove();
+                    foreach (var row in data.Elements(ns + "row").Where(row => (int)row.Attribute("r") >= 3).ToArray())
+                    {
+                        row.SetAttributeValue("r", (int)row.Attribute("r") - 1);
+                        foreach (var cell in row.Elements(ns + "c"))
+                        {
+                            string reference = (string)cell.Attribute("r");
+                            int split = 0;
+                            while (split < reference.Length && char.IsLetter(reference[split])) split++;
+                            cell.SetAttributeValue("r", reference.Substring(0, split) +
+                                (int.Parse(reference.Substring(split), System.Globalization.CultureInfo.InvariantCulture) - 1));
+                        }
+                    }
+                }
+                bool hasDescriptionRow = cellValue(data.Elements(ns + "row").FirstOrDefault()?.Elements(ns + "c").FirstOrDefault())
+                    .StartsWith(descriptionPrefix, StringComparison.Ordinal);
+                if (!hasDescriptionRow) foreach (var row in data.Elements(ns + "row").ToArray())
+                {
+                    row.SetAttributeValue("r", (int)row.Attribute("r") + 1);
+                    foreach (var cell in row.Elements(ns + "c"))
+                    {
+                        string reference = (string)cell.Attribute("r");
+                        int split = 0;
+                        while (split < reference.Length && char.IsLetter(reference[split])) split++;
+                        cell.SetAttributeValue("r", reference.Substring(0, split) +
+                            (int.Parse(reference.Substring(split), System.Globalization.CultureInfo.InvariantCulture) + 1));
+                    }
+                }
+                int typeIndex = Array.IndexOf(TypeNames, name);
+                string description = typeIndex >= 0 ? TypeDescriptions[typeIndex] : "탄환 유형별 능력치와 레벨 정보를 확인합니다.";
+                if (!hasDescriptionRow)
+                    data.AddFirst(new XElement(ns + "row",
+                        new XAttribute("r", 1),
+                        new XAttribute("ht", 38),
+                        new XAttribute("customHeight", 1),
+                        new XElement(ns + "c",
+                            new XAttribute("r", "A1"),
+                            new XAttribute("s", descriptionStyle),
+                            new XAttribute("t", "inlineStr"),
+                            new XElement(ns + "is",
+                                new XElement(ns + "t",
+                                    new XAttribute(XNamespace.Xml + "space", "preserve"),
+                                    name + " — " + description)))));
+                bool usesMotifBorder = name == "저격형" || name == "경제형" || name == "혈투형";
+                if (usesMotifBorder)
+                {
+                    var titleCell = data.Elements(ns + "row").First().Elements(ns + "c").First();
+                    int titleStyle = (int?)titleCell.Attribute("s") ?? 0;
+                    titleCell.SetAttributeValue("s", clearBorder(titleStyle));
+                    foreach (var headerCell in data.Elements(ns + "row").Skip(1).First().Elements(ns + "c"))
+                    {
+                        int headerStyle = (int?)headerCell.Attribute("s") ?? 0;
+                        headerCell.SetAttributeValue("s", clearBorder(headerStyle));
+                    }
+                }
+                var mergeCells = doc.Root.Element(ns + "mergeCells");
+                if (mergeCells == null)
+                {
+                    mergeCells = new XElement(ns + "mergeCells");
+                    data.AddAfterSelf(mergeCells);
+                }
+                if (!mergeCells.Elements(ns + "mergeCell").Any(cell => (string)cell.Attribute("ref") == "A1:O1"))
+                    mergeCells.Add(new XElement(ns + "mergeCell", new XAttribute("ref", "A1:O1")));
+                mergeCells.SetAttributeValue("count", mergeCells.Elements().Count());
+                var filter = doc.Root.Element(ns + "autoFilter");
+                if (filter != null && (!hasDescriptionRow || removedDuplicateDescriptionRow))
+                {
+                    int rowDelta = hasDescriptionRow ? -1 : 1;
+                    string[] cells = ((string)filter.Attribute("ref")).Split(':');
+                    filter.SetAttributeValue("ref", string.Join(":", cells.Select(cell =>
+                    {
+                        int split = 0;
+                        while (split < cell.Length && char.IsLetter(cell[split])) split++;
+                        return cell.Substring(0, split) +
+                            (int.Parse(cell.Substring(split), System.Globalization.CultureInfo.InvariantCulture) + rowDelta);
+                    })));
+                }
                 var pane = doc.Descendants(ns + "pane").FirstOrDefault();
-                if (pane != null) { pane.SetAttributeValue("xSplit", 4); pane.SetAttributeValue("ySplit", 1); pane.SetAttributeValue("topLeftCell", "E2"); pane.SetAttributeValue("activePane", "bottomRight"); }
-                foreach (var row in data.Elements(ns + "row").Skip(1))
+                if (pane != null) { pane.SetAttributeValue("xSplit", 4); pane.SetAttributeValue("ySplit", 2); pane.SetAttributeValue("topLeftCell", "E3"); pane.SetAttributeValue("activePane", "bottomRight"); }
+                string currentGrade = "";
+                foreach (var row in data.Elements(ns + "row").Skip(2))
                 {
                     var cells = row.Elements(ns + "c").ToArray();
-                    string value = cells.FirstOrDefault(c => ((string)c.Attribute("r")).StartsWith("D"))?.Element(ns + "v")?.Value;
+                    string section = cellValue(cells.FirstOrDefault(c => ((string)c.Attribute("r")).StartsWith("B")));
+                    if (section.EndsWith(" 등급", StringComparison.Ordinal))
+                    {
+                        currentGrade = section.Substring(0, section.Length - " 등급".Length);
+                        if (sectionStyles.TryGetValue(currentGrade, out int sectionStyle))
+                            foreach (var cell in cells) cell.SetAttributeValue("s", sectionStyle);
+                        continue;
+                    }
+                    string value = cellValue(cells.FirstOrDefault(c => ((string)c.Attribute("r")).StartsWith("E")));
                     // Inline strings are used by the native exporter, shared strings by Excel.
-                    bool basic = value == "0" || cells.Any(c => ((string)c.Attribute("r")).StartsWith("D") && c.Descendants(ns + "t").Any(t => t.Value == "0"));
+                    bool basic = value == "0" || cells.Any(c => ((string)c.Attribute("r")).StartsWith("E") && c.Descendants(ns + "t").Any(t => t.Value == "0"));
+                    bool finalLevel = value == "3" || cells.Any(c => ((string)c.Attribute("r")).StartsWith("E") && c.Descendants(ns + "t").Any(t => t.Value == "3"));
                     bool hasGuid = cells.Any(c => ((string)c.Attribute("r")).StartsWith("O") && (c.Element(ns + "v") != null || c.Descendants(ns + "t").Any(t => t.Value != "")));
                     if (!hasGuid) continue;
+                    string rowGrade = cellValue(cells.FirstOrDefault(c => ((string)c.Attribute("r")).StartsWith("C")));
+                    if (rowGrade != "") currentGrade = rowGrade;
                     foreach (var cell in cells)
                     {
                         string col = new string(((string)cell.Attribute("r")).TakeWhile(char.IsLetter).ToArray());
-                        if (new[] { "E", "F", "G", "H", "I", "J", "K", "L", "N" }.Contains(col) || basic && new[] { "B", "C", "M" }.Contains(col)) cell.SetAttributeValue("s", unlock((int?)cell.Attribute("s") ?? 0));
+                        int style = (int?)cell.Attribute("s") ?? 0;
+                        if (new[] { "D", "F", "G", "H", "I", "J", "K", "L", "M" }.Contains(col) || basic && new[] { "B", "C", "N" }.Contains(col))
+                            style = unlock(style);
+                        if (gradeFills.TryGetValue(currentGrade, out int gradeFill))
+                            style = tint(style, gradeFill);
+                        if (usesMotifBorder)
+                        {
+                            style = clearBorder(style);
+                            if (name == "저격형")
+                            {
+                                bool tickColumn = new[] { "A", "B", "H", "I", "M", "N" }.Contains(col);
+                                style = decorate(style, "thin", basic && tickColumn, finalLevel && tickColumn,
+                                    col == "A", col == "N", false, false);
+                            }
+                            else if (name == "경제형")
+                            {
+                                style = decorate(style, "double", basic, finalLevel,
+                                    col == "A", col == "N", false, false);
+                            }
+                            else
+                            {
+                                bool topLeft = basic && col == "A";
+                                bool topRight = basic && col == "N";
+                                bool bottomLeft = finalLevel && col == "A";
+                                bool bottomRight = finalLevel && col == "N";
+                                style = decorate(style, "thin", basic, finalLevel,
+                                    col == "A", col == "N",
+                                    topRight || bottomLeft, topLeft || bottomRight);
+                            }
+                        }
+                        cell.SetAttributeValue("s", style);
                     }
+                }
+                var drawingReference = doc.Root.Element(ns + "drawing");
+                if (drawingReference != null && (!hasDescriptionRow || removedDuplicateDescriptionRow))
+                {
+                    int rowDelta = hasDescriptionRow ? -1 : 1;
+                    string relsPath = Path.GetDirectoryName(part).Replace('\\', '/') + "/_rels/" + Path.GetFileName(part) + ".rels";
+                    var sheetRels = read(relsPath);
+                    string drawingTarget = (string)sheetRels.Root.Elements(pkg + "Relationship")
+                        .Single(item => (string)item.Attribute("Id") == (string)drawingReference.Attribute(rel + "id"))
+                        .Attribute("Target");
+                    string drawingPart = new Uri(new Uri("https://local/" + part), drawingTarget).AbsolutePath.TrimStart('/');
+                    var drawing = read(drawingPart);
+                    foreach (var anchorRow in drawing.Descendants(XName.Get("row", "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing")))
+                        anchorRow.Value = (int.Parse(anchorRow.Value, System.Globalization.CultureInfo.InvariantCulture) + rowDelta).ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    write(drawingPart, drawing);
                 }
                 doc.Root.Element(ns + "sheetProtection")?.Remove();
                 data.AddAfterSelf(new XElement(ns + "sheetProtection", new XAttribute("sheet", 1), new XAttribute("objects", 1), new XAttribute("scenarios", 1), new XAttribute("formatColumns", 0), new XAttribute("formatRows", 0)));
@@ -188,7 +477,9 @@ public static class BulletWorkbookLayout
                 }
                 write(part, doc);
             }
-            xfs.SetAttributeValue("count", xfs.Elements().Count()); write("xl/styles.xml", styles); write("xl/workbook.xml", workbook);
+            xfs.SetAttributeValue("count", xfs.Elements().Count());
+            borders.SetAttributeValue("count", borders.Elements().Count());
+            write("xl/styles.xml", styles); write("xl/workbook.xml", workbook);
         }
     }
 }

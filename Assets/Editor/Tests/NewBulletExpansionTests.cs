@@ -86,7 +86,7 @@ public sealed class NewBulletExpansionTests
     [Test]
     public void CartoonArtwork_AndRawWorkbookIcon_AreAvailable()
     {
-        Assert.That(Shader.Find("LOADED/UI/Bullet Line Art"), Is.Not.Null);
+        Assert.That(Shader.Find("LOADED/UI/Bullet Image Frame"), Is.Not.Null);
         BulletData focused = Find("집속탄");
         string path = AssetDatabase.GetAssetPath(focused.CylinderIcon);
         Assert.That(path, Is.EqualTo(
@@ -115,10 +115,79 @@ public sealed class NewBulletExpansionTests
                 relative);
 
         string shaderSource = File.ReadAllText(
-            "Assets/Resources/Shaders/BulletIconLineArt.shader");
+            "Assets/Resources/Shaders/BulletIconImageFrame.shader");
         Assert.That(shaderSource, Does.Contain("_SpriteUvRect"));
+        Assert.That(shaderSource, Does.Contain("_FrameTex"));
         Assert.That(shaderSource, Does.Not.Contain("float sparkle"));
         Assert.That(shaderSource, Does.Not.Contain("float glint"));
+    }
+
+    [Test]
+    public void AuthoredFrameMasks_ExistForEveryBulletType()
+    {
+        string shaderSource = File.ReadAllText(
+            "Assets/Resources/Shaders/BulletIconImageFrame.shader");
+        Assert.That(shaderSource, Does.Contain("sampler2D _FrameTex"));
+        Assert.That(shaderSource, Does.Not.Contain("RingMask("));
+        Assert.That(shaderSource, Does.Not.Contain("TriangleMask("));
+
+        foreach (BulletType bulletType in System.Enum.GetValues(
+                     typeof(BulletType)))
+        {
+            string path = $"Assets/Resources/BulletFrames/{bulletType}.png";
+            Texture2D mask = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            Assert.That(mask, Is.Not.Null, path);
+            Assert.That(mask.width, Is.EqualTo(512), path);
+            Assert.That(mask.height, Is.EqualTo(512), path);
+
+            TextureImporter importer = AssetImporter.GetAtPath(path)
+                as TextureImporter;
+            Assert.That(importer, Is.Not.Null, path);
+            Assert.That(importer.mipmapEnabled, Is.False, path);
+            Assert.That(importer.wrapMode, Is.EqualTo(TextureWrapMode.Clamp),
+                path);
+            Assert.That(importer.textureCompression,
+                Is.EqualTo(TextureImporterCompression.Uncompressed), path);
+        }
+    }
+
+    [Test]
+    public void Presenter_PassesEveryBulletTypeToRuntimeFrameMaterial()
+    {
+        Texture2D texture = new Texture2D(64, 64, TextureFormat.RGBA32, false);
+        Sprite sprite = Sprite.Create(texture, new Rect(0, 0, 64, 64),
+            new Vector2(0.5f, 0.5f));
+        BulletData data = ScriptableObject.CreateInstance<BulletData>();
+        GameObject owner = new GameObject("BulletTypeFrameTest");
+        UnityEngine.UI.Image image = owner.AddComponent<UnityEngine.UI.Image>();
+        try
+        {
+            foreach (BulletType bulletType in System.Enum.GetValues(
+                         typeof(BulletType)))
+            {
+                SerializedObject serialized = new SerializedObject(data);
+                serialized.FindProperty("cylinderIcon").objectReferenceValue = sprite;
+                serialized.FindProperty("bulletType").enumValueIndex =
+                    (int)bulletType;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+
+                BulletIconPresenter.Apply(image, data, true);
+
+                Assert.That(image.material, Is.Not.Null, bulletType.ToString());
+                Assert.That(image.material.GetFloat("_TypeMode"),
+                    Is.EqualTo((float)bulletType), bulletType.ToString());
+                Assert.That(image.material.GetTexture("_FrameTex"),
+                    Is.SameAs(Resources.Load<Texture2D>(
+                        $"BulletFrames/{bulletType}")), bulletType.ToString());
+            }
+        }
+        finally
+        {
+            Object.DestroyImmediate(owner);
+            Object.DestroyImmediate(data);
+            Object.DestroyImmediate(sprite);
+            Object.DestroyImmediate(texture);
+        }
     }
 
     [Test]

@@ -40,6 +40,111 @@ public sealed class LoadedWorkbookTests
         }
     }
     [Test]
+    public void GroupedWorkbook_UsesTypeDescriptionsReadableGradeColorsAndRoundedCriticalMultipliers()
+    {
+        string path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".xlsx");
+        try
+        {
+            var book = BulletBalanceWorkbook.Export();
+            var sheet = book.Require("표준형");
+            Assert.That(
+                sheet.Rows[0].Take(5),
+                Is.EqualTo(new[] { "아이콘", "이름", "등급", "설명", "레벨" }));
+            book.Write(path);
+            BulletWorkbookLayout.ProtectViews(path);
+            using (var zip = System.IO.Compression.ZipFile.OpenRead(path))
+            {
+                System.Xml.Linq.XNamespace ns = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
+                using (var stream = zip.GetEntry("xl/worksheets/sheet2.xml").Open())
+                {
+                    var xml = System.Xml.Linq.XDocument.Load(stream);
+                    var rows = xml.Descendants(ns + "sheetData").Single().Elements(ns + "row").ToArray();
+                    Assert.That(rows[0].Descendants(ns + "t").Single().Value, Does.StartWith("표준형 — "));
+                    Assert.That(rows[1].Elements(ns + "c").ElementAt(3).Descendants(ns + "t").Single().Value, Is.EqualTo("설명"));
+                    Assert.That(rows[1].Elements(ns + "c").ElementAt(4).Descendants(ns + "t").Single().Value, Is.EqualTo("레벨"));
+                    Assert.That(xml.Descendants(ns + "mergeCell").Any(cell => (string)cell.Attribute("ref") == "A1:O1"), Is.True);
+                    Assert.That((string)xml.Descendants(ns + "pane").Single().Attribute("ySplit"), Is.EqualTo("2"));
+                    Assert.That((string)rows[3].Elements(ns + "c").ElementAt(8).Attribute("s"), Is.Not.EqualTo("0"));
+                }
+
+                using (var stream = zip.GetEntry("xl/styles.xml").Open())
+                {
+                    var styles = System.Xml.Linq.XDocument.Load(stream);
+                    var colors = styles.Descendants(ns + "fgColor").Select(color => (string)color.Attribute("rgb")).ToArray();
+                    Assert.That(colors, Does.Contain("FFF2F4F7"));
+                    Assert.That(colors, Does.Contain("FFE8F2FF"));
+                    Assert.That(colors, Does.Contain("FFFFF3D6"));
+                    Assert.That(colors, Does.Contain("FFF3E8FF"));
+                    Assert.That(styles.Descendants(ns + "numFmt").Any(format => (string)format.Attribute("formatCode") == "0.00"), Is.True);
+
+                    var motifColors = styles.Descendants(ns + "border")
+                        .SelectMany(border => border.Descendants(ns + "color"))
+                        .Select(color => (string)color.Attribute("rgb"))
+                        .ToArray();
+                    Assert.That(motifColors, Does.Contain("FF7B8490"));
+                    Assert.That(motifColors, Does.Not.Contain("FF6E83B7"));
+                    Assert.That(motifColors, Does.Not.Contain("FFC08A32"));
+                    Assert.That(motifColors, Does.Not.Contain("FFB55E68"));
+                    Assert.That(styles.Descendants(ns + "border").Any(border =>
+                        border.Elements().Any(edge => (string)edge.Attribute("style") == "double")), Is.True,
+                        "경제형의 이중 외곽선 문양이 없습니다.");
+                    Assert.That(styles.Descendants(ns + "border").Any(border =>
+                        (string)border.Attribute("diagonalUp") == "1" ||
+                        (string)border.Attribute("diagonalDown") == "1"), Is.True,
+                        "혈투형의 모서리 가시 문양이 없습니다.");
+                    var styleBorders = styles.Descendants(ns + "cellXfs").Single()
+                        .Elements(ns + "xf")
+                        .Select(style => (int?)style.Attribute("borderId") ?? 0)
+                        .ToArray();
+                    var borderDefinitions = styles.Descendants(ns + "borders").Single()
+                        .Elements(ns + "border")
+                        .ToArray();
+                    Func<int, bool> sheetUsesMotifBorder = sheetNumber =>
+                    {
+                        using (var sheetStream = zip.GetEntry("xl/worksheets/sheet" + sheetNumber + ".xml").Open())
+                        {
+                            var sheetXml = System.Xml.Linq.XDocument.Load(sheetStream);
+                            return sheetXml.Descendants(ns + "c").Any(cell =>
+                                styleBorders[(int?)cell.Attribute("s") ?? 0] != 0);
+                        }
+                    };
+                    Func<int, string, System.Xml.Linq.XElement> cellBorder = (sheetNumber, reference) =>
+                    {
+                        using (var sheetStream = zip.GetEntry("xl/worksheets/sheet" + sheetNumber + ".xml").Open())
+                        {
+                            var sheetXml = System.Xml.Linq.XDocument.Load(sheetStream);
+                            var cell = sheetXml.Descendants(ns + "c").Single(item =>
+                                (string)item.Attribute("r") == reference);
+                            int styleId = (int?)cell.Attribute("s") ?? 0;
+                            return borderDefinitions[styleBorders[styleId]];
+                        }
+                    };
+                    Assert.That(sheetUsesMotifBorder(2), Is.False, "표준형은 기존 테두리를 유지해야 합니다.");
+                    Assert.That(sheetUsesMotifBorder(4), Is.True, "저격형 테두리가 없습니다.");
+                    Assert.That(sheetUsesMotifBorder(11), Is.True, "경제형 테두리가 없습니다.");
+                    Assert.That(sheetUsesMotifBorder(13), Is.True, "혈투형 테두리가 없습니다.");
+
+                    var sniperLeft = cellBorder(4, "A4");
+                    Assert.That((string)sniperLeft.Element(ns + "left").Attribute("style"), Is.EqualTo("thin"));
+                    Assert.That((string)sniperLeft.Element(ns + "top").Attribute("style"), Is.EqualTo("thin"));
+                    Assert.That((string)cellBorder(4, "C4").Element(ns + "top")?.Attribute("style"), Is.Null,
+                        "저격형 상단선은 조준경 눈금 위치에서만 보여야 합니다.");
+                    Assert.That((string)cellBorder(4, "H4").Element(ns + "top").Attribute("style"), Is.EqualTo("thin"));
+
+                    var economyLeft = cellBorder(11, "A4");
+                    Assert.That((string)economyLeft.Element(ns + "left").Attribute("style"), Is.EqualTo("double"));
+                    Assert.That((string)economyLeft.Element(ns + "top").Attribute("style"), Is.EqualTo("double"));
+
+                    var bloodLeft = cellBorder(13, "A4");
+                    var bloodRight = cellBorder(13, "N4");
+                    Assert.That((string)bloodLeft.Attribute("diagonalDown"), Is.EqualTo("1"));
+                    Assert.That((string)bloodRight.Attribute("diagonalUp"), Is.EqualTo("1"));
+                }
+            }
+        }
+        finally { if (File.Exists(path)) File.Delete(path); }
+    }
+    [Test]
     public void GroupedWorkbook_RejectsChangingPreviewPictures()
     {
         var book = BulletBalanceWorkbook.Export();

@@ -103,7 +103,7 @@ MonoBehaviour:
       (\uCD5C\uB300 5\uD68C)."
     damage: 30
     maxRange: 6
-    criticalChance: 45
+    criticalChance: 50
     criticalDamageMultiplier: 3
     effects:
     - effectType: 36

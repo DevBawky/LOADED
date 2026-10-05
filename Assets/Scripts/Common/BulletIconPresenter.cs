@@ -29,6 +29,8 @@ public static class BulletIconPresenter
 
     private static readonly Dictionary<Key, Material> Materials =
         new Dictionary<Key, Material>();
+    private static readonly Dictionary<BulletType, Texture2D> FrameTextures =
+        new Dictionary<BulletType, Texture2D>();
     private static Shader shader;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -37,6 +39,7 @@ public static class BulletIconPresenter
         foreach (Material material in Materials.Values)
             if (material != null) Object.Destroy(material);
         Materials.Clear();
+        FrameTextures.Clear();
         shader = null;
     }
 
@@ -76,8 +79,12 @@ public static class BulletIconPresenter
             && existing != null)
             return existing;
 
-        shader ??= Shader.Find("LOADED/UI/Bullet Line Art");
+        shader ??= Shader.Find("LOADED/UI/Bullet Image Frame");
         if (shader == null)
+            return null;
+
+        Texture2D frameTexture = GetFrameTexture(type);
+        if (frameTexture == null)
             return null;
 
         Material material = new Material(shader)
@@ -90,8 +97,27 @@ public static class BulletIconPresenter
         material.SetFloat("_Motion", preview ? 0f : 1f);
         material.SetColor("_GradeColor", BulletData.GetDefaultGradeColor(grade));
         material.SetVector("_SpriteUvRect", GetSpriteUvRect(sprite));
+        material.SetTexture("_FrameTex", frameTexture);
         Materials[key] = material;
         return material;
+    }
+
+    private static Texture2D GetFrameTexture(BulletType type)
+    {
+        if (FrameTextures.TryGetValue(type, out Texture2D existing)
+            && existing != null)
+            return existing;
+
+        Texture2D texture = Resources.Load<Texture2D>(
+            $"BulletFrames/{type}");
+        if (texture != null)
+        {
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.filterMode = FilterMode.Bilinear;
+            FrameTextures[type] = texture;
+        }
+
+        return texture;
     }
 
     private static Vector4 GetSpriteUvRect(Sprite sprite)

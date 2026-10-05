@@ -157,6 +157,14 @@ public sealed class DuelClockController : MonoBehaviour
         return false;
     }
 
+    internal bool TryCommitTestCycle()
+    {
+        return waveManager != null && waveManager.IsTestBattle
+            && !hasReservedBeat
+            && TryCommitTempo(Mathf.Max(1,
+                TempoCapacity - (int)Math.Round(TempoProgress)));
+    }
+
     internal void Deactivate()
     {
         pacingMode = CombatPacingMode.Legacy;

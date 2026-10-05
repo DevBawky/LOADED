@@ -79,37 +79,37 @@ public sealed class UnderusedBulletReworkTests
     {
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Legendary/Harvest.asset",
-            "/Legendary/Bullet_Harvest_Cylinder.png");
+            "/Bullet_LineArt/Legendary/Bullet_harvest.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Ace/Return.asset",
-            "/Ace/Bullet_Return_Cylinder.png");
+            "/Bullet_LineArt/Ace/Bullet_return.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Rare/Emergency.asset",
-            "/Rare/Bullet_Emergency_Cylinder.png");
+            "/Bullet_LineArt/Rare/Bullet_emergency.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Rare/Jackpot.asset",
-            "/Rare/Bullet_Jackpot_Reworked_Cylinder.png");
+            "/Bullet_LineArt/Rare/Bullet_jackpot.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Rare/Crescendo.asset",
-            "/Rare/Bullet_Crescendo_RandomDebuff_Cylinder.png");
+            "/Bullet_LineArt/Rare/Bullet_crescendo.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Rare/Resonance.asset",
-            "/Rare/Bullet_Resonance_Reworked_Cylinder.png");
+            "/Bullet_LineArt/Rare/Bullet_resonance.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Rare/Mixed Grade.asset",
-            "/Rare/Bullet_Mixed_Reworked_Cylinder.png");
+            "/Bullet_LineArt/Rare/Bullet_mixed_grade.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Rare/Mass Produced.asset",
-            "/Rare/Bullet_MassProduced_Reworked_Cylinder.png");
+            "/Bullet_LineArt/Rare/Bullet_mass_produced.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Ace/Masterpiece.asset",
-            "/Ace/Bullet_Masterpiece_Reworked_Cylinder.png");
+            "/Bullet_LineArt/Ace/Bullet_masterpiece.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Rare/Coagulation.asset",
-            "/Rare/Bullet_Coagulation_Reworked_Cylinder.png");
+            "/Bullet_LineArt/Rare/Bullet_coagulation.png");
         AssertIconPath(
             "Assets/Scripts/Bullet/SO/Ace/Ritual.asset",
-            "/Ace/Bullet_Ritual_Reworked_Cylinder.png");
+            "/Bullet_LineArt/Ace/Bullet_ritual.png");
     }
 
     [Test]

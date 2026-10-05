@@ -120,6 +120,7 @@ public sealed class GameOverController : MonoBehaviour
 
     private void HandleGameOver(string reason)
     {
+        if (BattleTestContext.IsActive) return;
         if (handlingGameOver) return;
 
         handlingGameOver = true;

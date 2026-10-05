@@ -94,7 +94,7 @@ public sealed class BulletEffectDescriptionFormatterTests
 
             Assert.That(
                 massProducedDescription,
-                Does.Contain("일반·레어 탄환"),
+                Does.Contain("노멀·레어 탄환"),
                 $"양산탄 level {level}");
             Assert.That(
                 masterpieceDescription,

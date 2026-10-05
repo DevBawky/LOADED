@@ -155,8 +155,9 @@ public sealed class LoadedWorkbook
                         for (int c = 0; c < sheet.Rows[r].Length; c++)
                         {
                             string value = sheet.Rows[r][c] ?? "";
-                            var cell = new XElement(Main + "c", new XAttribute("r", ColumnName(c) + (r + 1)), new XAttribute("s", r == 0 ? 1 : 0));
-                            if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double numeric) && value.Length < 16 && !value.StartsWith("0") && !double.IsNaN(numeric) && !double.IsInfinity(numeric)) cell.Add(new XElement(Main + "v", value));
+                            bool criticalMultiplier = r > 0 && BulletWorkbookLayout.IsTypeSheet(sheet.Name) && sheet.Rows[0][c] == "치명타 배율";
+                            var cell = new XElement(Main + "c", new XAttribute("r", ColumnName(c) + (r + 1)), new XAttribute("s", r == 0 ? 1 : criticalMultiplier ? 2 : 0));
+                            if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double numeric) && (criticalMultiplier || value.Length < 16) && !value.StartsWith("0") && !double.IsNaN(numeric) && !double.IsInfinity(numeric)) cell.Add(new XElement(Main + "v", value));
                             else { cell.SetAttributeValue("t", "inlineStr"); cell.Add(new XElement(Main + "is", new XElement(Main + "t", new XAttribute(XNamespace.Xml + "space", "preserve"), value))); }
                             row.Add(cell);
                         }
@@ -194,7 +195,7 @@ public sealed class LoadedWorkbook
                 Put(zip, "xl/_rels/workbook.xml.rels", relationships);
                 Put(zip, "_rels/.rels", new XElement(Pkg + "Relationships", Relationship("rId1", "officeDocument", "xl/workbook.xml")));
                 Put(zip, "[Content_Types].xml", types);
-                Put(zip, "xl/styles.xml", XElement.Parse("<styleSheet xmlns='" + Main + "'><fonts count='2'><font><sz val='11'/><name val='Malgun Gothic'/></font><font><b/><color rgb='FFFFFFFF'/><sz val='11'/><name val='Malgun Gothic'/></font></fonts><fills count='3'><fill><patternFill patternType='none'/></fill><fill><patternFill patternType='gray125'/></fill><fill><patternFill patternType='solid'><fgColor rgb='FF28364B'/><bgColor indexed='64'/></patternFill></fill></fills><borders count='1'><border/></borders><cellStyleXfs count='1'><xf numFmtId='0' fontId='0' fillId='0' borderId='0'/></cellStyleXfs><cellXfs count='2'><xf numFmtId='0' fontId='0' fillId='0' borderId='0' xfId='0' applyAlignment='1'><alignment vertical='top' wrapText='1'/></xf><xf numFmtId='0' fontId='1' fillId='2' borderId='0' xfId='0' applyAlignment='1'><alignment vertical='center' wrapText='1'/></xf></cellXfs></styleSheet>"));
+                Put(zip, "xl/styles.xml", XElement.Parse("<styleSheet xmlns='" + Main + "'><numFmts count='1'><numFmt numFmtId='164' formatCode='0.00'/></numFmts><fonts count='2'><font><sz val='11'/><name val='Malgun Gothic'/></font><font><b/><color rgb='FFFFFFFF'/><sz val='11'/><name val='Malgun Gothic'/></font></fonts><fills count='3'><fill><patternFill patternType='none'/></fill><fill><patternFill patternType='gray125'/></fill><fill><patternFill patternType='solid'><fgColor rgb='FF28364B'/><bgColor indexed='64'/></patternFill></fill></fills><borders count='1'><border/></borders><cellStyleXfs count='1'><xf numFmtId='0' fontId='0' fillId='0' borderId='0'/></cellStyleXfs><cellXfs count='3'><xf numFmtId='0' fontId='0' fillId='0' borderId='0' xfId='0' applyAlignment='1'><alignment vertical='top' wrapText='1'/></xf><xf numFmtId='0' fontId='1' fillId='2' borderId='0' xfId='0' applyAlignment='1'><alignment vertical='center' wrapText='1'/></xf><xf numFmtId='164' fontId='0' fillId='0' borderId='0' xfId='0' applyNumberFormat='1' applyAlignment='1'><alignment vertical='top' wrapText='1'/></xf></cellXfs></styleSheet>"));
             }
             if (File.Exists(path)) File.Replace(temporary, path, null); else File.Move(temporary, path);
             if (Sheets.Any(s => s.Name == "아이콘")) BulletWorkbookLayout.ProtectViews(path);

@@ -215,6 +215,19 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         statusEffects?.RestoreRunState(state);
     }
 
+    internal void SetTestHealth(int health, int maximum)
+    {
+        if (!BattleTestContext.IsActive) return;
+        maxHealth = Mathf.Max(1, maximum);
+        int previousHealth = currentHealth;
+        SetCurrentHealth(Mathf.Clamp(health, 0, maxHealth));
+        if (previousHealth == currentHealth)
+        {
+            RefreshUI();
+            HealthChanged?.Invoke(currentHealth, maxHealth);
+        }
+    }
+
     private void SetCurrentHealth(int health)
     {
         int previousHealth = currentHealth;
@@ -236,6 +249,11 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
 
     private int ResolveDamageTargetHealth(int damage)
     {
+        if (BattleTestContext.IsActive && BattleTestContext.Invulnerable)
+        {
+            return currentHealth;
+        }
+
         if (damage <= 0)
         {
             return currentHealth;

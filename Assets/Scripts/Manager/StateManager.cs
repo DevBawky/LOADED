@@ -300,6 +300,11 @@ public class StateManager : MonoBehaviour
 
     public bool SaveCurrentRun()
     {
+        if (BattleTestContext.IsActive)
+        {
+            return false;
+        }
+
         bool isBattle = currentState == GameFlowState.Battle;
         bool isBattleClear = currentState == GameFlowState.BattleClear;
         bool isShop = currentState == GameFlowState.Shop;

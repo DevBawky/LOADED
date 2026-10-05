@@ -245,6 +245,11 @@ public static class GameStatistics
 
     public static void SaveCheckpoint()
     {
+        if (BattleTestContext.IsActive)
+        {
+            return;
+        }
+
         EnsureLoaded();
 
         if (!dirty)
@@ -260,7 +265,7 @@ public static class GameStatistics
     private static bool CanRecord()
     {
         EnsureLoaded();
-        return runActive;
+        return runActive && !BattleTestContext.IsActive;
     }
 
     private static void EnsureLoaded()

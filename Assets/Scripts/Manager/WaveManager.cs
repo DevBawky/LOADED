@@ -107,6 +107,9 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         new List<GameObject>();
     private int maximumActiveEnemyCount = 1;
     private bool finalDefeatPresented;
+    private bool isTestBattle;
+    internal bool TestAutomaticTurns { get; set; } = true;
+    internal bool IsTestBattle => isTestBattle;
     private readonly DuelClockEnemySpawnPool duelClockEnemySpawnPool =
         new DuelClockEnemySpawnPool();
     private DuelClockEnemySpawnEntry[] duelClockSpawnEntries =
@@ -606,6 +609,109 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         ResetBattleRuntime();
     }
 
+    internal bool BeginTestBattle(BattleData environment)
+    {
+        if (!BattleTestContext.IsActive || environment == null
+            || !ValidateReferences())
+        {
+            return false;
+        }
+
+        ResetBattleRuntime();
+        isTestBattle = true;
+        waves = Array.Empty<EnemyWave>();
+        maximumActiveEnemyCount = Mathf.Max(0, boardManager.TotalTileCount - 1);
+        playerMove.SetWaveManager(this);
+        playerMove.ResetKickCooldownForBattle();
+        EnsureBossBombManager();
+        bossBombManager.ResumeForBattle();
+        ConfigureCombatPacingFresh(environment, CombatPacingMode.DuelClock);
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    internal bool TrySpawnTestEnemy(
+        EnemyData data, int tile, int lane, out EnemyController enemy)
+    {
+        enemy = null;
+        if (!isTestBattle || IsResolvingTurn || playerMove.IsActing
+            || playerMove.IsShooting
+            || !TrySpawnEnemy(data, tile, lane, out enemy))
+        {
+            return false;
+        }
+
+        bossBombManager.ResumeForBattle();
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    internal bool TryRemoveTestEnemy(EnemyController enemy)
+    {
+        if (!isTestBattle || IsResolvingTurn || playerMove.IsActing
+            || playerMove.IsShooting || enemy == null
+            || !activeEnemies.Remove(enemy))
+        {
+            return false;
+        }
+
+        enemy.Defeated -= HandleEnemyDefeated;
+        ReleaseMovementTiles(enemy);
+        enemy.gameObject.SetActive(false);
+        Destroy(enemy.gameObject);
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    internal bool TryStepTestBattle()
+    {
+        if (!isTestBattle || IsResolvingTurn || playerMove.IsActing
+            || playerMove.IsShooting || playerHealth.IsDefeated)
+        {
+            return false;
+        }
+
+        bool automatic = TestAutomaticTurns;
+        TestAutomaticTurns = true;
+        bool accepted = duelClockController.TryCommitTestCycle();
+        TestAutomaticTurns = automatic;
+        return accepted;
+    }
+
+    internal bool RestoreTestBattle(
+        BattleData environment, RunSaveData state, Func<string, EnemyData> resolver)
+    {
+        if (state == null || resolver == null || !BeginTestBattle(environment))
+        {
+            return false;
+        }
+
+        foreach (RunEnemySaveData saved in state.enemies)
+        {
+            if (!TrySpawnEnemy(resolver(saved.enemyAssetName),
+                    saved.tileIndex, saved.laneIndex, out _))
+            {
+                BeginTestBattle(environment);
+                return false;
+            }
+        }
+
+        for (int index = 0; index < state.enemies.Count; index++)
+        {
+            RunEnemySaveData saved = state.enemies[index];
+            int support = saved.preparedSupportTargetIndex;
+            activeEnemies[index].RestoreRunState(saved,
+                support >= 0 && support < activeEnemies.Count
+                    ? activeEnemies[support] : null);
+        }
+
+        currentEnemyTurnCycle = Mathf.Max(0, state.currentEnemyTurnCycle);
+        ConfigureCombatPacingRestored(environment, CombatPacingMode.DuelClock, state);
+        bool restored = bossBombManager.RestoreRunState(state.bombs, resolver);
+        StateChanged?.Invoke();
+        return restored;
+    }
+
     public bool IsTileOccupied(int tileIndex, EnemyController ignoredEnemy = null)
     {
         return IsTileOccupied(tileIndex, 0, ignoredEnemy);
@@ -1068,6 +1174,12 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 
     private void HandleDuelClockBeatsCommitted(long beatCount)
     {
+        if (isTestBattle && !TestAutomaticTurns)
+        {
+            duelClockController.HandleEnemyCycleCompleted();
+            return;
+        }
+
         if (combatPacingMode == CombatPacingMode.DuelClock)
         {
             long queuedBeatCount = QueueEnemyTurnCycles(beatCount);
@@ -2017,6 +2129,12 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 
     private void CompleteBattle()
     {
+        if (isTestBattle)
+        {
+            isBattleCompletionPending = false;
+            return;
+        }
+
         if (isBattleCompleted)
         {
             return;
@@ -2105,6 +2223,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 
     private void ResetBattleRuntime()
     {
+        isTestBattle = false;
         finalDefeatPresented = false;
         attackHover.Clear();
         ClearSpawnWarnings();

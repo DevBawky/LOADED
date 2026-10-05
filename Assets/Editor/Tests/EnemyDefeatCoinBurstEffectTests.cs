@@ -54,10 +54,10 @@ public sealed class EnemyDefeatCoinBurstEffectTests
         SerializedObject serializedFeedback = new SerializedObject(feedback);
         Assert.That(
             serializedEffect.FindProperty("playbackSpeed").floatValue,
-            Is.EqualTo(1f).Within(0.0001f));
+            Is.EqualTo(2f).Within(0.0001f));
         Assert.That(
             serializedEffect.FindProperty("rootScale").floatValue,
-            Is.EqualTo(1f).Within(0.0001f));
+            Is.EqualTo(1.2f).Within(0.0001f));
         Assert.That(
             serializedFeedback.FindProperty("defeatCoinBurstPrefab")
                 .objectReferenceValue,
