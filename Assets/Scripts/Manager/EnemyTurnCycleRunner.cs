@@ -29,11 +29,18 @@ internal sealed class EnemyTurnCycleRunner
         List<EnemyController> attacks = new List<EnemyController>();
         float turnStartedAt = Time.time;
 
-        // Classify before any turn runs: preparing an attack this cycle must
-        // not also execute it when the attack pass begins.
+        // Freeze every plan before any action/status damage changes the board.
+        // Normally these were committed during the player's planning phase.
+        foreach (EnemyController enemy in enemiesThisTurn)
+            if (CanAct(runtime, enemy)) enemy.CommitTurnIntent();
+
         foreach (EnemyController enemy in enemiesThisTurn)
         {
-            if (enemy == null)
+            if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
+            {
+                yield break;
+            }
+            if (!CanAct(runtime, enemy))
             {
                 continue;
             }
@@ -49,19 +56,10 @@ internal sealed class EnemyTurnCycleRunner
                 concurrentActions.Add(enemy);
             }
         }
-
-        // Queue reveals, preparation, support and movement all start in the
-        // same frame, retaining spawn order for reservations and decisions.
         foreach (EnemyController enemy in concurrentActions)
         {
-            if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
-            {
-                yield break;
-            }
-            if (CanAct(runtime, enemy))
-            {
-                enemy.TakeTurn();
-            }
+            if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated) yield break;
+            if (CanAct(runtime, enemy)) enemy.TakeTurn();
         }
         // Settle movement once so attacks never target intermediate positions.
         yield return WaitForEnemyActions(runtime, concurrentActions);
@@ -83,6 +81,9 @@ internal sealed class EnemyTurnCycleRunner
             }
             enemy.TakeTurn();
             yield return WaitForEnemyAction(runtime, enemy);
+            // A dead thrower no longer acts, but its projectile still owns an
+            // impact and dodge window. Settle that attack before starting another.
+            yield return WaitForDetachedEnemyAttacks(runtime);
             if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
             {
                 yield break;
@@ -91,18 +92,26 @@ internal sealed class EnemyTurnCycleRunner
                     enemy == null
                         ? EnemyTurnActionType.None
                         : enemy.LastTurnAction,
-                    enemyIndex < attacks.Count - 1))
+                    HasFollowingEnemy(runtime, attacks, enemyIndex + 1)))
             {
-                yield return WaitForTurnTime(actionInterval);
+                yield return WaitForTurnTime(runtime, actionInterval);
             }
         }
 
         yield return WaitForDetachedEnemyAttacks(runtime);
+        if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
+        {
+            yield break;
+        }
 
         float remainingTurnDelay = Mathf.Max(
             0f,
             minimumTurnDuration - (Time.time - turnStartedAt));
-        yield return WaitForTurnTime(remainingTurnDelay);
+        yield return WaitForTurnTime(runtime, remainingTurnDelay);
+        if (runtime.IsBattleCompleted || runtime.IsPlayerDefeated)
+        {
+            yield break;
+        }
 
         runtime.RemoveMissingEnemies();
         runtime.ProcessBossBombs(enemyTurnCycle);
@@ -147,11 +156,28 @@ internal sealed class EnemyTurnCycleRunner
         return false;
     }
 
-    private static IEnumerator WaitForTurnTime(float duration)
+    private static bool HasFollowingEnemy(
+        IEnemyTurnCycleRuntime runtime,
+        IReadOnlyList<EnemyController> enemies,
+        int startIndex)
+    {
+        for (int index = startIndex; index < enemies.Count; index++)
+        {
+            if (CanAct(runtime, enemies[index]))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static IEnumerator WaitForTurnTime(
+        IEnemyTurnCycleRuntime runtime, float duration)
     {
         float elapsedTime = 0f;
 
-        while (elapsedTime < duration)
+        while (elapsedTime < duration
+               && !runtime.IsBattleCompleted && !runtime.IsPlayerDefeated)
         {
             yield return null;
 

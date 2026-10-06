@@ -68,6 +68,7 @@ public class BossBomb : MonoBehaviour
         createdTurnCycle = turnCycle;
         isExploding = false;
         EnsureFallbackVisuals();
+        PlaceVisualAboveGround();
         RefreshFuseText();
 
         if (remainingFuse == 1)
@@ -228,6 +229,28 @@ public class BossBomb : MonoBehaviour
         }
     }
 
+    private void PlaceVisualAboveGround()
+    {
+        // Board positions describe the floor, while the bomb sprite has a
+        // centered pivot. Match the actors' camera-facing material and keep
+        // the complete sprite above the depth-writing terrain.
+        BattleSpriteBillboard billboard = GetComponent<BattleSpriteBillboard>();
+        if (billboard == null) billboard = gameObject.AddComponent<BattleSpriteBillboard>();
+        billboard.SetTargetCamera(Camera.main);
+        if (manager.BoardManager != null && manager.BoardManager.TryGetTilePosition(
+            tileIndex, laneIndex, out Vector3 ground))
+        {
+            transform.position += Vector3.up * (ground.y + 0.03f - bombRenderer.bounds.min.y);
+            bombRenderer.sortingOrder = EnemyController.CalculateLaneSortingOrder(
+                laneIndex, manager.BoardManager.LaneCount) + 2;
+        }
+        if (fuseText is TextMeshPro textMesh)
+        {
+            textMesh.sortingLayerID = bombRenderer.sortingLayerID;
+            textMesh.sortingOrder = bombRenderer.sortingOrder + 2;
+        }
+    }
+
     private void CreateExplosionRangeTelegraph()
     {
         if (hasRangeWarning || (remainingFuse != 1 && !isExploding) || manager == null
@@ -237,6 +260,8 @@ public class BossBomb : MonoBehaviour
         }
 
         BoardManager board = manager.BoardManager;
+        if (board.TryGetTilePosition(tileIndex, laneIndex, out Vector3 origin))
+            board.SetWarningOrigin(this, origin);
         int radius = sourceData.BigBarrel.BombExplosionRadius;
         int firstTile = Mathf.Max(0, tileIndex - radius);
         int lastTile = Mathf.Min(board.BoardCount - 1, tileIndex + radius);

@@ -47,6 +47,7 @@ internal sealed class EnemyThrownProjectileFlight
     public bool HasReachedDodgeWindow =>
         elapsedTime >= dodgeWindowStartTime;
     public Vector3 CurrentPosition => CalculatePosition();
+    public float Progress => duration <= 0f ? 1f : Mathf.Clamp01(elapsedTime / duration);
 
     public EnemyThrownProjectileFrame Advance(float deltaTime)
     {
@@ -142,6 +143,11 @@ internal sealed class EnemyThrownAttackRuntime
         {
             if (boardManager != null && projectile != null)
             {
+                Vector3 origin = flight.CurrentPosition;
+                if (source != null
+                    && boardManager.TryGetTileIndex(source.transform.position, source.CurrentLaneIndex, out int tile)
+                    && boardManager.TryGetTilePosition(tile, source.CurrentLaneIndex, out Vector3 floor)) origin = floor;
+                boardManager.SetWarningOrigin(projectile.transform, origin);
                 boardManager.SetTileWarningActive(targetTileIndex,
                     targetLaneIndex, projectile.transform, true);
             }
@@ -158,6 +164,7 @@ internal sealed class EnemyThrownAttackRuntime
                 }
 
                 dodgeWindowStarted = true;
+                SoundManager.PlayEnemyAttackWarning();
                 if (boardManager != null && projectile != null)
                 {
                     boardManager.SetWarningUrgent(projectile.transform, true);
@@ -181,6 +188,8 @@ internal sealed class EnemyThrownAttackRuntime
 
                 EnemyThrownProjectileFrame frame = flight.Advance(
                     Time.deltaTime);
+                if (boardManager != null && projectile != null)
+                    boardManager.SetWarningProgress(projectile.transform, flight.Progress);
 
                 if (frame.ReachedDodgeWindow)
                 {
@@ -203,6 +212,8 @@ internal sealed class EnemyThrownAttackRuntime
 
             BeginDodgeWindow();
             TryConfirmPlayerDodge(dodgeState, ref dodgeResolution);
+            if (projectile != null)
+                boardManager?.SetWarningProgress(projectile.transform, 1f);
             ResolvePlayerDodgeAtImpact(
                 dodgeState,
                 ref dodgeResolution);

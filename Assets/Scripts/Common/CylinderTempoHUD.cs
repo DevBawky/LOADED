@@ -65,9 +65,16 @@ public sealed class CylinderTempoHUD : MonoBehaviour
     private bool wasCycleReserved;
     private bool isEnemyPhase;
     private float phasePulseElapsed;
+    private TMP_Text reinforcementText;
 
     private void Awake()
     {
+        // Keep phase/count bindings while retiring the six-slot cost meter.
+        foreach (Image slot in tempoImages)
+        {
+            if (slot != null) slot.gameObject.SetActive(false);
+        }
+        CreateReinforcementLabel();
         restScale = transform.localScale;
         CapturePhaseRestState();
         CreateSlotMaterials();
@@ -176,6 +183,7 @@ public sealed class CylinderTempoHUD : MonoBehaviour
     private void HandleTempoStateChanged()
     {
         AnimateToCurrentTempo();
+        RefreshEnemyCounts();
     }
 
     private void HandleWaveStateChanged()
@@ -203,7 +211,7 @@ public sealed class CylinderTempoHUD : MonoBehaviour
             0f,
             DuelClockController.TempoCapacity);
         bool cycleReserved = tempoController.IsTempoCycleReserved;
-        bool shouldPulse = cycleReserved && !wasCycleReserved;
+        bool shouldPulse = false;
 
         ApplyTempoImmediately(targetTempo);
         ApplyPhasePresentation(cycleReserved);
@@ -428,6 +436,7 @@ public sealed class CylinderTempoHUD : MonoBehaviour
 
     private void RefreshEnemyCounts()
     {
+        RefreshReinforcementLabel();
         int remainingSpawnCount = waveManager == null
             ? 0
             : waveManager.RemainingUnspawnedEnemyCount;
@@ -450,6 +459,49 @@ public sealed class CylinderTempoHUD : MonoBehaviour
                 leftEnemyFormat,
                 livingEnemyCount);
         }
+    }
+
+    private void CreateReinforcementLabel()
+    {
+        if (reinforcementText != null || phaseText == null) return;
+        var oldLayout = transform.Find("Layout | Tempo") as RectTransform;
+        if (oldLayout == null) return;
+        var label = new GameObject("Text | Reinforcement", typeof(RectTransform), typeof(TextMeshProUGUI));
+        label.transform.SetParent(oldLayout.parent, false);
+        var rect = (RectTransform)label.transform;
+        rect.anchorMin = oldLayout.anchorMin;
+        rect.anchorMax = oldLayout.anchorMax;
+        rect.pivot = oldLayout.pivot;
+        rect.anchoredPosition = oldLayout.anchoredPosition;
+        rect.sizeDelta = oldLayout.sizeDelta;
+        reinforcementText = label.GetComponent<TextMeshProUGUI>();
+        reinforcementText.font = phaseText.font;
+        reinforcementText.fontSharedMaterial = phaseText.fontSharedMaterial;
+        reinforcementText.fontSize = 22f;
+        reinforcementText.alignment = TextAlignmentOptions.Center;
+        reinforcementText.raycastTarget = false;
+        reinforcementText.textWrappingMode = TextWrappingModes.NoWrap;
+    }
+
+    private void RefreshReinforcementLabel()
+    {
+        if (reinforcementText == null) return;
+        bool visible = waveManager != null && waveManager.PacingMode == CombatPacingMode.DuelClock;
+        reinforcementText.gameObject.SetActive(visible);
+        if (!visible) return;
+        reinforcementText.text = FormatReinforcementLabel(
+            waveManager.HasRemainingEnemiesToSpawn,
+            waveManager.IsActiveEnemyLimitReached,
+            waveManager.ActionsUntilReinforcement);
+        reinforcementText.color = !waveManager.HasRemainingEnemiesToSpawn || waveManager.IsActiveEnemyLimitReached
+            ? new Color(0.7f, 0.75f, 0.8f) : new Color(1f, 0.8f, 0.4f);
+    }
+
+    internal static string FormatReinforcementLabel(bool hasRemaining, bool atCapacity, int actions)
+    {
+        if (!hasRemaining) return "증원 완료";
+        return atCapacity ? $"증원 일시정지 · {actions}행동"
+            : $"다음 증원 · {actions}행동";
     }
 
 }

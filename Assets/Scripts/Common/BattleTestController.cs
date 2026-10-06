@@ -213,7 +213,7 @@ public sealed class BattleTestController : MonoBehaviour
             throw new ArgumentException("해당 칸에 적이 있습니다.");
         PlacePlayer(tile, lane, player.transform.localScale.x >= 0,
             player.TurnCount, player.NextPushAvailableTurn);
-        return "플레이어를 이동했습니다. 템포와 이동 효과에는 영향을 주지 않습니다.";
+        return "플레이어를 이동했습니다. 행동 횟수와 이동 효과에는 영향을 주지 않습니다.";
     }
 
     internal string SetHealth(int current, int maximum)
@@ -285,7 +285,7 @@ public sealed class BattleTestController : MonoBehaviour
             throw new InvalidOperationException("실린더가 가득 찼습니다.");
         deck.QueueBulletForNextReload(order);
         deck.TryReload();
-        return "템포 소모 없이 장전했습니다. 마지막에 장전한 탄환부터 발사합니다.";
+        return "행동 소모 없이 장전했습니다. 마지막에 장전한 탄환부터 발사합니다.";
     }
 
     internal string FillCylinder()
@@ -293,7 +293,7 @@ public sealed class BattleTestController : MonoBehaviour
         RequireIdle();
         int loaded = 0;
         while (loaded < deck.MaxReloadAmount && deck.TryReload()) loaded++;
-        return $"템포 소모 없이 {loaded}발을 장전했습니다.";
+        return $"행동 소모 없이 {loaded}발을 장전했습니다.";
     }
 
     internal string AddRelic(RelicData data)
@@ -452,7 +452,7 @@ public sealed class BattleTestController : MonoBehaviour
     {
         RequireIdle();
         waves.TestAutomaticTurns = value;
-        return value ? "적 행동을 자동으로 진행합니다. 실린더 템포를 사용합니다." : "적 행동을 수동으로 진행합니다. F3으로 한 사이클씩 진행할 수 있습니다.";
+        return value ? "적 행동을 자동으로 진행합니다. 행동 기반 전투를 사용합니다." : "적 행동을 수동으로 진행합니다. F3으로 한 사이클씩 진행할 수 있습니다.";
     }
 
     internal string Step()

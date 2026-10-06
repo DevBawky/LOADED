@@ -41,6 +41,8 @@ public sealed class SoundManager : MonoBehaviour
     private AudioClip lastKnownBgmClip;
     private float nextPenetrationAccentTime;
     private float nextOverkillAccentTime;
+    private float nextEnemyPreparationWarningTime;
+    private float nextEnemyAttackWarningTime;
     private int defeatCueGeneration;
     private int lastKnownBgmTimeSamples;
     private SoundtrackDirector soundtrackDirector;
@@ -66,6 +68,8 @@ public sealed class SoundManager : MonoBehaviour
         LoadVolumePreferences();
         EnsureAudioSources();
         PreloadDefeatSfx();
+        PreloadFixedSfx("SFX_EnemyReady");
+        PreloadFixedSfx("SFX_EnemyAttackWarning");
         soundtrackDirector = new SoundtrackDirector(this);
         uiButtonFeedbackInstaller = new UiButtonFeedbackInstaller();
     }
@@ -150,6 +154,20 @@ public sealed class SoundManager : MonoBehaviour
             volume * (fullCylinder ? 0.42f : 0.2f), mixerGroup);
     }
     public static void PlayHit() => PlaySfx("SFX_Player_Hit");
+
+    internal static void PlayEnemyPreparationWarning()
+    {
+        SoundManager manager = Instance;
+        manager.PlayCombatAccent("SFX_EnemyReady", 1f, 0.5f,
+            ref manager.nextEnemyPreparationWarningTime);
+    }
+
+    internal static void PlayEnemyAttackWarning()
+    {
+        SoundManager manager = Instance;
+        manager.PlayCombatAccent("SFX_EnemyAttackWarning", 1f, 0.5f,
+            ref manager.nextEnemyAttackWarningTime);
+    }
 
     public static void PlaySfx(string id)
     {

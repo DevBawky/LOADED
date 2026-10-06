@@ -96,6 +96,106 @@ public sealed class EnemyTurnSchedulingTests
         Assert.That(runtime.BombPasses, Is.Zero);
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BattleEndCancelsMinimumDelayWithoutProcessingBombs(bool defeated)
+    {
+        var stepper = new Stepper(new EnemyTurnCycleRunner().Resolve(runtime, 1, 100f, 0f));
+        Assert.That(stepper.NextFrame(), Is.True);
+        runtime.IsPlayerDefeated = defeated;
+        runtime.IsBattleCompleted = !defeated;
+        Assert.That(stepper.NextFrame(), Is.False);
+        Assert.That(runtime.BombPasses, Is.Zero);
+    }
+
+    [Test]
+    public void RemovedFollowingAttackDoesNotAddAnInterval()
+    {
+        var first = Enemy("first", true);
+        var removed = Enemy("removed", true);
+        var stepper = new Stepper(new EnemyTurnCycleRunner().Resolve(runtime, 1, 0f, 100f));
+        Assert.That(stepper.NextFrame(), Is.True);
+        Set(first, "lastTurnAction", EnemyTurnActionType.Fire);
+        Set(first, "isActing", false);
+        runtime.Enemies.Remove(removed);
+        Assert.That(stepper.NextFrame(), Is.False);
+        Assert.That(started, Is.EqualTo(new[] { "first" }));
+        Assert.That(runtime.BombPasses, Is.EqualTo(1));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BattleEndCancelsAttackInterval(bool defeated)
+    {
+        var first = Enemy("first", true);
+        Enemy("next", true);
+        var stepper = new Stepper(new EnemyTurnCycleRunner().Resolve(runtime, 1, 0f, 100f));
+        Assert.That(stepper.NextFrame(), Is.True);
+        Set(first, "lastTurnAction", EnemyTurnActionType.Fire);
+        Set(first, "isActing", false);
+        Assert.That(stepper.NextFrame(), Is.True);
+        runtime.IsPlayerDefeated = defeated;
+        runtime.IsBattleCompleted = !defeated;
+        Assert.That(stepper.NextFrame(), Is.False);
+        Assert.That(started, Is.EqualTo(new[] { "first" }));
+        Assert.That(runtime.BombPasses, Is.Zero);
+    }
+
+    [Test]
+    public void DeadThrowersProjectileSettlesBeforeNextAttack()
+    {
+        var thrower = Enemy("thrower", true);
+        var next = Enemy("next", true);
+        var stepper = new Stepper(new EnemyTurnCycleRunner().Resolve(runtime, 1, 0f, 0f));
+        Assert.That(stepper.NextFrame(), Is.True);
+        runtime.HasPendingDetachedEnemyAttacks = true;
+        runtime.Enemies.Remove(thrower);
+        Assert.That(stepper.NextFrame(), Is.True);
+        Assert.That(started, Is.EqualTo(new[] { "thrower" }));
+        runtime.HasPendingDetachedEnemyAttacks = false;
+        Assert.That(stepper.NextFrame(), Is.True);
+        Assert.That(started, Is.EqualTo(new[] { "thrower", "next" }));
+        Set(next, "isActing", false);
+        Assert.That(stepper.NextFrame(), Is.False);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BattleEndDuringDetachedAttackDoesNotProcessBombs(bool defeated)
+    {
+        runtime.HasPendingDetachedEnemyAttacks = true;
+        var stepper = new Stepper(new EnemyTurnCycleRunner().Resolve(runtime, 1, 0f, 0f));
+        Assert.That(stepper.NextFrame(), Is.True);
+        runtime.IsPlayerDefeated = defeated;
+        runtime.IsBattleCompleted = !defeated;
+        Assert.That(stepper.NextFrame(), Is.False);
+        Assert.That(runtime.BombPasses, Is.Zero);
+    }
+
+    [Test]
+    public void ActionsAreClassifiedBeforeConcurrentActionsChangeTheBoard()
+    {
+        var mover = Enemy("moving", false);
+        var newlyAvailable = Enemy("new attack", false);
+        var existing = Enemy("existing attack", true);
+        // A synchronous status death or reservation change can open a firing
+        // lane while earlier enemies are starting their concurrent actions.
+        mover.TurnActionCompleted += (_, _) => Set(newlyAvailable, "isAttackPrepared", true);
+        var stepper = new Stepper(new EnemyTurnCycleRunner().Resolve(runtime, 1, 0f, 0f));
+
+        Assert.That(stepper.NextFrame(), Is.True);
+        Assert.That(started, Is.EqualTo(new[] { "moving", "new attack" }));
+        Set(mover, "isActing", false);
+        Assert.That(stepper.NextFrame(), Is.True);
+        Assert.That(started, Is.EqualTo(new[] { "moving", "new attack" }));
+        Set(newlyAvailable, "isActing", false);
+        Assert.That(stepper.NextFrame(), Is.True);
+        Assert.That(started, Is.EqualTo(new[] { "moving", "new attack", "existing attack" }));
+        Set(existing, "isActing", false);
+        Assert.That(stepper.NextFrame(), Is.False);
+        Assert.That(runtime.BombPasses, Is.EqualTo(1));
+    }
+
     private EnemyController Enemy(string name, bool prepared)
     {
         var go = new GameObject(name);
@@ -144,7 +244,7 @@ public sealed class EnemyTurnSchedulingTests
         public IReadOnlyList<EnemyController> ActiveEnemies => Enemies;
         public bool IsBattleCompleted { get; set; }
         public bool IsPlayerDefeated { get; set; }
-        public bool HasPendingDetachedEnemyAttacks => false;
+        public bool HasPendingDetachedEnemyAttacks { get; set; }
         public bool IsResolvingBossBombExplosions => false;
         public int BombPasses { get; private set; }
         public void RemoveMissingEnemies() { }

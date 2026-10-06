@@ -891,7 +891,7 @@ public class EnemyTileTelegraphTests
 
     [TestCase(1, 3, 4)]
     [TestCase(-1, 0, 1)]
-    public void GunnerColorsOnlyFacingTilesInItsLaneWithoutLineMaterial(
+    public void GunnerShowsFacingTilesOnlyWhenAiming(
         int direction, int first, int last)
     {
         EnemyController enemy = CreateEnemy(EnemyBehaviorType.Gunner);
@@ -899,6 +899,8 @@ public class EnemyTileTelegraphTests
         Place(enemy, 2, 1);
         enemy.transform.localScale = new Vector3(direction, 1f, 1f);
         Invoke(enemy, "RefreshAttackTelegraph");
+        AssertCells(-1);
+        BeginAim(enemy);
         AssertCells(1, first, last);
         Assert.That(enemy.GetComponentsInChildren<LineRenderer>(), Is.Empty);
         Invoke(enemy, "HideAttackTelegraph");
@@ -909,7 +911,7 @@ public class EnemyTileTelegraphTests
     [TestCase(-1, 1, 1)]
     [TestCase(1, 2, 3, 4)]
     [TestCase(1, 0)]
-    public void MeleeUsesQueuedAttackRangeAndOnlyShowsPreparedFacingCells(
+    public void MeleeAimUsesAttackRangeAndRemainsFixedUntilCancelled(
         int direction, int range, params int[] expected)
     {
         EnemyController enemy = CreateEnemy(EnemyBehaviorType.Melee);
@@ -927,11 +929,13 @@ public class EnemyTileTelegraphTests
         AssertCells(-1);
         SetField(enemy, "isAttackPrepared", true);
         Invoke(enemy, "LateUpdate");
+        AssertCells(-1);
+        BeginAim(enemy, attack);
         AssertCells(1, expected);
         Assert.That(enemy.GetComponentsInChildren<LineRenderer>(), Is.Empty);
         Place(enemy, direction > 0 ? 4 : 0, 0);
         Invoke(enemy, "LateUpdate");
-        AssertCells(-1);
+        AssertCells(1, expected);
         Invoke(enemy, "OnDisable");
         AssertCells(-1);
     }
@@ -957,17 +961,21 @@ public class EnemyTileTelegraphTests
     }
 
     [Test]
-    public void ShotgunRefreshMovesWarningsToNewLaneAndClipsMissingCorner()
+    public void ShotgunAimCoversEntireLaneExceptBossCell()
     {
         EnemyController enemy = CreateEnemy(EnemyBehaviorType.BigBarrel);
         var step = typeof(EnemyController).GetField("bigBarrelStep", PrivateInstance);
         step.SetValue(enemy, System.Enum.Parse(step.FieldType, "ExecuteShotgun"));
         Place(enemy, 2, 1);
         Invoke(enemy, "RefreshPreparedShotgunAfterPositionChange");
-        AssertCells(1, 1, 3);
+        AssertCells(-1);
+        BeginAim(enemy);
+        AssertCells(1, 0, 1, 3, 4);
+        Invoke(enemy, "HideAttackTelegraph");
         Place(enemy, 0, 0);
         Invoke(enemy, "RefreshPreparedShotgunAfterPositionChange");
-        AssertCells(0, 1);
+        BeginAim(enemy);
+        AssertCells(0, 1, 2, 3, 4);
         Assert.That(enemy.GetComponentsInChildren<LineRenderer>(), Is.Empty);
         Invoke(enemy, "HideAttackTelegraph");
         AssertCells(-1);
@@ -1002,6 +1010,31 @@ public class EnemyTileTelegraphTests
         Assert.That(WarningProperty(0, 1, "_Urgency"), Is.EqualTo(1f));
         bomb.DisposeVisuals();
         AssertCells(-1);
+    }
+
+    [TestCase(0)]
+    [TestCase(1)]
+    public void BombSpriteAndFuseStayAboveGroundInBothLanes(int lane)
+    {
+        BossBombManager manager = Create<BossBombManager>("Bomb Manager");
+        SetField(manager, "boardManager", board);
+        EnemyData data = UnityEditor.AssetDatabase.LoadAssetAtPath<EnemyData>("Assets/Scripts/Enemy/Enemy SO/BigBarrel.asset");
+        GameObject instance = Object.Instantiate(data.BigBarrel.BossBombPrefab);
+        created.Add(instance);
+        board.TryGetTilePosition(2, lane, out Vector3 ground);
+        instance.transform.position = ground;
+        BossBomb bomb = instance.GetComponent<BossBomb>();
+        Assert.That(bomb.Initialize(manager, data, 2, lane, 2, 0), Is.True);
+        var renderer = instance.GetComponentInChildren<SpriteRenderer>();
+        Assert.That(renderer.bounds.min.y, Is.EqualTo(ground.y + 0.03f).Within(0.001f));
+        Assert.That(renderer.sharedMaterial.shader.name, Is.EqualTo("LOADED/Battle Lit Sprite"));
+        Assert.That(renderer.sortingOrder, Is.EqualTo(EnemyController.CalculateLaneSortingOrder(lane, board.LaneCount) + 2));
+        var text = instance.GetComponentInChildren<TMPro.TextMeshPro>();
+        Assert.That(text.sortingLayerID, Is.EqualTo(renderer.sortingLayerID));
+        Assert.That(text.sortingOrder, Is.GreaterThan(renderer.sortingOrder));
+        Vector3 position = instance.transform.position;
+        bomb.RestoreRunTiming(1, 0);
+        Assert.That(instance.transform.position, Is.EqualTo(position));
     }
 
     [Test]
@@ -1366,7 +1399,7 @@ public class EnemyTileTelegraphTests
         created.Add(attack);
         SetField(attack, "range", 2);
         object presenter = typeof(EnemyController).GetField("telegraphPresenter", PrivateInstance).GetValue(enemy);
-        presenter.GetType().GetMethod("BeginAttack").Invoke(presenter, new object[] { attack });
+        typeof(EnemyController).GetMethod("BeginAttackTelegraph", PrivateInstance).Invoke(enemy, new object[] { attack });
         AssertCells(0, 2, 3);
         Invoke(enemy, "LateUpdate");
         AssertCells(0, 2, 3);
@@ -1402,7 +1435,7 @@ public class EnemyTileTelegraphTests
     [TestCase(EnemyBehaviorType.Gunner, -1)]
     [TestCase(EnemyBehaviorType.Melee, 1)]
     [TestCase(EnemyBehaviorType.Melee, -1)]
-    public void DirectWarningStopsAtFirstActualHitAndUpdatesDuringWindup(
+    public void DirectAimLocksBehaviorFootprintUntilAttackCompletes(
         EnemyBehaviorType behavior, int direction)
     {
         EnemyController attacker = CreateEnemy(behavior);
@@ -1428,7 +1461,12 @@ public class EnemyTileTelegraphTests
         board.TryGetTilePosition(direction > 0 ? 4 : 0, 0, out Vector3 playerPosition);
         player.transform.position = playerPosition;
         Invoke(attacker, "LateUpdate");
-        AssertCells(0, direction > 0 ? new[] { 1, 2 } : new[] { 2, 3 });
+        AssertCells(-1);
+        BeginAim(attacker, attack);
+        int[] expected = behavior == EnemyBehaviorType.Gunner
+            ? direction > 0 ? new[] { 1, 2, 3, 4 } : new[] { 0, 1, 2, 3 }
+            : direction > 0 ? new[] { 1, 2 } : new[] { 2, 3 };
+        AssertCells(0, expected);
         var targetArgs = new object[] { attack, null, false, Vector3.zero };
         Assert.That(typeof(EnemyController).GetMethod("TryGetAttackTarget", PrivateInstance)
             .Invoke(attacker, targetArgs), Is.True);
@@ -1436,26 +1474,244 @@ public class EnemyTileTelegraphTests
 
         SetField(attacker, "isAttackPrepared", false);
         object presenter = typeof(EnemyController).GetField("telegraphPresenter", PrivateInstance).GetValue(attacker);
-        presenter.GetType().GetMethod("BeginAttack").Invoke(presenter, new object[] { attack });
+        typeof(EnemyController).GetMethod("BeginAttackTelegraph", PrivateInstance).Invoke(attacker, new object[] { attack });
         presenter.GetType().GetMethod("MarkAttackImminent").Invoke(presenter, null);
         Place(blocker, direction > 0 ? 1 : 3, 0);
         Invoke(attacker, "LateUpdate");
-        AssertCells(0, direction > 0 ? 1 : 3);
+        AssertCells(0, expected);
         Assert.That(WarningProperty(direction > 0 ? 1 : 3, 0, "_Urgency"), Is.EqualTo(1f));
 
         SetField(blocker, "currentHealth", 0);
         Invoke(attacker, "LateUpdate");
-        AssertCells(0, direction > 0 ? new[] { 1, 2, 3, 4 } : new[] { 0, 1, 2, 3 });
+        AssertCells(0, expected);
         SetField(blocker, "currentHealth", 10);
         Place(blocker, 2, 1);
         board.TryGetTilePosition(2, 0, out playerPosition);
         player.transform.position = playerPosition;
         Invoke(attacker, "LateUpdate");
-        AssertCells(0, direction > 0 ? new[] { 1, 2 } : new[] { 2, 3 });
+        AssertCells(0, expected);
         targetArgs = new object[] { attack, null, false, Vector3.zero };
         Assert.That(typeof(EnemyController).GetMethod("TryGetAttackTarget", PrivateInstance)
             .Invoke(attacker, targetArgs), Is.True);
         Assert.That(targetArgs[2], Is.True);
+    }
+
+    [TestCase(1, 0, 1)]
+    [TestCase(1, 0, 2)]
+    [TestCase(-1, 0, 1)]
+    [TestCase(-1, 0, 2)]
+    [TestCase(1, 1, 1)]
+    [TestCase(1, 1, 2)]
+    [TestCase(-1, 1, 1)]
+    [TestCase(-1, 1, 2)]
+    public void GunnerCommittedRangeSurvivesBlockerMovingOutOfLane(
+        int direction, int lane, int blockerDistance)
+    {
+        EnemyController attacker = CreateEnemy(EnemyBehaviorType.Gunner);
+        EnemyController blocker = CreateEnemy(EnemyBehaviorType.Melee);
+        SetField(attacker, "currentHealth", 10);
+        SetField(attacker, "isInitialized", true);
+        SetField(blocker, "currentHealth", 10);
+        SetField(attacker.Data, "firingRange", 3);
+        EnemyAttackData attack = ScriptableObject.CreateInstance<EnemyAttackData>();
+        created.Add(attack);
+        WaveManager waves = Create<WaveManager>("Range Wave");
+        SetField(waves, "boardManager", board);
+        SetField(waves, "activeEnemies", new List<EnemyController> { attacker, blocker });
+        PlayerMove player = Create<PlayerMove>("Range Player");
+        player.SetLaneIndex(lane);
+        SetField(attacker, "waveManager", waves);
+        SetField(attacker, "playerMove", player);
+        int origin = direction > 0 ? 0 : 4;
+        Place(attacker, origin, lane);
+        attacker.transform.localScale = new Vector3(direction, 1f, 1f);
+        Place(blocker, origin + direction * blockerDistance, lane);
+        board.TryGetTilePosition(origin + direction * 3, lane, out Vector3 target);
+        player.transform.position = target;
+
+        attacker.CommitTurnIntent();
+        Assert.That(attacker.GetNextTurnIntent().Action, Is.EqualTo(EnemyTurnActionType.Fire));
+        BeginAim(attacker, attack);
+        AssertCells(lane, 1, 2, 3);
+        var args = new object[] { attack, null, false, Vector3.zero };
+        var findTarget = typeof(EnemyController).GetMethod("TryGetAttackTarget", PrivateInstance);
+        var contains = typeof(EnemyController).GetMethod("IsInsideExecutingAttack", PrivateInstance);
+        Assert.That(findTarget.Invoke(attacker, args), Is.True);
+        Assert.That(args[1], Is.SameAs(blocker), "An occupied line still intercepts the shot.");
+
+        Place(blocker, origin + direction * blockerDistance, 1 - lane);
+        args = new object[] { attack, null, false, Vector3.zero };
+        Assert.That(findTarget.Invoke(attacker, args), Is.True);
+        Assert.That(args[2], Is.True);
+        Assert.That(contains.Invoke(attacker, new object[] { target, lane }), Is.True,
+            "The third cell must remain eligible for damage after the blocker leaves.");
+        Assert.That(contains.Invoke(attacker, new object[] { target, 1 - lane }), Is.False);
+        AssertCells(lane, 1, 2, 3);
+
+        board.TryGetTilePosition(origin + direction * 4, lane, out target);
+        player.transform.position = target;
+        args = new object[] { attack, null, false, Vector3.zero };
+        Assert.That(findTarget.Invoke(attacker, args), Is.False);
+        Assert.That(contains.Invoke(attacker, new object[] { target, lane }), Is.False);
+    }
+
+    private static void BeginAim(EnemyController enemy, EnemyAttackData attack = null)
+    {
+        typeof(EnemyController).GetMethod("BeginAttackTelegraph", PrivateInstance).Invoke(enemy, new object[] { attack });
+    }
+
+    [Test]
+    public void HidingPresentationDoesNotChangeCommittedDamageFootprint()
+    {
+        EnemyController enemy = CreateEnemy(EnemyBehaviorType.Gunner);
+        SetField(enemy.Data, "firingRange", 2);
+        Place(enemy, 2, 0);
+        enemy.transform.localScale = Vector3.one;
+        BeginAim(enemy);
+        AssertCells(0, 3, 4);
+        object presenter = typeof(EnemyController).GetField("telegraphPresenter", PrivateInstance).GetValue(enemy);
+        presenter.GetType().GetMethod("HideAttackTelegraph").Invoke(presenter, null);
+        AssertCells(-1);
+        board.TryGetTilePosition(3, 0, out Vector3 target);
+        Assert.That(typeof(EnemyController).GetMethod("IsInsideExecutingAttack", PrivateInstance)
+            .Invoke(enemy, new object[] { target, 0 }), Is.True);
+    }
+
+    [Test]
+    public void OverlappingAimProgressBelongsToEachAttackAndReleasesIndependently()
+    {
+        EnemyController first = CreateEnemy(EnemyBehaviorType.Gunner);
+        EnemyController second = CreateEnemy(EnemyBehaviorType.Gunner);
+        board.SetTileWarningActive(2, 0, first, true);
+        board.SetTileWarningActive(2, 0, second, true);
+        board.SetWarningProgress(first, 0.8f);
+        board.SetWarningProgress(second, 0.3f);
+        Assert.That(WarningProperty(2, 0, "_Charge"), Is.EqualTo(0.8f).Within(0.001f));
+        board.ReleaseTileWarnings(first);
+        AssertCells(0, 2);
+        Assert.That(WarningProperty(2, 0, "_Charge"), Is.EqualTo(0.3f).Within(0.001f));
+        board.SetWarningProgress(second, 2f);
+        Assert.That(WarningProperty(2, 0, "_Charge"), Is.EqualTo(1f));
+        board.ReleaseTileWarnings(second);
+        AssertCells(-1);
+    }
+
+    [TestCase(EnemyBehaviorType.Gunner, 1)]
+    [TestCase(EnemyBehaviorType.Gunner, -1)]
+    [TestCase(EnemyBehaviorType.Melee, 1)]
+    [TestCase(EnemyBehaviorType.Melee, -1)]
+    public void DirectWarningFillsInAttackDirection(EnemyBehaviorType behavior, int direction)
+    {
+        var enemy = CreateEnemy(behavior);
+        Place(enemy, 2, 0);
+        enemy.transform.localScale = new Vector3(direction, 1, 1);
+        var attack = ScriptableObject.CreateInstance<EnemyAttackData>();
+        created.Add(attack);
+        SetField(attack, "range", 2);
+        BeginAim(enemy, attack);
+        board.SetWarningProgress(enemy, 0.5f);
+        Assert.That(WarningDirection(2 + direction, 0), Is.EqualTo(new Vector2(direction, 0)));
+        Assert.That(WarningProperty(2 + direction, 0, "_Charge"), Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(WarningProperty(2 + 2 * direction, 0, "_Charge"), Is.EqualTo(0f).Within(0.0001f));
+    }
+
+    [TestCase(1, 0)]
+    [TestCase(-1, 0)]
+    [TestCase(1, 1)]
+    [TestCase(-1, 1)]
+    public void ThreeCellWarningSharesOneProgressFromNearToFar(int direction, int lane)
+    {
+        var enemy = CreateEnemy(EnemyBehaviorType.Gunner);
+        SetField(enemy.Data, "firingRange", 3);
+        int origin = direction > 0 ? 0 : 4;
+        Place(enemy, origin, lane);
+        enemy.transform.localScale = new Vector3(direction, 1, 1);
+        BeginAim(enemy);
+        AssertCells(lane, 1, 2, 3);
+        foreach (float progress in new[] { 0f, 0.25f, 0.5f, 0.75f, 1f })
+        {
+            board.SetWarningProgress(enemy, progress);
+            for (int step = 1; step <= 3; step++)
+                Assert.That(WarningProperty(origin + direction * step, lane, "_Charge"),
+                    Is.EqualTo(Mathf.Clamp01(progress * 3f - (step - 1))).Within(0.0001f));
+            AssertCells(lane, 1, 2, 3);
+        }
+    }
+
+    [Test]
+    public void SharedFillRecalculatesFootprintAndKeepsOverlappingOwnersIndependent()
+    {
+        var first = CreateEnemy(EnemyBehaviorType.Gunner);
+        var second = CreateEnemy(EnemyBehaviorType.Gunner);
+        board.TryGetTilePosition(0, 0, out Vector3 origin);
+        board.SetWarningOrigin(first, origin);
+        for (int tile = 1; tile <= 3; tile++) board.SetTileWarningActive(tile, 0, first, true);
+        board.SetWarningProgress(first, 0.5f);
+        board.TryGetTilePosition(4, 0, out origin);
+        board.SetWarningOrigin(second, origin);
+        board.SetTileWarningActive(3, 0, second, true);
+        board.SetWarningProgress(second, 0.25f);
+        Assert.That(WarningProperty(3, 0, "_Charge"), Is.EqualTo(0.25f));
+        Assert.That(WarningDirection(3, 0), Is.EqualTo(Vector2.left));
+        board.ReleaseTileWarnings(second);
+        Assert.That(WarningProperty(3, 0, "_Charge"), Is.Zero);
+        Assert.That(WarningDirection(3, 0), Is.EqualTo(Vector2.right));
+        board.SetTileWarningActive(3, 0, first, false);
+        Assert.That(WarningProperty(1, 0, "_Charge"), Is.EqualTo(1f).Within(0.0001f));
+        Assert.That(WarningProperty(2, 0, "_Charge"), Is.Zero.Within(0.0001f));
+    }
+
+    [Test]
+    public void ExplosionFillReachesCenterBeforeBothOuterCells()
+    {
+        var owner = CreateEnemy(EnemyBehaviorType.BigBarrel);
+        board.TryGetTilePosition(2, 0, out Vector3 origin);
+        board.SetWarningOrigin(owner, origin);
+        for (int tile = 1; tile <= 3; tile++) board.SetTileWarningActive(tile, 0, owner, true);
+        board.SetWarningProgress(owner, 0.5f);
+        Assert.That(WarningProperty(2, 0, "_Charge"), Is.EqualTo(1f));
+        Assert.That(WarningProperty(1, 0, "_Charge"), Is.EqualTo(0.25f).Within(0.0001f));
+        Assert.That(WarningProperty(3, 0, "_Charge"), Is.EqualTo(0.25f).Within(0.0001f));
+        board.SetWarningProgress(owner, 1f);
+        for (int tile = 1; tile <= 3; tile++)
+            Assert.That(WarningProperty(tile, 0, "_Charge"), Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void WarningOriginsSupportVerticalOutwardAndOverlappingAttacks()
+    {
+        var first = CreateEnemy(EnemyBehaviorType.Thrower);
+        var second = CreateEnemy(EnemyBehaviorType.Thrower);
+        board.TryGetTilePosition(2, 0, out Vector3 center);
+        board.SetWarningOrigin(first, center + Vector3.down);
+        board.SetTileWarningActive(2, 0, first, true);
+        board.SetWarningProgress(first, 0.7f);
+        Assert.That(WarningDirection(2, 0), Is.EqualTo(Vector2.up));
+        board.SetWarningOrigin(second, center + Vector3.up);
+        board.SetTileWarningActive(2, 0, second, true);
+        board.SetWarningProgress(second, 0.4f);
+        Assert.That(WarningDirection(2, 0), Is.EqualTo(Vector2.up));
+        board.ReleaseTileWarnings(first);
+        Assert.That(WarningDirection(2, 0), Is.EqualTo(Vector2.down));
+        Assert.That(WarningProperty(2, 0, "_Charge"), Is.EqualTo(0.4f));
+        board.ReleaseTileWarnings(second);
+        board.SetWarningOrigin(first, center);
+        for (int tile = 1; tile <= 3; tile++) board.SetTileWarningActive(tile, 0, first, true);
+        Assert.That(WarningDirection(1, 0), Is.EqualTo(Vector2.left));
+        Assert.That(WarningDirection(2, 0), Is.EqualTo(Vector2.zero), "Explosion center uses outward radial fill");
+        Assert.That(WarningDirection(3, 0), Is.EqualTo(Vector2.right));
+        board.ReleaseTileWarnings(first);
+        board.SetTileWarningActive(2, 0, first, true);
+        Assert.That(WarningDirection(2, 0), Is.EqualTo(Vector2.right), "Released origins must not leak into later warnings");
+    }
+
+    private Vector2 WarningDirection(int tile, int lane)
+    {
+        var renderer = tiles.GetChild(lane * 5 + tile).Find("Grid Warning").GetComponent<MeshRenderer>();
+        var properties = new MaterialPropertyBlock();
+        renderer.GetPropertyBlock(properties);
+        Vector4 direction = properties.GetVector("_FillDirection");
+        return new Vector2(direction.x, direction.y);
     }
 
     private float WarningProperty(int tile, int lane, string property)

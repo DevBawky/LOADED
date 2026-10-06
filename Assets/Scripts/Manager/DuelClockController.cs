@@ -7,11 +7,13 @@ public sealed class DuelClockController : MonoBehaviour
     internal const double NaturalProgressSpeedMultiplier = 1.35d;
     internal const double SpawnProgressRateMultiplier = 0.5d;
     public const int TempoCapacity = 6;
-    public const int MovementTempoCost = 2;
-    public const int RotationTempoCost = 1;
-    public const int WaitTempoCost = 1;
-    public const int ReloadTempoCost = 3;
-    public const int ShootTempoCost = 3;
+    // Legacy names/scale remain for serialized HUD and save compatibility.
+    // Every completed paid action now commits exactly one enemy cycle.
+    public const int MovementTempoCost = TempoCapacity;
+    public const int RotationTempoCost = TempoCapacity;
+    public const int WaitTempoCost = TempoCapacity;
+    public const int ReloadTempoCost = TempoCapacity;
+    public const int ShootTempoCost = TempoCapacity;
 
     private const double ProgressPerTempo =
         DuelClockState.CycleLength / TempoCapacity;
@@ -24,8 +26,6 @@ public sealed class DuelClockController : MonoBehaviour
     private DuelClockState state = new DuelClockState();
     private CombatPacingMode pacingMode = CombatPacingMode.Legacy;
     private int pendingActionTempoCost;
-    private int deferredTempoCost;
-    private bool shootProgressCommitted;
     private bool hasReservedBeat;
     private bool playerActionPending;
     private bool paidActionProgressSuppressed;
@@ -35,7 +35,7 @@ public sealed class DuelClockController : MonoBehaviour
     public event Action<long> BeatsCommitted;
 
     // Retained for source compatibility. Reinforcements are now scheduled by
-    // WaveManager after a complete Cylinder Tempo enemy cycle.
+    // WaveManager after a complete enemy action cycle.
     public event Action<long> SpawnCyclesCommitted;
 
     public bool IsActive => pacingMode == CombatPacingMode.DuelClock;
@@ -84,7 +84,6 @@ public sealed class DuelClockController : MonoBehaviour
         ConfigureSettings(battleData, configuredMode);
         state = new DuelClockState();
         hasReservedBeat = false;
-        deferredTempoCost = 0;
         ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(IsActive);
         StateChanged?.Invoke();
@@ -98,11 +97,10 @@ public sealed class DuelClockController : MonoBehaviour
         ConfigureSettings(battleData, configuredMode);
         state = IsActive && saveData != null
             ? RestoreStateOrDefault(
-                saveData.duelClockProgress,
+                0d,
                 saveData.duelClockCumulativeBeats)
             : new DuelClockState();
         hasReservedBeat = false;
-        deferredTempoCost = 0;
         ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(IsActive);
         StateChanged?.Invoke();
@@ -170,7 +168,6 @@ public sealed class DuelClockController : MonoBehaviour
         pacingMode = CombatPacingMode.Legacy;
         state = new DuelClockState();
         hasReservedBeat = false;
-        deferredTempoCost = 0;
         ResetPlayerActionTracking();
         playerMove?.SetDuelClockActive(false);
         StateChanged?.Invoke();
@@ -188,11 +185,23 @@ public sealed class DuelClockController : MonoBehaviour
         playerMove?.SetDuelClockActive(false);
     }
 
+    private void Update()
+    {
+        // With no natural clock, stun must explicitly pass a player action.
+        if (!IsActive || hasReservedBeat || GamePauseController.IsPaused
+            || playerMove == null || !playerMove.IsStunned || playerMove.IsInputLocked
+            || playerMove.IsActing || playerMove.IsShooting || waveManager == null
+            || waveManager.IsBattleCompleted || waveManager.IsResolvingTurn
+            || LoadingTransitionController.IsTransitioning)
+            return;
+        HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
+        playerMove.CompleteTurn();
+    }
+
     private void HandlePlayerTurnCompleted()
     {
         int completedActionCost = pendingActionTempoCost;
         bool shouldCommitPaidAction = playerActionPending
-            && !shootProgressCommitted
             && !paidActionProgressSuppressed
             && completedActionCost > 0;
         ResetPlayerActionTracking();
@@ -204,7 +213,6 @@ public sealed class DuelClockController : MonoBehaviour
 
         if (hasReservedBeat)
         {
-            AddDeferredTempo(completedActionCost);
             return;
         }
 
@@ -214,19 +222,13 @@ public sealed class DuelClockController : MonoBehaviour
     internal void HandlePlayerActionStarted(PlayerBehaviourAction action)
     {
         ResetPlayerActionTracking();
-        playerActionPending = true;
+        playerActionPending = !hasReservedBeat;
         pendingActionTempoCost = GetTempoCost(action);
-
-        if (IsActive && action == PlayerBehaviourAction.Shoot)
-        {
-            shootProgressCommitted = TryCommitTempo(
-                pendingActionTempoCost);
-        }
     }
 
     internal void HandlePlayerDodgeSucceededDuringAction()
     {
-        if (!IsActive || !playerActionPending || shootProgressCommitted)
+        if (!IsActive || !playerActionPending)
         {
             return;
         }
@@ -253,7 +255,7 @@ public sealed class DuelClockController : MonoBehaviour
 
     internal void HandleEnemyCycleStarted()
     {
-        // Keep all six slots lit while enemies resolve their actions.
+        // The reservation remains active until every enemy action settles.
     }
 
     internal void HandleEnemyCycleCompleted()
@@ -264,15 +266,6 @@ public sealed class DuelClockController : MonoBehaviour
         }
 
         hasReservedBeat = false;
-        int carriedActionCost = deferredTempoCost;
-        deferredTempoCost = 0;
-
-        if (carriedActionCost > 0
-            && TryCommitTempo(carriedActionCost))
-        {
-            return;
-        }
-
         StateChanged?.Invoke();
     }
 
@@ -301,8 +294,7 @@ public sealed class DuelClockController : MonoBehaviour
 
         if (hasReservedBeat)
         {
-            AddDeferredTempo(tempoCost);
-            return true;
+            return false;
         }
 
         DuelClockAdvanceResult result;
@@ -333,14 +325,6 @@ public sealed class DuelClockController : MonoBehaviour
         }
 
         return true;
-    }
-
-    private void AddDeferredTempo(int tempoCost)
-    {
-        int acceptedCost = Mathf.Max(0, tempoCost);
-        deferredTempoCost = acceptedCost > int.MaxValue - deferredTempoCost
-            ? int.MaxValue
-            : deferredTempoCost + acceptedCost;
     }
 
     private void ConfigureSettings(
@@ -402,7 +386,6 @@ public sealed class DuelClockController : MonoBehaviour
     private void ResetPlayerActionTracking()
     {
         pendingActionTempoCost = 0;
-        shootProgressCommitted = false;
         playerActionPending = false;
         paidActionProgressSuppressed = false;
     }

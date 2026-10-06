@@ -115,6 +115,9 @@ public class EnemyDataEditor : Editor
         EnemyBehaviorType selectedType =
             (EnemyBehaviorType)behaviorType.enumValueIndex;
 
+        if (selectedType != EnemyBehaviorType.Porter)
+            EditorGUILayout.PropertyField(recoveryTurns, new GUIContent("공격 쿨타임 (턴)"));
+
         switch (selectedType)
         {
             case EnemyBehaviorType.Melee:
@@ -129,14 +132,12 @@ public class EnemyDataEditor : Editor
                     "공격 타일을 먼저 등록한 뒤, 설정된 사거리 안까지 접근합니다. 사선이 확보되면 공격을 준비하고 다음 COUNT에 사격합니다.",
                     MessageType.Info);
                 EditorGUILayout.PropertyField(firingRange);
-                EditorGUILayout.PropertyField(recoveryTurns);
                 break;
 
             case EnemyBehaviorType.Thrower:
                 EditorGUILayout.HelpBox(
                     "사거리는 보드 전체입니다. 준비 순간의 플레이어 타일을 고정한 뒤 투척합니다.",
                     MessageType.Info);
-                EditorGUILayout.PropertyField(recoveryTurns);
                 EditorGUILayout.PropertyField(thrownProjectileSprite);
                 EditorGUILayout.PropertyField(thrownProjectileColor);
                 EditorGUILayout.PropertyField(thrownProjectileSize);
@@ -163,10 +164,9 @@ public class EnemyDataEditor : Editor
 
             case EnemyBehaviorType.BigBarrel:
                 EditorGUILayout.HelpBox(
-                    "고정 순서로 폭탄 투척, 거리 조정, 양옆 산탄 사격, 재장전을 반복합니다.",
+                    "폭탄 투척과 양옆 산탄 사격을 번갈아 준비·실행하며, 각 공격 후 쿨타임 동안 위치를 조정합니다.",
                     MessageType.Info);
                 EditorGUILayout.PropertyField(preferredDistance);
-                EditorGUILayout.PropertyField(recoveryTurns);
                 EditorGUILayout.PropertyField(thrownProjectileSprite);
                 EditorGUILayout.PropertyField(thrownProjectileColor);
                 EditorGUILayout.PropertyField(thrownProjectileSize);

@@ -14,6 +14,21 @@ public partial class EnemyController
         private bool isExecutingDirectAttack;
         private EnemyAttackData executingAttackData;
 
+        public void ShowPlannedAttack(IEnumerable<Vector2Int> cells)
+        {
+            if (cells == null)
+            {
+                if (warningCells.Count > 0) HideAttackTelegraph();
+                return;
+            }
+            nextWarningCells.Clear();
+            nextWarningCells.UnionWith(cells);
+            if (warningCells.SetEquals(nextWarningCells)) return;
+            ApplyWarningCells();
+            boardManager?.SetWarningProgress(owner, 0f);
+            boardManager?.SetWarningUrgent(owner, false);
+        }
+
         private EnemyData enemyData => owner.enemyData;
         private BoardManager boardManager => owner.boardManager;
         private Transform transform => owner.transform;
@@ -52,6 +67,12 @@ public partial class EnemyController
 
         public void RefreshAttackTelegraph()
         {
+            if (owner.hasCommittedIntent && !owner.isActing)
+            {
+                ShowPlannedAttack(owner.GetNextTurnIntent().Action == EnemyTurnActionType.Fire
+                    ? owner.committedAttackCells : null);
+                if (enemyData == null || enemyData.BehaviorType != EnemyBehaviorType.Porter) return;
+            }
             if (!isAttackPrepared || enemyData == null)
             {
                 HideAttackTelegraph();
@@ -60,7 +81,7 @@ public partial class EnemyController
     
             if (enemyData.BehaviorType != EnemyBehaviorType.Porter)
             {
-                RefreshDamageTileWarnings();
+                // Idle intent is an icon; floor warnings belong to an attack.
                 return;
             }
 
@@ -103,6 +124,7 @@ public partial class EnemyController
             executingAttackData = executingAttack;
             boardManager?.SetWarningUrgent(owner, false);
             RefreshDamageTileWarnings(executingAttack);
+            boardManager?.SetWarningProgress(owner, 0f);
         }
 
         public bool RefreshExecutingAttack()
@@ -111,8 +133,13 @@ public partial class EnemyController
             {
                 return false;
             }
-            RefreshDamageTileWarnings(executingAttackData);
+            // The footprint was locked when the intent was committed.
             return true;
+        }
+
+        public void SetProgress(float progress)
+        {
+            boardManager?.SetWarningProgress(owner, progress);
         }
 
         public void MarkAttackImminent()
@@ -157,48 +184,23 @@ public partial class EnemyController
                         break;
                     case EnemyBehaviorType.Melee:
                     case EnemyBehaviorType.Gunner:
-                        if (boardManager.TryGetTileIndex(transform.position,
-                                currentLaneIndex, out int attackerTile))
-                        {
-                            int direction = transform.localScale.x >= 0f ? 1 : -1;
-                            int range = enemyData.FiringRange;
-                            if (enemyData.BehaviorType == EnemyBehaviorType.Melee
-                                && executingAttack != null)
-                            {
-                                range = executingAttack.Range;
-                            }
-                            else if (enemyData.BehaviorType == EnemyBehaviorType.Melee)
-                            {
-                                range = 0;
-                                foreach (EnemyActionData action in owner.queuedAttackActions)
-                                {
-                                    if (owner.TryGetAttackData(action, out EnemyAttackData attack))
-                                    {
-                                        range = Mathf.Max(range, attack.Range);
-                                    }
-                                }
-                            }
-                            range = Mathf.Min(range, boardManager.BoardCount - 1);
-                            // Use the same first-hit query as damage resolution, including friendly fire.
-                            if (owner.TryGetDirectAttackTarget(range, out _, out _, out Vector3 hitPosition)
-                                && boardManager.TryGetTileDistance(transform.position, hitPosition,
-                                    out int hitDistance))
-                            {
-                                range = Mathf.Min(range, hitDistance);
-                            }
-                            for (int distance = 1; distance <= range; distance++)
-                            {
-                                int tile = attackerTile + direction * distance;
-                                if (tile < 0 || tile >= boardManager.BoardCount)
-                                {
-                                    break;
-                                }
-                                nextWarningCells.Add(new Vector2Int(tile, currentLaneIndex));
-                            }
-                        }
+                        nextWarningCells.UnionWith(owner.executingAttackCells);
                         break;
                 }
 
+            }
+            ApplyWarningCells();
+        }
+
+        private void ApplyWarningCells()
+        {
+            if (boardManager != null)
+            {
+                Vector3 origin = owner.hasCommittedIntent ? owner.committedOrigin : transform.position;
+                int lane = owner.hasCommittedIntent ? owner.committedLane : currentLaneIndex;
+                if (boardManager.TryGetTileIndex(origin, lane, out int tile)
+                    && boardManager.TryGetTilePosition(tile, lane, out Vector3 floor)) origin = floor;
+                boardManager.SetWarningOrigin(owner, origin);
                 foreach (Vector2Int cell in warningCells)
                 {
                     if (!nextWarningCells.Contains(cell))

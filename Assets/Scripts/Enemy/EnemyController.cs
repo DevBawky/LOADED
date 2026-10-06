@@ -48,7 +48,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     public static event Action<EnemyController, int, int>
         PlayerStatusDefeated;
 
-    private const int MaxBigBarrelPostShotgunRecoveryTurns = 2;
+    private const float GunnerPostImpactPresentationDuration = 0.12f;
     internal const int LaneSortingOrderStride = 500;
     private const int LaneCanvasSortingOffset = 200;
 
@@ -155,6 +155,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private bool clearExposedAfterPlayerTurn;
     private EnemyRunStateSerializer runStateSerializer;
     private EnemyTelegraphPresenter telegraphPresenter;
+    private readonly HashSet<Vector2Int> executingAttackCells = new HashSet<Vector2Int>();
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
@@ -191,14 +192,18 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     public bool IsActing => isActing;
     public bool IsExposed => statusEffects != null && statusEffects.IsExposed;
     public bool WillExecuteDedicatedTurnMotion =>
-        isAttackPrepared
-        || (enemyData != null
-            && enemyData.BehaviorType == EnemyBehaviorType.BigBarrel
-            && (bigBarrelStep == BigBarrelStep.ExecuteBomb
-                || bigBarrelStep == BigBarrelStep.ExecuteShotgun));
+        isAttackPrepared || GetNextTurnIntent().Action == EnemyTurnActionType.Fire;
 
     public bool WillPreparedAttackHitPlayer()
     {
+        if (hasCommittedIntent)
+        {
+            return GetNextTurnIntent().Action == EnemyTurnActionType.Fire
+                && (!IsBoss || IsShotgunIntent()) && playerMove != null && boardManager != null
+                && boardManager.TryGetTileIndex(playerMove.transform.position,
+                    playerMove.CurrentLaneIndex, out int plannedPlayerTile)
+                && committedAttackCells.Contains(new Vector2Int(plannedPlayerTile, playerMove.CurrentLaneIndex));
+        }
         if (!isAttackPrepared || currentHealth <= 0 || enemyData == null
             || playerMove == null || boardManager == null
             || statusEffects != null && statusEffects.IsStunned
@@ -297,6 +302,20 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void LateUpdate()
     {
+        if (isInitialized && currentHealth > 0 && !isActing)
+        {
+            if (waveManager != null && !waveManager.IsResolvingTurn
+                && playerMove != null && !playerMove.IsActing && !playerMove.IsShooting)
+                CommitTurnIntent();
+            if (!hasCommittedIntent) return;
+            TurnIntent intent = GetNextTurnIntent();
+            Vector3 direction = intent.Path != null && intent.Path.Length > 0
+                ? intent.Path[intent.Path.Length - 1] - transform.position
+                : Vector3.right * intent.Direction;
+            actionQueueUI?.ShowIntent(intent.Action, direction, false, AttackIconType);
+            telegraphPresenter?.ShowPlannedAttack(hasCommittedIntent
+                && intent.Action == EnemyTurnActionType.Fire ? committedAttackCells : null);
+        }
         if (telegraphPresenter != null && telegraphPresenter.RefreshExecutingAttack())
         {
             return;
@@ -390,6 +409,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         RunEnemySaveData state,
         EnemyController restoredSupportTarget)
     {
+        ClearTurnIntent();
         runStateSerializer.Restore(state, restoredSupportTarget);
     }
     public void TakeTurn()
@@ -399,6 +419,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
+        CommitTurnIntent();
+        TurnIntent intent = GetNextTurnIntent();
+        if (intent.Action == EnemyTurnActionType.Wait && isAttackPrepared)
+            CancelAttackPreparation();
         isActing = true;
 
         if (statusEffects != null && statusEffects.ConsumeStunTurn())
@@ -414,109 +438,17 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
+        Vector3 intentDirection = intent.Path != null && intent.Path.Length > 0
+            ? intent.Path[intent.Path.Length - 1] - transform.position : Vector3.right * intent.Direction;
+        actionQueueUI?.ShowIntent(intent.Action, intentDirection, true, AttackIconType);
+        if (IsBoss)
         {
-            TakeBigBarrelTurn();
-            return;
+            ExecuteBossIntent(intent);
         }
-
-        if (isAttackPrepared && queuedAttackActions.Count == 0)
+        else
         {
-            ClearAttackQueue();
+            ExecuteIntent(intent);
         }
-
-        if (isAttackPrepared)
-        {
-            isAttackPrepared = false;
-            SetPreparedTargetWarning(false);
-            HideAttackTelegraph();
-            StartCoroutine(FireAttackQueue());
-            return;
-        }
-
-        if ((enemyData.BehaviorType == EnemyBehaviorType.Melee
-                || enemyData.BehaviorType == EnemyBehaviorType.Gunner)
-            && currentLaneIndex != playerMove.CurrentLaneIndex)
-        {
-            if (!TryGetTurnContext(
-                    out int pursuitDirection,
-                    out int pursuitDistance))
-            {
-                CompleteAction(EnemyTurnActionType.Wait);
-                return;
-            }
-
-            TakeLaneMismatchPursuitTurn(
-                pursuitDirection,
-                pursuitDistance);
-            return;
-        }
-
-        // A prepared attack is already committed. Frontline priority is only
-        // used while choosing a new action; it must never delay a telegraphed
-        // attack when the player changes position before the enemy turn.
-        if (!CanTakeFrontlineTurn())
-        {
-            if (TryGetTurnContext(
-                    out int waitingDirectionToPlayer,
-                    out _)
-                && waitingDirectionToPlayer != 0
-                && !IsFacing(waitingDirectionToPlayer))
-            {
-                RotateToward(waitingDirectionToPlayer);
-            }
-            else
-            {
-                CompleteAction(EnemyTurnActionType.Wait);
-            }
-
-            return;
-        }
-
-        if (recoveryTurnsRemaining > 0)
-        {
-            recoveryTurnsRemaining--;
-            CompleteAction(EnemyTurnActionType.Reload);
-            return;
-        }
-
-        if (!TryGetTurnContext(out int directionToPlayer, out int distanceToPlayer))
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
-        {
-            if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
-            {
-                RotateToward(directionToPlayer);
-                return;
-            }
-
-            TakeThrowerTurn();
-            return;
-        }
-
-        if (enemyData.BehaviorType == EnemyBehaviorType.Porter)
-        {
-            TakePorterTurn(directionToPlayer, distanceToPlayer);
-            return;
-        }
-
-        if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
-        {
-            RotateToward(directionToPlayer);
-            return;
-        }
-
-        if (enemyData.BehaviorType == EnemyBehaviorType.Melee)
-        {
-            TakeMeleeTurn(directionToPlayer, distanceToPlayer);
-            return;
-        }
-
-        TakeGunnerTurn(directionToPlayer, distanceToPlayer);
     }
 
     private void OnDisable()
@@ -584,6 +516,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         // Stun interrupts only the ready state. The registered attacks and
         // their icons stay queued so the enemy must prepare them again later.
         isAttackPrepared = false;
+        if (hasCommittedIntent)
+            committedIntent = new TurnIntent(EnemyTurnActionType.Wait);
         SetPreparedTargetWarning(false);
         actionQueueUI?.SetPrepared(false);
         HideAttackTelegraph();
@@ -1073,6 +1007,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     internal void HandlePlayerActionStarted(PlayerBehaviourAction action)
     {
+        // Also covers input before the first LateUpdate after spawning.
+        if (!isActing && waveManager != null && !waveManager.IsResolvingTurn)
+            CommitTurnIntent();
         if (!IsExposed)
         {
             clearExposedAfterPlayerTurn = false;
@@ -1682,17 +1619,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        int leftTile = bossTileIndex - 1;
-        int rightTile = bossTileIndex + 1;
-
-        if (leftTile >= 0)
+        for (int tile = 0; tile < boardManager.BoardCount; tile++)
         {
-            preparedShotgunTileIndices.Add(leftTile);
-        }
-
-        if (rightTile < boardManager.BoardCount)
-        {
-            preparedShotgunTileIndices.Add(rightTile);
+            if (tile != bossTileIndex)
+                preparedShotgunTileIndices.Add(tile);
         }
     }
 
@@ -1836,8 +1766,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private IEnumerator FireBigBarrelShotgun()
     {
         EnemyActionData action = DequeueFirstQueuedAction();
-        CaptureBigBarrelShotgunTargets();
-        telegraphPresenter?.BeginAttack();
+        if (!hasCommittedIntent) CaptureBigBarrelShotgunTargets();
+        BeginAttackTelegraph();
         bool hasHitPlayer = false;
         bool actionTileRemoved = false;
         HashSet<EnemyController> hitEnemies = new HashSet<EnemyController>();
@@ -1903,16 +1833,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             AttackExecuted?.Invoke(this, action.AttackData);
         }
 
-        bigBarrelReloadTurnsRemaining = Mathf.Min(
-            MaxBigBarrelPostShotgunRecoveryTurns,
-            enemyData.RecoveryTurns);
-        FinishBigBarrelAttack(bigBarrelReloadTurnsRemaining > 0
-            ? BigBarrelStep.Reload
-            : BigBarrelStep.CreateBombQueue);
+        FinishBigBarrelAttack(BigBarrelStep.CreateBombQueue);
     }
 
     private void RefreshPreparedShotgunAfterPositionChange()
     {
+        if (hasCommittedIntent) return;
         if (!isAttackPrepared || enemyData == null
             || enemyData.BehaviorType != EnemyBehaviorType.BigBarrel
             || bigBarrelStep != BigBarrelStep.ExecuteShotgun)
@@ -1998,6 +1924,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void FinishBigBarrelAttack(BigBarrelStep nextStep)
     {
+        telegraphPresenter?.CompleteAttack();
         isQueueCreated = false;
         isAttackPrepared = false;
         preparedBombTargetTileIndices.Clear();
@@ -2152,12 +2079,13 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             actionType == EnemyActionType.MeleeAttack
             || actionType == EnemyActionType.RangedAttack);
 
-        if (attackAction == null
-            || !actionQueueUI.AddAttackIcon(attackAction, out attackIcon))
+        if (attackAction == null)
         {
             return false;
         }
 
+        // The queue owns attacks even if its optional presentation is absent.
+        actionQueueUI?.AddAttackIcon(attackAction, out attackIcon);
         queuedAttackActions.Add(attackAction);
         RefreshGunnerReloadedAnimation();
         appendedAction = attackAction;
@@ -2253,12 +2181,37 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void PrepareCurrentAttackQueue()
     {
+        if (!CanPrepareAttackAtCurrentPlayerPosition())
+        {
+            isAttackPrepared = false;
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+        CaptureCommittedAttackCells(true);
         isAttackPrepared = true;
         SetPreparedTargetWarning(true);
-        SoundManager.PlaySfx("SFX_EnemyReady");
-        actionQueueUI.SetPrepared(true);
+        SoundManager.PlayEnemyPreparationWarning();
+        actionQueueUI?.SetPrepared(true);
         RefreshAttackTelegraph();
         CompleteAction(EnemyTurnActionType.PrepareAttack);
+    }
+
+    private void BeginAttackTelegraph(EnemyAttackData attack = null)
+    {
+        executingAttackCells.Clear();
+        if (hasCommittedIntent)
+        {
+            executingAttackCells.UnionWith(committedAttackCells);
+        }
+        else if (enemyData != null) CaptureDirectAttackCells(executingAttackCells, attack);
+        telegraphPresenter?.BeginAttack(attack);
+    }
+
+    private bool IsInsideExecutingAttack(Vector3 position, int lane)
+    {
+        return boardManager != null
+            && boardManager.TryGetTileIndex(position, lane, out int tile)
+            && executingAttackCells.Contains(new Vector2Int(tile, lane));
     }
 
     private void RefreshAttackTelegraph()
@@ -2268,6 +2221,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void HideAttackTelegraph()
     {
+        executingAttackCells.Clear();
         telegraphPresenter.HideAttackTelegraph();
     }
 
@@ -2349,11 +2303,6 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         isRetreating = enemyData.BehaviorType == EnemyBehaviorType.Melee
             && enemyData.PreferredDistance > 0;
-        recoveryTurnsRemaining = enemyData.BehaviorType
-            == EnemyBehaviorType.Gunner
-            || enemyData.BehaviorType == EnemyBehaviorType.Thrower
-                ? enemyData.RecoveryTurns
-                : 0;
         isQueueCreated = false;
         isAttackPrepared = false;
         SetPreparedTargetWarning(false);
@@ -2393,7 +2342,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             SoundManager.PlaySfx("SFX_Enemy_Shoot");
         }
 
-        telegraphPresenter?.BeginAttack(attackData);
+        BeginAttackTelegraph(attackData);
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
             yield return ExecuteThrowerAttack(
@@ -2445,6 +2394,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return false;
         }
 
+        if (!IsInsideExecutingAttack(targetPosition, currentLaneIndex))
+        {
+            return false;
+        }
+
         if (attackData.AttackEffectPrefab != null)
         {
             TransientVfx.Spawn(
@@ -2468,7 +2422,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 out _,
                 out bool targetsPlayer,
                 out _)
-            && targetsPlayer;
+            && targetsPlayer
+            && IsInsideExecutingAttack(playerMove.transform.position, playerMove.CurrentLaneIndex);
     }
 
     private bool IsPlayerInPreparedThrowerTarget()
@@ -3557,10 +3512,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
-    private bool CanTakeFrontlineTurn()
+    private bool CanPrepareFrontlineAttack()
     {
         bool requiresFrontline = enemyData != null
-            && enemyData.BehaviorType == EnemyBehaviorType.Melee;
+            && (enemyData.BehaviorType == EnemyBehaviorType.Melee
+                || enemyData.BehaviorType == EnemyBehaviorType.Gunner);
 
         if (!requiresFrontline)
         {
@@ -3573,6 +3529,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         if (boardManager == null || playerMove == null || waveManager == null
+            || currentLaneIndex != playerMove.CurrentLaneIndex
             || !boardManager.TryGetTileIndex(
                 transform.position,
                 currentLaneIndex,
@@ -3646,6 +3603,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void ResetRuntimeState()
     {
+        ClearTurnIntent();
+        preparationWaitTurns = 0;
+        preparationDeferred = false;
         HideAttackTelegraph();
         currentHealth = enemyData == null ? 0 : enemyData.MaxHealth;
         currentShield = 0;
@@ -3867,6 +3827,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
             dodgeWindowStarted = true;
             isAttackDodgeWindowOpen = true;
+            SoundManager.PlayEnemyAttackWarning();
             telegraphPresenter?.MarkAttackImminent();
             dodgeState = CapturePlayerDodgeWindow(isPlayerThreatened);
         }
@@ -3895,6 +3856,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             }
 
             attackEvaluated = true;
+            telegraphPresenter?.SetProgress(1f);
             isAttackDodgeWindowOpen = false;
 
             if (!dodgeResolution.IsResolved)
@@ -3911,11 +3873,17 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         if (!hasAnimation)
         {
             BeginDodgeWindow();
+            float chargeElapsed = 0f;
+            float chargeDuration = enemyData == null
+                ? EnemyData.DefaultAttackDodgeWindowDuration : enemyData.AttackDodgeWindowDuration;
             yield return WaitForAttackTiming(
-                enemyData == null
-                    ? EnemyData.DefaultAttackDodgeWindowDuration
-                    : enemyData.AttackDodgeWindowDuration,
-                TryConfirmDodgeBeforeImpact);
+                chargeDuration,
+                () =>
+                {
+                    chargeElapsed += Time.deltaTime;
+                    telegraphPresenter?.SetProgress(chargeDuration <= 0f ? 1f : chargeElapsed / chargeDuration);
+                    TryConfirmDodgeBeforeImpact();
+                });
             TryConfirmDodgeBeforeImpact();
             EvaluateAttackAtImpact();
             yield break;
@@ -3940,6 +3908,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         float elapsedTime = 0f;
         float previousNormalizedTime = 0f;
+        float postImpactElapsedTime = 0f;
 
         if (evaluateAttackHit != null && (!hasActiveWindow
             || activeWindowTiming.DodgeStartNormalizedTime <= 0f))
@@ -3956,6 +3925,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 float normalizedTime = duration <= 0f
                     ? 1f
                     : Mathf.Clamp01(elapsedTime / duration);
+                float impactTime = hasActiveWindow
+                    ? duration * activeWindowTiming.StartNormalizedTime : fallbackHitTime;
+                if (!attackEvaluated)
+                    telegraphPresenter?.SetProgress(impactTime <= 0f ? 1f : elapsedTime / impactTime);
 
                 if (hasActiveWindow)
                 {
@@ -3995,6 +3968,17 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 }
 
                 previousNormalizedTime = normalizedTime;
+
+                // Keep aim, dodge and authored active windows at their original
+                // speed. Only the gunner's cosmetic tail may finish early.
+                if (attackEvaluated && enemyData != null
+                    && enemyData.BehaviorType == EnemyBehaviorType.Gunner
+                    && postImpactElapsedTime >= GunnerPostImpactPresentationDuration
+                    && (!hasActiveWindow
+                        || normalizedTime >= activeWindowTiming.EndNormalizedTime))
+                {
+                    break;
+                }
             }
 
             yield return null;
@@ -4002,6 +3986,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             if (!GamePauseController.IsPaused)
             {
                 elapsedTime += Time.deltaTime;
+                if (attackEvaluated)
+                {
+                    postImpactElapsedTime += Time.deltaTime;
+                }
             }
         }
 
@@ -4353,12 +4341,36 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void CompleteAction(EnemyTurnActionType actionType)
     {
+        // The attack starts the cooldown; each subsequent completed enemy
+        // action consumes one turn, including movement, rotation and stun.
+        if (actionType == EnemyTurnActionType.Fire)
+            recoveryTurnsRemaining = enemyData == null ? 0 : enemyData.RecoveryTurns;
+        else if (recoveryTurnsRemaining > 0)
+            recoveryTurnsRemaining--;
+
         if (statusEffects != null && currentHealth > 0)
         {
             statusEffects.ProcessTurnEnd();
         }
 
+        if (preparationDeferred && preparationWaitTurns < int.MaxValue)
+            preparationWaitTurns++;
+        preparationDeferred = false;
         lastTurnAction = actionType;
+        if (actionType == EnemyTurnActionType.PrepareAttack && isAttackPrepared
+            && currentHealth > 0 && hasCommittedIntent)
+        {
+            // Carry the exact aim across the player's response opportunity.
+            // Keeping the original origin also makes a later push interrupt it.
+            committedIntent = new TurnIntent(EnemyTurnActionType.Fire);
+            telegraphPresenter?.ShowPlannedAttack(committedAttackCells);
+            actionQueueUI?.ShowIntent(EnemyTurnActionType.Fire, Vector3.zero, false, AttackIconType);
+        }
+        else
+        {
+            ClearTurnIntent();
+            telegraphPresenter?.HideAttackTelegraph();
+        }
         isActing = false;
         TurnActionCompleted?.Invoke(this, actionType);
     }

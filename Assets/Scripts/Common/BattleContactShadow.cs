@@ -931,6 +931,9 @@ public sealed class BattleContactShadow : MonoBehaviour
             }
 
             CachedSprite = sprite;
+            // Animation frames can use different topology. Discard the old
+            // indices and UVs before assigning a smaller vertex array.
+            Mesh.Clear();
             SpriteVertices = sprite.vertices;
             SpriteUvs = sprite.uv;
             ProjectedVertices = new Vector3[SpriteVertices.Length];

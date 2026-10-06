@@ -393,7 +393,7 @@ public sealed class BattleTestGui : MonoBehaviour
 
     private void ShowText(string text)
     {
-        details.text = text.Replace("DUEL CLOCK", "실린더 템포");
+        details.text = text.Replace("DUEL CLOCK", "행동 기반 전투");
         details.GetComponentInParent<UnityEngine.UI.ScrollRect>(true).verticalNormalizedPosition = 1;
     }
     private void AddSelectedBullet() => AddBullet(selectedCatalog[0]);

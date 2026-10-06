@@ -166,6 +166,8 @@ public partial class EnemyController
                 currentShield = currentShield,
                 remainingSupportCharges = remainingSupportCharges,
                 recoveryTurnsRemaining = recoveryTurnsRemaining,
+                preparationWaitTurns = owner.preparationWaitTurns,
+                preparationDeferred = owner.preparationDeferred,
                 isQueueCreated = isQueueCreated,
                 isAttackPrepared = isAttackPrepared,
                 isRetreating = isRetreating,
@@ -173,6 +175,7 @@ public partial class EnemyController
                 preparedTargetLaneIndex = preparedTargetLaneIndex,
                 preparedSupportType = (int)preparedSupportType,
                 lastTurnAction = (int)lastTurnAction,
+                nextIntent = CaptureIntent(),
                 bigBarrelStep = (int)bigBarrelStep,
                 isBigBarrelPhaseTwo = isBigBarrelPhaseTwo,
                 bigBarrelActionUsesPhaseTwo = bigBarrelActionUsesPhaseTwo,
@@ -293,6 +296,15 @@ public partial class EnemyController
             bigBarrelReloadTurnsRemaining = Mathf.Max(
                 0,
                 state.bigBarrelReloadTurnsRemaining);
+            // Fold legacy boss recovery into the shared counter without
+            // adding a second cooldown or changing the saved schema.
+            if (owner.IsBoss && bigBarrelStep == BigBarrelStep.Reload)
+            {
+                recoveryTurnsRemaining = Mathf.Max(recoveryTurnsRemaining, bigBarrelReloadTurnsRemaining);
+                bigBarrelStep = BigBarrelStep.CreateBombQueue;
+            }
+            bigBarrelReloadTurnsRemaining = 0;
+            if (recoveryTurnsRemaining > 0) isAttackPrepared = false;
             preparedBombTargetTileIndices.Clear();
             preparedShotgunTileIndices.Clear();
     
@@ -332,10 +344,110 @@ public partial class EnemyController
             RefreshHealthUI();
             ApplyCanvasOrientation();
             owner.ApplyLaneSortingOrder();
+            RestoreIntent(state.nextIntent);
+            owner.preparationWaitTurns = Mathf.Max(0, state.preparationWaitTurns);
+            owner.preparationDeferred = state.preparationDeferred && owner.hasCommittedIntent
+                && (owner.committedIntent.Action == EnemyTurnActionType.Wait
+                    || owner.committedIntent.Action == EnemyTurnActionType.Move
+                    || owner.committedIntent.Action == EnemyTurnActionType.Rotate);
+            if (owner.hasCommittedIntent && owner.committedIntent.Action != EnemyTurnActionType.Fire)
+                isAttackPrepared = false;
+            actionQueueUI.SetPrepared(isAttackPrepared);
             RefreshAttackTelegraph();
-            owner.SetPreparedTargetWarning(isAttackPrepared);
+            // A saved intent owns its warning, including a cancelled/Wait plan.
+            // Legacy preparation must not reactivate a tile behind that plan.
+            if (!owner.hasCommittedIntent) owner.SetPreparedTargetWarning(isAttackPrepared);
         }
     
+        private RunEnemyIntentSaveData CaptureIntent()
+        {
+            if (!owner.hasCommittedIntent || owner.isActing) return null;
+            TurnIntent intent = owner.GetNextTurnIntent();
+            var saved = new RunEnemyIntentSaveData
+            {
+                committed = true,
+                action = (int)intent.Action,
+                direction = intent.Direction,
+                lane = intent.Lane
+            };
+            if (intent.Path != null)
+                foreach (Vector3 point in intent.Path)
+                    if (boardManager.TryGetTileIndex(point, intent.Lane, out int tile)) saved.pathTiles.Add(tile);
+            if (intent.Action == EnemyTurnActionType.Fire || intent.Action == EnemyTurnActionType.PrepareAttack)
+                foreach (Vector2Int cell in owner.committedAttackCells)
+                {
+                    saved.attackTiles.Add(cell.x);
+                    saved.attackLanes.Add(cell.y);
+                }
+            return saved;
+        }
+
+        private void RestoreIntent(RunEnemyIntentSaveData saved)
+        {
+            owner.ClearTurnIntent();
+            if (saved == null || !saved.committed || boardManager == null) return;
+            owner.hasCommittedIntent = true;
+            owner.committedOrigin = transform.position;
+            owner.committedLane = currentLaneIndex;
+            owner.committedIntent = new TurnIntent(EnemyTurnActionType.Wait);
+            EnemyTurnActionType action = (EnemyTurnActionType)saved.action;
+            if (recoveryTurnsRemaining > 0 && (action == EnemyTurnActionType.Fire
+                || action == EnemyTurnActionType.PrepareAttack)) return;
+            if (action != EnemyTurnActionType.Wait && action != EnemyTurnActionType.Move
+                && action != EnemyTurnActionType.Rotate && action != EnemyTurnActionType.Fire
+                && action != EnemyTurnActionType.Support && action != EnemyTurnActionType.PrepareAttack) return;
+            if (saved.lane < 0 || saved.lane >= boardManager.LaneCount) return;
+            var path = new List<Vector3>();
+            boardManager.TryGetTileIndex(transform.position, currentLaneIndex, out int origin);
+            boardManager.TryGetTilePosition(origin, currentLaneIndex, out Vector3 floor);
+            Vector3 offset = transform.position - floor;
+            if (saved.pathTiles != null)
+                foreach (int tile in saved.pathTiles)
+                {
+                    if (!boardManager.TryGetTilePosition(tile, saved.lane, out Vector3 point)) return;
+                    path.Add(point + offset);
+                }
+            if (action == EnemyTurnActionType.Move && path.Count == 0) return;
+            if (action == EnemyTurnActionType.Move)
+            {
+                if (saved.lane != currentLaneIndex)
+                {
+                    if (path.Count != 1 || Mathf.Abs(saved.lane - currentLaneIndex) != 1
+                        || !boardManager.TryGetAdjacentLanePosition(origin, currentLaneIndex,
+                            saved.lane - currentLaneIndex, out _, out Vector3 adjacent)
+                        || (path[0] - offset - adjacent).sqrMagnitude > 0.001f) return;
+                }
+                else
+                {
+                    int previous = origin;
+                    int direction = saved.pathTiles[0] > origin ? 1 : -1;
+                    foreach (int tile in saved.pathTiles)
+                    {
+                        if (tile - previous != direction) return;
+                        previous = tile;
+                    }
+                }
+            }
+            if (action == EnemyTurnActionType.Rotate && Mathf.Abs(saved.direction) != 1) return;
+            if (saved.attackTiles == null || saved.attackLanes == null
+                || saved.attackTiles.Count != saved.attackLanes.Count) return;
+            var cells = new List<Vector2Int>();
+            for (int index = 0; index < saved.attackTiles.Count; index++)
+            {
+                int tile = saved.attackTiles[index], lane = saved.attackLanes[index];
+                if (!boardManager.TryGetTilePosition(tile, lane, out _)) return;
+                cells.Add(new Vector2Int(tile, lane));
+            }
+            owner.committedAttackCells.UnionWith(cells);
+            // Pre-preparation saves advertised Fire without a ready state.
+            // Preserve their footprint, but grant the new preparation turn.
+            if (action == EnemyTurnActionType.Fire && !isAttackPrepared)
+                action = EnemyTurnActionType.PrepareAttack;
+            if (action != EnemyTurnActionType.Fire) isAttackPrepared = false;
+            owner.committedIntent = new TurnIntent(action, saved.direction, path.ToArray(),
+                saved.lane, preparedSupportTarget, preparedSupportType);
+        }
+
         private EnemyActionData ResolveSavedAction(string assetName)
         {
             if (enemyData == null || string.IsNullOrWhiteSpace(assetName))

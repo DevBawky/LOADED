@@ -1187,7 +1187,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
                 if (!HasInspectableEnemyAction())
                 {
                     priority = new PriorityMission(
-                        "적 행동 아이콘이 나타날 때까지 회전해 DUEL CLOCK 충전",
+                        "적이 등장할 때까지 회전해 행동 진행",
                         "Button | Rotate");
                     return true;
                 }
@@ -1452,7 +1452,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
         foreach (EnemyController enemy in waveManager.ActiveEnemies)
         {
             if (enemy != null && enemy.CurrentHealth > 0
-                && enemy.QueuedAttackActions.Count > 0)
+                && enemy.ActionQueueView != null)
             {
                 return true;
             }

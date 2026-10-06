@@ -12,6 +12,112 @@ public sealed class CylinderTempoTests
 {
     private readonly List<Object> createdObjects = new List<Object>();
 
+    [TestCase(0, 3)]
+    [TestCase(-4, 3)]
+    [TestCase(1, 1)]
+    [TestCase(2, 2)]
+    [TestCase(3, 3)]
+    [TestCase(99, 3)]
+    public void ReinforcementCountdownRestoresLegacyAndCurrentValues(int saved, int expected)
+    {
+        Assert.That(WaveManager.NormalizeReinforcementCountdown(saved), Is.EqualTo(expected));
+    }
+
+    [TestCase(true, false, 3, "다음 증원 · 3행동")]
+    [TestCase(true, true, 1, "증원 일시정지 · 1행동")]
+    [TestCase(false, true, 2, "증원 완료")]
+    public void ReinforcementLabelExplainsCountdownAndCapacity(bool remaining, bool full, int actions, string expected)
+    {
+        Assert.That(CylinderTempoHUD.FormatReinforcementLabel(remaining, full, actions), Is.EqualTo(expected));
+    }
+
+    [UnityTest]
+    public IEnumerator ReinforcementsUseThreeActionsAndResumeSavedCountdown()
+    {
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        yield return new EnterPlayMode();
+        yield return ExerciseReinforcementCountdown();
+        yield return new ExitPlayMode();
+    }
+
+    private static IEnumerator ExerciseReinforcementCountdown()
+    {
+        EditorSceneManager.LoadSceneInPlayMode(BattleTestSceneBuilder.ScenePath,
+            new LoadSceneParameters(LoadSceneMode.Single));
+        yield return null;
+        yield return null;
+        var test = Object.FindFirstObjectByType<BattleTestController>();
+        var player = Object.FindFirstObjectByType<PlayerMove>();
+        var wave = Object.FindFirstObjectByType<WaveManager>();
+        const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+        foreach (var button in Object.FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None))
+            if (button.GetComponentInChildren<TMP_Text>()?.text == "전투로 돌아가기") button.onClick.Invoke();
+        test.ExecuteCommand("board 5 2");
+        test.ExecuteCommand("player 2 0");
+        test.ExecuteCommand("god on");
+        test.ExecuteCommand("refill off");
+        var battle = AssetDatabase.LoadAssetAtPath<BattleData>("Assets/Scripts/Manager/Battle SO/Stage 1/1 Entry/Stage 1 Entry.asset");
+        Assert.That(wave.BeginBattle(battle), Is.True);
+        player.SetInputLocked(true);
+        IEnumerator Act()
+        {
+            float deadline = Time.realtimeSinceStartup + 15f;
+            while (!test.IsSettled || Time.unscaledTime < (float)typeof(PlayerMove).GetField("nextInstantActionAllowedAt", flags).GetValue(player))
+            {
+                Assert.That(Time.realtimeSinceStartup, Is.LessThan(deadline));
+                yield return null;
+            }
+            int cycle = wave.CurrentEnemyTurnCycle;
+            player.SetInputLocked(false); player.Wait(); player.SetInputLocked(true);
+            yield return null;
+            while (!test.IsSettled || wave.CurrentEnemyTurnCycle == cycle)
+            {
+                Assert.That(Time.realtimeSinceStartup, Is.LessThan(deadline));
+                yield return null;
+            }
+            Assert.That(wave.CurrentEnemyTurnCycle, Is.EqualTo(cycle + 1));
+        }
+        try
+        {
+            Assert.That(wave.LivingEnemyCount, Is.EqualTo(1));
+            Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(3));
+            yield return Act();
+            Assert.That(wave.LivingEnemyCount, Is.EqualTo(1));
+            Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(2));
+            var saved = new RunSaveData(); wave.CaptureRunState(saved);
+            saved = JsonUtility.FromJson<RunSaveData>(JsonUtility.ToJson(saved));
+            Assert.That(wave.RestoreBattle(battle, saved), Is.True);
+            Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(2));
+            yield return Act();
+            Assert.That(wave.LivingEnemyCount, Is.EqualTo(1));
+            Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(1));
+            yield return Act();
+            Assert.That(wave.LivingEnemyCount, Is.EqualTo(2));
+            Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(3));
+            // Capacity pauses rather than banking later reinforcements.
+            typeof(WaveManager).GetField("maximumActiveEnemyCount", flags).SetValue(wave, 2);
+            yield return Act(); yield return Act();
+            Assert.That(wave.LivingEnemyCount, Is.EqualTo(2));
+            Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(3));
+            typeof(WaveManager).GetField("maximumActiveEnemyCount", flags).SetValue(wave, 4);
+            // Clearing every current enemy retains immediate replacement.
+            var old = new List<EnemyController>(wave.ActiveEnemies);
+            int poolBefore = wave.RemainingUnspawnedEnemyCount;
+            foreach (var enemy in old) enemy.ApplyEnvironmentalDamage(100000);
+            Assert.That(wave.LivingEnemyCount, Is.EqualTo(1));
+            Assert.That(wave.RemainingUnspawnedEnemyCount, Is.EqualTo(poolBefore - 1));
+            Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(3));
+            yield return Act();
+            Assert.That(wave.LivingEnemyCount, Is.EqualTo(1), "Immediate replacement must not cause an extra regular spawn");
+            Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(2));
+        }
+        finally
+        {
+            player.SetInputLocked(false);
+            wave.StopBattle();
+        }
+    }
+
     [TearDown]
     public void TearDown()
     {
@@ -26,14 +132,14 @@ public sealed class CylinderTempoTests
         createdObjects.Clear();
     }
 
-    [TestCase(PlayerBehaviourAction.MoveLeft, 2)]
-    [TestCase(PlayerBehaviourAction.MoveRight, 2)]
-    [TestCase(PlayerBehaviourAction.MoveUp, 2)]
-    [TestCase(PlayerBehaviourAction.MoveDown, 2)]
-    [TestCase(PlayerBehaviourAction.Rotate, 1)]
-    [TestCase(PlayerBehaviourAction.Wait, 1)]
-    [TestCase(PlayerBehaviourAction.Reload, 3)]
-    [TestCase(PlayerBehaviourAction.Shoot, 3)]
+    [TestCase(PlayerBehaviourAction.MoveLeft, 6)]
+    [TestCase(PlayerBehaviourAction.MoveRight, 6)]
+    [TestCase(PlayerBehaviourAction.MoveUp, 6)]
+    [TestCase(PlayerBehaviourAction.MoveDown, 6)]
+    [TestCase(PlayerBehaviourAction.Rotate, 6)]
+    [TestCase(PlayerBehaviourAction.Wait, 6)]
+    [TestCase(PlayerBehaviourAction.Reload, 6)]
+    [TestCase(PlayerBehaviourAction.Shoot, 6)]
     public void ActionCostsMatchCylinderTempoRules(
         PlayerBehaviourAction action,
         int expectedCost)
@@ -44,53 +150,33 @@ public sealed class CylinderTempoTests
     }
 
     [Test]
-    public void OverflowRemainsHiddenUntilEnemyCycleCompletes()
+    public void ShotCommitsOnlyOnCompletionAndHasNoCarry()
     {
-        CreateController(
-            out DuelClockController controller,
-            out PlayerMove playerMove);
-        long committedBeats = 0;
-        controller.BeatsCommitted += beats => committedBeats += beats;
-
-        CommitCompletedAction(
-            controller,
-            playerMove,
-            PlayerBehaviourAction.Rotate);
-        CommitCompletedAction(
-            controller,
-            playerMove,
-            PlayerBehaviourAction.Rotate);
-        CommitCompletedAction(
-            controller,
-            playerMove,
-            PlayerBehaviourAction.Rotate);
-        CommitCompletedAction(
-            controller,
-            playerMove,
-            PlayerBehaviourAction.Rotate);
-        CommitCompletedAction(
-            controller,
-            playerMove,
-            PlayerBehaviourAction.Rotate);
-
+        CreateController(out DuelClockController controller, out PlayerMove playerMove);
+        long beats = 0;
+        controller.BeatsCommitted += count => beats += count;
         controller.HandlePlayerActionStarted(PlayerBehaviourAction.Shoot);
-
-        Assert.That(committedBeats, Is.EqualTo(1));
+        Assert.That(beats, Is.Zero);
+        playerMove.CompleteTurn();
+        Assert.That(beats, Is.EqualTo(1));
         Assert.That(controller.IsTempoCycleReserved, Is.True);
-        Assert.That(controller.TempoProgress, Is.EqualTo(6d));
-
-        controller.HandleEnemyCycleStarted();
-
-        Assert.That(controller.TempoProgress, Is.EqualTo(6d));
-
-        int completionStateChanges = 0;
-        controller.StateChanged += () => completionStateChanges++;
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.MoveLeft);
+        playerMove.CompleteTurn();
         controller.HandleEnemyCycleCompleted();
+        Assert.That(beats, Is.EqualTo(1));
+        Assert.That(controller.TempoProgress, Is.Zero);
+    }
 
-        Assert.That(controller.IsTempoCycleReserved, Is.False);
-        Assert.That(controller.TempoProgress, Is.EqualTo(2d)
-            .Within(0.0001d));
-        Assert.That(completionStateChanges, Is.EqualTo(1));
+    [Test]
+    public void RestoreDiscardsOldTempoButKeepsCompletedCycles()
+    {
+        CreateController(out DuelClockController controller, out _);
+        BattleData battle = ScriptableObject.CreateInstance<BattleData>();
+        createdObjects.Add(battle);
+        controller.ConfigureRestored(battle, CombatPacingMode.DuelClock,
+            new RunSaveData { duelClockProgress = 83, duelClockCumulativeBeats = 7 });
+        Assert.That(controller.Progress, Is.Zero);
+        Assert.That(controller.CumulativeBeats, Is.EqualTo(7));
     }
 
     [Test]
@@ -121,7 +207,7 @@ public sealed class CylinderTempoTests
             PlayerBehaviourAction.Wait);
         playerMove.CompleteTurn();
 
-        Assert.That(controller.TempoProgress, Is.EqualTo(1d)
+        Assert.That(controller.TempoProgress, Is.EqualTo(6d)
             .Within(0.0001d));
     }
 
@@ -141,7 +227,7 @@ public sealed class CylinderTempoTests
 
         Assert.That(advanced, Is.False);
         Assert.That(reduced, Is.False);
-        Assert.That(controller.TempoProgress, Is.EqualTo(2d)
+        Assert.That(controller.TempoProgress, Is.EqualTo(6d)
             .Within(0.0001d));
     }
 
@@ -290,16 +376,6 @@ public sealed class CylinderTempoTests
 
             yield return null;
 
-            for (int actionIndex = 0; actionIndex < 5; actionIndex++)
-            {
-                playerMove.Wait();
-            }
-
-            Assert.That(playerMove.TurnCount, Is.EqualTo(5));
-            Assert.That(
-                tempoController.TempoProgress,
-                Is.EqualTo(5d).Within(0.0001d));
-
             bool presentationCompleted = false;
 
             IEnumerator CompletePresentation()
@@ -319,6 +395,7 @@ public sealed class CylinderTempoTests
                 Is.True);
             tempoController.HandlePlayerActionStarted(
                 PlayerBehaviourAction.Shoot);
+            playerMove.CompleteTurn();
             playerMove.BufferInputAction(PlayerBehaviourAction.Reload);
 
             Assert.That(waveManager.IsResolvingTurn, Is.True);
@@ -334,7 +411,7 @@ public sealed class CylinderTempoTests
 
             Assert.That(presentationCompleted, Is.False);
             Assert.That(deckManager.LoadedBullets, Is.Empty);
-            Assert.That(playerMove.TurnCount, Is.EqualTo(5));
+            Assert.That(playerMove.TurnCount, Is.EqualTo(1));
             Assert.That(tempoController.IsTempoCycleReserved, Is.True);
 
             int remainingFrames = 120;
@@ -358,11 +435,12 @@ public sealed class CylinderTempoTests
 
             Assert.That(remainingFrames, Is.GreaterThan(0));
             Assert.That(deckManager.LoadedBullets, Has.Count.EqualTo(1));
-            Assert.That(playerMove.TurnCount, Is.EqualTo(6));
+            Assert.That(playerMove.TurnCount, Is.EqualTo(2));
+            remainingFrames = 120;
+            while (waveManager.IsResolvingTurn && remainingFrames-- > 0) yield return null;
+            Assert.That(remainingFrames, Is.GreaterThan(0));
             Assert.That(tempoController.IsTempoCycleReserved, Is.False);
-            Assert.That(
-                tempoController.TempoProgress,
-                Is.EqualTo(5d).Within(0.0001d));
+            Assert.That(tempoController.TempoProgress, Is.Zero);
             Assert.That(
                 playerMove.TryPeekBufferedInput(out _),
                 Is.False);
@@ -371,7 +449,7 @@ public sealed class CylinderTempoTests
             yield return null;
 
             Assert.That(deckManager.LoadedBullets, Has.Count.EqualTo(1));
-            Assert.That(playerMove.TurnCount, Is.EqualTo(6));
+            Assert.That(playerMove.TurnCount, Is.EqualTo(2));
         }
         finally
         {
@@ -395,7 +473,7 @@ public sealed class CylinderTempoTests
     }
 
     [Test]
-    public void BattleHudKeepsPhaseLabelAndSixComboCounts()
+    public void BattleHudKeepsPhaseLabelAndEightComboCounts()
     {
         GameObject canvas = AssetDatabase.LoadAssetAtPath<GameObject>(
             "Assets/Prefabs/UI/Canvas.prefab");
@@ -426,7 +504,7 @@ public sealed class CylinderTempoTests
             "Panel | MainGame/Panel | Feedback/Layout | Combo/"
             + "Image | Combo Timer BG");
         Assert.That(comboTimer, Is.Not.Null);
-        Assert.That(comboTimer.childCount, Is.EqualTo(6));
+        Assert.That(comboTimer.childCount, Is.EqualTo(8));
 
         for (int index = 0; index < comboTimer.childCount; index++)
         {
@@ -458,7 +536,7 @@ public sealed class CylinderTempoTests
                 serializedFeedback
                     .FindProperty("comboCountLimit")
                     .intValue,
-                Is.EqualTo(6));
+                Is.EqualTo(8));
 
             WaveManager waveManager =
                 Object.FindFirstObjectByType<WaveManager>(

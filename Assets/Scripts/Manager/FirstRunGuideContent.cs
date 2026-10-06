@@ -97,13 +97,13 @@ internal static class FirstRunGuideContent
     internal static readonly GuidePage[] CombatSystemPages =
     {
         new GuidePage(
-            "실린더 템포",
-            "시간은 저절로 흐르지 않고 <color=#FFD05A><b>플레이어 행동</b></color>으로만 실린더 템포가 충전됩니다.\n이동은 2칸, 회전과 대기는 1칸, 장전과 발사는 3칸을 사용합니다.\n템포가 <color=#FF5757><b>6칸</b></color>에 도달하면 모든 적이 한 번씩 행동하며, 공격 순간에 이동하면 회피할 수 있습니다.",
+            "행동과 회피",
+            "생각하는 동안 시간은 흐르지 않습니다. 이동·회전·대기·장전·발사를 완료하면 모든 적이 한 번씩 행동합니다.\n실린더 발사와 연쇄 효과는 끝까지 해결된 뒤 적이 행동합니다. 적 공격 중 이동하여 회피할 수 있습니다.",
             null,
             "Panel | Cylinder Tempo"),
         new GuidePage(
             "적의 공격 예고",
-            "공격 준비 시 <color=#FF5757><b>경고음</b></color>이 울립니다.\n<color=#FF5757><b>적 아래의 행동 패널</b></color>도 붉어집니다.\n원거리 공격은 경로와 범위도 표시됩니다.\n다음 적 행동 주기 전에 피하거나 대비하세요.",
+            "흰 검은 공격 준비, 붉게 점멸하는 검은 다음 적 행동에 공격한다는 뜻입니다. 준비 경고음과 붉은 바닥을 확인하고 이동·밀치기·사격으로 대응하세요.\n공격이 시작되면 경고음과 함께 바닥이 채워집니다. 회피 슬로모션 동안 범위 밖으로 이동할 수 있습니다. 방향 화살표는 이동, 굽은 화살표는 회전, 모래시계는 대기, 십자는 지원입니다.",
             null,
             "Image | Queue",
             TargetKind.TutorialEnemyAction),
@@ -127,7 +127,7 @@ internal static class FirstRunGuideContent
             TargetKind.Cylinder),
         new GuidePage(
             "콤보와 4칸 게이지",
-            "적을 처치하면 <color=#FFD05A><b>콤보 게이지 4칸</b></color>이 충전됩니다.\n실린더 템포 6칸이 차서 <color=#FF5757><b>적 행동 주기가 확정</b></color>될 때마다 한 칸씩 줄어듭니다.\n게이지가 사라지기 전에 추가 적을 처치하면 다시 4칸이 되고 콤보가 이어집니다.",
+            "적을 처치하면 <color=#FFD05A><b>콤보 게이지 4칸</b></color>이 충전됩니다.\n플레이어 행동 완료로 <color=#FF5757><b>적 행동 주기가 확정</b></color>될 때마다 한 칸씩 줄어듭니다.\n게이지가 사라지기 전에 추가 적을 처치하면 다시 4칸이 되고 콤보가 이어집니다.",
             null,
             "Image | Combo Timer BG"),
         new GuidePage(
@@ -163,7 +163,7 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.Move,
             "이동",
-            "<color=#FF5757><b>WASD 키</b></color>로 상하좌우 한 칸씩 이동합니다. A/D는 전장을 따라 이동하고 W/S는 레인을 바꿉니다.\n이동은 <color=#FFD05A><b>실린더 템포 2칸</b></color>을 사용하며, 6칸에 도달하면 적이 행동합니다.",
+            "<color=#FF5757><b>WASD 키</b></color>로 상하좌우 한 칸씩 이동합니다. A/D는 전장을 따라 이동하고 W/S는 레인을 바꿉니다.\n이동은 <color=#FFD05A><b>행동 1회</b></color>이며, 완료 후 적이 행동합니다.",
             "한 칸 이동",
             "Videos/Movement.mp4",
             null,
@@ -178,14 +178,14 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.Wait,
             "대기",
-            "<color=#FF5757><b>E 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 제자리에서 실린더 템포 1칸을 사용합니다.",
+            "<color=#FF5757><b>E 키</b></color> 또는 <color=#FF5757><b>대기 버튼 클릭</b></color>으로 제자리에서 한 번 대기하고 적 행동을 진행합니다.",
             "한 번 대기",
             "Videos/Wait.mp4",
             "Button | Wait"),
         new GuideStepDefinition(
             CombatStep.InspectEnemyAction,
             "적 행동 확인",
-            "<color=#FFD05A><b>적 아래의 행동 아이콘</b></color>에서 다음 행동을 확인하세요.\n아이콘이 없다면 실린더 템포를 진행한 뒤 <color=#FF5757><b>마우스 커서를 올리거나 클릭</b></color>하세요.",
+            "<color=#FFD05A><b>적 아래의 행동 아이콘</b></color>에서 다음 행동을 확인하세요.\n<color=#FF5757><b>마우스 커서를 올리거나 클릭</b></color>하세요.",
             "적 행동 아이콘 확인",
             null,
             "Image | Queue",
@@ -193,14 +193,14 @@ internal static class FirstRunGuideContent
         new GuideStepDefinition(
             CombatStep.ReloadThree,
             "장전",
-            "<color=#FF5757><b>R 키</b></color> 또는 <color=#FF5757><b>장전 버튼 클릭</b></color>으로 다음 탄환을 장전합니다.\n장전은 <color=#FFD05A><b>실린더 템포 3칸</b></color>을 사용합니다.\n남은 템포와 적 행동을 먼저 확인하세요.",
+            "<color=#FF5757><b>R 키</b></color> 또는 <color=#FF5757><b>장전 버튼 클릭</b></color>으로 다음 탄환을 장전합니다.\n장전은 <color=#FFD05A><b>행동 1회</b></color>입니다.\n적의 다음 행동을 먼저 확인하세요.",
             "탄환 3회 장전",
             "Videos/Reload.mp4",
             "Button | Reload"),
         new GuideStepDefinition(
             CombatStep.EjectChamber,
             "약실 제거",
-            "실린더에서 제거할 탄환을 <color=#FF5757><b>마우스 우클릭</b></color>하세요.\n제거한 탄환은 파괴되지 않고 <color=#FFD05A><b>사용한 탄환 순환</b></color>으로 이동합니다.\n약실 제거는 <color=#FFD05A><b>실린더 템포를 사용하지 않습니다.</b></color>",
+            "실린더에서 제거할 탄환을 <color=#FF5757><b>마우스 우클릭</b></color>하세요.\n제거한 탄환은 파괴되지 않고 <color=#FFD05A><b>사용한 탄환 순환</b></color>으로 이동합니다.\n약실 제거는 <color=#FFD05A><b>적 행동을 진행시키지 않습니다.</b></color>",
             "실린더 탄환 한 발 우클릭해 제거",
             null,
             null,

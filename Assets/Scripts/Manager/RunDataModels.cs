@@ -54,6 +54,19 @@ public sealed class RunStatusEffectSaveData
 }
 
 [Serializable]
+public sealed class RunEnemyIntentSaveData
+{
+    // False in pre-intent v3 saves, including JsonUtility's missing-field default.
+    public bool committed;
+    public int action;
+    public int direction;
+    public int lane;
+    public List<int> pathTiles = new List<int>();
+    public List<int> attackTiles = new List<int>();
+    public List<int> attackLanes = new List<int>();
+}
+
+[Serializable]
 public sealed class RunEnemySaveData
 {
     public string enemyAssetName;
@@ -64,6 +77,8 @@ public sealed class RunEnemySaveData
     public int currentShield;
     public int remainingSupportCharges;
     public int recoveryTurnsRemaining;
+    public int preparationWaitTurns;
+    public bool preparationDeferred;
     public List<string> queuedActionAssetNames = new List<string>();
     public bool isQueueCreated;
     public bool isAttackPrepared;
@@ -73,6 +88,7 @@ public sealed class RunEnemySaveData
     public int preparedSupportTargetIndex = -1;
     public int preparedSupportType;
     public int lastTurnAction;
+    public RunEnemyIntentSaveData nextIntent;
     public int bigBarrelStep;
     public bool isBigBarrelPhaseTwo;
     public bool bigBarrelActionUsesPhaseTwo;

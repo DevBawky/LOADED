@@ -40,6 +40,7 @@ internal readonly struct EnemyBattleProgress
 
 public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 {
+    internal const int ReinforcementActionInterval = 3;
     private const int EnemyCapacityPercentage = 40;
     private const int ImmediateEnemyPercentage = 10;
 
@@ -129,6 +130,15 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         new List<int>();
     private readonly EnemyTurnCycleRunner enemyTurnCycleRunner =
         new EnemyTurnCycleRunner();
+    private readonly EnemyPreparationScheduler preparationScheduler =
+        new EnemyPreparationScheduler();
+
+    internal bool TryCommitEnemyTurnIntents(EnemyController requester)
+    {
+        if (!activeEnemies.Contains(requester)) return false;
+        preparationScheduler.Commit(activeEnemies);
+        return true;
+    }
 
     public event Action StateChanged;
     public event Action BattleCompleted;
@@ -160,6 +170,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
     public Vector3 SpawnPositionOffset => spawnPositionOffset;
     public int SpawnTerm => spawnTerm;
     public int RemainingSpawnTurns => remainingSpawnTurns;
+    internal int ActionsUntilReinforcement => NormalizeReinforcementCountdown(remainingSpawnTurns);
     public float EnemyTurnDelay => enemyTurnDelay;
     public float EnemyActionInterval => enemyActionInterval;
     public bool IsWaitingForNextWave => isWaitingForNextWave;
@@ -2690,6 +2701,14 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             return;
         }
 
+        // Full boards pause the countdown rather than accumulating a burst.
+        if (!HasRemainingEnemiesToSpawn || IsActiveEnemyLimitReached
+            || GetAvailableSpawnTileCount() <= 0) return;
+
+        remainingSpawnTurns = ActionsUntilReinforcement - 1;
+        if (remainingSpawnTurns > 0) return;
+        remainingSpawnTurns = ReinforcementActionInterval;
+
         if (duelClockEnemySpawnPool.RemainingCount > 0
             && CalculateAvailableEnemySlots(
                 GetLivingEnemyCount(),
@@ -2787,6 +2806,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             }
 
             int spawnedCount = SpawnCylinderTempoEnemies(requestedCount);
+            if (spawnedCount > 0) remainingSpawnTurns = ReinforcementActionInterval;
 
             if (spawnedCount != requestedCount)
             {
@@ -2863,6 +2883,13 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             availableRequests,
             sanitizedCompleted);
         return sanitizedPending + (int)acceptedRequests;
+    }
+
+    internal static int NormalizeReinforcementCountdown(int remainingActions)
+    {
+        // Old action-combat saves left the unused wave countdown at zero.
+        return remainingActions <= 0 ? ReinforcementActionInterval
+            : Mathf.Clamp(remainingActions, 1, ReinforcementActionInterval);
     }
 
     internal static int CalculateMaximumActiveEnemyCount(int totalTileCount)
@@ -3079,6 +3106,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         }
 
         EnsureDuelClockController();
+        remainingSpawnTurns = ReinforcementActionInterval;
         duelClockController.ConfigureFresh(battleData, combatPacingMode);
     }
 
@@ -3099,6 +3127,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         }
 
         EnsureDuelClockController();
+        remainingSpawnTurns = NormalizeReinforcementCountdown(saveData == null ? 0 : saveData.remainingSpawnTurns);
         duelClockController.ConfigureRestored(
             battleData,
             combatPacingMode,

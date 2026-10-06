@@ -9886,7 +9886,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: comboCountLimit
-      value: 6
+      value: 8
       objectReference: {fileID: 0}
     - target: {fileID: 700000000000000021, guid: ac3bf1bbc1991ad419a0751407da38fd, type: 3}
       propertyPath: comboGoldPerKill

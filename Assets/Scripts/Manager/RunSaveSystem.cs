@@ -264,6 +264,7 @@ public static class RunSaveSystem
             }
 
             enemy.laneIndex = Mathf.Max(0, enemy.laneIndex);
+            enemy.preparationWaitTurns = Mathf.Max(0, enemy.preparationWaitTurns);
             enemy.preparedTargetLaneIndex = Mathf.Max(
                 0,
                 enemy.preparedTargetLaneIndex);

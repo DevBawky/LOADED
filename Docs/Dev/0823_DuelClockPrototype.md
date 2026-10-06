@@ -1,5 +1,7 @@
 # Duel Clock Prototype
 
+> 2026-10-06: 아래 내용은 이전 설계 기록이다. 현재 전투 규칙은 [행동 기반 전투 개편](1006_ActionCombat.md)을 따른다.
+
 > Superseded by Cylinder Tempo. The legacy type, enum, and save-field names are
 > intentionally retained for Unity serialization and active-run compatibility.
 > Runtime combat no longer advances from elapsed time or a separate spawn

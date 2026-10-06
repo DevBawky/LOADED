@@ -46,7 +46,7 @@ public sealed class BattleTestInteractions : MonoBehaviour
         else if ((hoveredControl != null || hovered != null && !menu.gameObject.activeSelf) && Time.unscaledTime >= hoverAt)
         {
             tooltipText.text = hoveredControl != null ? controlExplanation : (hovered.Title + "\n" + hovered.Subtitle + "\n" + hovered.Description
-                + "\n<color=#84CBB8>드래그로 옮기기 · 우클릭 조작\n더블클릭 빠른 실행</color>").Replace("DUEL CLOCK", "실린더 템포");
+                + "\n<color=#84CBB8>드래그로 옮기기 · 우클릭 조작\n더블클릭 빠른 실행</color>").Replace("DUEL CLOCK", "행동 기반 전투");
             tooltip.sizeDelta = new Vector2(440, Mathf.Min(580, tooltipText.GetPreferredValues(tooltipText.text, 412, 0).y + 32));
             tooltip.gameObject.SetActive(true);
             Position(tooltip, pointerPosition + new Vector2(20, -16));
@@ -76,7 +76,7 @@ public sealed class BattleTestInteractions : MonoBehaviour
     internal void Inspect(string text)
     {
         Cancel();
-        tooltipText.text = text.Replace("DUEL CLOCK", "실린더 템포");
+        tooltipText.text = text.Replace("DUEL CLOCK", "행동 기반 전투");
         tooltip.sizeDelta = new Vector2(440, Mathf.Min(580, tooltipText.GetPreferredValues(text, 412, 0).y + 32));
         tooltip.gameObject.SetActive(true);
         Position(tooltip, pointerPosition + new Vector2(20, -16));

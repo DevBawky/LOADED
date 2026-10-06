@@ -51,7 +51,7 @@ MonoBehaviour:
   attackDodgeWindowDuration: 0.2
   meleeAdditionalAttackChance: 0.5
   firingRange: 4
-  recoveryTurns: 1
+  recoveryTurns: 2
   maxSupportCharges: 2
   supportHealAmount: 10
   supportShieldAmount: 10

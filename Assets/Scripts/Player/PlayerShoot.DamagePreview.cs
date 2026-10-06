@@ -198,24 +198,6 @@ public partial class PlayerShoot
             int previousStatusMask = 0;
             BulletRuntimeStateSnapshot previousPreFireState = default;
             bool hasPreviousPreFireState = false;
-            int initialIndex = loadedBullets.Count - 1;
-            BulletInstance initialResolvedBullet = initialIndex < 0
-                ? null
-                : ResolveShotBullet(loadedBullets[initialIndex], null);
-            int initialShotDirection = BulletEffectUtility.ResolveShotDirection(
-                initialResolvedBullet,
-                horizontalDirection);
-            bool initialIsPowder = FindSpecialEffect(
-                initialResolvedBullet,
-                BulletEffectType.PowderPouch) != null;
-            bool fireIntoAir = initialIsPowder
-                ? !HasPreviewViableFutureShot(
-                    initialIndex - 1,
-                    initialResolvedBullet,
-                    horizontalDirection)
-                : !HasPreviewTargets(
-                    initialResolvedBullet,
-                    initialShotDirection);
     
             for (int bulletIndex = loadedBullets.Count - 1;
                  bulletIndex >= hoveredBulletIndex;
@@ -250,13 +232,6 @@ public partial class PlayerShoot
     
                 if (powderEffect != null)
                 {
-                    if (!fireIntoAir && !HasPreviewViableFutureShot(
-                            bulletIndex - 1,
-                            resolvedBullet,
-                            horizontalDirection))
-                    {
-                        break;
-                    }
     
                     for (int remainingIndex = 0;
                          remainingIndex < bulletIndex;
@@ -287,11 +262,6 @@ public partial class PlayerShoot
                     continue;
                 }
     
-                if (!fireIntoAir
-                    && !HasPreviewTargets(resolvedBullet, shotDirection))
-                {
-                    break;
-                }
     
                 BulletDynamicCombatContext damageContext =
                     CreatePreviewDynamicCombatContext(
@@ -586,6 +556,8 @@ public partial class PlayerShoot
                         GetPreviewAbilityStacks(firedBullet) - shellCost;
                 }
     
+                ApplyPreviewRecoil(resolvedBullet, shotDirection);
+
                 BulletEffectData stackEffect = FindSpecialEffect(
                     resolvedBullet,
                     BulletEffectType.StackNextShot);
@@ -681,12 +653,9 @@ public partial class PlayerShoot
         {
             previewShotDefeatedEnemy = false;
 
-            if (!BuildGuaranteedPreviewHitTargets(
-                    resolvedBullet,
-                    horizontalDirection))
-            {
-                return false;
-            }
+            // A miss still advances shot counters and on-fire effects for later
+            // bullets in the cylinder, without applying any on-hit effects.
+            BuildGuaranteedPreviewHitTargets(resolvedBullet, horizontalDirection);
 
             if (previewIsFirstShotOfPhysicalBullet)
             {
@@ -977,29 +946,6 @@ public partial class PlayerShoot
             }
     
             return hitBuffer.Count > 0;
-        }
-    
-        private bool HasPreviewTargets(
-            BulletInstance bullet,
-            int horizontalDirection)
-        {
-            if (FindSpecialEffect(
-                    bullet,
-                    BulletEffectType.FocusedShotgun) != null)
-            {
-                foreach (DamagePreviewEnemyState state
-                         in damagePreviewStates.Values)
-                {
-                    if (state.Enemy != null && state.RemainingHealth > 0)
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
-            return CollectPreviewTargets(bullet, horizontalDirection);
         }
     
         private bool CollectPreviewTargets(
@@ -1336,49 +1282,6 @@ public partial class PlayerShoot
                 state.TileIndex,
                 state.LaneIndex);
             return Mathf.Abs(enemyColumn - playerColumn);
-        }
-    
-        private bool HasPreviewViableFutureShot(
-            int loadedBulletIndex,
-            BulletInstance previousResolvedBullet,
-            int horizontalDirection)
-        {
-            for (int bulletIndex = loadedBulletIndex;
-                 bulletIndex >= 0;
-                 bulletIndex--)
-            {
-                BulletInstance loadedBullet =
-                    deckManager.LoadedBullets[bulletIndex];
-                BulletInstance resolvedBullet = ResolveShotBullet(
-                    loadedBullet,
-                    previousResolvedBullet);
-    
-                if (resolvedBullet == null)
-                {
-                    continue;
-                }
-    
-                if (FindSpecialEffect(
-                        resolvedBullet,
-                        BulletEffectType.PowderPouch) == null
-                    && HasPreviewTargets(
-                        resolvedBullet,
-                        BulletEffectUtility.ResolveShotDirection(
-                            resolvedBullet,
-                            horizontalDirection)))
-                {
-                    return true;
-                }
-
-                horizontalDirection =
-                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
-                        resolvedBullet,
-                        horizontalDirection);
-    
-                previousResolvedBullet = resolvedBullet;
-            }
-    
-            return false;
         }
     
         private BulletDynamicCombatContext CreatePreviewDynamicCombatContext(
@@ -1859,6 +1762,43 @@ public partial class PlayerShoot
             enemyState.TileIndex = previewPlayerTileIndex;
             previewPlayerTileIndex = enemyTileIndex;
             return true;
+        }
+
+        private void ApplyPreviewRecoil(BulletInstance bullet, int shotDirection)
+        {
+            BulletEffectData effect = FindSpecialEffect(bullet, BulletEffectType.RecoilShot);
+            if (effect == null || previewPlayerTileIndex < 0 || boardManager == null)
+            {
+                return;
+            }
+
+            int direction = shotDirection >= 0 ? -1 : 1;
+            for (int step = 0; step < Mathf.Max(1, effect.KnockbackDistance); step++)
+            {
+                int nextTile = previewPlayerTileIndex + direction;
+                if (nextTile < 0 || nextTile >= boardManager.BoardCount
+                    || waveManager.IsTileReservedForMovement(nextTile, previewPlayerLaneIndex)
+                    || waveManager.IsTileReservedForSpawn(nextTile, previewPlayerLaneIndex))
+                {
+                    break;
+                }
+
+                bool occupied = false;
+                foreach (DamagePreviewEnemyState state in damagePreviewStates.Values)
+                {
+                    if (state.RemainingHealth > 0 && state.LaneIndex == previewPlayerLaneIndex
+                        && state.TileIndex == nextTile)
+                    {
+                        occupied = true;
+                        break;
+                    }
+                }
+                if (occupied)
+                {
+                    break;
+                }
+                previewPlayerTileIndex = nextTile;
+            }
         }
     
         private bool ApplyPreviewKnockback(

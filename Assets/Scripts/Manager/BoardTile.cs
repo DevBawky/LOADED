@@ -60,6 +60,14 @@ public class BoardTile : MonoBehaviour
         warningRenderer.SetPropertyBlock(warningProperties);
     }
 
+    internal void SetWarningProgress(float progress, Vector2 direction)
+    {
+        if (warningProperties == null || warningRenderer == null) return;
+        warningProperties.SetFloat("_Charge", Mathf.Clamp01(progress));
+        warningProperties.SetVector("_FillDirection", new Vector4(direction.x, direction.y, 0f, 0f));
+        warningRenderer.SetPropertyBlock(warningProperties);
+    }
+
     internal void PlayWarningAfterglow()
     {
         if (warningActive || warningRenderer == null || !isActiveAndEnabled)

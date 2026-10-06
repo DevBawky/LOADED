@@ -301,3 +301,10 @@ MonoBehaviour:
     volume: 2
     minPitch: 0.9
     maxPitch: 2
+  - id: SFX_EnemyAttackWarning
+    category: 3
+    clip: {fileID: 8300000, guid: 9f774f84c9ab3d9459b9f947dc7c4bb9, type: 3}
+    variants: []
+    volume: 1.6
+    minPitch: 1
+    maxPitch: 1

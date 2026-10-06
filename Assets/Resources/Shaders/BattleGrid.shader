@@ -9,6 +9,8 @@ Shader "LOADED/BattleGrid"
         _Urgency ("Attack Imminent", Range(0,1)) = 0
         _Afterglow ("Attack Afterglow", Range(0,1)) = 0
         _Fade ("Warning Opacity", Range(0,1)) = 1
+        _Charge ("Attack Progress", Range(0,1)) = 1
+        _FillDirection ("Attack Fill Direction", Vector) = (1,0,0,0)
     }
     SubShader
     {
@@ -33,6 +35,8 @@ Shader "LOADED/BattleGrid"
                 float _Urgency;
                 float _Afterglow;
                 float _Fade;
+                float _Charge;
+                float4 _FillDirection;
             CBUFFER_END
             struct Attributes { float3 positionOS : POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; };
             struct Varyings { float4 positionCS : SV_POSITION; half4 color : COLOR; float2 uv : TEXCOORD0; };
@@ -71,6 +75,17 @@ Shader "LOADED/BattleGrid"
                     color.rgb = lerp(color.rgb, rimColor, rim);
                     color.a = lerp(color.a, input.color.a * _Tint.a, rim);
                     color.a = lerp(color.a, _Tint.a, rim * emphasis);
+                    // The full boundary is visible from the start. Only the
+                    // interior fills; the damage area never grows with time.
+                    // Before aiming, every dangerous cell has a red interior
+                    // and complete border. Charge then brightens the fill.
+                    float2 direction = _FillDirection.xy;
+                    float extent = abs(direction.x) + abs(direction.y);
+                    float fillPosition = extent > 0.001
+                        ? 0.5 + dot(input.uv - 0.5, direction) / extent
+                        : length((input.uv - 0.5) * 2) * 0.70710678;
+                    float filled = step(fillPosition, _Charge) * step(0.00001, _Charge);
+                    color.a *= max(rim, lerp(0.5, 1, filled));
                     // The fill drops away first, leaving a brief fading border.
                     color.a *= lerp(1, lerp(0.2 * _Fade, 1, rim), _Afterglow) * _Fade;
                 }

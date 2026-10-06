@@ -20,6 +20,8 @@ public class BoardManager : MonoBehaviour
     private Color? gridBorderColor;
     private Component focusedWarningOwner;
     private readonly HashSet<int> urgentWarningOwners = new HashSet<int>();
+    private readonly Dictionary<int, float> warningProgressByOwner = new Dictionary<int, float>();
+    private readonly Dictionary<int, Vector3> warningOriginsByOwner = new Dictionary<int, Vector3>();
     private readonly List<BoardTile> spawnedTiles = new List<BoardTile>();
     private readonly HashSet<int> persistentWarningCells = new HashSet<int>();
     private readonly Dictionary<int, HashSet<int>> warningOwnerIdsByCell =
@@ -151,6 +153,8 @@ public class BoardManager : MonoBehaviour
             }
         }
 
+        // Changing a footprint changes every cell's share of its total fill.
+        RefreshOwnerWarnings(owner.GetInstanceID());
         RefreshTileWarning(spawnedTileIndex);
         return true;
     }
@@ -168,6 +172,8 @@ public class BoardManager : MonoBehaviour
         }
         int ownerId = owner.GetInstanceID();
         urgentWarningOwners.Remove(ownerId);
+        warningProgressByOwner.Remove(ownerId);
+        warningOriginsByOwner.Remove(ownerId);
         List<int> changedCells = new List<int>();
 
         foreach (KeyValuePair<int, HashSet<int>> warningOwners
@@ -224,6 +230,26 @@ public class BoardManager : MonoBehaviour
             {
                 RefreshTileWarning(entry.Key);
             }
+        }
+    }
+
+    internal void SetWarningOrigin(Component owner, Vector3 worldOrigin)
+    {
+        if (owner == null) return;
+        int id = owner.GetInstanceID();
+        warningOriginsByOwner[id] = worldOrigin;
+        foreach (var entry in warningOwnerIdsByCell)
+            if (entry.Value.Contains(id)) RefreshTileWarning(entry.Key);
+    }
+
+    internal void SetWarningProgress(Component owner, float progress)
+    {
+        if (owner == null) return;
+        int id = owner.GetInstanceID();
+        warningProgressByOwner[id] = Mathf.Clamp01(progress);
+        foreach (var entry in warningOwnerIdsByCell)
+        {
+            if (entry.Value.Contains(id)) RefreshTileWarning(entry.Key);
         }
     }
 
@@ -577,6 +603,8 @@ public class BoardManager : MonoBehaviour
         persistentWarningCells.Clear();
         warningOwnerIdsByCell.Clear();
         urgentWarningOwners.Clear();
+        warningProgressByOwner.Clear();
+        warningOriginsByOwner.Clear();
         focusedWarningOwner = null;
         isGenerated = false;
         GenerateBoard();
@@ -601,6 +629,69 @@ public class BoardManager : MonoBehaviour
             && ownerIds.Contains(focusedWarningOwner.GetInstanceID()));
         spawnedTiles[spawnedTileIndex].SetWarningUrgent(
             hasOwner && ownerIds.Overlaps(urgentWarningOwners));
+        float progress = 0f;
+        int selectedOwner = int.MaxValue;
+        Vector2 direction = Vector2.right;
+        if (hasOwner)
+        {
+            foreach (int id in ownerIds)
+            {
+                float value = warningProgressByOwner.TryGetValue(id, out float charge) ? charge : 0f;
+                value = GetWarningCellProgress(id, spawnedTileIndex, value);
+                // Keep direction and progress from the same attack. Stable ties
+                // prevent opposite warnings from flickering between directions.
+                if (value < progress || value == progress && id >= selectedOwner) continue;
+                progress = value;
+                selectedOwner = id;
+                direction = Vector2.right;
+                if (warningOriginsByOwner.TryGetValue(id, out Vector3 origin))
+                {
+                    Vector3 localOrigin = spawnedTiles[spawnedTileIndex].transform.InverseTransformPoint(origin);
+                    direction = new Vector2(-localOrigin.x * boardDistance, -localOrigin.y * laneDistance).normalized;
+                }
+            }
+        }
+        spawnedTiles[spawnedTileIndex].SetWarningProgress(progress, direction);
+    }
+
+    private void RefreshOwnerWarnings(int ownerId)
+    {
+        foreach (var entry in warningOwnerIdsByCell)
+            if (entry.Value.Contains(ownerId)) RefreshTileWarning(entry.Key);
+    }
+
+    private float GetWarningCellProgress(int ownerId, int cell, float progress)
+    {
+        if (progress <= 0f || progress >= 1f
+            || !warningOriginsByOwner.TryGetValue(ownerId, out Vector3 origin)) return progress;
+
+        GetWarningDistanceInterval(origin, cell, out float cellStart, out float cellEnd);
+        float start = cellStart, end = cellEnd;
+        foreach (var entry in warningOwnerIdsByCell)
+        {
+            if (!entry.Value.Contains(ownerId) || spawnedTiles[entry.Key] == null) continue;
+            GetWarningDistanceInterval(origin, entry.Key, out float near, out float far);
+            start = Mathf.Min(start, near);
+            end = Mathf.Max(end, far);
+        }
+        // One front traverses the whole footprint; equal-distance cells on
+        // opposite sides of an explosion advance together, from the center out.
+        if (start == cellStart && end == cellEnd) return progress;
+        float front = Mathf.Lerp(start, end, progress);
+        return Mathf.InverseLerp(cellStart, cellEnd, front);
+    }
+
+    private void GetWarningDistanceInterval(Vector3 origin, int cell, out float near, out float far)
+    {
+        Vector3 delta = tileParent.InverseTransformPoint(spawnedTiles[cell].transform.position)
+            - tileParent.InverseTransformPoint(origin);
+        Vector2 offset = new Vector2(delta.x / boardDistance, delta.y / laneDistance);
+        float distance = offset.magnitude;
+        Vector2 direction = offset.normalized;
+        float halfExtent = distance < 0.0001f ? Mathf.Sqrt(0.5f)
+            : (Mathf.Abs(direction.x) + Mathf.Abs(direction.y)) * 0.5f;
+        near = Mathf.Max(0f, distance - halfExtent);
+        far = distance + halfExtent;
     }
 
     // Local tile IDs stay stable for saves; columns describe physical alignment.

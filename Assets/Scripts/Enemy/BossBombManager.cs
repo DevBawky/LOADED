@@ -5,8 +5,6 @@ using UnityEngine;
 
 public class BossBombManager : MonoBehaviour
 {
-    private const float BombSpawnOffsetY = -0.3f;
-
     private readonly List<BossBomb> activeBombs = new List<BossBomb>();
     private readonly Dictionary<int, BossBomb> bombsByTile =
         new Dictionary<int, BossBomb>();
@@ -89,8 +87,6 @@ public class BossBombManager : MonoBehaviour
         {
             return false;
         }
-
-        spawnPosition.y += BombSpawnOffsetY;
 
         GameObject bombObject = Instantiate(
             sourceData.BigBarrel.BossBombPrefab,
@@ -375,15 +371,6 @@ public class BossBombManager : MonoBehaviour
             int radius = sourceData.BigBarrel.BombExplosionRadius;
             EnemyPlayerDodgeWindowState dodgeState =
                 CapturePlayerDodgeWindow(centerTile, laneIndex, radius);
-            SoundManager.PlaySfx("SFX_BigBarrel_Bomb");
-            combatFeedback ??=
-                FindFirstObjectByType<CombatFeedbackController>();
-            combatFeedback?.RecordExplosionCameraShake();
-            SpawnExplosionVfxOnAffectedTiles(
-                sourceData,
-                centerTile,
-                laneIndex,
-                radius);
             QueueChainBombs(centerTile, laneIndex, radius, bomb);
             pendingExplosionResolutions++;
             StartCoroutine(ResolveExplosionAfterDodgeWindow(
@@ -408,6 +395,7 @@ public class BossBombManager : MonoBehaviour
         int radius,
         EnemyPlayerDodgeWindowState dodgeState)
     {
+        SoundManager.PlayEnemyAttackWarning();
         float elapsedTime = 0f;
         EnemyPlayerDodgeResolution dodgeResolution = default;
         float dodgeWindowDuration = sourceData == null
@@ -421,6 +409,8 @@ public class BossBombManager : MonoBehaviour
             if (!GamePauseController.IsPaused)
             {
                 elapsedTime += Time.deltaTime;
+                boardManager?.SetWarningProgress(bomb,
+                    dodgeWindowDuration <= 0f ? 1f : elapsedTime / dodgeWindowDuration);
                 TryConfirmPlayerDodge(
                     dodgeState,
                     IsPlayerThreatened(centerTile, laneIndex, radius),
@@ -446,6 +436,11 @@ public class BossBombManager : MonoBehaviour
             IsPlayerThreatened(centerTile, laneIndex, radius),
             sourceData,
             ref dodgeResolution);
+        boardManager?.SetWarningProgress(bomb, 1f);
+        SoundManager.PlaySfx("SFX_BigBarrel_Bomb");
+        combatFeedback ??= FindFirstObjectByType<CombatFeedbackController>();
+        combatFeedback?.RecordExplosionCameraShake();
+        SpawnExplosionVfxOnAffectedTiles(sourceData, centerTile, laneIndex, radius);
         ApplyExplosionDamage(
             sourceData,
             centerTile,

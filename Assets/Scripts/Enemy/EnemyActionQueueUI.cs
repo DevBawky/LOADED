@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(20001)]
 public class EnemyActionQueueUI : MonoBehaviour
 {
     private const string ReadyImageName = "Image | Queue Ready";
@@ -38,6 +39,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     private readonly List<Image> spawnedIcons = new List<Image>();
     private Material stunnedQueueMaterial;
+    private Material readyIntentMaterial;
     private bool isPrepared;
     private bool isStunned;
     private int displayRevision;
@@ -55,6 +57,78 @@ public class EnemyActionQueueUI : MonoBehaviour
     private bool originalOutlineEnabled;
     private Color originalOutlineColor;
     private Vector2 originalOutlineDistance;
+    private EnemyIntentGraphic intentGraphic;
+    private Camera intentCamera;
+    private EnemyActionTooltipTrigger intentTooltip;
+    private EnemyTurnActionType displayedIntent;
+    private Vector3 displayedWorldDirection;
+
+    internal void ShowIntent(EnemyTurnActionType action, Vector3 worldDirection, bool acting,
+        EnemyAttackIconType attackType = EnemyAttackIconType.Melee)
+    {
+        if (queueImage == null) return;
+        if (intentGraphic == null)
+        {
+            GameObject icon = new GameObject("Icon | Next Action", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(EnemyIntentGraphic), typeof(LayoutElement));
+            icon.layer = queueImage.gameObject.layer;
+            icon.transform.SetParent(queueImage.transform, false);
+            icon.GetComponent<LayoutElement>().ignoreLayout = true;
+            intentGraphic = icon.GetComponent<EnemyIntentGraphic>();
+            intentGraphic.raycastTarget = true;
+            intentTooltip = icon.AddComponent<EnemyActionTooltipTrigger>();
+            intentGraphic.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            intentGraphic.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            intentGraphic.rectTransform.sizeDelta = Vector2.one * Mathf.Max(1f, queueImage.rectTransform.rect.height * 0.8f);
+            intentCamera = Camera.main;
+        }
+        foreach (Image oldIcon in spawnedIcons)
+            if (oldIcon != null) oldIcon.gameObject.SetActive(false);
+        queueImage.gameObject.SetActive(true);
+        intentGraphic.gameObject.SetActive(true);
+        intentGraphic.transform.SetAsLastSibling();
+        displayedIntent = action;
+        displayedWorldDirection = worldDirection;
+        bool ready = action == EnemyTurnActionType.Fire;
+        intentGraphic.SetAttackReady(ready);
+        intentGraphic.SetAttackType(attackType);
+        if (!ready) intentGraphic.color = acting ? new Color(1f, 0.7f, 0.2f) : Color.white;
+        SetPrepared(ready);
+        intentTooltip.ConfigureIntent(action, attackType);
+        queueImage.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal,
+            Mathf.Max(1f, queueImage.rectTransform.rect.height));
+        SyncReadyImageRect();
+        RefreshIntentDirection();
+    }
+
+    private void LateUpdate()
+    {
+        // Resolve after the world canvas has applied its camera-facing pose.
+        if (intentGraphic != null && intentGraphic.isActiveAndEnabled)
+            RefreshIntentDirection();
+    }
+
+    private void RefreshIntentDirection()
+    {
+        Vector2 direction = Vector2.right;
+        Vector3 worldDirection = displayedWorldDirection;
+        if (worldDirection.sqrMagnitude > 0.001f && intentCamera != null)
+        {
+            Vector3 origin = intentGraphic.transform.position;
+            Vector2 screen = intentCamera.WorldToScreenPoint(origin);
+            Vector2 delta = (Vector2)(intentCamera.WorldToScreenPoint(transform.position + worldDirection)
+                - intentCamera.WorldToScreenPoint(transform.position));
+            Vector2 right = (Vector2)intentCamera.WorldToScreenPoint(
+                origin + intentGraphic.transform.TransformVector(Vector3.right)) - screen;
+            Vector2 up = (Vector2)intentCamera.WorldToScreenPoint(
+                origin + intentGraphic.transform.TransformVector(Vector3.up)) - screen;
+            float determinant = right.x * up.y - right.y * up.x;
+            if (Mathf.Abs(determinant) > 0.000001f)
+                direction = new Vector2(delta.x * up.y - delta.y * up.x,
+                    right.x * delta.y - right.y * delta.x) / determinant;
+        }
+        intentGraphic.SetIntent(displayedIntent, direction);
+    }
 
     public int IconCount => spawnedIcons.Count;
     public Sprite NormalQueueSprite => normalQueueSprite;
@@ -94,6 +168,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (readyIntentMaterial != null) Destroy(readyIntentMaterial);
         if (stunnedQueueMaterial != null)
         {
             Destroy(stunnedQueueMaterial);
@@ -413,6 +488,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         tooltipTrigger.Configure(actionData);
         spawnedIcons.Add(attackIcon);
+        if (intentGraphic != null) attackIcon.gameObject.SetActive(false);
         RefreshQueueWidth();
         return true;
     }
@@ -525,6 +601,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         spawnedIcons.Clear();
         isPrepared = false;
+        intentGraphic?.SetAttackReady(false);
 
         if (queueImage != null)
         {
@@ -678,7 +755,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         Material emphasisMaterial = isStunned
             ? GetOrCreateStunnedMaterial()
-            : isPrepared ? queueReadyMaterial : null;
+            : isPrepared ? GetOrCreateReadyIntentMaterial() : null;
         queueReadyImage.material = emphasisMaterial;
         queueReadyImage.gameObject.SetActive(
             emphasisMaterial != null
@@ -703,6 +780,20 @@ public class EnemyActionQueueUI : MonoBehaviour
         stunnedQueueMaterial.SetFloat("_Speed", stunnedFlameSpeed);
         stunnedQueueMaterial.SetFloat("_PulseAmount", 0.1f);
         return stunnedQueueMaterial;
+    }
+
+    private Material GetOrCreateReadyIntentMaterial()
+    {
+        if (readyIntentMaterial != null || queueReadyMaterial == null) return readyIntentMaterial;
+        readyIntentMaterial = new Material(queueReadyMaterial)
+        {
+            name = $"{queueReadyMaterial.name} (Attack Ready)"
+        };
+        readyIntentMaterial.SetColor("_EmberColor", new Color(0.6f, 0.005f, 0f, 1f));
+        readyIntentMaterial.SetColor("_FlameColor", new Color(1f, 0.025f, 0f, 1f));
+        readyIntentMaterial.SetColor("_HotColor", new Color(1f, 0.22f, 0.08f, 1f));
+        readyIntentMaterial.SetFloat("_PulseAmount", 0.45f);
+        return readyIntentMaterial;
     }
 
     private void RefreshQueueWidth()

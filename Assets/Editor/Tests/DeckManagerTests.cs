@@ -299,7 +299,7 @@ public class DeckManagerTests
     }
 
     [Test]
-    public void CombatGuideExplainsCylinderTempoAndFourCellCombo()
+    public void CombatGuideExplainsActionCombatAndFourCellCombo()
     {
         FirstRunGuideContent.GuidePage[] pages =
             FirstRunGuideContent.CombatSystemPages;
@@ -307,15 +307,15 @@ public class DeckManagerTests
         Assert.That(
             System.Array.Exists(
                 pages,
-                page => page.Title.Contains("실린더 템포")
-                    && page.Description.Contains("6칸")
-                    && page.Description.Contains("이동은 2칸")),
+                page => page.Title.Contains("행동과 회피")
+                    && page.Description.Contains("모든 적이 한 번씩")
+                    && page.Description.Contains("실린더 발사와 연쇄 효과")),
             Is.True);
         Assert.That(
             System.Array.Exists(
                 pages,
                 page => page.Title.Contains("4칸")
-                    && page.Description.Contains("템포 6칸")
+                    && page.Description.Contains("행동")
                     && page.Description.Contains("적 행동 주기")),
             Is.True);
     }

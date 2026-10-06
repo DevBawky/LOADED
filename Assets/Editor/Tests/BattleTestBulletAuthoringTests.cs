@@ -121,12 +121,25 @@ public sealed class BattleTestBulletAuthoringTests
         Assert.That(EditorJsonUtility.ToJson(authoring.Selected), Is.EqualTo(original));
         Assert.That(controller.TestDeck.TotalBulletCount, Is.EqualTo(count));
         BattleTestControlTooltip help = Field<TMP_InputField>(authoring, "multiplier").GetComponent<BattleTestControlTooltip>();
-        help.OnPointerEnter(new PointerEventData(EventSystem.current) { position = Vector2.one * 300 });
-        yield return new WaitForSecondsRealtime(.4f);
-        Assert.That(interactions.TooltipVisible, Is.True);
-        Assert.That(Field<TMP_Text>(interactions, "tooltipText").text, Does.Contain("250%"));
-        help.OnPointerExit(new PointerEventData(EventSystem.current));
-        Assert.That(interactions.TooltipVisible, Is.False);
+        // This test drives pointer handlers directly. Do not let the desktop
+        // mouse send an unrelated exit while the delayed tooltip is pending.
+        EventSystem events = EventSystem.current;
+        bool eventsEnabled = events.enabled;
+        events.enabled = false;
+        try
+        {
+            help.OnPointerEnter(new PointerEventData(events) { position = Vector2.one * 300 });
+            float deadline = Time.realtimeSinceStartup + 2f;
+            while (!interactions.TooltipVisible && Time.realtimeSinceStartup < deadline) yield return null;
+            Assert.That(interactions.TooltipVisible, Is.True);
+            Assert.That(Field<TMP_Text>(interactions, "tooltipText").text, Does.Contain("250%"));
+            help.OnPointerExit(new PointerEventData(events));
+            Assert.That(interactions.TooltipVisible, Is.False);
+        }
+        finally
+        {
+            events.enabled = eventsEnabled;
+        }
         gui.SelectPage(1);
         Assert.That(Field<GameObject>(authoring, "panel").activeSelf, Is.False);
         yield return new ExitPlayMode();

@@ -165,8 +165,8 @@ public class EnemyData : ScriptableObject
     [Tooltip("원거리 적이 플레이어를 공격 준비할 수 있는 최대 타일 거리입니다.")]
     [SerializeField] private int firingRange = 3;
     [Min(0)]
-    [Tooltip("A ranged enemy spends this many turns recovering after an attack.")]
-    [SerializeField] private int recoveryTurns = 1;
+    [Tooltip("공격 후 다음 공격 준비까지 필요한 적 행동 횟수입니다. 이 동안 이동과 회전은 가능합니다.")]
+    [SerializeField] private int recoveryTurns = 2;
 
     [Header("Porter Support")]
     [Min(0)]

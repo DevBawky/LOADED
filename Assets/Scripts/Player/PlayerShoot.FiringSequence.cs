@@ -260,30 +260,19 @@ public partial class PlayerShoot
             combatFeedback?.BeginFiringSequence();
             combatFeedback?.BeginCylinder();
             bool saverRefundsTurn = false;
-            int initialBulletIndex = deckManager.LoadedBullets.Count - 1;
-            BulletInstance initialResolvedBullet = ResolveShotBullet(
-                deckManager.LoadedBullets[initialBulletIndex],
-                null);
-            int initialShotDirection = BulletEffectUtility.ResolveShotDirection(
-                initialResolvedBullet,
-                horizontalDirection);
-            bool initialBulletIsPowderPouch = FindSpecialEffect(
-                initialResolvedBullet,
-                BulletEffectType.PowderPouch) != null;
-            bool fireIntoAir = initialBulletIsPowderPouch
-                ? !HasViableFutureShot(
-                    initialBulletIndex - 1,
-                    initialResolvedBullet,
-                    horizontalDirection)
-                : !HasViableShotTarget(
-                    initialResolvedBullet,
-                    initialShotDirection);
     
             while (deckManager.LoadedBullets.Count > 0)
             {
                 while (GamePauseController.IsPaused)
                 {
                     yield return null;
+                }
+
+                // Finish the current bullet's effects, but preserve unfired bullets
+                // once the battle outcome is known. Empty aim alone never cancels.
+                if (ShouldStopFiring())
+                {
+                    break;
                 }
     
                 int bulletIndex = deckManager.LoadedBullets.Count - 1;
@@ -303,20 +292,6 @@ public partial class PlayerShoot
                 BulletEffectData powderEffect = FindSpecialEffect(
                     resolvedBullet,
                     BulletEffectType.PowderPouch);
-                bool hasViableTarget = fireIntoAir
-                    || (powderEffect == null
-                        ? HasViableShotTarget(
-                            resolvedBullet,
-                            shotDirection)
-                        : HasViableFutureShot(
-                            bulletIndex - 1,
-                            resolvedBullet,
-                            horizontalDirection));
-    
-                if (!hasViableTarget)
-                {
-                    break;
-                }
     
                 if (!deckManager.TryFireLoadedBullet(out BulletInstance firedBullet)
                     || firedBullet != bulletData)
@@ -484,7 +459,7 @@ public partial class PlayerShoot
                             pelletDamageMultiplier,
                             criticalChanceBonus,
                             true,
-                            fireIntoAir,
+                            true,
                             additionalShotCount == 0,
                             false,
                             currentPhysicalBulletIndex,
@@ -585,7 +560,7 @@ public partial class PlayerShoot
                             damageMultiplier * shellEffect.Amount / 100f,
                             criticalChanceBonus,
                             false,
-                            fireIntoAir,
+                            true,
                             false,
                             false,
                             currentPhysicalBulletIndex,
@@ -612,7 +587,7 @@ public partial class PlayerShoot
                             damageMultiplier,
                             criticalChanceBonus,
                             false,
-                            fireIntoAir,
+                            true,
                             false,
                             true,
                             currentPhysicalBulletIndex,
@@ -826,7 +801,7 @@ public partial class PlayerShoot
             int physicalBulletIndex,
             Action<bool> onCompleted)
         {
-            if (bulletData == null)
+            if (bulletData == null || ShouldStopFiring())
             {
                 onCompleted?.Invoke(false);
                 yield break;
@@ -923,6 +898,10 @@ public partial class PlayerShoot
             else
             {
                 hitBuffer.Clear();
+                if (isBaseBullet)
+                {
+                    lastPhysicalShotTarget = null;
+                }
                 endPoint = GetMissEndPoint(
                     horizontalDirection,
                     GetShotRange(bulletData));
@@ -1043,6 +1022,15 @@ public partial class PlayerShoot
         {
             get => owner.pendingEmergencyReload;
             set => owner.pendingEmergencyReload = value;
+        }
+
+        private bool ShouldStopFiring()
+        {
+            return playerHealth != null && playerHealth.IsDefeated
+                || waveManager != null
+                && (waveManager.IsBattleCompleted
+                    || waveManager.IsBattleCompletionPending
+                    && waveManager.IsFinalDefeatForPresentation());
         }
 
         private static Vector3 GetProjectileImpactPoint(
@@ -1269,44 +1257,6 @@ public partial class PlayerShoot
             return targetBuffer.Count > 0;
         }
     
-        private bool HasViableShotTarget(
-            BulletInstance bullet,
-            int horizontalDirection)
-        {
-            if (FindSpecialEffect(
-                    bullet,
-                    BulletEffectType.FocusedShotgun) != null)
-            {
-                foreach (EnemyController enemy in waveManager.ActiveEnemies)
-                {
-                    if (HasProjectedDurability(enemy))
-                    {
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
-            if (RefreshViableTargets(bullet, horizontalDirection))
-            {
-                return true;
-            }
-    
-            if (IsBoardWideShot(bullet)
-                || BulletEffectUtility.IsAutoTargetingShot(bullet))
-            {
-                return false;
-            }
-    
-            return bullet != null && waveManager != null
-                && waveManager.TryGetFirstBulletBlocker(
-                    transform.position,
-                    horizontalDirection,
-                    GetShotRange(bullet),
-                    out _);
-        }
-    
         private void RemoveTargetsBehindBlocker(
             IPlayerBulletBlocker blocker,
             int horizontalDirection)
@@ -1336,48 +1286,6 @@ public partial class PlayerShoot
                     targetBuffer.RemoveAt(index);
                 }
             }
-        }
-    
-        private bool HasViableFutureShot(
-            int loadedBulletIndex,
-            BulletInstance previousResolvedBullet,
-            int horizontalDirection)
-        {
-            for (int bulletIndex = loadedBulletIndex;
-                 bulletIndex >= 0;
-                 bulletIndex--)
-            {
-                BulletInstance loadedBullet = deckManager.LoadedBullets[bulletIndex];
-                BulletInstance resolvedBullet = ResolveShotBullet(
-                    loadedBullet,
-                    previousResolvedBullet);
-    
-                if (resolvedBullet == null)
-                {
-                    continue;
-                }
-    
-                if (FindSpecialEffect(
-                        resolvedBullet,
-                        BulletEffectType.PowderPouch) == null
-                    && HasViableShotTarget(
-                        resolvedBullet,
-                        BulletEffectUtility.ResolveShotDirection(
-                            resolvedBullet,
-                            horizontalDirection)))
-                {
-                    return true;
-                }
-
-                horizontalDirection =
-                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
-                        resolvedBullet,
-                        horizontalDirection);
-    
-                previousResolvedBullet = resolvedBullet;
-            }
-    
-            return false;
         }
     
         private bool HasProjectedDurability(EnemyController enemy)
