@@ -115,6 +115,17 @@ public sealed class GameOverController : MonoBehaviour
 
     private void HandleBulletsDepleted()
     {
+        StateManager state = FindFirstObjectByType<StateManager>(
+            FindObjectsInactive.Include);
+        WaveManager waves = FindFirstObjectByType<WaveManager>(
+            FindObjectsInactive.Include);
+        if (!BattleOutcomeRules.ShouldShowBulletDepletionGameOver(
+                state == null ? GameFlowState.Battle : state.CurrentState,
+                waves != null && waves.IsBattleCompleted))
+        {
+            return;
+        }
+
         HandleGameOver(BulletsDepletedReason);
     }
 

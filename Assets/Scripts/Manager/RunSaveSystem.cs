@@ -227,8 +227,7 @@ public static class RunSaveSystem
             && saveData.version == CurrentVersion
             && saveData.stageIndex >= 0
             && saveData.battleIndex >= 0
-            && saveData.bullets != null
-            && saveData.bullets.Count > 0;
+            && saveData.bullets != null;
     }
 
     internal static void NormalizeSaveData(RunSaveData saveData)

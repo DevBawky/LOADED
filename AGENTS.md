@@ -132,7 +132,7 @@ skill. Domain skills supplement rather than replace this repository-wide file.
   - `SoundClipLibrary` and `Assets/Resources/Sound/SoundClipLibrary.asset` map
     string IDs to clips and playlists.
 - `Assets/Editor/`
-  - Project-specific scene/prefab setup builders and WebGL build tooling.
+  - Project-specific scene/prefab setup builders.
     Generated scenes may be overwritten by these tools, so inspect and update
     the relevant builder when a task changes generated structure. Never run a
     builder casually; it can rewrite serialized assets.
@@ -145,9 +145,9 @@ skill. Domain skills supplement rather than replace this repository-wide file.
   - Design decisions and authoring/implementation guides. Keep the directly
     relevant document in sync when a rule, invariant, or authoring workflow
     changes.
-- `WebBuild/`
-  - Tracked GitHub Pages output. Do not modify or rebuild it unless the user
-    explicitly requests a WebGL build or deployment-related change.
+- Windows is the supported build target as of 2026-10-06. WebGL build output,
+  templates, build tooling, and Pages deployment automation have been retired.
+  Do not build or validate WebGL unless the user explicitly reinstates it.
 
 ## Runtime-state boundaries
 
@@ -422,10 +422,10 @@ After a code change:
    battle-clear/failure ordering, and UI refresh timing.
 6. Review the diff and status for unrelated asset or `.meta` changes.
 
-Do not run a full WebGL build by default. When explicitly requested, use
-`Tools > LOADED > Build WebGL` or the corresponding
-`WebBuildCommand.BuildWebGL` editor method, then verify the tracked `WebBuild/`
-output and browser behavior.
+Use Windows (`StandaloneWindows64`) for requested player builds. Do not run
+WebGL builds or browser validation; WebGL support was retired on 2026-10-06.
+Historical platform-specific save/audio branches may remain for compatibility;
+they do not require WebGL validation or restoration of retired build tooling.
 
 If Unity validation cannot run because a third-party asset is unavailable, the
 project is already open, or the environment lacks graphics/editor support,

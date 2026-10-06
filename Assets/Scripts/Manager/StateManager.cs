@@ -391,8 +391,7 @@ public class StateManager : MonoBehaviour
         GameStatistics.CaptureRunState(saveData);
         rewardManager?.CaptureRunState(saveData.droppedItems);
         shopManager?.CaptureRunState(saveData);
-        bool saved = saveData.bullets.Count > 0
-            && RunSaveSystem.Save(saveData);
+        bool saved = RunSaveSystem.Save(saveData);
 
         if (saved)
         {
@@ -877,6 +876,15 @@ public class StateManager : MonoBehaviour
         SetPanels(true, false, false);
         SetInputLocked(true);
         StateChanged?.Invoke();
+
+        // An empty deck may survive a cleared battle and non-combat nodes,
+        // but cannot start another battle, including a restored one.
+        if (deckManager.TotalBulletCount == 0)
+        {
+            pendingRestoredRun = null;
+            deckManager.NotifyBulletDepletion();
+            return;
+        }
 
         if (pendingRestoredRun != null)
         {
@@ -1445,8 +1453,6 @@ public class StateManager : MonoBehaviour
     {
         if (waveManager != null && boardManager != null
             && shopManager != null && deckManager != null
-            && deckManager.TotalBulletCount
-                >= DeckManager.MinimumOwnedBulletCount
             && currencyManager != null && playerInventory != null
             && playerMove != null
             && playerHealth != null
@@ -1460,7 +1466,7 @@ public class StateManager : MonoBehaviour
 
         Debug.LogError(
             "State Manager requires valid references, navigation buttons, "
-            + "at least one starting bullet, and a valid stage configuration.",
+            + "and a valid stage configuration.",
             this);
         return false;
     }

@@ -9,10 +9,9 @@
 
 ## 플레이
 
-- #### [LOADED WebGL 빌드](https://devbawky.github.io/LOADED/)
 - #### [1분 플레이 영상](https://www.youtube.com/watch?v=UC7fXD5tF34)
 - #### [저장소](https://github.com/DevBawky/LOADED)
-- 플랫폼: WebGL(**`PC 권장`**), 키보드 및 마우스
+- 플랫폼: Windows 64비트, 키보드 및 마우스
 
 ## 핵심 플레이
 
@@ -37,18 +36,18 @@
 
 - Unity: `6000.3.21f1`
 - 시작 씬: `Assets/Scenes/MainMenu.unity`
-- 빌드 씬: `MainMenu` → `Stage 1` → `Ending`
+- 빌드 씬: `MainMenu`, `NodeMap`, `Battle`, `Shop`, `Treasure`, `Event`, `Ending`
 
 1. Unity Hub에서 저장소 루트를 Unity `6000.3.21f1`로 엽니다.
 2. 아래 서드파티 에셋 중 코드 및 렌더링 의존성인 `Damage Numbers Pro`와 `Old Movie - Old Film Screen Effect`를 임포트합니다.
 3. 원본과 동일한 사운드 구성이 필요하면 아래 오디오 에셋 3종을 추가로 임포트합니다.
 4. `Assets/Scenes/MainMenu.unity`를 열고 Play Mode를 실행합니다.
 
-`main` 브랜치의 `WebBuild/` 변경 사항은 GitHub Actions를 통해 GitHub Pages에 배포됩니다.
+Windows 빌드 대상은 `StandaloneWindows64`입니다. 2026-10-06부터 WebGL 빌드·검증·자동 배포는 중단했습니다.
 
 ## 서드파티 에셋
 
-Unity Asset Store 에셋의 원본 파일은 재배포할 수 없어 공개 저장소에서 제외했습니다. 웹 데모와 플레이 영상은 별도의 에셋 설치 없이 확인할 수 있으며, Unity 프로젝트를 직접 실행하려면 각 에셋을 정식으로 내려받아 임포트해야 합니다.
+Unity Asset Store 에셋의 원본 파일은 재배포할 수 없어 공개 저장소에서 제외했습니다. 플레이 영상은 별도의 에셋 설치 없이 확인할 수 있으며, Unity 프로젝트를 직접 실행하려면 각 에셋을 정식으로 내려받아 임포트해야 합니다.
 
 | 에셋 | 용도 | 소스 재현 시 필요 여부 |
 | --- | --- | --- |
@@ -63,20 +62,19 @@ Unity Asset Store 에셋의 원본 파일은 재배포할 수 없어 공개 저�
 ## 저장소 구조
 
 - `Assets/Scripts/`: 게임플레이 및 UI 코드
-- `Assets/Scenes/`: 메인 메뉴, 전투, 엔딩 씬
-- `Assets/Tests/`: Unity 테스트
+- `Assets/Scenes/`: 메인 메뉴, 노드맵, 전투, 상점, 보물, 이벤트, 엔딩 씬
+- `Assets/Editor/Tests/`: Unity 테스트
 - `Assets/StreamingAssets/`: 튜토리얼 및 연출 영상
 - `Docs/Art/`: 아트 및 UI 기록
 - `Docs/Dev/`: 날짜별 구현·수정 기록
 - `Docs/Submission/`: 출품 및 AI 활용 문서
 - `Tools/BalanceSimulation/`: 밸런스 분석 도구
-- `WebBuild/`: 배포용 WebGL 빌드
 
 ## 문서
 
 - [탄환 덱 생명주기](Docs/BulletDeckLifecycle.md)
 - [첫 실행 가이드 구현 기록](Docs/Dev/0809_FirstRunGuide.md)
-- [WebGL 저장 및 로딩 구현 기록](Docs/Dev/0809_WebGL_Save_And_Loading.md)
+- [과거 WebGL 저장 및 로딩 구현 기록](Docs/Dev/0809_WebGL_Save_And_Loading.md) (지원 중단)
 - [AI 활용 기술 문서](Docs/Submission/AI_USAGE_TECHNICAL_DOCUMENT.md)
 - [개발 및 커밋 규칙](CONTRIBUTING.md)
 
@@ -85,7 +83,7 @@ Unity Asset Store 에셋의 원본 파일은 재배포할 수 없어 공개 저�
 - Unity `6000.3.21f1`
 - Universal Render Pipeline 2D
 - Unity Input System
-- WebGL / GitHub Pages
+- Windows 64비트
 
 ## 라이선스
 

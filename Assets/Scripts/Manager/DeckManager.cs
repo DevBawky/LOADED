@@ -501,7 +501,7 @@ public class DeckManager : MonoBehaviour
                 acquisitionOrder);
         }
 
-        if (restoredBullets.Count == 0)
+        if (savedBullets.Count > 0 && restoredBullets.Count == 0)
         {
             return false;
         }
@@ -637,7 +637,11 @@ public class DeckManager : MonoBehaviour
     {
         FinalizeNextCycle();
         StateChanged?.Invoke();
+        NotifyBulletDepletion();
+    }
 
+    internal void NotifyBulletDepletion()
+    {
         if (TotalBulletCount == 0)
         {
             BulletsDepleted?.Invoke();
