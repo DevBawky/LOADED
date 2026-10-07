@@ -21,6 +21,12 @@ public sealed class CylinderTempoHUD : MonoBehaviour
         new Image[DuelClockController.TempoCapacity];
     [SerializeField] private Material solarResolveMaterial;
 
+    [Header("Reinforcement Turns")]
+    [SerializeField] private Image[] reinforcementTurnFills =
+        new Image[WaveManager.ReinforcementActionInterval];
+    [Min(0.01f)]
+    [SerializeField] private float reinforcementFillDuration = 0.1f;
+
     [Header("Enemy Counts")]
     [SerializeField] private TMP_Text spawnLeftText;
     [SerializeField] private TMP_Text leftEnemyText;
@@ -28,6 +34,12 @@ public sealed class CylinderTempoHUD : MonoBehaviour
         "남은 적: <size=30>{0}";
     [SerializeField] private string leftEnemyFormat =
         "생존 적: <size=30> {0}";
+    [Min(0.01f)]
+    [SerializeField] private float spawnLeftPulseDuration = 0.7f;
+    [Min(1f)]
+    [SerializeField] private float spawnLeftPulseScale = 1.18f;
+    [SerializeField] private Color spawnLeftPulseColor =
+        new Color(1f, 0.08f, 0.05f, 1f);
 
     [Header("Phase")]
     [SerializeField] private TMP_Text phaseText;
@@ -58,6 +70,8 @@ public sealed class CylinderTempoHUD : MonoBehaviour
         new float[DuelClockController.TempoCapacity];
 
     private Coroutine tempoAnimation;
+    private Coroutine reinforcementAnimation;
+    private Coroutine spawnLeftPulseAnimation;
     private Vector3 restScale;
     private RectTransform phaseRectTransform;
     private Vector3 phaseRestScale = Vector3.one;
@@ -65,7 +79,12 @@ public sealed class CylinderTempoHUD : MonoBehaviour
     private bool wasCycleReserved;
     private bool isEnemyPhase;
     private float phasePulseElapsed;
-    private TMP_Text reinforcementText;
+    private bool hasReinforcementSnapshot;
+    private int observedActionsUntilReinforcement;
+    private int observedRemainingSpawnCount;
+    private bool hasPendingReinforcementPreview;
+    private Color spawnLeftRestColor = Color.white;
+    private Vector3 spawnLeftRestScale = Vector3.one;
 
     private void Awake()
     {
@@ -74,9 +93,10 @@ public sealed class CylinderTempoHUD : MonoBehaviour
         {
             if (slot != null) slot.gameObject.SetActive(false);
         }
-        CreateReinforcementLabel();
         restScale = transform.localScale;
         CapturePhaseRestState();
+        CaptureSpawnLeftRestState();
+        ConfigureReinforcementTurnFills();
         CreateSlotMaterials();
         SnapTempoToState();
         RefreshEnemyCounts();
@@ -85,7 +105,9 @@ public sealed class CylinderTempoHUD : MonoBehaviour
     private void OnEnable()
     {
         Subscribe();
+        hasReinforcementSnapshot = false;
         RefreshEnemyCounts();
+        RefreshReinforcementTurns(false);
         AnimateToCurrentTempo();
     }
 
@@ -98,6 +120,9 @@ public sealed class CylinderTempoHUD : MonoBehaviour
             StopCoroutine(tempoAnimation);
             tempoAnimation = null;
         }
+
+        StopReinforcementAnimation();
+        StopSpawnLeftPulse();
 
         transform.localScale = restScale;
         ResetSlotPulses();
@@ -123,6 +148,11 @@ public sealed class CylinderTempoHUD : MonoBehaviour
         enemyPhasePulseSpeed = Mathf.Max(0.01f, enemyPhasePulseSpeed);
         enemyPhasePulseBrighten = Mathf.Clamp01(
             enemyPhasePulseBrighten);
+        reinforcementFillDuration = Mathf.Max(
+            0.01f,
+            reinforcementFillDuration);
+        spawnLeftPulseDuration = Mathf.Max(0.01f, spawnLeftPulseDuration);
+        spawnLeftPulseScale = Mathf.Max(1f, spawnLeftPulseScale);
     }
 
     private void Update()
@@ -182,6 +212,7 @@ public sealed class CylinderTempoHUD : MonoBehaviour
 
     private void HandleTempoStateChanged()
     {
+        RefreshPendingReinforcementPreview();
         AnimateToCurrentTempo();
         RefreshEnemyCounts();
     }
@@ -189,6 +220,7 @@ public sealed class CylinderTempoHUD : MonoBehaviour
     private void HandleWaveStateChanged()
     {
         RefreshEnemyCounts();
+        RefreshReinforcementTurns(true);
     }
 
     private void AnimateToCurrentTempo()
@@ -329,6 +361,36 @@ public sealed class CylinderTempoHUD : MonoBehaviour
         phaseText.raycastTarget = false;
     }
 
+    private void CaptureSpawnLeftRestState()
+    {
+        if (spawnLeftText == null)
+        {
+            return;
+        }
+
+        spawnLeftRestColor = spawnLeftText.color;
+        spawnLeftRestScale = spawnLeftText.rectTransform == null
+            ? Vector3.one
+            : spawnLeftText.rectTransform.localScale;
+        spawnLeftText.raycastTarget = false;
+    }
+
+    private void ConfigureReinforcementTurnFills()
+    {
+        if (reinforcementTurnFills == null)
+        {
+            return;
+        }
+
+        foreach (Image fill in reinforcementTurnFills)
+        {
+            if (fill != null)
+            {
+                fill.raycastTarget = false;
+            }
+        }
+    }
+
     private void ApplyPhasePresentation(bool enemyPhase)
     {
         if (boardManager != null)
@@ -436,7 +498,6 @@ public sealed class CylinderTempoHUD : MonoBehaviour
 
     private void RefreshEnemyCounts()
     {
-        RefreshReinforcementLabel();
         int remainingSpawnCount = waveManager == null
             ? 0
             : waveManager.RemainingUnspawnedEnemyCount;
@@ -461,47 +522,348 @@ public sealed class CylinderTempoHUD : MonoBehaviour
         }
     }
 
-    private void CreateReinforcementLabel()
+    private void RefreshReinforcementTurns(bool animate)
     {
-        if (reinforcementText != null || phaseText == null) return;
-        var oldLayout = transform.Find("Layout | Tempo") as RectTransform;
-        if (oldLayout == null) return;
-        var label = new GameObject("Text | Reinforcement", typeof(RectTransform), typeof(TextMeshProUGUI));
-        label.transform.SetParent(oldLayout.parent, false);
-        var rect = (RectTransform)label.transform;
-        rect.anchorMin = oldLayout.anchorMin;
-        rect.anchorMax = oldLayout.anchorMax;
-        rect.pivot = oldLayout.pivot;
-        rect.anchoredPosition = oldLayout.anchoredPosition;
-        rect.sizeDelta = oldLayout.sizeDelta;
-        reinforcementText = label.GetComponent<TextMeshProUGUI>();
-        reinforcementText.font = phaseText.font;
-        reinforcementText.fontSharedMaterial = phaseText.fontSharedMaterial;
-        reinforcementText.fontSize = 22f;
-        reinforcementText.alignment = TextAlignmentOptions.Center;
-        reinforcementText.raycastTarget = false;
-        reinforcementText.textWrappingMode = TextWrappingModes.NoWrap;
-    }
+        if (waveManager == null
+            || waveManager.PacingMode != CombatPacingMode.DuelClock)
+        {
+            hasReinforcementSnapshot = false;
+            hasPendingReinforcementPreview = false;
+            StopReinforcementAnimation();
+            SetReinforcementTurnFills(0);
+            return;
+        }
 
-    private void RefreshReinforcementLabel()
-    {
-        if (reinforcementText == null) return;
-        bool visible = waveManager != null && waveManager.PacingMode == CombatPacingMode.DuelClock;
-        reinforcementText.gameObject.SetActive(visible);
-        if (!visible) return;
-        reinforcementText.text = FormatReinforcementLabel(
+        int currentActions = waveManager.ActionsUntilReinforcement;
+        int currentRemaining = waveManager.RemainingUnspawnedEnemyCount;
+        int targetFilledCount = CalculateReinforcementFilledTurnCount(
             waveManager.HasRemainingEnemiesToSpawn,
-            waveManager.IsActiveEnemyLimitReached,
-            waveManager.ActionsUntilReinforcement);
-        reinforcementText.color = !waveManager.HasRemainingEnemiesToSpawn || waveManager.IsActiveEnemyLimitReached
-            ? new Color(0.7f, 0.75f, 0.8f) : new Color(1f, 0.8f, 0.4f);
+            currentActions);
+
+        if (!hasReinforcementSnapshot)
+        {
+            observedActionsUntilReinforcement = currentActions;
+            observedRemainingSpawnCount = currentRemaining;
+            hasReinforcementSnapshot = true;
+            SetReinforcementTurnFills(targetFilledCount);
+            return;
+        }
+
+        if (observedActionsUntilReinforcement == currentActions
+            && observedRemainingSpawnCount == currentRemaining)
+        {
+            return;
+        }
+
+        int previousFilledCount = CalculateReinforcementFilledTurnCount(
+            observedRemainingSpawnCount > 0,
+            observedActionsUntilReinforcement);
+        bool spawnedEnemies =
+            currentRemaining < observedRemainingSpawnCount;
+        bool completedRegularInterval = spawnedEnemies
+            && IsRegularReinforcementSpawn(
+                observedActionsUntilReinforcement,
+                currentActions,
+                observedRemainingSpawnCount,
+                currentRemaining);
+        bool hadPendingPreview = hasPendingReinforcementPreview;
+
+        if (!spawnedEnemies
+            || completedRegularInterval
+            || tempoController == null
+            || (!tempoController.HasPendingPaidAction
+                && !tempoController.IsTempoCycleReserved))
+        {
+            hasPendingReinforcementPreview = false;
+        }
+
+        if (hasPendingReinforcementPreview)
+        {
+            targetFilledCount = Mathf.Min(
+                WaveManager.ReinforcementActionInterval,
+                targetFilledCount + 1);
+        }
+
+        observedActionsUntilReinforcement = currentActions;
+        observedRemainingSpawnCount = currentRemaining;
+
+        StopReinforcementAnimation();
+
+        if (spawnedEnemies)
+        {
+            if (completedRegularInterval)
+            {
+                reinforcementAnimation = StartCoroutine(
+                    CompleteReinforcementTurnsRoutine());
+            }
+            else
+            {
+                SetReinforcementTurnFills(targetFilledCount);
+            }
+
+            PlaySpawnLeftPulse();
+            return;
+        }
+
+        if (animate && !hadPendingPreview
+            && targetFilledCount > previousFilledCount)
+        {
+            reinforcementAnimation = StartCoroutine(
+                FillReinforcementTurnsRoutine(
+                    previousFilledCount,
+                    targetFilledCount));
+            return;
+        }
+
+        SetReinforcementTurnFills(targetFilledCount);
     }
 
-    internal static string FormatReinforcementLabel(bool hasRemaining, bool atCapacity, int actions)
+    private void RefreshPendingReinforcementPreview()
     {
-        if (!hasRemaining) return "증원 완료";
-        return atCapacity ? $"증원 일시정지 · {actions}행동"
-            : $"다음 증원 · {actions}행동";
+        if (tempoController == null || waveManager == null
+            || waveManager.PacingMode != CombatPacingMode.DuelClock)
+        {
+            return;
+        }
+
+        if (tempoController.HasPendingPaidAction)
+        {
+            if (hasPendingReinforcementPreview
+                || !waveManager.HasRemainingEnemiesToSpawn
+                || waveManager.IsActiveEnemyLimitReached)
+            {
+                return;
+            }
+
+            hasPendingReinforcementPreview = true;
+            int currentFilledCount =
+                CalculateReinforcementFilledTurnCount(
+                    waveManager.HasRemainingEnemiesToSpawn,
+                    waveManager.ActionsUntilReinforcement);
+            int targetFilledCount = Mathf.Min(
+                WaveManager.ReinforcementActionInterval,
+                currentFilledCount + 1);
+            StopReinforcementAnimation();
+            reinforcementAnimation = StartCoroutine(
+                FillReinforcementTurnsRoutine(
+                    currentFilledCount,
+                    targetFilledCount));
+            return;
+        }
+
+        if (!hasPendingReinforcementPreview
+            || tempoController.IsTempoCycleReserved)
+        {
+            return;
+        }
+
+        hasPendingReinforcementPreview = false;
+        StopReinforcementAnimation();
+        SetReinforcementTurnFills(
+            CalculateReinforcementFilledTurnCount(
+                waveManager.HasRemainingEnemiesToSpawn,
+                waveManager.ActionsUntilReinforcement));
+    }
+
+    private IEnumerator FillReinforcementTurnsRoutine(
+        int startFilledCount,
+        int targetFilledCount)
+    {
+        SetReinforcementTurnFills(startFilledCount);
+
+        int safeTarget = Mathf.Clamp(
+            targetFilledCount,
+            0,
+            reinforcementTurnFills == null
+                ? 0
+                : reinforcementTurnFills.Length);
+
+        for (int index = Mathf.Max(0, startFilledCount);
+             index < safeTarget;
+             index++)
+        {
+            yield return FillReinforcementTurnRoutine(index);
+        }
+
+        reinforcementAnimation = null;
+    }
+
+    private IEnumerator CompleteReinforcementTurnsRoutine()
+    {
+        int filledCount = Mathf.Min(
+            WaveManager.ReinforcementActionInterval,
+            reinforcementTurnFills == null
+                ? 0
+                : reinforcementTurnFills.Length);
+
+        if (filledCount > 0)
+        {
+            SetReinforcementTurnFills(filledCount);
+            yield return null;
+        }
+
+        SetReinforcementTurnFills(0);
+        reinforcementAnimation = null;
+    }
+
+    private IEnumerator FillReinforcementTurnRoutine(int index)
+    {
+        if (reinforcementTurnFills == null
+            || index < 0 || index >= reinforcementTurnFills.Length
+            || reinforcementTurnFills[index] == null)
+        {
+            yield break;
+        }
+
+        Image fill = reinforcementTurnFills[index];
+        fill.fillAmount = 0f;
+        float elapsed = 0f;
+
+        while (elapsed < reinforcementFillDuration)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+            fill.fillAmount = Mathf.Clamp01(
+                elapsed / reinforcementFillDuration);
+        }
+
+        fill.fillAmount = 1f;
+    }
+
+    private void SetReinforcementTurnFills(int filledCount)
+    {
+        if (reinforcementTurnFills == null)
+        {
+            return;
+        }
+
+        int safeFilledCount = Mathf.Clamp(
+            filledCount,
+            0,
+            reinforcementTurnFills.Length);
+
+        for (int index = 0;
+             index < reinforcementTurnFills.Length;
+             index++)
+        {
+            if (reinforcementTurnFills[index] != null)
+            {
+                reinforcementTurnFills[index].fillAmount =
+                    index < safeFilledCount ? 1f : 0f;
+            }
+        }
+    }
+
+    private void StopReinforcementAnimation()
+    {
+        if (reinforcementAnimation == null)
+        {
+            return;
+        }
+
+        StopCoroutine(reinforcementAnimation);
+        reinforcementAnimation = null;
+    }
+
+    private void PlaySpawnLeftPulse()
+    {
+        if (!isActiveAndEnabled || spawnLeftText == null)
+        {
+            return;
+        }
+
+        StopSpawnLeftPulse();
+        spawnLeftPulseAnimation = StartCoroutine(
+            SpawnLeftPulseRoutine());
+    }
+
+    private IEnumerator SpawnLeftPulseRoutine()
+    {
+        RectTransform rectTransform = spawnLeftText.rectTransform;
+        float elapsed = 0f;
+        spawnLeftText.color = spawnLeftPulseColor;
+
+        if (rectTransform != null)
+        {
+            rectTransform.localScale = spawnLeftRestScale
+                * spawnLeftPulseScale;
+        }
+
+        while (elapsed < spawnLeftPulseDuration)
+        {
+            yield return null;
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(
+                elapsed / spawnLeftPulseDuration);
+            float easedProgress = 1f
+                - Mathf.Pow(1f - progress, 3f);
+            spawnLeftText.color = Color.Lerp(
+                spawnLeftPulseColor,
+                spawnLeftRestColor,
+                easedProgress);
+
+            if (rectTransform != null)
+            {
+                rectTransform.localScale = Vector3.Lerp(
+                    spawnLeftRestScale * spawnLeftPulseScale,
+                    spawnLeftRestScale,
+                    easedProgress);
+            }
+        }
+
+        ResetSpawnLeftPresentation();
+        spawnLeftPulseAnimation = null;
+    }
+
+    private void StopSpawnLeftPulse()
+    {
+        if (spawnLeftPulseAnimation != null)
+        {
+            StopCoroutine(spawnLeftPulseAnimation);
+            spawnLeftPulseAnimation = null;
+        }
+
+        ResetSpawnLeftPresentation();
+    }
+
+    private void ResetSpawnLeftPresentation()
+    {
+        if (spawnLeftText == null)
+        {
+            return;
+        }
+
+        spawnLeftText.color = spawnLeftRestColor;
+
+        if (spawnLeftText.rectTransform != null)
+        {
+            spawnLeftText.rectTransform.localScale = spawnLeftRestScale;
+        }
+    }
+
+    internal static int CalculateReinforcementFilledTurnCount(
+        bool hasRemainingEnemies,
+        int actionsUntilReinforcement)
+    {
+        if (!hasRemainingEnemies)
+        {
+            return 0;
+        }
+
+        return WaveManager.ReinforcementActionInterval
+            - WaveManager.NormalizeReinforcementCountdown(
+                actionsUntilReinforcement);
+    }
+
+    internal static bool IsRegularReinforcementSpawn(
+        int previousActions,
+        int currentActions,
+        int previousRemainingEnemyCount,
+        int currentRemainingEnemyCount)
+    {
+        return previousActions == 1
+            && currentActions == WaveManager.ReinforcementActionInterval
+            && currentRemainingEnemyCount < previousRemainingEnemyCount;
     }
 
 }

@@ -29,7 +29,7 @@ MonoBehaviour:
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 3
-  maxRange: 4
+  maxRange: 2
   criticalChance: 5
   criticalDamageMultiplier: 2
   effects:
@@ -55,7 +55,7 @@ MonoBehaviour:
   - description: "8\uAC1C \uD330\uB9BF. \uAE30\uC900 \uB808\uC778 4\uBC1C, \uB098\uBA38\uC9C0
       \uB808\uC778 \uADE0\uB4F1 \uBD84\uBC30."
     damage: 4
-    maxRange: 4
+    maxRange: 2
     criticalChance: 6
     criticalDamageMultiplier: 2
     effects:
@@ -77,7 +77,7 @@ MonoBehaviour:
   - description: "8\uAC1C \uD330\uB9BF. \uAE30\uC900 \uB808\uC778 4\uBC1C, \uB098\uBA38\uC9C0
       \uB808\uC778 \uADE0\uB4F1 \uBD84\uBC30."
     damage: 5
-    maxRange: 5
+    maxRange: 2
     criticalChance: 7
     criticalDamageMultiplier: 2
     effects:
@@ -99,7 +99,7 @@ MonoBehaviour:
   - description: "8\uAC1C \uD330\uB9BF. \uAE30\uC900 \uB808\uC778 4\uBC1C, \uB098\uBA38\uC9C0
       \uB808\uC778 \uADE0\uB4F1 \uBD84\uBC30."
     damage: 6
-    maxRange: 5
+    maxRange: 2
     criticalChance: 8
     criticalDamageMultiplier: 2.2
     effects:

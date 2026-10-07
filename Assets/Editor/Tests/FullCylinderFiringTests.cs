@@ -14,6 +14,47 @@ public sealed class FullCylinderFiringTests
 {
     private const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
 
+    [TestCase(0, 1, true)]
+    [TestCase(0, 3, false)]
+    [TestCase(1, 3, false)]
+    [TestCase(2, 3, true)]
+    [TestCase(3, 3, true)]
+    public void ShotgunVolleyWaitsOnlyAfterItsFinalPellet(
+        int shotIndex,
+        int volleyShotCount,
+        bool expected)
+    {
+        Assert.That(
+            PlayerShoot.ShouldWaitForCadenceAfterVolleyShot(
+                shotIndex,
+                volleyShotCount),
+            Is.EqualTo(expected));
+    }
+
+    [TestCase(CombatPacingMode.DuelClock, false, false, 0, true, true)]
+    [TestCase(CombatPacingMode.DuelClock, false, false, 1, true, false)]
+    [TestCase(CombatPacingMode.DuelClock, false, false, 0, false, false)]
+    [TestCase(CombatPacingMode.DuelClock, true, false, 0, true, false)]
+    [TestCase(CombatPacingMode.DuelClock, false, true, 0, true, false)]
+    [TestCase(CombatPacingMode.Legacy, false, false, 0, true, false)]
+    public void EnemyReplacementWaitOnlyBlocksAnEmptyActiveDuelClockBattle(
+        CombatPacingMode pacingMode,
+        bool isBattleCompleted,
+        bool isPlayerDefeated,
+        int livingEnemyCount,
+        bool hasRemainingEnemiesToSpawn,
+        bool expected)
+    {
+        Assert.That(
+            PlayerShoot.ShouldWaitForEnemyReplacement(
+                pacingMode,
+                isBattleCompleted,
+                isPlayerDefeated,
+                livingEnemyCount,
+                hasRemainingEnemiesToSpawn),
+            Is.EqualTo(expected));
+    }
+
     [UnityTest]
     public IEnumerator MissingTargetsPreserveSequenceEffectsAndPreviewButVictoryStops()
     {
@@ -21,6 +62,154 @@ public sealed class FullCylinderFiringTests
         yield return new EnterPlayMode();
         yield return ExerciseScenarios();
         yield return new ExitPlayMode();
+    }
+
+    [UnityTest]
+    public IEnumerator ShotgunPelletsShareSingleBurstBeforeNextPhysicalBullet()
+    {
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        yield return new EnterPlayMode();
+        yield return ExerciseShotgunVolleyScenario();
+        yield return new ExitPlayMode();
+    }
+
+    private static IEnumerator ExerciseShotgunVolleyScenario()
+    {
+        EditorSceneManager.LoadSceneInPlayMode(
+            BattleTestSceneBuilder.ScenePath,
+            new UnityEngine.SceneManagement.LoadSceneParameters(
+                UnityEngine.SceneManagement.LoadSceneMode.Single));
+        yield return null;
+        yield return null;
+
+        BattleTestController test =
+            Object.FindFirstObjectByType<BattleTestController>();
+        PlayerShoot shoot = Object.FindFirstObjectByType<PlayerShoot>();
+        WaveManager wave = Object.FindFirstObjectByType<WaveManager>();
+        DeckManager deck = Object.FindFirstObjectByType<DeckManager>();
+        Object.FindObjectsByType<UnityEngine.UI.Button>(
+                FindObjectsSortMode.None)
+            .First(button => button.GetComponentInChildren<TMPro.TMP_Text>()
+                ?.text == "전투로 돌아가기")
+            .onClick.Invoke();
+
+        Run(test, "clear");
+        Run(test, "board 11 2");
+        Run(test, "player 5 0");
+        Run(test, "god on");
+        Run(test, "ai off");
+        Run(test, "refill off");
+        Run(test, "spawn 2 6 0");
+        Run(test, "enemy shield 6 0 1000");
+
+        BulletData shotgun = Object.Instantiate(
+            test.Bullets.Single(bullet => bullet.name == "Shot"));
+        BulletData normal = Object.Instantiate(
+            test.Bullets.Single(bullet => bullet.name == "Normal"));
+        shotgun.name = "Shot Volley Test";
+        normal.name = "Normal After Volley Test";
+        float originalShotInterval = (float)typeof(PlayerShoot)
+            .GetField("shotInterval", Private)
+            .GetValue(shoot);
+
+        try
+        {
+            foreach (BulletData bullet in new[] { shotgun, normal })
+            {
+                SerializedObject serialized = new SerializedObject(bullet);
+                serialized.FindProperty("criticalChance").floatValue = 0f;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+            }
+
+            BulletData[] sequence = { shotgun, normal };
+            deck.RestoreRunState(
+                sequence.Select((bullet, index) => new RunBulletSaveData
+                {
+                    assetName = bullet.name,
+                    acquisitionOrder = index,
+                    location = 1,
+                    locationIndex = sequence.Length - 1 - index
+                }).ToArray(),
+                saved => sequence.Single(bullet =>
+                    bullet.name == saved.assetName),
+                0,
+                null);
+            Set(shoot, "shotInterval", 0.5f);
+
+            List<string> firedNames = new List<string>();
+            List<float> shotTimes = new List<float>();
+            List<int> shotFrames = new List<int>();
+            int volleyPresentationCount = 0;
+            int presentedPelletCount = 0;
+            Action<BulletInstance> fired = bullet =>
+            {
+                firedNames.Add(bullet.Data.name);
+                shotTimes.Add(Time.unscaledTime);
+                shotFrames.Add(Time.frameCount);
+            };
+            Action<int> volleyPresented = pelletCount =>
+            {
+                volleyPresentationCount++;
+                presentedPelletCount = pelletCount;
+            };
+            shoot.BulletFired += fired;
+            shoot.ShotgunVolleyPresented += volleyPresented;
+            try
+            {
+                shoot.Shoot();
+                float deadline = Time.realtimeSinceStartup + 15f;
+                while (!test.IsSettled
+                    && Time.realtimeSinceStartup < deadline)
+                {
+                    yield return null;
+                }
+            }
+            finally
+            {
+                shoot.BulletFired -= fired;
+                shoot.ShotgunVolleyPresented -= volleyPresented;
+            }
+
+            Assert.That(test.IsSettled, Is.True);
+            Assert.That(
+                volleyPresentationCount,
+                Is.EqualTo(1),
+                "A shotgun must present exactly one firing burst.");
+            Assert.That(
+                presentedPelletCount,
+                Is.EqualTo(shotgun.GetShotCount(0)),
+                "The single burst must create every pellet together.");
+            Assert.That(firedNames, Is.EqualTo(new[]
+            {
+                shotgun.name,
+                shotgun.name,
+                shotgun.name,
+                normal.name
+            }));
+            Assert.That(
+                shotTimes[1] - shotTimes[0],
+                Is.LessThan(0.48f),
+                "Pellet resolution must not replay the firing cadence.");
+            Assert.That(
+                shotTimes[2] - shotTimes[1],
+                Is.LessThan(0.48f),
+                "Every pellet must remain inside the same firing burst.");
+            Assert.That(
+                shotFrames[3],
+                Is.GreaterThan(shotFrames[2]),
+                "The next physical bullet must not join the shotgun volley.");
+            Assert.That(
+                shotTimes[3] - shotTimes[2],
+                Is.GreaterThanOrEqualTo(0.48f),
+                "The next physical bullet must wait after the volley resolves.");
+            Assert.That(wave.LivingEnemyCount, Is.EqualTo(1));
+        }
+        finally
+        {
+            Set(shoot, "shotInterval", originalShotInterval);
+            Object.Destroy(shotgun);
+            Object.Destroy(normal);
+        }
     }
 
     private static IEnumerator ExerciseScenarios()
@@ -116,8 +305,17 @@ public sealed class FullCylinderFiringTests
                 int shots = 0;
                 int turns = player.TurnCount;
                 var firedNames = new List<string>();
-                Action<BulletInstance> fired = bullet => { shots++; firedNames.Add(bullet.Data.name); };
+                var shotTimes = new List<float>();
+                var damageTimes = new List<float>();
+                Action<BulletInstance> fired = bullet =>
+                {
+                    shots++;
+                    firedNames.Add(bullet.Data.name);
+                    shotTimes.Add(Time.unscaledTime);
+                };
+                Action<int> damaged = _ => damageTimes.Add(Time.unscaledTime);
                 shoot.BulletFired += fired;
+                shoot.DamageDealt += damaged;
                 try
                 {
                     shoot.Shoot();
@@ -125,7 +323,24 @@ public sealed class FullCylinderFiringTests
                     while (!test.IsSettled && Time.realtimeSinceStartup < deadline) yield return null;
                     Assert.That(test.IsSettled, Is.True, "Scenario " + scenario);
                 }
-                finally { shoot.BulletFired -= fired; }
+                finally
+                {
+                    shoot.BulletFired -= fired;
+                    shoot.DamageDealt -= damaged;
+                }
+
+                if (scenario == 0)
+                {
+                    float shotInterval = (float)typeof(PlayerShoot)
+                        .GetField("shotInterval", Private)
+                        .GetValue(shoot);
+                    Assert.That(shotTimes, Has.Count.GreaterThanOrEqualTo(2));
+                    Assert.That(damageTimes, Has.Count.GreaterThanOrEqualTo(1));
+                    Assert.That(
+                        shotTimes[1] - damageTimes[0],
+                        Is.GreaterThanOrEqualTo(shotInterval - 0.03f),
+                        "The next bullet must wait a full shot interval after the previous shot resolves.");
+                }
 
                 Assert.That(shots, Is.EqualTo(scenario == 4 ? 1 : scenario == 3 ? 2 : 3),
                     "Scenario " + scenario + ": " + string.Join(",", firedNames));

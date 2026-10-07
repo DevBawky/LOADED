@@ -50,6 +50,10 @@ public sealed class DuelClockController : MonoBehaviour
     public double SpawnProgress => 0d;
     public long CumulativeSpawnCycles => 0L;
     public bool IsTempoCycleReserved => IsActive && hasReservedBeat;
+    internal bool HasPendingPaidAction => IsActive
+        && playerActionPending
+        && !paidActionProgressSuppressed
+        && pendingActionTempoCost > 0;
     internal DuelClockSnapshot Snapshot => state.Snapshot;
     internal bool HasReservedBeat => IsTempoCycleReserved;
 
@@ -224,6 +228,11 @@ public sealed class DuelClockController : MonoBehaviour
         ResetPlayerActionTracking();
         playerActionPending = !hasReservedBeat;
         pendingActionTempoCost = GetTempoCost(action);
+
+        if (HasPendingPaidAction)
+        {
+            StateChanged?.Invoke();
+        }
     }
 
     internal void HandlePlayerDodgeSucceededDuringAction()
@@ -234,6 +243,7 @@ public sealed class DuelClockController : MonoBehaviour
         }
 
         paidActionProgressSuppressed = true;
+        StateChanged?.Invoke();
     }
 
     internal bool ApplyEnemyDefeat()

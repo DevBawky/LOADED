@@ -7,6 +7,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
+using UnityEngine.UI;
 
 public sealed class CylinderTempoTests
 {
@@ -23,12 +24,60 @@ public sealed class CylinderTempoTests
         Assert.That(WaveManager.NormalizeReinforcementCountdown(saved), Is.EqualTo(expected));
     }
 
-    [TestCase(true, false, 3, "다음 증원 · 3행동")]
-    [TestCase(true, true, 1, "증원 일시정지 · 1행동")]
-    [TestCase(false, true, 2, "증원 완료")]
-    public void ReinforcementLabelExplainsCountdownAndCapacity(bool remaining, bool full, int actions, string expected)
+    [TestCase(true, 3, 0)]
+    [TestCase(true, 2, 1)]
+    [TestCase(true, 1, 2)]
+    [TestCase(false, 1, 0)]
+    public void ReinforcementTurnFillsReflectCompletedActions(
+        bool hasRemainingEnemies,
+        int actionsUntilReinforcement,
+        int expectedFilledCount)
     {
-        Assert.That(CylinderTempoHUD.FormatReinforcementLabel(remaining, full, actions), Is.EqualTo(expected));
+        Assert.That(
+            CylinderTempoHUD.CalculateReinforcementFilledTurnCount(
+                hasRemainingEnemies,
+                actionsUntilReinforcement),
+            Is.EqualTo(expectedFilledCount));
+    }
+
+    [TestCase(1, 3, 5, 4, true)]
+    [TestCase(2, 3, 5, 4, false)]
+    [TestCase(1, 3, 5, 5, false)]
+    [TestCase(1, 2, 5, 4, false)]
+    public void RegularReinforcementSpawnRequiresCompletedThirdAction(
+        int previousActions,
+        int currentActions,
+        int previousRemainingEnemyCount,
+        int currentRemainingEnemyCount,
+        bool expected)
+    {
+        Assert.That(
+            CylinderTempoHUD.IsRegularReinforcementSpawn(
+                previousActions,
+                currentActions,
+                previousRemainingEnemyCount,
+                currentRemainingEnemyCount),
+            Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void PaidActionPublishesPendingStateImmediately()
+    {
+        CreateController(
+            out DuelClockController controller,
+            out _);
+        int stateChangeCount = 0;
+        controller.StateChanged += () => stateChangeCount++;
+
+        controller.HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
+
+        Assert.That(controller.HasPendingPaidAction, Is.True);
+        Assert.That(stateChangeCount, Is.EqualTo(1));
+
+        controller.HandlePlayerDodgeSucceededDuringAction();
+
+        Assert.That(controller.HasPendingPaidAction, Is.False);
+        Assert.That(stateChangeCount, Is.EqualTo(2));
     }
 
     [UnityTest]
@@ -49,6 +98,7 @@ public sealed class CylinderTempoTests
         var test = Object.FindFirstObjectByType<BattleTestController>();
         var player = Object.FindFirstObjectByType<PlayerMove>();
         var wave = Object.FindFirstObjectByType<WaveManager>();
+        var tempoHud = Object.FindFirstObjectByType<CylinderTempoHUD>();
         const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
         foreach (var button in Object.FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None))
             if (button.GetComponentInChildren<TMP_Text>()?.text == "전투로 돌아가기") button.onClick.Invoke();
@@ -58,8 +108,20 @@ public sealed class CylinderTempoTests
         test.ExecuteCommand("refill off");
         var battle = AssetDatabase.LoadAssetAtPath<BattleData>("Assets/Scripts/Manager/Battle SO/Stage 1/1 Entry/Stage 1 Entry.asset");
         Assert.That(wave.BeginBattle(battle), Is.True);
+        Assert.That(tempoHud, Is.Not.Null);
+        var reinforcementTurnFills = (Image[])typeof(CylinderTempoHUD)
+            .GetField("reinforcementTurnFills", flags)
+            .GetValue(tempoHud);
+        var spawnLeftText = (TMP_Text)typeof(CylinderTempoHUD)
+            .GetField("spawnLeftText", flags)
+            .GetValue(tempoHud);
+        Assert.That(reinforcementTurnFills, Has.Length.EqualTo(3));
+        Assert.That(spawnLeftText, Is.Not.Null);
+        Color spawnLeftRestColor = spawnLeftText.color;
+        Vector3 spawnLeftRestScale = spawnLeftText.rectTransform.localScale;
+        bool observedThirdFillDuringAction = false;
         player.SetInputLocked(true);
-        IEnumerator Act()
+        IEnumerator Act(int expectedFillIndex = -1)
         {
             float deadline = Time.realtimeSinceStartup + 15f;
             while (!test.IsSettled || Time.unscaledTime < (float)typeof(PlayerMove).GetField("nextInstantActionAllowedAt", flags).GetValue(player))
@@ -70,28 +132,104 @@ public sealed class CylinderTempoTests
             int cycle = wave.CurrentEnemyTurnCycle;
             player.SetInputLocked(false); player.Wait(); player.SetInputLocked(true);
             yield return null;
+
+            if (expectedFillIndex >= 0)
+            {
+                Assert.That(
+                    reinforcementTurnFills[expectedFillIndex].fillAmount,
+                    Is.GreaterThan(0f),
+                    "The next reinforcement slot must begin filling when the action starts.");
+            }
+
             while (!test.IsSettled || wave.CurrentEnemyTurnCycle == cycle)
             {
+                if (expectedFillIndex == 2)
+                {
+                    observedThirdFillDuringAction |=
+                        reinforcementTurnFills[2].fillAmount >= 0.999f;
+                }
+
                 Assert.That(Time.realtimeSinceStartup, Is.LessThan(deadline));
                 yield return null;
             }
             Assert.That(wave.CurrentEnemyTurnCycle, Is.EqualTo(cycle + 1));
         }
+        IEnumerator WaitForFill(Image fill)
+        {
+            float deadline = Time.realtimeSinceStartup + 1f;
+            while (fill.fillAmount < 0.999f)
+            {
+                Assert.That(Time.realtimeSinceStartup, Is.LessThan(deadline));
+                yield return null;
+            }
+        }
+        bool SpawnColorIsAtRest()
+        {
+            return Mathf.Abs(spawnLeftText.color.r - spawnLeftRestColor.r)
+                    <= 0.001f
+                && Mathf.Abs(spawnLeftText.color.g - spawnLeftRestColor.g)
+                    <= 0.001f
+                && Mathf.Abs(spawnLeftText.color.b - spawnLeftRestColor.b)
+                    <= 0.001f
+                && Mathf.Abs(spawnLeftText.color.a - spawnLeftRestColor.a)
+                    <= 0.001f;
+        }
+        bool SpawnScaleIsAtRest()
+        {
+            return (spawnLeftText.rectTransform.localScale
+                    - spawnLeftRestScale).sqrMagnitude <= 0.000001f;
+        }
         try
         {
             Assert.That(wave.LivingEnemyCount, Is.EqualTo(1));
             Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(3));
-            yield return Act();
+            yield return Act(0);
+            yield return WaitForFill(reinforcementTurnFills[0]);
+            Assert.That(reinforcementTurnFills[1].fillAmount, Is.Zero);
+            Assert.That(reinforcementTurnFills[2].fillAmount, Is.Zero);
             Assert.That(wave.LivingEnemyCount, Is.EqualTo(1));
             Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(2));
             var saved = new RunSaveData(); wave.CaptureRunState(saved);
             saved = JsonUtility.FromJson<RunSaveData>(JsonUtility.ToJson(saved));
             Assert.That(wave.RestoreBattle(battle, saved), Is.True);
             Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(2));
-            yield return Act();
+            yield return Act(1);
+            yield return WaitForFill(reinforcementTurnFills[1]);
+            Assert.That(reinforcementTurnFills[2].fillAmount, Is.Zero);
             Assert.That(wave.LivingEnemyCount, Is.EqualTo(1));
             Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(1));
-            yield return Act();
+            yield return Act(2);
+
+            float feedbackDeadline = Time.realtimeSinceStartup + 1f;
+            bool observedSpawnPulse = false;
+
+            while (Time.realtimeSinceStartup < feedbackDeadline
+                   && !observedSpawnPulse)
+            {
+                observedSpawnPulse |= !SpawnColorIsAtRest()
+                    || !SpawnScaleIsAtRest();
+                yield return null;
+            }
+
+            Assert.That(observedThirdFillDuringAction, Is.True);
+            Assert.That(observedSpawnPulse, Is.True);
+
+            float resetDeadline = Time.realtimeSinceStartup + 1f;
+            while ((reinforcementTurnFills[0].fillAmount > 0f
+                    || reinforcementTurnFills[1].fillAmount > 0f
+                    || reinforcementTurnFills[2].fillAmount > 0f
+                    || !SpawnColorIsAtRest()
+                    || !SpawnScaleIsAtRest())
+                   && Time.realtimeSinceStartup < resetDeadline)
+            {
+                yield return null;
+            }
+
+            Assert.That(reinforcementTurnFills[0].fillAmount, Is.Zero);
+            Assert.That(reinforcementTurnFills[1].fillAmount, Is.Zero);
+            Assert.That(reinforcementTurnFills[2].fillAmount, Is.Zero);
+            Assert.That(SpawnColorIsAtRest(), Is.True);
+            Assert.That(SpawnScaleIsAtRest(), Is.True);
             Assert.That(wave.LivingEnemyCount, Is.EqualTo(2));
             Assert.That(wave.ActionsUntilReinforcement, Is.EqualTo(3));
             // Capacity pauses rather than banking later reinforcements.
@@ -499,6 +637,42 @@ public sealed class CylinderTempoTests
         Assert.That(
             serializedHud.FindProperty("phaseText").objectReferenceValue,
             Is.SameAs(phaseText));
+
+        Transform leftTurnLayout = tempoPanel.Find("Layout | Left Turn");
+        Assert.That(leftTurnLayout, Is.Not.Null);
+        Assert.That(leftTurnLayout.gameObject.activeSelf, Is.True);
+        Assert.That(leftTurnLayout.childCount, Is.EqualTo(3));
+        Assert.That(
+            tempoPanel.Find("Layout | Tempo")?.gameObject.activeSelf,
+            Is.False);
+
+        SerializedProperty turnFills = serializedHud.FindProperty(
+            "reinforcementTurnFills");
+        Assert.That(turnFills.arraySize, Is.EqualTo(3));
+
+        for (int index = 0; index < leftTurnLayout.childCount; index++)
+        {
+            Transform turn = leftTurnLayout.GetChild(index);
+            Assert.That(turn.name, Is.EqualTo("Image | Turn"));
+            Image fill = turn.Find("Image | Turn Fill")
+                ?.GetComponent<Image>();
+            Assert.That(fill, Is.Not.Null);
+            Assert.That(fill.type, Is.EqualTo(Image.Type.Filled));
+            Assert.That(fill.raycastTarget, Is.False);
+            Assert.That(
+                turnFills.GetArrayElementAtIndex(index)
+                    .objectReferenceValue,
+                Is.SameAs(fill));
+        }
+
+        Assert.That(
+            serializedHud.FindProperty("reinforcementFillDuration")
+                .floatValue,
+            Is.EqualTo(0.1f).Within(0.0001f));
+        Assert.That(
+            serializedHud.FindProperty("spawnLeftPulseDuration")
+                .floatValue,
+            Is.EqualTo(0.7f).Within(0.0001f));
 
         Transform comboTimer = canvas.transform.Find(
             "Panel | MainGame/Panel | Feedback/Layout | Combo/"

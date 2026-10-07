@@ -27,7 +27,7 @@ MonoBehaviour:
   levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
   projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
   damage: 2
-  maxRange: 4
+  maxRange: 1
   criticalChance: 8
   criticalDamageMultiplier: 5
   effects: []
@@ -45,7 +45,7 @@ MonoBehaviour:
   - description: "12\uAC1C \uD330\uB9BF. \uAC01 \uD330\uB9BF\uC740 \uCE58\uBA85\uD0C0
       \uD655\uB960 8%, \uCE58\uBA85\uD0C0 \uBC30\uC728 x5\uB97C \uB3C5\uB9BD \uD310\uC815."
     damage: 3
-    maxRange: 4
+    maxRange: 1
     criticalChance: 8
     criticalDamageMultiplier: 5
     effects: []
@@ -59,7 +59,7 @@ MonoBehaviour:
   - description: "12\uAC1C \uD330\uB9BF. \uAC01 \uD330\uB9BF\uC740 \uCE58\uBA85\uD0C0
       \uD655\uB960 8%, \uCE58\uBA85\uD0C0 \uBC30\uC728 x5\uB97C \uB3C5\uB9BD \uD310\uC815."
     damage: 4
-    maxRange: 5
+    maxRange: 1
     criticalChance: 8
     criticalDamageMultiplier: 5
     effects: []
@@ -73,7 +73,7 @@ MonoBehaviour:
   - description: "12\uAC1C \uD330\uB9BF. \uAC01 \uD330\uB9BF\uC740 \uCE58\uBA85\uD0C0
       \uD655\uB960 8%, \uCE58\uBA85\uD0C0 \uBC30\uC728 x5\uB97C \uB3C5\uB9BD \uD310\uC815."
     damage: 5
-    maxRange: 5
+    maxRange: 2
     criticalChance: 8
     criticalDamageMultiplier: 5
     effects: []

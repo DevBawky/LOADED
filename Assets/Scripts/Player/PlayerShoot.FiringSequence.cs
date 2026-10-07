@@ -34,6 +34,28 @@ public partial class PlayerShoot
             : elapsedTime + Mathf.Max(0f, unscaledDeltaTime);
     }
 
+    internal static bool ShouldWaitForCadenceAfterVolleyShot(
+        int shotIndex,
+        int volleyShotCount)
+    {
+        return shotIndex >= Mathf.Max(1, volleyShotCount) - 1;
+    }
+
+    internal static float ResolveShotgunPelletSpreadOffset(
+        int pelletIndex,
+        int pelletCount)
+    {
+        int resolvedCount = Mathf.Max(1, pelletCount);
+        if (resolvedCount == 1)
+        {
+            return 0f;
+        }
+
+        float progress = Mathf.Clamp01(
+            (float)Mathf.Max(0, pelletIndex) / (resolvedCount - 1));
+        return Mathf.Lerp(-0.22f, 0.22f, progress);
+    }
+
     internal static void ResetPostFireAbilityStacks(
         BulletInstance firedBullet,
         BulletInstance resolvedBullet)
@@ -49,9 +71,10 @@ public partial class PlayerShoot
 
     private sealed class FiringSequenceController
     {
-        private sealed class ShotCadenceState
+        private enum ShotPresentationMode
         {
-            public bool IsComplete { get; set; }
+            Standard,
+            VolleyResolution
         }
 
         private readonly struct ReplayShot
@@ -81,6 +104,9 @@ public partial class PlayerShoot
         private readonly PlayerShoot owner;
         private readonly HashSet<int> enemiesHitThisTurn = new HashSet<int>();
         private readonly List<ReplayShot> replayShots = new List<ReplayShot>();
+        private readonly PhysicalBulletCriticalScope<EnemyController>
+            physicalBulletCriticalScope =
+                new PhysicalBulletCriticalScope<EnemyController>();
         private float activeCriticalDamageMultiplierBonus;
         private int activeSniperBulletsBeforeShot;
         private int activeResonanceStatusMask;
@@ -251,6 +277,7 @@ public partial class PlayerShoot
             bulletDestroyedThisCylinder = false;
             lastPhysicalShotTarget = null;
             pendingSaverGold = 0;
+            physicalBulletCriticalScope.Begin();
             int physicalBulletIndex = 0;
             relicManager?.NotifyCylinderStarted(
                 initialLoadedBulletCount,
@@ -301,6 +328,7 @@ public partial class PlayerShoot
     
                 firedAnyBullet = true;
                 currentConsumedBullet = firedBullet;
+                physicalBulletCriticalScope.Begin();
                 int currentPhysicalBulletIndex = physicalBulletIndex++;
                 consumesTurn |= !resolvedBullet.DoesNotConsumeTurn;
     
@@ -441,6 +469,15 @@ public partial class PlayerShoot
                     int chainAdditionalShotCount = 0;
                     bool defeatedWithThisBullet = false;
                     bool keepFiring;
+
+                    int shotgunVolleyShotCount = resolvedBullet.ShotCount;
+                    if (shotgunVolleyShotCount > 1)
+                    {
+                        yield return PlayShotgunVolleyPresentation(
+                            resolvedBullet,
+                            shotDirection,
+                            shotgunVolleyShotCount);
+                    }
     
                     do
                     {
@@ -463,7 +500,14 @@ public partial class PlayerShoot
                             additionalShotCount == 0,
                             false,
                             currentPhysicalBulletIndex,
-                            completed => shotCompleted = completed);
+                            completed => shotCompleted = completed,
+                            ShouldWaitForCadenceAfterVolleyShot(
+                                additionalShotCount,
+                                shotgunVolleyShotCount),
+                            additionalShotCount < shotgunVolleyShotCount
+                                && shotgunVolleyShotCount > 1
+                                    ? ShotPresentationMode.VolleyResolution
+                                    : ShotPresentationMode.Standard);
                         forcedShotTarget = null;
                         defeatedWithThisBullet |= activeShotDefeatedEnemy;
     
@@ -731,7 +775,11 @@ public partial class PlayerShoot
                     pendingSaverGold += Mathf.RoundToInt(saverEffect.Amount);
                     saverRefundsTurn |= saverEffect.StackCount >= 2;
                 }
-    
+
+                CompletePhysicalBulletCriticalScope();
+
+                yield return WaitForEnemyReplacementAfterBullet();
+
                 previousResolvedBullet = resolvedBullet;
                 previousStatusMask = BulletEffectUtility
                     .GetInflictedStatusMask(resolvedBullet);
@@ -776,6 +824,7 @@ public partial class PlayerShoot
             reservedDamageByEnemy.Clear();
             pendingEffectDefeats.Clear();
             replayShots.Clear();
+            physicalBulletCriticalScope.Begin();
             activeCriticalDamageMultiplierBonus = 0f;
             waveManager?.NotifyFiringSequenceCompleted();
             deckManager.CompleteFiringSequence();
@@ -799,9 +848,17 @@ public partial class PlayerShoot
             bool isBaseBullet,
             bool isRelicGenerated,
             int physicalBulletIndex,
-            Action<bool> onCompleted)
+            Action<bool> onCompleted,
+            bool waitForCadenceAfterResolution = true,
+            ShotPresentationMode presentationMode =
+                ShotPresentationMode.Standard)
         {
-            if (bulletData == null || ShouldStopFiring())
+            bool resolvesStartedVolley = presentationMode
+                == ShotPresentationMode.VolleyResolution;
+            if (bulletData == null
+                || (resolvesStartedVolley
+                    ? playerHealth != null && playerHealth.IsDefeated
+                    : ShouldStopFiring()))
             {
                 onCompleted?.Invoke(false);
                 yield break;
@@ -915,7 +972,7 @@ public partial class PlayerShoot
             bool shotHasCriticalOutcome =
                 PlayerAttackDamageCalculator.ResolveCriticalForTarget(
                     isCritical,
-                    HasExposedHitTarget());
+                    HasGuaranteedCriticalHitTarget());
             List<DamageReservation> shotReservations = hasViableTarget
                 ? ReserveProjectedHitDamage(
                     bulletData,
@@ -939,54 +996,67 @@ public partial class PlayerShoot
             }
             float projectileTravelDuration =
                 ResolveProjectileTravelDuration(tileDistance);
-            bool projectileStarted = BulletProjectileView.TrySpawn(
-                bulletData.ProjectileVisual,
-                bulletData,
-                shotStartPoint,
-                shotEndPoint,
-                out BulletProjectileView projectile);
-            if (!projectileStarted && bulletLinePrefab != null)
+            BulletProjectileView projectile = null;
+            bool presentsIndividualShot = presentationMode
+                == ShotPresentationMode.Standard;
+            if (presentsIndividualShot)
             {
-                BulletLine bulletLine = Instantiate(
-                    bulletLinePrefab,
+                bool projectileStarted = BulletProjectileView.TrySpawn(
+                    bulletData.ProjectileVisual,
+                    bulletData,
                     shotStartPoint,
-                    Quaternion.identity);
-                if (!bulletLine.Initialize(
-                        bulletData,
-                        shotStartPoint,
-                        shotEndPoint))
+                    shotEndPoint,
+                    out projectile);
+                if (!projectileStarted && bulletLinePrefab != null)
                 {
-                    Destroy(bulletLine.gameObject);
+                    BulletLine bulletLine = Instantiate(
+                        bulletLinePrefab,
+                        shotStartPoint,
+                        Quaternion.identity);
+                    if (!bulletLine.Initialize(
+                            bulletData,
+                            shotStartPoint,
+                            shotEndPoint))
+                    {
+                        Destroy(bulletLine.gameObject);
+                    }
                 }
             }
 
-            ShotCadenceState shotCadence = new ShotCadenceState();
-            owner.StartCoroutine(TrackShotCadence(shotCadence));
-            ShowBulletFeedback(bulletData);
             if (shotHasCriticalOutcome && hasViableTarget)
             {
                 SoundManager.PlaySfx("SFX_Critical");
             }
-            SoundManager.PlaySfx(shotHasCriticalOutcome
-                ? "SFX_Player_Critical_Shoot"
-                : "SFX_Player_Shoot");
-            combatFeedback?.RecordShotCameraShake();
+            if (presentsIndividualShot)
+            {
+                ShowBulletFeedback(bulletData);
+                SoundManager.PlaySfx(shotHasCriticalOutcome
+                    ? "SFX_Player_Critical_Shoot"
+                    : "SFX_Player_Shoot");
+                combatFeedback?.RecordShotCameraShake();
+            }
             RecordSuccessfulShot(
                 bulletData,
                 isBaseBullet,
                 isRelicGenerated);
             owner.BulletFired?.Invoke(bulletData);
             GameStatistics.RecordBulletFired(bulletData);
-            combatPresentation?.PlayShot(
-                firePoint,
-                bulletData,
-                shotHasCriticalOutcome,
-                horizontalDirection);
-            // Projectile arrival controls damage timing independently from
-            // the fixed interval that controls the next sequential shot.
-            yield return WaitForProjectileArrival(
-                projectile,
-                projectileTravelDuration);
+            if (presentsIndividualShot)
+            {
+                combatPresentation?.PlayShot(
+                    firePoint,
+                    bulletData,
+                    shotHasCriticalOutcome,
+                    horizontalDirection);
+            }
+            // The next shot must not begin until projectile arrival and every
+            // effect scheduled by this shot have finished resolving.
+            if (presentsIndividualShot)
+            {
+                yield return WaitForProjectileArrival(
+                    projectile,
+                    projectileTravelDuration);
+            }
             yield return ApplyShotScopedEffects(bulletData, horizontalDirection);
             yield return ApplyHitResults(
                 bulletData,
@@ -1014,8 +1084,195 @@ public partial class PlayerShoot
                 bulletData,
                 shotHasCriticalOutcome,
                 generatesShells);
-            yield return WaitForShotCadence(shotCadence);
+            if (waitForCadenceAfterResolution)
+            {
+                yield return WaitForShotCadenceAfterResolution();
+            }
             onCompleted?.Invoke(true);
+        }
+
+        private IEnumerator PlayShotgunVolleyPresentation(
+            BulletInstance bullet,
+            int horizontalDirection,
+            int pelletCount)
+        {
+            if (bullet == null || pelletCount <= 1 || ShouldStopFiring())
+            {
+                yield break;
+            }
+
+            List<BulletProjectileView> projectiles =
+                new List<BulletProjectileView>(pelletCount);
+            float travelDuration = 0f;
+            int presentedPelletCount = 0;
+
+            for (int pelletIndex = 0;
+                 pelletIndex < pelletCount;
+                 pelletIndex++)
+            {
+                PrepareFocusedShotgunTarget(bullet, pelletIndex);
+                ResolveVolleyPresentationPath(
+                    bullet,
+                    horizontalDirection,
+                    out Vector3 startPoint,
+                    out Vector3 endPoint,
+                    out float pelletTravelDuration);
+                float spreadOffset = ResolveShotgunPelletSpreadOffset(
+                    pelletIndex,
+                    pelletCount);
+                startPoint += Vector3.up * spreadOffset * 0.2f;
+                endPoint += Vector3.up * spreadOffset;
+                travelDuration = Mathf.Max(
+                    travelDuration,
+                    pelletTravelDuration);
+
+                bool projectileStarted = BulletProjectileView.TrySpawn(
+                    bullet.ProjectileVisual,
+                    bullet,
+                    startPoint,
+                    endPoint,
+                    out BulletProjectileView projectile);
+                if (projectileStarted)
+                {
+                    projectiles.Add(projectile);
+                    owner.activeVolleyProjectileViews.Add(projectile);
+                    presentedPelletCount++;
+                }
+                else if (bulletLinePrefab != null)
+                {
+                    BulletLine bulletLine = Instantiate(
+                        bulletLinePrefab,
+                        startPoint,
+                        Quaternion.identity);
+                    if (!bulletLine.Initialize(
+                            bullet,
+                            startPoint,
+                            endPoint))
+                    {
+                        Destroy(bulletLine.gameObject);
+                    }
+                    else
+                    {
+                        presentedPelletCount++;
+                    }
+                }
+            }
+
+            forcedShotTarget = null;
+            owner.ShotgunVolleyPresented?.Invoke(presentedPelletCount);
+            ShowBulletFeedback(bullet);
+            SoundManager.PlaySfx("SFX_Player_Shoot");
+            combatFeedback?.RecordShotCameraShake();
+            combatPresentation?.PlayShot(
+                firePoint,
+                bullet,
+                false,
+                horizontalDirection);
+            yield return WaitForShotgunVolleyArrival(
+                projectiles,
+                travelDuration);
+        }
+
+        private void ResolveVolleyPresentationPath(
+            BulletInstance bullet,
+            int horizontalDirection,
+            out Vector3 startPoint,
+            out Vector3 endPoint,
+            out float travelDuration)
+        {
+            bool hasEnemyTarget = RefreshViableTargets(
+                bullet,
+                horizontalDirection);
+            bool isBoardWideShot = IsBoardWideShot(bullet);
+            bool isAutoTargetingShot =
+                BulletEffectUtility.IsAutoTargetingShot(bullet);
+            IPlayerBulletBlocker bulletBlocker = null;
+            bool hasBulletBlocker = !isBoardWideShot
+                && !isAutoTargetingShot
+                && waveManager.TryGetFirstBulletBlocker(
+                    transform.position,
+                    horizontalDirection,
+                    GetShotRange(bullet),
+                    out bulletBlocker);
+
+            if (hasBulletBlocker)
+            {
+                RemoveTargetsBehindBlocker(
+                    bulletBlocker,
+                    horizontalDirection);
+                hasEnemyTarget = targetBuffer.Count > 0;
+            }
+
+            bool hasViableTarget = hasEnemyTarget || hasBulletBlocker;
+            Vector3 impactPoint;
+            if (hasEnemyTarget)
+            {
+                impactPoint = GetProjectileImpactPoint(targetBuffer[0]);
+            }
+            else if (hasBulletBlocker)
+            {
+                impactPoint = bulletBlocker.WorldPosition;
+            }
+            else
+            {
+                impactPoint = GetMissEndPoint(
+                    horizontalDirection,
+                    GetShotRange(bullet));
+            }
+
+            startPoint = firePoint.position;
+            endPoint = hasViableTarget
+                ? impactPoint
+                : GetShotLineEndPoint(startPoint, impactPoint);
+            int tileDistance = -1;
+            if (boardManager != null
+                && boardManager.TryGetTileDistance(
+                    transform.position,
+                    impactPoint,
+                    out int resolvedTileDistance))
+            {
+                tileDistance = resolvedTileDistance;
+            }
+
+            travelDuration = ResolveProjectileTravelDuration(tileDistance);
+        }
+
+        private IEnumerator WaitForShotgunVolleyArrival(
+            IReadOnlyList<BulletProjectileView> projectiles,
+            float travelDuration)
+        {
+            float duration = Mathf.Max(0f, travelDuration);
+            float elapsedTime = 0f;
+
+            while (elapsedTime < duration)
+            {
+                yield return null;
+                elapsedTime = AdvanceShotTimer(
+                    elapsedTime,
+                    Time.unscaledDeltaTime,
+                    GamePauseController.IsPaused);
+                float progress = duration <= 0f
+                    ? 1f
+                    : elapsedTime / duration;
+
+                foreach (BulletProjectileView projectile in projectiles)
+                {
+                    if (projectile != null)
+                    {
+                        projectile.SetTravelProgress(progress);
+                    }
+                }
+            }
+
+            foreach (BulletProjectileView projectile in projectiles)
+            {
+                if (projectile != null)
+                {
+                    projectile.CompleteTravel();
+                }
+
+                owner.activeVolleyProjectileViews.Remove(projectile);
+            }
         }
 
         private bool pendingEmergencyReload
@@ -1102,7 +1359,7 @@ public partial class PlayerShoot
             }
         }
 
-        private IEnumerator TrackShotCadence(ShotCadenceState state)
+        private IEnumerator WaitForShotCadenceAfterResolution()
         {
             float duration = Mathf.Max(0f, shotInterval);
             float elapsedTime = 0f;
@@ -1116,31 +1373,56 @@ public partial class PlayerShoot
                     Time.unscaledDeltaTime,
                     GamePauseController.IsPaused);
             }
-
-            state.IsComplete = true;
         }
 
-        private static IEnumerator WaitForShotCadence(
-            ShotCadenceState state)
+        private IEnumerator WaitForEnemyReplacementAfterBullet()
         {
-            while (!state.IsComplete)
+            while (ShouldWaitForEnemyReplacement(
+                waveManager == null
+                    ? CombatPacingMode.Legacy
+                    : waveManager.PacingMode,
+                waveManager != null && waveManager.IsBattleCompleted,
+                playerHealth != null && playerHealth.IsDefeated,
+                waveManager == null ? 0 : waveManager.LivingEnemyCount,
+                waveManager != null && waveManager.HasRemainingEnemiesToSpawn))
             {
                 yield return null;
             }
         }
 
-        private bool HasExposedHitTarget()
+        private bool HasGuaranteedCriticalHitTarget()
         {
             foreach (EnemyController enemy in hitBuffer)
             {
                 if (enemy != null && enemy.CurrentHealth > 0
-                    && enemy.IsExposed)
+                    && ResolvePhysicalBulletCritical(false, enemy))
                 {
                     return true;
                 }
             }
 
             return false;
+        }
+
+        private bool ResolvePhysicalBulletCritical(
+            bool rolledCritical,
+            EnemyController enemy)
+        {
+            return physicalBulletCriticalScope.Resolve(
+                rolledCritical,
+                enemy,
+                enemy != null && enemy.IsExposed);
+        }
+
+        private void CompletePhysicalBulletCriticalScope()
+        {
+            physicalBulletCriticalScope.Complete(enemy =>
+            {
+                if (enemy != null)
+                {
+                    enemy.TryConsumeExposedForAttack();
+                }
+            });
         }
     
         private void RecordSuccessfulShot(
@@ -1329,9 +1611,7 @@ public partial class PlayerShoot
                         CountActiveEnemies()));
                 int attackDamage = CalculateAttackDamage(
                     bullet,
-                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
-                        isCritical,
-                        enemy.IsExposed),
+                    ResolvePhysicalBulletCritical(isCritical, enemy),
                     damageMultiplier * targetDamageMultiplier,
                     activeShotIndex,
                     deckManager != null
@@ -1899,10 +2179,9 @@ public partial class PlayerShoot
                 int targetMaxHealth = enemy.MaxHealth;
                 bool hadDebuffBeforeHit = enemy.ActiveStatusTypeCount > 0;
                 bool defeatPresented = false;
-                bool targetIsCritical =
-                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
-                        isCritical,
-                        enemy.IsExposed);
+                bool targetIsCritical = ResolvePhysicalBulletCritical(
+                    isCritical,
+                    enemy);
                 float targetDamageMultiplier = GetTargetDamageMultiplier(
                     bulletData,
                     enemy);
@@ -1981,11 +2260,6 @@ public partial class PlayerShoot
                     continue;
                 }
     
-                if (targetIsCritical && enemy.IsExposed)
-                {
-                    enemy.TryConsumeExposedForAttack();
-                }
-
                 bool executesTarget = FindSpecialEffect(
                         bulletData,
                         BulletEffectType.Execution) != null
@@ -2717,10 +2991,9 @@ public partial class PlayerShoot
                         : combatPresentation.CaptureEnemy(enemy);
                 int healthBefore = enemy.CurrentHealth;
                 int maxHealth = enemy.MaxHealth;
-                bool targetIsCritical =
-                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
-                        isCritical,
-                        enemy.IsExposed);
+                bool targetIsCritical = ResolvePhysicalBulletCritical(
+                    isCritical,
+                    enemy);
                 int attackDamage = CalculateAttackDamage(
                     bullet,
                     targetIsCritical,

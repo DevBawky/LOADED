@@ -16,6 +16,9 @@ public partial class PlayerShoot
                 new Dictionary<EnemyController, DamagePreviewEnemyState>();
         private readonly HashSet<EnemyController> previewedEnemies =
             new HashSet<EnemyController>();
+        private readonly PhysicalBulletCriticalScope<DamagePreviewEnemyState>
+            previewPhysicalBulletCriticalScope =
+                new PhysicalBulletCriticalScope<DamagePreviewEnemyState>();
         private readonly Dictionary<BulletInstance, float>
             previewDamageBonuses =
                 new Dictionary<BulletInstance, float>();
@@ -124,6 +127,7 @@ public partial class PlayerShoot
             previewLastPhysicalTarget = null;
             previewPreviousPhysicalTarget = null;
             previewIsFirstShotOfPhysicalBullet = false;
+            previewPhysicalBulletCriticalScope.Begin();
             relicManager ??= FindFirstObjectByType<RelicManager>(
                 FindObjectsInactive.Include);
             previewResources = new PlayerCombatPreviewResources(
@@ -390,7 +394,8 @@ public partial class PlayerShoot
                     ? 0
                     : Mathf.Max(1, shellEffect.StackCount);
                 bool emphasized = bulletIndex == hoveredBulletIndex;
-    
+
+                previewPhysicalBulletCriticalScope.Begin();
                 previewIsFirstShotOfPhysicalBullet = true;
                 PrepareFocusedPreviewTarget(resolvedBullet, 0);
                 bool firedPhysicalShot = SimulatePreviewShot(
@@ -610,6 +615,7 @@ public partial class PlayerShoot
                 }
 
                 ApplyPreviewPostBulletAbilities(firedBullet, resolvedBullet);
+                CompletePreviewPhysicalBulletCriticalScope();
 
                 if (firedPhysicalShot
                     && firedBullet.BulletType == BulletType.Sniper
@@ -694,10 +700,9 @@ public partial class PlayerShoot
                         .GetPreviewTargetConditionalDamageMultiplier(
                             CountActiveStatusTypes(state),
                             CountPreviewActiveEnemies()));
-                bool targetIsCritical =
-                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
-                        guaranteedCritical,
-                        state.IsExposed);
+                bool targetIsCritical = ResolvePreviewPhysicalBulletCritical(
+                    guaranteedCritical,
+                    state);
                 shotHasCriticalOutcome |= targetIsCritical;
                 int attackDamage = CalculateAttackDamage(
                     resolvedBullet,
@@ -743,7 +748,6 @@ public partial class PlayerShoot
                     attackDamage,
                     previewColor,
                     emphasized);
-                state.IsExposed = false;
                 state.WasHitThisTurn = true;
     
                 ApplyPreviewWallImpactDamageTransfer(
@@ -879,10 +883,9 @@ public partial class PlayerShoot
 
             foreach (DamagePreviewEnemyState state in returnTargets)
             {
-                bool targetIsCritical =
-                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
-                        guaranteedCritical,
-                        state.IsExposed);
+                bool targetIsCritical = ResolvePreviewPhysicalBulletCritical(
+                    guaranteedCritical,
+                    state);
                 int damage = CalculateAttackDamage(
                     bullet,
                     targetIsCritical,
@@ -1799,6 +1802,27 @@ public partial class PlayerShoot
                 }
                 previewPlayerTileIndex = nextTile;
             }
+        }
+
+        private bool ResolvePreviewPhysicalBulletCritical(
+            bool guaranteedCritical,
+            DamagePreviewEnemyState state)
+        {
+            return previewPhysicalBulletCriticalScope.Resolve(
+                guaranteedCritical,
+                state,
+                state != null && state.IsExposed);
+        }
+
+        private void CompletePreviewPhysicalBulletCriticalScope()
+        {
+            previewPhysicalBulletCriticalScope.Complete(state =>
+            {
+                if (state != null)
+                {
+                    state.IsExposed = false;
+                }
+            });
         }
     
         private bool ApplyPreviewKnockback(

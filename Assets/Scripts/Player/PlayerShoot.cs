@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public partial class PlayerShoot : MonoBehaviour
 {
     public event Action<BulletInstance> BulletFired;
+    internal event Action<int> ShotgunVolleyPresented;
     public event Action<int> DamageDealt;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
     public event Action<BulletInstance> LoadedBulletEjected;
@@ -201,6 +202,8 @@ public partial class PlayerShoot : MonoBehaviour
     private bool pendingEmergencyReload;
     private PlayerShotRangePreview rangePreview;
     private BulletProjectileView activeProjectileView;
+    private readonly List<BulletProjectileView> activeVolleyProjectileViews =
+        new List<BulletProjectileView>();
 
     public bool IsFiring => isFiring;
     internal bool TestPendingEmergencyReload => pendingEmergencyReload;
@@ -634,6 +637,16 @@ public partial class PlayerShoot : MonoBehaviour
         }
 
         activeProjectileView = null;
+
+        foreach (BulletProjectileView projectile in activeVolleyProjectileViews)
+        {
+            if (projectile != null)
+            {
+                projectile.CancelTravel();
+            }
+        }
+
+        activeVolleyProjectileViews.Clear();
     }
 
     public bool TryEjectLoadedBullet(int loadedBulletIndex)
@@ -780,6 +793,20 @@ public partial class PlayerShoot : MonoBehaviour
         bool isBoardWide)
     {
         return isBoardWide || sourceLaneIndex == targetLaneIndex;
+    }
+
+    internal static bool ShouldWaitForEnemyReplacement(
+        CombatPacingMode pacingMode,
+        bool isBattleCompleted,
+        bool isPlayerDefeated,
+        int livingEnemyCount,
+        bool hasRemainingEnemiesToSpawn)
+    {
+        return pacingMode == CombatPacingMode.DuelClock
+            && !isBattleCompleted
+            && !isPlayerDefeated
+            && livingEnemyCount <= 0
+            && hasRemainingEnemiesToSpawn;
     }
 
     private void SortTargetsByTileIndex(List<EnemyController> targets)

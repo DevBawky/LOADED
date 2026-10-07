@@ -1,5 +1,54 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+
+internal sealed class PhysicalBulletCriticalScope<TTarget>
+    where TTarget : class
+{
+    private readonly HashSet<TTarget> exposedTargets =
+        new HashSet<TTarget>();
+
+    internal void Begin()
+    {
+        exposedTargets.Clear();
+    }
+
+    internal bool Resolve(
+        bool rolledCritical,
+        TTarget target,
+        bool targetIsExposed)
+    {
+        if (target != null && targetIsExposed)
+        {
+            exposedTargets.Add(target);
+        }
+
+        return PlayerAttackDamageCalculator.ResolveCriticalForTarget(
+            rolledCritical,
+            targetIsExposed
+                || target != null && exposedTargets.Contains(target));
+    }
+
+    internal void Complete(Action<TTarget> consumeExposed)
+    {
+        try
+        {
+            if (consumeExposed == null)
+            {
+                return;
+            }
+
+            foreach (TTarget target in exposedTargets)
+            {
+                consumeExposed(target);
+            }
+        }
+        finally
+        {
+            exposedTargets.Clear();
+        }
+    }
+}
 
 /// <summary>
 /// Calculates final direct-shot damage without owning firing sequence state.
