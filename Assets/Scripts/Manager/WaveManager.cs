@@ -38,9 +38,25 @@ internal readonly struct EnemyBattleProgress
     public long RemainingCount => Math.Max(0L, TotalCount - DefeatedCount);
 }
 
-public class WaveManager : MonoBehaviour
+public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 {
-    private const int EnemyCapacityPercentage = 35;
+    internal const int ReinforcementActionInterval = 3;
+    private const int EnemyCapacityPercentage = 40;
+    private const int ImmediateEnemyPercentage = 10;
+
+    private readonly struct SpawnCell
+    {
+        public SpawnCell(int tileIndex, int laneIndex, int cellKey)
+        {
+            TileIndex = tileIndex;
+            LaneIndex = laneIndex;
+            CellKey = cellKey;
+        }
+
+        public int TileIndex { get; }
+        public int LaneIndex { get; }
+        public int CellKey { get; }
+    }
 
     [Header("Battle Settings")]
     [SerializeField] private Vector3 spawnPositionOffset =
@@ -49,10 +65,10 @@ public class WaveManager : MonoBehaviour
     [Header("COUNT Timing")]
     [Min(0f)]
     [Tooltip("모든 적이 즉시 행동을 마칠 때 적 전체가 공유하는 기본 COUNT 연출 시간입니다.")]
-    [SerializeField] private float enemyTurnDelay = 0.35f;
+    [SerializeField] private float enemyTurnDelay = 0.1f;
     [Min(0f)]
-    [Tooltip("실제 공격 행동 뒤에만 추가하는 간격입니다.")]
-    [SerializeField] private float enemyActionInterval = 0.15f;
+    [Tooltip("공격 판정과 회피 연출이 모두 끝난 뒤 다음 적으로 넘어가기 전의 짧은 간격입니다.")]
+    [SerializeField] private float enemyActionInterval = 0.05f;
 
     [Header("References")]
     [Tooltip("모든 EnemyData를 실행하는 공용 적 템플릿 프리팹입니다.")]
@@ -63,10 +79,12 @@ public class WaveManager : MonoBehaviour
     [SerializeField] private Transform enemyParent;
     [SerializeField] private RewardManager rewardManager;
     [SerializeField] private BossBombManager bossBombManager;
+    [SerializeField] private DuelClockController duelClockController;
 
     [Header("Runtime State")]
     [SerializeField] private List<EnemyController> activeEnemies =
         new List<EnemyController>();
+    [Tooltip("레거시 필드명을 유지하지만 값은 lane * boardCount + tile 형식의 셀 키입니다.")]
     [SerializeField] private List<int> reservedSpawnTileIndices =
         new List<int>();
     [SerializeField] private int currentWaveIndex = -1;
@@ -89,23 +107,36 @@ public class WaveManager : MonoBehaviour
     private readonly List<GameObject> detachedEnemyAttackVisuals =
         new List<GameObject>();
     private int maximumActiveEnemyCount = 1;
+    private bool finalDefeatPresented;
+    private bool isTestBattle;
+    internal bool TestAutomaticTurns { get; set; } = true;
+    internal bool IsTestBattle => isTestBattle;
     private readonly DuelClockEnemySpawnPool duelClockEnemySpawnPool =
         new DuelClockEnemySpawnPool();
     private DuelClockEnemySpawnEntry[] duelClockSpawnEntries =
         Array.Empty<DuelClockEnemySpawnEntry>();
     private EnemyData[] duelClockAuthoredEnemies = Array.Empty<EnemyData>();
-    private EnemyData[] duelClockLegacyAuthoredEnemies =
-        Array.Empty<EnemyData>();
     private int duelClockEnemySpawnCount;
-    private int duelClockEnemySpawnInterval = 5;
+    private int pendingDuelClockEnemySpawns;
+    private bool immediateSpawnOccurredDuringEnemyCycle;
     private bool isDuelClockEnemyPoolConfigured;
-    private DuelClockController duelClockController;
     private readonly List<EnemyTargetData> enemyTargetBuffer =
         new List<EnemyTargetData>();
     private readonly Dictionary<int, Component> movementTileReservations =
         new Dictionary<int, Component>();
     private readonly List<int> movementReservationCleanupBuffer =
         new List<int>();
+    private readonly EnemyTurnCycleRunner enemyTurnCycleRunner =
+        new EnemyTurnCycleRunner();
+    private readonly EnemyPreparationScheduler preparationScheduler =
+        new EnemyPreparationScheduler();
+
+    internal bool TryCommitEnemyTurnIntents(EnemyController requester)
+    {
+        if (!activeEnemies.Contains(requester)) return false;
+        preparationScheduler.Commit(activeEnemies);
+        return true;
+    }
 
     public event Action StateChanged;
     public event Action BattleCompleted;
@@ -113,6 +144,7 @@ public class WaveManager : MonoBehaviour
     public event Action<long> DuelClockBeatsCommitted;
     public event Action<int> EnemyTurnCycleCompleted;
     public event Action<EnemyController> EnemyDefeated;
+    public event Action<EnemyController> FinalEnemyDefeated;
     // TODO: A future persistent unlock service can subscribe and add
     // ExplosiveBullet.asset on the first Big Barrel defeat.
     public event Action<EnemyData> BigBarrelDefeated;
@@ -120,11 +152,23 @@ public class WaveManager : MonoBehaviour
     public IReadOnlyList<EnemyController> ActiveEnemies => activeEnemies;
     public int MaximumActiveEnemyCount => maximumActiveEnemyCount;
     internal int LivingEnemyCount => GetLivingEnemyCount();
+    public bool IsActiveEnemyLimitReached =>
+        CalculateAvailableEnemySlots(
+            GetLivingEnemyCount(),
+            maximumActiveEnemyCount) <= 0;
+    public bool IsDuelClockEnemySpawnPoolExhausted =>
+        isDuelClockEnemyPoolConfigured
+        && duelClockEnemySpawnPool.RemainingCount <= 0;
+    public bool IsSpawnGaugePaused => ShouldPauseSpawnGauge(
+        isDuelClockEnemyPoolConfigured,
+        duelClockEnemySpawnPool.RemainingCount,
+        IsActiveEnemyLimitReached);
     public IReadOnlyList<EnemyWave> Waves => waves ?? Array.Empty<EnemyWave>();
     public int CurrentWaveIndex => currentWaveIndex;
     public Vector3 SpawnPositionOffset => spawnPositionOffset;
     public int SpawnTerm => spawnTerm;
     public int RemainingSpawnTurns => remainingSpawnTurns;
+    internal int ActionsUntilReinforcement => NormalizeReinforcementCountdown(remainingSpawnTurns);
     public float EnemyTurnDelay => enemyTurnDelay;
     public float EnemyActionInterval => enemyActionInterval;
     public bool IsWaitingForNextWave => isWaitingForNextWave;
@@ -139,6 +183,10 @@ public class WaveManager : MonoBehaviour
         combatPacingMode == CombatPacingMode.DuelClock
         && isDuelClockEnemyPoolConfigured
         && duelClockEnemySpawnPool.RemainingCount > 0;
+    public int RemainingUnspawnedEnemyCount =>
+        HasRemainingEnemiesToSpawn
+            ? duelClockEnemySpawnPool.RemainingCount
+            : 0;
     public BossBombManager BombManager => bossBombManager;
     internal EnemyBattleProgress EnemyProgress =>
         combatPacingMode == CombatPacingMode.DuelClock
@@ -154,6 +202,33 @@ public class WaveManager : MonoBehaviour
     internal long PendingEnemyTurnCycles => pendingEnemyTurnCycles;
     internal int PendingDetachedEnemyAttackCount =>
         pendingDetachedEnemyAttacks;
+
+    IReadOnlyList<EnemyController> IEnemyTurnCycleRuntime.ActiveEnemies =>
+        activeEnemies;
+    bool IEnemyTurnCycleRuntime.IsBattleCompleted => isBattleCompleted;
+    bool IEnemyTurnCycleRuntime.IsPlayerDefeated =>
+        playerHealth != null && playerHealth.IsDefeated;
+    bool IEnemyTurnCycleRuntime.HasPendingDetachedEnemyAttacks =>
+        pendingDetachedEnemyAttacks > 0;
+    bool IEnemyTurnCycleRuntime.IsResolvingBossBombExplosions =>
+        bossBombManager != null && bossBombManager.IsResolvingExplosions;
+
+    void IEnemyTurnCycleRuntime.RemoveMissingEnemies()
+    {
+        RemoveMissingEnemies();
+    }
+
+    void IEnemyTurnCycleRuntime.ProcessBossBombs(int enemyTurnCycle)
+    {
+        bossBombManager?.ProcessEnemyTurnCycleEnd(enemyTurnCycle);
+    }
+
+    private readonly EnemyAttackHoverPresenter attackHover = new EnemyAttackHoverPresenter();
+
+    private void LateUpdate()
+    {
+        attackHover.Update(boardManager, activeEnemies, isBattleCompleted);
+    }
 
     private void Awake()
     {
@@ -191,6 +266,7 @@ public class WaveManager : MonoBehaviour
 
     private void OnDisable()
     {
+        attackHover.Clear();
         ClearSpawnWarnings();
 
         CancelManagedCoroutines();
@@ -223,10 +299,10 @@ public class WaveManager : MonoBehaviour
     public bool BeginBattle(BattleData battleData)
     {
         return battleData != null && BeginBattleInternal(
-            battleData.Waves,
-            battleData.SpawnTerm,
+            Array.Empty<EnemyWave>(),
+            0,
             battleData,
-            battleData.PacingMode);
+            CombatPacingMode.DuelClock);
     }
 
     private bool BeginBattleInternal(
@@ -241,7 +317,7 @@ public class WaveManager : MonoBehaviour
         }
 
         ResetBattleRuntime();
-        ConfigureMaximumActiveEnemyCount(battleData);
+        ConfigureMaximumActiveEnemyCount();
         playerMove.SetWaveManager(this);
         playerMove.ResetKickCooldownForBattle();
         EnsureBossBombManager();
@@ -262,7 +338,7 @@ public class WaveManager : MonoBehaviour
         if (usesDuelClock)
         {
             if (!ConfigureDuelClockEnemyPoolFresh(battleData)
-                || !TrySpawnOneDuelClockEnemy())
+                || !TrySpawnInitialCylinderTempoEnemies())
             {
                 ResetBattleRuntime();
                 return false;
@@ -334,15 +410,11 @@ public class WaveManager : MonoBehaviour
             return false;
         }
 
-        CombatPacingMode savedPacingMode =
-            saveData.combatPacingMode == (int)CombatPacingMode.DuelClock
-                ? CombatPacingMode.DuelClock
-                : CombatPacingMode.Legacy;
         return RestoreBattleInternal(
-            battleData.Waves,
-            battleData.SpawnTerm,
+            Array.Empty<EnemyWave>(),
+            0,
             battleData,
-            savedPacingMode,
+            CombatPacingMode.DuelClock,
             saveData);
     }
 
@@ -359,7 +431,7 @@ public class WaveManager : MonoBehaviour
         }
 
         ResetBattleRuntime();
-        ConfigureMaximumActiveEnemyCount(battleData);
+        ConfigureMaximumActiveEnemyCount();
         playerMove.SetWaveManager(this);
         EnsureBossBombManager();
         bossBombManager.ResumeForBattle();
@@ -401,13 +473,16 @@ public class WaveManager : MonoBehaviour
 
         if (saveData.reservedSpawnTileIndices != null)
         {
-            foreach (int tileIndex in saveData.reservedSpawnTileIndices)
+            foreach (int cellKey in saveData.reservedSpawnTileIndices)
             {
-                if (tileIndex >= 0 && tileIndex < boardManager.BoardCount
-                    && !reservedSpawnTileIndices.Contains(tileIndex))
+                if (TryGetSpawnCell(cellKey, out SpawnCell cell)
+                    && !reservedSpawnTileIndices.Contains(cellKey))
                 {
-                    reservedSpawnTileIndices.Add(tileIndex);
-                    boardManager.SetTileWarningActive(tileIndex, true);
+                    reservedSpawnTileIndices.Add(cellKey);
+                    boardManager.SetTileWarningActive(
+                        cell.TileIndex,
+                        cell.LaneIndex,
+                        true);
                 }
             }
         }
@@ -433,6 +508,7 @@ public class WaveManager : MonoBehaviour
                 || !TrySpawnEnemy(
                     enemyData,
                     savedEnemy.tileIndex,
+                    savedEnemy.laneIndex,
                     out _))
             {
                 ResetBattleRuntime();
@@ -538,16 +614,138 @@ public class WaveManager : MonoBehaviour
         ResetBattleRuntime();
     }
 
+    internal bool BeginTestBattle(BattleData environment)
+    {
+        if (!BattleTestContext.IsActive || environment == null
+            || !ValidateReferences())
+        {
+            return false;
+        }
+
+        ResetBattleRuntime();
+        isTestBattle = true;
+        waves = Array.Empty<EnemyWave>();
+        maximumActiveEnemyCount = Mathf.Max(0, boardManager.TotalTileCount - 1);
+        playerMove.SetWaveManager(this);
+        playerMove.ResetKickCooldownForBattle();
+        EnsureBossBombManager();
+        bossBombManager.ResumeForBattle();
+        ConfigureCombatPacingFresh(environment, CombatPacingMode.DuelClock);
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    internal bool TrySpawnTestEnemy(
+        EnemyData data, int tile, int lane, out EnemyController enemy)
+    {
+        enemy = null;
+        if (!isTestBattle || IsResolvingTurn || playerMove.IsActing
+            || playerMove.IsShooting
+            || !TrySpawnEnemy(data, tile, lane, out enemy))
+        {
+            return false;
+        }
+
+        bossBombManager.ResumeForBattle();
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    internal bool TryRemoveTestEnemy(EnemyController enemy)
+    {
+        if (!isTestBattle || IsResolvingTurn || playerMove.IsActing
+            || playerMove.IsShooting || enemy == null
+            || !activeEnemies.Remove(enemy))
+        {
+            return false;
+        }
+
+        enemy.Defeated -= HandleEnemyDefeated;
+        ReleaseMovementTiles(enemy);
+        enemy.gameObject.SetActive(false);
+        Destroy(enemy.gameObject);
+        StateChanged?.Invoke();
+        return true;
+    }
+
+    internal bool TryStepTestBattle()
+    {
+        if (!isTestBattle || IsResolvingTurn || playerMove.IsActing
+            || playerMove.IsShooting || playerHealth.IsDefeated)
+        {
+            return false;
+        }
+
+        bool automatic = TestAutomaticTurns;
+        TestAutomaticTurns = true;
+        bool accepted = duelClockController.TryCommitTestCycle();
+        TestAutomaticTurns = automatic;
+        return accepted;
+    }
+
+    internal bool RestoreTestBattle(
+        BattleData environment, RunSaveData state, Func<string, EnemyData> resolver)
+    {
+        if (state == null || resolver == null || !BeginTestBattle(environment))
+        {
+            return false;
+        }
+
+        foreach (RunEnemySaveData saved in state.enemies)
+        {
+            if (!TrySpawnEnemy(resolver(saved.enemyAssetName),
+                    saved.tileIndex, saved.laneIndex, out _))
+            {
+                BeginTestBattle(environment);
+                return false;
+            }
+        }
+
+        for (int index = 0; index < state.enemies.Count; index++)
+        {
+            RunEnemySaveData saved = state.enemies[index];
+            int support = saved.preparedSupportTargetIndex;
+            activeEnemies[index].RestoreRunState(saved,
+                support >= 0 && support < activeEnemies.Count
+                    ? activeEnemies[support] : null);
+        }
+
+        currentEnemyTurnCycle = Mathf.Max(0, state.currentEnemyTurnCycle);
+        ConfigureCombatPacingRestored(environment, CombatPacingMode.DuelClock, state);
+        bool restored = bossBombManager.RestoreRunState(state.bombs, resolver);
+        StateChanged?.Invoke();
+        return restored;
+    }
+
     public bool IsTileOccupied(int tileIndex, EnemyController ignoredEnemy = null)
     {
-        return TryGetEnemyAtTile(tileIndex, out _, ignoredEnemy);
+        return IsTileOccupied(tileIndex, 0, ignoredEnemy);
+    }
+
+    public bool IsTileOccupied(
+        int tileIndex,
+        int laneIndex,
+        EnemyController ignoredEnemy = null)
+    {
+        return TryGetEnemyAtTile(
+            tileIndex,
+            laneIndex,
+            out _,
+            ignoredEnemy);
     }
 
     private bool IsPlayerAtTile(int tileIndex)
     {
+        return IsPlayerAtTile(tileIndex, 0);
+    }
+
+    private bool IsPlayerAtTile(int tileIndex, int laneIndex)
+    {
         return playerMove != null && boardManager != null
+            && playerMove.CurrentLaneIndex == laneIndex
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex)
             && playerTileIndex == tileIndex;
     }
@@ -556,9 +754,17 @@ public class WaveManager : MonoBehaviour
         int tileIndex,
         Component ignoredOwner = null)
     {
+        return IsTileReservedForMovement(tileIndex, 0, ignoredOwner);
+    }
+
+    public bool IsTileReservedForMovement(
+        int tileIndex,
+        int laneIndex,
+        Component ignoredOwner = null)
+    {
         RemoveStaleMovementReservations();
         return movementTileReservations.TryGetValue(
-                tileIndex,
+                GetBoardCellKey(tileIndex, laneIndex),
                 out Component owner)
             && owner != ignoredOwner;
     }
@@ -585,12 +791,28 @@ public class WaveManager : MonoBehaviour
 
     internal bool TryReserveMovementTile(Component owner, int tileIndex)
     {
-        return TryReserveMovementTiles(owner, new[] { tileIndex });
+        return TryReserveMovementTile(owner, tileIndex, 0);
+    }
+
+    internal bool TryReserveMovementTile(
+        Component owner,
+        int tileIndex,
+        int laneIndex)
+    {
+        return TryReserveMovementTiles(owner, new[] { tileIndex }, laneIndex);
     }
 
     internal bool TryReserveMovementTiles(
         Component owner,
         IReadOnlyList<int> tileIndices)
+    {
+        return TryReserveMovementTiles(owner, tileIndices, 0);
+    }
+
+    internal bool TryReserveMovementTiles(
+        Component owner,
+        IReadOnlyList<int> tileIndices,
+        int laneIndex)
     {
         if (owner == null || tileIndices == null || tileIndices.Count == 0)
         {
@@ -602,10 +824,11 @@ public class WaveManager : MonoBehaviour
         for (int index = 0; index < tileIndices.Count; index++)
         {
             int tileIndex = tileIndices[index];
+            int cellKey = GetBoardCellKey(tileIndex, laneIndex);
 
-            if (tileIndex < 0
+            if (cellKey < 0
                 || movementTileReservations.TryGetValue(
-                    tileIndex,
+                    cellKey,
                     out Component reservedOwner)
                 && reservedOwner != owner)
             {
@@ -617,7 +840,8 @@ public class WaveManager : MonoBehaviour
 
         for (int index = 0; index < tileIndices.Count; index++)
         {
-            movementTileReservations[tileIndices[index]] = owner;
+            movementTileReservations[
+                GetBoardCellKey(tileIndices[index], laneIndex)] = owner;
         }
 
         return true;
@@ -629,19 +853,43 @@ public class WaveManager : MonoBehaviour
         Component secondOwner,
         int secondTargetTileIndex)
     {
+        return TryReserveMovementSwap(
+            firstOwner,
+            firstTargetTileIndex,
+            0,
+            secondOwner,
+            secondTargetTileIndex,
+            0);
+    }
+
+    internal bool TryReserveMovementSwap(
+        Component firstOwner,
+        int firstTargetTileIndex,
+        int firstTargetLaneIndex,
+        Component secondOwner,
+        int secondTargetTileIndex,
+        int secondTargetLaneIndex)
+    {
+        int firstCellKey = GetBoardCellKey(
+            firstTargetTileIndex,
+            firstTargetLaneIndex);
+        int secondCellKey = GetBoardCellKey(
+            secondTargetTileIndex,
+            secondTargetLaneIndex);
+
         if (firstOwner == null || secondOwner == null
             || firstOwner == secondOwner
-            || firstTargetTileIndex < 0 || secondTargetTileIndex < 0
-            || firstTargetTileIndex == secondTargetTileIndex)
+            || firstCellKey < 0 || secondCellKey < 0
+            || firstCellKey == secondCellKey)
         {
             return false;
         }
 
         RemoveStaleMovementReservations();
 
-        if (IsReservedByAnotherOwner(firstTargetTileIndex, firstOwner, secondOwner)
+        if (IsReservedByAnotherOwner(firstCellKey, firstOwner, secondOwner)
             || IsReservedByAnotherOwner(
-                secondTargetTileIndex,
+                secondCellKey,
                 firstOwner,
                 secondOwner))
         {
@@ -650,8 +898,8 @@ public class WaveManager : MonoBehaviour
 
         ReleaseMovementTiles(firstOwner);
         ReleaseMovementTiles(secondOwner);
-        movementTileReservations[firstTargetTileIndex] = firstOwner;
-        movementTileReservations[secondTargetTileIndex] = secondOwner;
+        movementTileReservations[firstCellKey] = firstOwner;
+        movementTileReservations[secondCellKey] = secondOwner;
         return true;
     }
 
@@ -730,6 +978,19 @@ public class WaveManager : MonoBehaviour
         out EnemyController foundEnemy,
         EnemyController ignoredEnemy = null)
     {
+        return TryGetEnemyAtTile(
+            tileIndex,
+            0,
+            out foundEnemy,
+            ignoredEnemy);
+    }
+
+    public bool TryGetEnemyAtTile(
+        int tileIndex,
+        int laneIndex,
+        out EnemyController foundEnemy,
+        EnemyController ignoredEnemy = null)
+    {
         foundEnemy = null;
 
         foreach (EnemyController enemy in activeEnemies)
@@ -739,7 +1000,11 @@ public class WaveManager : MonoBehaviour
                 continue;
             }
 
-            if (boardManager.TryGetTileIndex(enemy.transform.position, out int enemyIndex)
+            if (enemy.CurrentLaneIndex == laneIndex
+                && boardManager.TryGetTileIndex(
+                    enemy.transform.position,
+                    enemy.CurrentLaneIndex,
+                    out int enemyIndex)
                 && enemyIndex == tileIndex)
             {
                 foundEnemy = enemy;
@@ -752,11 +1017,32 @@ public class WaveManager : MonoBehaviour
 
     public bool IsTileReservedForSpawn(int tileIndex)
     {
-        return reservedSpawnTileIndices.Contains(tileIndex);
+        return IsTileReservedForSpawn(tileIndex, 0);
+    }
+
+    public bool IsTileReservedForSpawn(int tileIndex, int laneIndex)
+    {
+        int cellKey = GetBoardCellKey(tileIndex, laneIndex);
+        return cellKey >= 0 && reservedSpawnTileIndices.Contains(cellKey);
     }
 
     public void GetEnemiesInDirection(
         Vector3 originWorldPosition,
+        int direction,
+        int maxRange,
+        List<EnemyController> results)
+    {
+        GetEnemiesInDirection(
+            originWorldPosition,
+            0,
+            direction,
+            maxRange,
+            results);
+    }
+
+    public void GetEnemiesInDirection(
+        Vector3 originWorldPosition,
+        int laneIndex,
         int direction,
         int maxRange,
         List<EnemyController> results)
@@ -770,7 +1056,7 @@ public class WaveManager : MonoBehaviour
         enemyTargetBuffer.Clear();
 
         if (boardManager == null || direction == 0 || maxRange <= 0
-            || !boardManager.TryGetTileIndex(originWorldPosition, out int originIndex))
+            || !boardManager.TryGetTileIndex(originWorldPosition, laneIndex, out int originIndex))
         {
             return;
         }
@@ -780,8 +1066,10 @@ public class WaveManager : MonoBehaviour
         foreach (EnemyController enemy in activeEnemies)
         {
             if (enemy == null || enemy.CurrentHealth <= 0
+                || enemy.CurrentLaneIndex != laneIndex
                 || !boardManager.TryGetTileIndex(
                     enemy.transform.position,
+                    enemy.CurrentLaneIndex,
                     out int enemyIndex))
             {
                 continue;
@@ -806,6 +1094,77 @@ public class WaveManager : MonoBehaviour
         }
     }
 
+    private int GetBoardCellKey(int tileIndex, int laneIndex)
+    {
+        int boardCount = boardManager == null
+            ? 1000000
+            : boardManager.BoardCount;
+        int laneCount = boardManager == null
+            ? int.MaxValue / boardCount
+            : boardManager.LaneCount;
+        return EncodeBoardCellKey(
+            tileIndex,
+            laneIndex,
+            boardCount,
+            laneCount);
+    }
+
+    internal static int EncodeBoardCellKey(
+        int tileIndex,
+        int laneIndex,
+        int boardCount,
+        int laneCount)
+    {
+        if (boardCount <= 0 || laneCount <= 0 || tileIndex < 0
+            || tileIndex >= boardCount || laneIndex < 0
+            || laneIndex >= laneCount)
+        {
+            return -1;
+        }
+
+        return laneIndex * boardCount + tileIndex;
+    }
+
+    internal static bool TryDecodeBoardCellKey(
+        int cellKey,
+        int boardCount,
+        int laneCount,
+        out int tileIndex,
+        out int laneIndex)
+    {
+        tileIndex = -1;
+        laneIndex = -1;
+
+        if (boardCount <= 0 || laneCount <= 0 || cellKey < 0
+            || cellKey >= boardCount * laneCount)
+        {
+            return false;
+        }
+
+        laneIndex = cellKey / boardCount;
+        tileIndex = cellKey % boardCount;
+        return true;
+    }
+
+    private bool TryGetSpawnCell(int cellKey, out SpawnCell cell)
+    {
+        cell = default;
+
+        if (boardManager == null
+            || !TryDecodeBoardCellKey(
+                cellKey,
+                boardManager.BoardCount,
+                boardManager.LaneCount,
+                out int tileIndex,
+                out int laneIndex))
+        {
+            return false;
+        }
+
+        cell = new SpawnCell(tileIndex, laneIndex, cellKey);
+        return true;
+    }
+
     private void HandlePlayerTurnCompleted()
     {
         if (combatPacingMode == CombatPacingMode.DuelClock
@@ -820,6 +1179,12 @@ public class WaveManager : MonoBehaviour
 
     private void HandleDuelClockBeatsCommitted(long beatCount)
     {
+        if (isTestBattle && !TestAutomaticTurns)
+        {
+            duelClockController.HandleEnemyCycleCompleted();
+            return;
+        }
+
         if (combatPacingMode == CombatPacingMode.DuelClock)
         {
             long queuedBeatCount = QueueEnemyTurnCycles(beatCount);
@@ -894,6 +1259,7 @@ public class WaveManager : MonoBehaviour
             }
 
             pendingEnemyTurnCycles--;
+            immediateSpawnOccurredDuringEnemyCycle = false;
 
             if (usesDuelClock)
             {
@@ -903,6 +1269,11 @@ public class WaveManager : MonoBehaviour
 
             currentEnemyTurnCycle++;
             yield return ResolveOneEnemyTurnCycle();
+
+            if (usesDuelClock)
+            {
+                duelClockController?.HandleEnemyCycleCompleted();
+            }
         }
 
         pendingEnemyTurnCycles = 0;
@@ -968,15 +1339,26 @@ public class WaveManager : MonoBehaviour
     {
         try
         {
-            yield return attackRoutine;
+            while (attackRoutine.MoveNext())
+            {
+                yield return attackRoutine.Current;
+            }
         }
         finally
         {
+            (attackRoutine as IDisposable)?.Dispose();
             detachedEnemyAttackVisuals.Remove(attackVisual);
 
             if (attackVisual != null)
             {
-                Destroy(attackVisual);
+                if (Application.isPlaying)
+                {
+                    Destroy(attackVisual);
+                }
+                else
+                {
+                    DestroyImmediate(attackVisual);
+                }
             }
 
             pendingDetachedEnemyAttacks = Mathf.Max(
@@ -1022,136 +1404,24 @@ public class WaveManager : MonoBehaviour
 
     private IEnumerator ResolveOneEnemyTurnCycle()
     {
-        RemoveMissingEnemies();
+        yield return enemyTurnCycleRunner.Resolve(
+            this,
+            currentEnemyTurnCycle,
+            enemyTurnDelay,
+            enemyActionInterval);
 
-        EnemyController[] enemiesThisTurn = activeEnemies.ToArray();
-        List<EnemyController> concurrentActions = new List<EnemyController>();
-        float turnStartedAt = Time.time;
-
-        for (int enemyIndex = 0;
-             enemyIndex < enemiesThisTurn.Length;
-             enemyIndex++)
-        {
-            EnemyController enemy = enemiesThisTurn[enemyIndex];
-
-            if (enemy != null && activeEnemies.Contains(enemy))
-            {
-                bool usesDedicatedMotion =
-                    enemy.WillExecuteDedicatedTurnMotion;
-
-                if (usesDedicatedMotion)
-                {
-                    yield return WaitForEnemyActions(concurrentActions);
-                    concurrentActions.Clear();
-                }
-
-                enemy.TakeTurn();
-
-                if (!usesDedicatedMotion)
-                {
-                    if (enemy != null && enemy.IsActing)
-                    {
-                        concurrentActions.Add(enemy);
-                    }
-
-                    continue;
-                }
-
-                yield return WaitForEnemyAction(enemy);
-
-                if (playerHealth.IsDefeated)
-                {
-                    break;
-                }
-
-                bool performedAttack = enemy != null
-                    && enemy.LastTurnAction == EnemyTurnActionType.Fire;
-
-                if (performedAttack
-                    && enemyIndex < enemiesThisTurn.Length - 1)
-                {
-                    yield return WaitForTurnTime(enemyActionInterval);
-                }
-            }
-        }
-
-        yield return WaitForEnemyActions(concurrentActions);
-        yield return WaitForDetachedEnemyAttacks();
-
-        float remainingTurnDelay = Mathf.Max(
-            0f,
-            enemyTurnDelay - (Time.time - turnStartedAt));
-        yield return WaitForTurnTime(remainingTurnDelay);
-
-        RemoveMissingEnemies();
-        bossBombManager?.ProcessEnemyTurnCycleEnd(currentEnemyTurnCycle);
-
-        while (bossBombManager != null
-               && bossBombManager.IsResolvingExplosions
-               && !isBattleCompleted && !playerHealth.IsDefeated)
-        {
-            yield return null;
-        }
-
-        RemoveMissingEnemies();
         EnemyTurnCycleCompleted?.Invoke(currentEnemyTurnCycle);
         AdvanceWaveCountdown();
         StateChanged?.Invoke();
     }
 
-    private IEnumerator WaitForTurnTime(float duration)
+    internal static bool ShouldWaitBetweenEnemyActions(
+        EnemyTurnActionType completedAction,
+        bool hasFollowingEnemy)
     {
-        float elapsedTime = 0f;
-
-        while (elapsedTime < duration)
-        {
-            yield return null;
-
-            if (!GamePauseController.IsPaused)
-            {
-                elapsedTime += Time.deltaTime;
-            }
-        }
-    }
-
-    private static IEnumerator WaitForEnemyAction(EnemyController enemy)
-    {
-        while (enemy != null && enemy.IsActing)
-        {
-            yield return null;
-        }
-    }
-
-    private static IEnumerator WaitForEnemyActions(
-        IReadOnlyList<EnemyController> enemies)
-    {
-        if (enemies == null || enemies.Count == 0)
-        {
-            yield break;
-        }
-
-        bool hasRunningAction = true;
-
-        while (hasRunningAction)
-        {
-            hasRunningAction = false;
-
-            for (int index = 0; index < enemies.Count; index++)
-            {
-                EnemyController enemy = enemies[index];
-
-                if (enemy != null && enemy.IsActing)
-                {
-                    hasRunningAction = true;
-                    break;
-                }
-            }
-
-            if (hasRunningAction)
-            {
-                yield return null;
-            }
-        }
+        return EnemyTurnCycleRunner.ShouldWaitBetweenEnemyActions(
+            completedAction,
+            hasFollowingEnemy);
     }
 
     private bool TrySpawnNextWave()
@@ -1175,18 +1445,37 @@ public class WaveManager : MonoBehaviour
             return false;
         }
 
-        List<int> spawnTileIndices;
+        List<SpawnCell> spawnCells;
 
         if (reservedSpawnTileIndices.Count == enemyCount)
         {
-            spawnTileIndices = new List<int>(reservedSpawnTileIndices);
+            spawnCells = new List<SpawnCell>(enemyCount);
+
+            foreach (int cellKey in reservedSpawnTileIndices)
+            {
+                if (!TryGetSpawnCell(cellKey, out SpawnCell cell))
+                {
+                    spawnCells.Clear();
+                    break;
+                }
+
+                spawnCells.Add(cell);
+            }
         }
-        else if (!TrySelectSpawnTileIndices(enemyCount, out spawnTileIndices))
+        else
         {
-            Debug.LogError(
-                $"Wave {nextWaveIndex + 1} spawn tiles could not be selected.",
-                this);
-            return false;
+            spawnCells = null;
+        }
+
+        if (spawnCells == null || spawnCells.Count != enemyCount)
+        {
+            if (!TrySelectSpawnCells(enemyCount, out spawnCells))
+            {
+                Debug.LogError(
+                    $"Wave {nextWaveIndex + 1} spawn cells could not be selected.",
+                    this);
+                return false;
+            }
         }
 
         List<EnemyController> spawnedEnemies = new List<EnemyController>();
@@ -1196,12 +1485,13 @@ public class WaveManager : MonoBehaviour
         {
             for (int count = 0; count < entry.Count; count++)
             {
-                int spawnTileIndex = spawnTileIndices[spawnTileListIndex];
+                SpawnCell spawnCell = spawnCells[spawnTileListIndex];
                 spawnTileListIndex++;
 
                 if (!TrySpawnEnemy(
                         entry.EnemyData,
-                        spawnTileIndex,
+                        spawnCell.TileIndex,
+                        spawnCell.LaneIndex,
                         out EnemyController enemy))
                 {
                     RollBackWaveSpawn(spawnedEnemies);
@@ -1228,17 +1518,31 @@ public class WaveManager : MonoBehaviour
         int spawnTileIndex,
         out EnemyController spawnedEnemy)
     {
+        return TrySpawnEnemy(
+            enemyData,
+            spawnTileIndex,
+            0,
+            out spawnedEnemy);
+    }
+
+    private bool TrySpawnEnemy(
+        EnemyData enemyData,
+        int spawnTileIndex,
+        int spawnLaneIndex,
+        out EnemyController spawnedEnemy)
+    {
         spawnedEnemy = null;
 
         if (enemyData == null || enemyPrefabTemplate == null
             || CalculateAvailableEnemySlots(
                 GetLivingEnemyCount(),
                 maximumActiveEnemyCount) <= 0
-            || IsPlayerAtTile(spawnTileIndex)
-            || IsTileOccupied(spawnTileIndex)
-            || IsTileReservedForMovement(spawnTileIndex)
+            || IsPlayerAtTile(spawnTileIndex, spawnLaneIndex)
+            || IsTileOccupied(spawnTileIndex, spawnLaneIndex)
+            || IsTileReservedForMovement(spawnTileIndex, spawnLaneIndex)
             || !boardManager.TryGetTilePosition(
                 spawnTileIndex,
+                spawnLaneIndex,
                 out Vector3 spawnPosition))
         {
             return false;
@@ -1257,7 +1561,8 @@ public class WaveManager : MonoBehaviour
                 boardManager,
                 playerMove,
                 playerHealth,
-                this))
+                this,
+                spawnLaneIndex))
         {
             Destroy(enemy.gameObject);
             return false;
@@ -1272,9 +1577,9 @@ public class WaveManager : MonoBehaviour
     private bool TrySpawnOneDuelClockEnemy()
     {
         if (duelClockEnemySpawnPool.IsExhausted
-            || !TrySelectSpawnTileIndices(
+            || !TrySelectSpawnCells(
                 1,
-                out List<int> spawnTileIndices))
+                out List<SpawnCell> spawnCells))
         {
             return false;
         }
@@ -1285,7 +1590,8 @@ public class WaveManager : MonoBehaviour
                 out EnemyData enemyData)
             || !TrySpawnEnemy(
                 enemyData,
-                spawnTileIndices[0],
+                spawnCells[0].TileIndex,
+                spawnCells[0].LaneIndex,
                 out EnemyController spawnedEnemy))
         {
             return false;
@@ -1300,6 +1606,47 @@ public class WaveManager : MonoBehaviour
         }
 
         return true;
+    }
+
+    private bool TrySpawnInitialCylinderTempoEnemies()
+    {
+        int requestedCount = CalculateImmediateCylinderTempoSpawnCount(
+            boardManager == null ? 0 : boardManager.TotalTileCount,
+            duelClockEnemySpawnPool.RemainingCount,
+            GetLivingEnemyCount(),
+            maximumActiveEnemyCount,
+            GetAvailableSpawnTileCount());
+        return requestedCount > 0
+            && SpawnCylinderTempoEnemies(requestedCount) == requestedCount;
+    }
+
+    private int SpawnCylinderTempoEnemies(int requestedCount)
+    {
+        int spawnCount = Mathf.Min(
+            Mathf.Max(0, requestedCount),
+            duelClockEnemySpawnPool.RemainingCount,
+            CalculateAvailableEnemySlots(
+                GetLivingEnemyCount(),
+                maximumActiveEnemyCount),
+            GetAvailableSpawnTileCount());
+        int spawnedCount = 0;
+
+        while (spawnedCount < spawnCount)
+        {
+            if (!TrySpawnOneDuelClockEnemy())
+            {
+                break;
+            }
+
+            spawnedCount++;
+        }
+
+        if (spawnedCount > 0)
+        {
+            StateChanged?.Invoke();
+        }
+
+        return spawnedCount;
     }
 
     private bool TryGetWaveEnemyCount(EnemyWave wave, out int enemyCount)
@@ -1334,6 +1681,7 @@ public class WaveManager : MonoBehaviour
         if (boardManager == null || playerMove == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerIndex))
         {
             return 0;
@@ -1341,12 +1689,22 @@ public class WaveManager : MonoBehaviour
 
         int availableCount = 0;
 
-        for (int tileIndex = 0; tileIndex < boardManager.BoardCount; tileIndex++)
+        for (int laneIndex = 0;
+             laneIndex < boardManager.LaneCount;
+             laneIndex++)
         {
-            if (tileIndex != playerIndex && !IsTileOccupied(tileIndex)
-                && !IsTileReservedForMovement(tileIndex))
+            for (int tileIndex = 0;
+                 tileIndex < boardManager.BoardCount;
+                 tileIndex++)
             {
-                availableCount++;
+                if (boardManager.GetColumnIndex(tileIndex, laneIndex)
+                        != boardManager.GetColumnIndex(playerIndex, playerMove.CurrentLaneIndex)
+                    && !IsTileOccupied(tileIndex, laneIndex)
+                    && !IsTileReservedForMovement(tileIndex, laneIndex)
+                    && !IsTileReservedForSpawn(tileIndex, laneIndex))
+                {
+                    availableCount++;
+                }
             }
         }
 
@@ -1357,13 +1715,13 @@ public class WaveManager : MonoBehaviour
                 maximumActiveEnemyCount));
     }
 
-    private bool TrySelectSpawnTileIndices(
+    private bool TrySelectSpawnCells(
         int requestedCount,
-        out List<int> selectedTileIndices)
+        out List<SpawnCell> selectedCells)
     {
-        selectedTileIndices = new List<int>();
-        List<int> preferredTileIndices = new List<int>();
-        List<int> adjacentFallbackTileIndices = new List<int>();
+        selectedCells = new List<SpawnCell>();
+        List<SpawnCell> preferredCells = new List<SpawnCell>();
+        List<SpawnCell> adjacentFallbackCells = new List<SpawnCell>();
 
         if (requestedCount <= 0
             || requestedCount > CalculateAvailableEnemySlots(
@@ -1372,65 +1730,201 @@ public class WaveManager : MonoBehaviour
             || boardManager == null || playerMove == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerIndex))
         {
             return false;
         }
 
-        for (int tileIndex = 0; tileIndex < boardManager.BoardCount; tileIndex++)
+        for (int laneIndex = 0;
+             laneIndex < boardManager.LaneCount;
+             laneIndex++)
         {
-            if (tileIndex == playerIndex || IsTileOccupied(tileIndex)
-                || IsTileReservedForMovement(tileIndex))
+            for (int tileIndex = 0;
+                 tileIndex < boardManager.BoardCount;
+                 tileIndex++)
             {
-                continue;
-            }
+                int columnDistance = Mathf.Abs(
+                    boardManager.GetColumnIndex(tileIndex, laneIndex)
+                    - boardManager.GetColumnIndex(playerIndex, playerMove.CurrentLaneIndex));
+                if (columnDistance == 0
+                    || IsTileOccupied(tileIndex, laneIndex)
+                    || IsTileReservedForMovement(tileIndex, laneIndex)
+                    || IsTileReservedForSpawn(tileIndex, laneIndex))
+                {
+                    continue;
+                }
 
-            if (Mathf.Abs(tileIndex - playerIndex) == 1)
-            {
-                adjacentFallbackTileIndices.Add(tileIndex);
-            }
-            else
-            {
-                preferredTileIndices.Add(tileIndex);
+                int cellKey = GetBoardCellKey(tileIndex, laneIndex);
+                SpawnCell cell = new SpawnCell(
+                    tileIndex,
+                    laneIndex,
+                    cellKey);
+
+                if (columnDistance == 1)
+                {
+                    adjacentFallbackCells.Add(cell);
+                }
+                else
+                {
+                    preferredCells.Add(cell);
+                }
             }
         }
 
-        if (preferredTileIndices.Count
-            + adjacentFallbackTileIndices.Count < requestedCount)
+        if (preferredCells.Count
+            + adjacentFallbackCells.Count < requestedCount)
         {
             return false;
         }
 
-        SelectRandomSpawnTiles(
-            preferredTileIndices,
+        int[] projectedLaneCounts = GetLivingEnemyCountByLane();
+        SelectBalancedSpawnCells(
+            preferredCells,
             requestedCount,
-            selectedTileIndices);
+            selectedCells,
+            projectedLaneCounts);
 
-        if (selectedTileIndices.Count < requestedCount)
+        if (selectedCells.Count < requestedCount)
         {
-            SelectRandomSpawnTiles(
-                adjacentFallbackTileIndices,
+            SelectBalancedSpawnCells(
+                adjacentFallbackCells,
                 requestedCount,
-                selectedTileIndices);
+                selectedCells,
+                projectedLaneCounts);
         }
 
-        return selectedTileIndices.Count == requestedCount;
+        return selectedCells.Count == requestedCount;
     }
 
-    private void SelectRandomSpawnTiles(
-        List<int> candidates,
-        int requestedTotalCount,
-        List<int> selectedTileIndices)
+    private int[] GetLivingEnemyCountByLane()
     {
-        while (selectedTileIndices.Count < requestedTotalCount
+        int laneCount = boardManager == null ? 1 : boardManager.LaneCount;
+        int[] counts = new int[Mathf.Max(1, laneCount)];
+
+        foreach (EnemyController enemy in activeEnemies)
+        {
+            if (enemy != null && enemy.CurrentHealth > 0)
+            {
+                int laneIndex = Mathf.Clamp(
+                    enemy.CurrentLaneIndex,
+                    0,
+                    counts.Length - 1);
+                counts[laneIndex]++;
+            }
+        }
+
+        return counts;
+    }
+
+    private void SelectBalancedSpawnCells(
+        List<SpawnCell> candidates,
+        int requestedTotalCount,
+        List<SpawnCell> selectedCells,
+        int[] projectedLaneCounts)
+    {
+        while (selectedCells.Count < requestedTotalCount
                && candidates.Count > 0)
         {
-            int randomListIndex = UnityEngine.Random.Range(
-                0,
-                candidates.Count);
-            selectedTileIndices.Add(candidates[randomListIndex]);
-            candidates.RemoveAt(randomListIndex);
+            List<int> candidateLanes = new List<int>();
+
+            foreach (SpawnCell candidate in candidates)
+            {
+                if (!candidateLanes.Contains(candidate.LaneIndex))
+                {
+                    candidateLanes.Add(candidate.LaneIndex);
+                }
+            }
+
+            int selectedLane = SelectLeastPopulatedLane(
+                projectedLaneCounts,
+                candidateLanes,
+                UnityEngine.Random.value);
+            List<int> candidateIndices = new List<int>();
+
+            for (int index = 0; index < candidates.Count; index++)
+            {
+                if (candidates[index].LaneIndex == selectedLane)
+                {
+                    candidateIndices.Add(index);
+                }
+            }
+
+            if (candidateIndices.Count == 0)
+            {
+                break;
+            }
+
+            int randomCandidateIndex = candidateIndices[
+                UnityEngine.Random.Range(0, candidateIndices.Count)];
+            SpawnCell selected = candidates[randomCandidateIndex];
+            selectedCells.Add(selected);
+            projectedLaneCounts[selected.LaneIndex]++;
+            candidates.RemoveAt(randomCandidateIndex);
         }
+    }
+
+    internal static int SelectLeastPopulatedLane(
+        IReadOnlyList<int> lanePopulations,
+        IReadOnlyList<int> candidateLanes,
+        float randomValue)
+    {
+        if (lanePopulations == null || candidateLanes == null
+            || candidateLanes.Count == 0)
+        {
+            return -1;
+        }
+
+        int minimumPopulation = int.MaxValue;
+        int tiedLaneCount = 0;
+
+        foreach (int laneIndex in candidateLanes)
+        {
+            if (laneIndex < 0 || laneIndex >= lanePopulations.Count)
+            {
+                continue;
+            }
+
+            int population = Mathf.Max(0, lanePopulations[laneIndex]);
+
+            if (population < minimumPopulation)
+            {
+                minimumPopulation = population;
+                tiedLaneCount = 1;
+            }
+            else if (population == minimumPopulation)
+            {
+                tiedLaneCount++;
+            }
+        }
+
+        if (tiedLaneCount == 0)
+        {
+            return -1;
+        }
+
+        int selectedTieIndex = Mathf.Min(
+            tiedLaneCount - 1,
+            Mathf.FloorToInt(Mathf.Clamp01(randomValue) * tiedLaneCount));
+
+        foreach (int laneIndex in candidateLanes)
+        {
+            if (laneIndex < 0 || laneIndex >= lanePopulations.Count
+                || Mathf.Max(0, lanePopulations[laneIndex])
+                    != minimumPopulation)
+            {
+                continue;
+            }
+
+            if (selectedTieIndex == 0)
+            {
+                return laneIndex;
+            }
+
+            selectedTieIndex--;
+        }
+
+        return -1;
     }
 
     private void RollBackWaveSpawn(List<EnemyController> spawnedEnemies)
@@ -1455,18 +1949,25 @@ public class WaveManager : MonoBehaviour
 
         if (waves == null || nextWaveIndex < 0 || nextWaveIndex >= waves.Length
             || !TryGetWaveEnemyCount(waves[nextWaveIndex], out int enemyCount)
-            || !TrySelectSpawnTileIndices(
+            || !TrySelectSpawnCells(
                 enemyCount,
-                out List<int> selectedTileIndices))
+                out List<SpawnCell> selectedCells))
         {
             return false;
         }
 
-        reservedSpawnTileIndices.AddRange(selectedTileIndices);
-
-        foreach (int tileIndex in reservedSpawnTileIndices)
+        foreach (SpawnCell cell in selectedCells)
         {
-            if (!boardManager.SetTileWarningActive(tileIndex, true))
+            reservedSpawnTileIndices.Add(cell.CellKey);
+        }
+
+        foreach (int cellKey in reservedSpawnTileIndices)
+        {
+            if (!TryGetSpawnCell(cellKey, out SpawnCell cell)
+                || !boardManager.SetTileWarningActive(
+                    cell.TileIndex,
+                    cell.LaneIndex,
+                    true))
             {
                 ClearSpawnWarnings();
                 return false;
@@ -1480,9 +1981,15 @@ public class WaveManager : MonoBehaviour
     {
         if (boardManager != null)
         {
-            foreach (int tileIndex in reservedSpawnTileIndices)
+            foreach (int cellKey in reservedSpawnTileIndices)
             {
-                boardManager.SetTileWarningActive(tileIndex, false);
+                if (TryGetSpawnCell(cellKey, out SpawnCell cell))
+                {
+                    boardManager.SetTileWarningActive(
+                        cell.TileIndex,
+                        cell.LaneIndex,
+                        false);
+                }
             }
         }
 
@@ -1498,13 +2005,19 @@ public class WaveManager : MonoBehaviour
 
         if (rewardManager != null)
         {
-            rewardManager.SpawnEnemyDrop(enemy.Data, enemy.transform.position);
+            rewardManager.SpawnEnemyDrop(enemy.Data, enemy.transform.position,
+                enemy.CurrentLaneIndex);
         }
 
         enemy.Defeated -= HandleEnemyDefeated;
         ReleaseMovementTiles(enemy);
         activeEnemies.Remove(enemy);
         EnemyDefeated?.Invoke(enemy);
+        if (!finalDefeatPresented && IsFinalDefeatForPresentation())
+        {
+            finalDefeatPresented = true;
+            FinalEnemyDefeated?.Invoke(enemy);
+        }
 
         if (activeEnemies.Count == 0 && pendingDetachedEnemyAttacks > 0)
         {
@@ -1523,6 +2036,17 @@ public class WaveManager : MonoBehaviour
         }
 
         StateChanged?.Invoke();
+    }
+
+    internal bool IsFinalDefeatForPresentation()
+    {
+        if (isBattleCompleted || GetLivingEnemyCount() > 0)
+        {
+            return false;
+        }
+        return combatPacingMode == CombatPacingMode.DuelClock
+            ? isDuelClockEnemyPoolConfigured && duelClockEnemySpawnPool.IsExhausted
+            : currentWaveIndex >= 0 && currentWaveIndex == waves.Length - 1;
     }
 
     private void HandleWaveCleared()
@@ -1610,6 +2134,12 @@ public class WaveManager : MonoBehaviour
 
     private void CompleteBattle()
     {
+        if (isTestBattle)
+        {
+            isBattleCompletionPending = false;
+            return;
+        }
+
         if (isBattleCompleted)
         {
             return;
@@ -1686,6 +2216,7 @@ public class WaveManager : MonoBehaviour
         {
             if (attackVisual != null)
             {
+                boardManager?.ReleaseTileWarnings(attackVisual.transform);
                 Destroy(attackVisual);
             }
         }
@@ -1697,6 +2228,9 @@ public class WaveManager : MonoBehaviour
 
     private void ResetBattleRuntime()
     {
+        isTestBattle = false;
+        finalDefeatPresented = false;
+        attackHover.Clear();
         ClearSpawnWarnings();
         CancelManagedCoroutines();
 
@@ -1728,9 +2262,8 @@ public class WaveManager : MonoBehaviour
         duelClockEnemySpawnPool.Clear();
         duelClockSpawnEntries = Array.Empty<DuelClockEnemySpawnEntry>();
         duelClockAuthoredEnemies = Array.Empty<EnemyData>();
-        duelClockLegacyAuthoredEnemies = Array.Empty<EnemyData>();
         duelClockEnemySpawnCount = 0;
-        duelClockEnemySpawnInterval = 5;
+        pendingDuelClockEnemySpawns = 0;
         isDuelClockEnemyPoolConfigured = false;
         DeactivateCombatPacing();
         playerMove.SetEnemyTurnResolving(false);
@@ -1772,9 +2305,6 @@ public class WaveManager : MonoBehaviour
             return false;
         }
 
-        duelClockEnemySpawnInterval = battleData == null
-            ? 5
-            : battleData.DuelClockEnemyWaveCount;
         if (!duelClockEnemySpawnPool.ConfigureFresh(
                 duelClockSpawnEntries,
                 duelClockEnemySpawnCount))
@@ -1786,6 +2316,7 @@ public class WaveManager : MonoBehaviour
         }
 
         isDuelClockEnemyPoolConfigured = true;
+        pendingDuelClockEnemySpawns = 0;
         return true;
     }
 
@@ -1798,9 +2329,6 @@ public class WaveManager : MonoBehaviour
             return false;
         }
 
-        duelClockEnemySpawnInterval = battleData == null
-            ? 5
-            : battleData.DuelClockEnemyWaveCount;
         bool restored = saveData.duelClockWeightedSpawnStateInitialized
             ? duelClockEnemySpawnPool.Restore(
                 duelClockSpawnEntries,
@@ -1810,11 +2338,12 @@ public class WaveManager : MonoBehaviour
                 saveData.duelClockEnemyMissedSpawnCounts,
                 saveData.duelClockLastSpawnedEnemyAssetName,
                 ResolveSavedEnemy)
-            : TryRestoreLegacyDuelClockEnemyPool(saveData);
+            : TryRestoreLegacyWeightedSpawnState(saveData);
 
         if (restored)
         {
             isDuelClockEnemyPoolConfigured = true;
+            pendingDuelClockEnemySpawns = 0;
             return true;
         }
 
@@ -1852,122 +2381,30 @@ public class WaveManager : MonoBehaviour
 
     private bool TryBuildDuelClockEnemyConfiguration(BattleData battleData)
     {
-        duelClockLegacyAuthoredEnemies = BuildLegacyDuelClockEnemyPool(
-            battleData);
-
-        if (battleData != null
-            && battleData.DuelClockEnemySpawnEntries.Count > 0)
+        if (battleData == null
+            || battleData.DuelClockEnemySpawnEntries.Count == 0)
         {
-            duelClockSpawnEntries = new DuelClockEnemySpawnEntry[
-                battleData.DuelClockEnemySpawnEntries.Count];
-
-            for (int index = 0; index < duelClockSpawnEntries.Length; index++)
-            {
-                duelClockSpawnEntries[index] =
-                    battleData.DuelClockEnemySpawnEntries[index];
-            }
-
-            duelClockEnemySpawnCount = battleData.DuelClockEnemySpawnCount;
+            duelClockSpawnEntries = Array.Empty<DuelClockEnemySpawnEntry>();
+            duelClockAuthoredEnemies = Array.Empty<EnemyData>();
+            duelClockEnemySpawnCount = 0;
+            return false;
         }
-        else
+
+        duelClockSpawnEntries = new DuelClockEnemySpawnEntry[
+            battleData.DuelClockEnemySpawnEntries.Count];
+
+        for (int index = 0; index < duelClockSpawnEntries.Length; index++)
         {
-            duelClockSpawnEntries = BuildWeightedEntriesFromLegacyPool(
-                duelClockLegacyAuthoredEnemies);
-            duelClockEnemySpawnCount = duelClockLegacyAuthoredEnemies.Length;
+            duelClockSpawnEntries[index] =
+                battleData.DuelClockEnemySpawnEntries[index];
         }
+
+        duelClockEnemySpawnCount = battleData.DuelClockEnemySpawnCount;
 
         duelClockAuthoredEnemies = BuildAuthoredEnemyList(
             duelClockSpawnEntries);
         return duelClockSpawnEntries.Length > 0
             && duelClockEnemySpawnCount > 0;
-    }
-
-    private EnemyData[] BuildLegacyDuelClockEnemyPool(BattleData battleData)
-    {
-        if (battleData != null && battleData.DuelClockEnemyPool.Count > 0)
-        {
-            EnemyData[] authoredPool = new EnemyData[
-                battleData.DuelClockEnemyPool.Count];
-
-            for (int index = 0; index < authoredPool.Length; index++)
-            {
-                authoredPool[index] = battleData.DuelClockEnemyPool[index];
-            }
-
-            return authoredPool;
-        }
-
-        List<EnemyData> flattenedEnemies = new List<EnemyData>();
-
-        foreach (EnemyWave wave in waves)
-        {
-            if (wave == null)
-            {
-                continue;
-            }
-
-            foreach (EnemyWaveEntry entry in wave.Enemies)
-            {
-                if (entry?.EnemyData == null || entry.Count <= 0)
-                {
-                    continue;
-                }
-
-                for (int count = 0; count < entry.Count; count++)
-                {
-                    flattenedEnemies.Add(entry.EnemyData);
-                }
-            }
-        }
-
-        return flattenedEnemies.ToArray();
-    }
-
-    private static DuelClockEnemySpawnEntry[]
-        BuildWeightedEntriesFromLegacyPool(
-            IReadOnlyList<EnemyData> legacyEnemies)
-    {
-        List<EnemyData> uniqueEnemies = new List<EnemyData>();
-        List<int> counts = new List<int>();
-
-        if (legacyEnemies == null)
-        {
-            return Array.Empty<DuelClockEnemySpawnEntry>();
-        }
-
-        for (int index = 0; index < legacyEnemies.Count; index++)
-        {
-            EnemyData enemy = legacyEnemies[index];
-
-            if (enemy == null)
-            {
-                return Array.Empty<DuelClockEnemySpawnEntry>();
-            }
-
-            int existingIndex = uniqueEnemies.IndexOf(enemy);
-
-            if (existingIndex >= 0)
-            {
-                counts[existingIndex]++;
-            }
-            else
-            {
-                uniqueEnemies.Add(enemy);
-                counts.Add(1);
-            }
-        }
-
-        DuelClockEnemySpawnEntry[] weightedEntries =
-            new DuelClockEnemySpawnEntry[uniqueEnemies.Count];
-
-        for (int index = 0; index < weightedEntries.Length; index++)
-        {
-            weightedEntries[index] = new DuelClockEnemySpawnEntry(
-                uniqueEnemies[index],
-                counts[index]);
-        }
-
-        return weightedEntries;
     }
 
     private static EnemyData[] BuildAuthoredEnemyList(
@@ -1988,61 +2425,83 @@ public class WaveManager : MonoBehaviour
         return authoredEnemies;
     }
 
-    private bool TryRestoreLegacyDuelClockEnemyPool(RunSaveData saveData)
+    private bool TryRestoreLegacyWeightedSpawnState(RunSaveData saveData)
     {
         IReadOnlyList<string> remainingEnemyNames =
-            saveData.duelClockSpawnPoolInitialized
-                ? saveData.duelClockRemainingEnemyAssetNames
-                : BuildLegacyRemainingEnemyNames(
-                    saveData.currentWaveIndex);
+            saveData.duelClockRemainingEnemyAssetNames;
 
-        if (remainingEnemyNames == null
-            || duelClockLegacyAuthoredEnemies.Length
-                != duelClockEnemySpawnCount)
+        if (!saveData.duelClockSpawnPoolInitialized
+            || remainingEnemyNames == null
+            || remainingEnemyNames.Count > duelClockEnemySpawnCount)
         {
             return false;
         }
 
-        int[] remainingCounts = new int[duelClockSpawnEntries.Length];
-
         foreach (string enemyName in remainingEnemyNames)
         {
-            EnemyData enemy = ResolveSavedEnemy(enemyName);
-            int entryIndex = FindDuelClockSpawnEntryIndex(enemy);
-
-            if (entryIndex < 0)
+            if (FindDuelClockSpawnEntryIndex(
+                    ResolveSavedEnemy(enemyName)) < 0)
             {
                 return false;
             }
-
-            remainingCounts[entryIndex]++;
         }
 
-        int[] initialCounts = new int[duelClockSpawnEntries.Length];
+        int spawnedBudget = duelClockEnemySpawnCount
+            - remainingEnemyNames.Count;
+        int[] spawnedCounts = new int[duelClockSpawnEntries.Length];
+        int allocatedCount = 0;
 
-        foreach (EnemyData enemy in duelClockLegacyAuthoredEnemies)
+        if (saveData.enemies != null)
         {
-            int entryIndex = FindDuelClockSpawnEntryIndex(enemy);
-
-            if (entryIndex < 0)
+            foreach (RunEnemySaveData savedEnemy in saveData.enemies)
             {
-                return false;
-            }
+                int entryIndex = FindDuelClockSpawnEntryIndex(
+                    ResolveSavedEnemy(savedEnemy?.enemyAssetName));
 
-            initialCounts[entryIndex]++;
+                if (entryIndex < 0 || allocatedCount >= spawnedBudget)
+                {
+                    return false;
+                }
+
+                spawnedCounts[entryIndex]++;
+                allocatedCount++;
+            }
         }
 
-        List<int> spawnedCounts = new List<int>(initialCounts.Length);
-        List<int> missedSpawnCounts = new List<int>(initialCounts.Length);
+        int outstandingMinimum = GetOutstandingMinimumCount(
+            spawnedCounts);
 
-        for (int index = 0; index < initialCounts.Length; index++)
+        for (int index = 0;
+             index < spawnedCounts.Length
+             && outstandingMinimum > remainingEnemyNames.Count;
+             index++)
         {
-            if (remainingCounts[index] > initialCounts[index])
-            {
-                return false;
-            }
+            int unmetMinimum = Mathf.Max(
+                0,
+                duelClockSpawnEntries[index].MinimumSpawnCount
+                    - spawnedCounts[index]);
+            int additionalCount = Mathf.Min(
+                unmetMinimum,
+                Mathf.Min(
+                    outstandingMinimum - remainingEnemyNames.Count,
+                    spawnedBudget - allocatedCount));
+            spawnedCounts[index] += additionalCount;
+            allocatedCount += additionalCount;
+            outstandingMinimum -= additionalCount;
+        }
 
-            spawnedCounts.Add(initialCounts[index] - remainingCounts[index]);
+        if (allocatedCount > spawnedBudget
+            || outstandingMinimum > remainingEnemyNames.Count)
+        {
+            return false;
+        }
+
+        spawnedCounts[0] += spawnedBudget - allocatedCount;
+        List<int> restoredSpawnedCounts = new List<int>(spawnedCounts);
+        List<int> missedSpawnCounts = new List<int>(spawnedCounts.Length);
+
+        for (int index = 0; index < spawnedCounts.Length; index++)
+        {
             missedSpawnCounts.Add(0);
         }
 
@@ -2050,10 +2509,26 @@ public class WaveManager : MonoBehaviour
             duelClockSpawnEntries,
             duelClockEnemySpawnCount,
             remainingEnemyNames.Count,
-            spawnedCounts,
+            restoredSpawnedCounts,
             missedSpawnCounts,
             ResolveLegacyLastSpawnedEnemyName(saveData),
             ResolveSavedEnemy);
+    }
+
+    private int GetOutstandingMinimumCount(
+        IReadOnlyList<int> spawnedCounts)
+    {
+        int outstandingCount = 0;
+
+        for (int index = 0; index < duelClockSpawnEntries.Length; index++)
+        {
+            outstandingCount += Mathf.Max(
+                0,
+                duelClockSpawnEntries[index].MinimumSpawnCount
+                    - spawnedCounts[index]);
+        }
+
+        return outstandingCount;
     }
 
     private int FindDuelClockSpawnEntryIndex(EnemyData enemy)
@@ -2095,38 +2570,6 @@ public class WaveManager : MonoBehaviour
         return string.Empty;
     }
 
-    private List<string> BuildLegacyRemainingEnemyNames(
-        int savedCurrentWaveIndex)
-    {
-        List<string> remainingNames = new List<string>();
-
-        for (int waveIndex = Mathf.Max(0, savedCurrentWaveIndex + 1);
-             waveIndex < waves.Length;
-             waveIndex++)
-        {
-            EnemyWave wave = waves[waveIndex];
-
-            if (wave == null)
-            {
-                continue;
-            }
-
-            foreach (EnemyWaveEntry entry in wave.Enemies)
-            {
-                if (entry?.EnemyData == null || entry.Count <= 0)
-                {
-                    continue;
-                }
-
-                for (int count = 0; count < entry.Count; count++)
-                {
-                    remainingNames.Add(entry.EnemyData.name);
-                }
-            }
-        }
-
-        return remainingNames;
-    }
 
     private void RemoveMissingEnemies()
     {
@@ -2145,41 +2588,94 @@ public class WaveManager : MonoBehaviour
         }
     }
 
-    private IEnumerator WaitForDetachedEnemyAttacks()
-    {
-        while (pendingDetachedEnemyAttacks > 0
-               && !isBattleCompleted && !playerHealth.IsDefeated)
-        {
-            yield return null;
-        }
-    }
-
     private void AdvanceDuelClockEnemySpawns()
     {
-        if (isBattleCompleted || !isDuelClockEnemyPoolConfigured)
+        if (isBattleCompleted || !isDuelClockEnemyPoolConfigured
+            || playerHealth == null || playerHealth.IsDefeated)
         {
             return;
         }
 
-        int interval = Mathf.Max(1, duelClockEnemySpawnInterval);
-
-        if (ShouldSpawnDuelClockEnemy(
-                currentEnemyTurnCycle,
-                interval,
-                duelClockEnemySpawnPool.RemainingCount,
-                GetLivingEnemyCount(),
-                maximumActiveEnemyCount))
+        if (GetLivingEnemyCount() <= 0)
         {
-            if (GetAvailableSpawnTileCount() > 0
-                && !TrySpawnOneDuelClockEnemy())
-            {
-                FailBattle(
-                    "A Duel Clock enemy reinforcement could not be spawned.");
-                return;
-            }
+            ResolveEmptyDuelClockBattle();
+            return;
         }
 
-        ResolveEmptyDuelClockBattle();
+        if (immediateSpawnOccurredDuringEnemyCycle)
+        {
+            TryCompleteDuelClockBattle();
+            return;
+        }
+
+        // Full boards pause the countdown rather than accumulating a burst.
+        if (!HasRemainingEnemiesToSpawn || IsActiveEnemyLimitReached
+            || GetAvailableSpawnTileCount() <= 0) return;
+
+        remainingSpawnTurns = ActionsUntilReinforcement - 1;
+        if (remainingSpawnTurns > 0) return;
+        remainingSpawnTurns = ReinforcementActionInterval;
+
+        if (duelClockEnemySpawnPool.RemainingCount > 0
+            && CalculateAvailableEnemySlots(
+                GetLivingEnemyCount(),
+                maximumActiveEnemyCount) > 0
+            && GetAvailableSpawnTileCount() > 0
+            && SpawnCylinderTempoEnemies(1) <= 0)
+        {
+            FailBattle(
+                "A Cylinder Tempo reinforcement could not be spawned.");
+            return;
+        }
+
+        TryCompleteDuelClockBattle();
+    }
+
+    private void HandleDuelClockSpawnCyclesCommitted(long spawnCycleCount)
+    {
+        if (combatPacingMode != CombatPacingMode.DuelClock
+            || spawnCycleCount <= 0L
+            || !isDuelClockEnemyPoolConfigured
+            || isBattleCompleted)
+        {
+            return;
+        }
+
+        pendingDuelClockEnemySpawns = CalculatePendingDuelClockSpawns(
+            pendingDuelClockEnemySpawns,
+            duelClockEnemySpawnPool.RemainingCount,
+            spawnCycleCount);
+
+        if (duelClockController == null
+            || !duelClockController.HasReservedBeat)
+        {
+            TryResolvePendingDuelClockEnemySpawns();
+        }
+
+        StateChanged?.Invoke();
+    }
+
+    private bool TryResolvePendingDuelClockEnemySpawns()
+    {
+        while (pendingDuelClockEnemySpawns > 0
+               && duelClockEnemySpawnPool.RemainingCount > 0
+               && CalculateAvailableEnemySlots(
+                   GetLivingEnemyCount(),
+                   maximumActiveEnemyCount) > 0
+               && GetAvailableSpawnTileCount() > 0)
+        {
+            if (!TrySpawnOneDuelClockEnemy())
+            {
+                FailBattle(
+                    "A Duel Clock gauge reinforcement could not be spawned.");
+                return false;
+            }
+
+            pendingDuelClockEnemySpawns--;
+            StateChanged?.Invoke();
+        }
+
+        return true;
     }
 
     private void ResolveEmptyDuelClockBattle()
@@ -2204,15 +2700,30 @@ public class WaveManager : MonoBehaviour
                 livingEnemyCount,
                 maximumActiveEnemyCount))
         {
-            if (GetAvailableSpawnTileCount() <= 0)
+            int requestedCount = CalculateImmediateCylinderTempoSpawnCount(
+                boardManager == null ? 0 : boardManager.TotalTileCount,
+                duelClockEnemySpawnPool.RemainingCount,
+                livingEnemyCount,
+                maximumActiveEnemyCount,
+                GetAvailableSpawnTileCount());
+
+            if (requestedCount <= 0)
             {
                 return;
             }
 
-            if (!TrySpawnOneDuelClockEnemy())
+            int spawnedCount = SpawnCylinderTempoEnemies(requestedCount);
+            if (spawnedCount > 0) remainingSpawnTurns = ReinforcementActionInterval;
+
+            if (spawnedCount != requestedCount)
             {
                 FailBattle(
-                    "An immediate Duel Clock enemy reinforcement could not be spawned.");
+                    "Immediate Cylinder Tempo reinforcements could not be spawned.");
+            }
+
+            if (spawnedCount > 0 && isResolvingTurn)
+            {
+                immediateSpawnOccurredDuringEnemyCycle = true;
             }
 
             return;
@@ -2233,31 +2744,67 @@ public class WaveManager : MonoBehaviour
                 configuredMaximumEnemyCount) > 0;
     }
 
-    internal static bool ShouldSpawnDuelClockEnemy(
-        int completedEnemyCycles,
-        int spawnInterval,
-        int remainingSpawnCount,
-        int livingEnemyCount,
-        int configuredMaximumEnemyCount)
+    internal static int CalculateMinimumCylinderTempoEnemyCount(
+        int totalTileCount)
     {
-        int sanitizedInterval = Mathf.Max(1, spawnInterval);
-        return completedEnemyCycles > 0
-            && completedEnemyCycles % sanitizedInterval == 0
-            && remainingSpawnCount > 0
-            && CalculateAvailableEnemySlots(
-                livingEnemyCount,
-                configuredMaximumEnemyCount) > 0;
+        long sanitizedTileCount = Mathf.Max(0, totalTileCount);
+        long scaledCount = sanitizedTileCount * ImmediateEnemyPercentage;
+        long roundedUpCount = (scaledCount + 99L) / 100L;
+        return (int)Math.Max(1L, roundedUpCount);
     }
 
-    internal static int CalculateMaximumActiveEnemyCount(int boardCount)
+    internal static int CalculateImmediateCylinderTempoSpawnCount(
+        int totalTileCount,
+        int remainingSpawnCount,
+        int livingEnemyCount,
+        int configuredMaximumEnemyCount,
+        int availableSpawnCellCount)
     {
-        int sanitizedBoardCount = Mathf.Max(1, boardCount);
-        long scaledCapacity = (long)sanitizedBoardCount
+        if (livingEnemyCount > 0)
+        {
+            return 0;
+        }
+
+        return Mathf.Min(
+            CalculateMinimumCylinderTempoEnemyCount(totalTileCount),
+            Mathf.Max(0, remainingSpawnCount),
+            CalculateAvailableEnemySlots(
+                livingEnemyCount,
+                configuredMaximumEnemyCount),
+            Mathf.Max(0, availableSpawnCellCount));
+    }
+
+    internal static int CalculatePendingDuelClockSpawns(
+        int currentPendingCount,
+        int remainingSpawnCount,
+        long completedSpawnCycles)
+    {
+        int sanitizedRemaining = Mathf.Max(0, remainingSpawnCount);
+        int sanitizedPending = Mathf.Clamp(
+            currentPendingCount,
+            0,
+            sanitizedRemaining);
+        long sanitizedCompleted = Math.Max(0L, completedSpawnCycles);
+        long availableRequests = sanitizedRemaining - sanitizedPending;
+        long acceptedRequests = Math.Min(
+            availableRequests,
+            sanitizedCompleted);
+        return sanitizedPending + (int)acceptedRequests;
+    }
+
+    internal static int NormalizeReinforcementCountdown(int remainingActions)
+    {
+        // Old action-combat saves left the unused wave countdown at zero.
+        return remainingActions <= 0 ? ReinforcementActionInterval
+            : Mathf.Clamp(remainingActions, 1, ReinforcementActionInterval);
+    }
+
+    internal static int CalculateMaximumActiveEnemyCount(int totalTileCount)
+    {
+        long scaledCapacity = (long)Mathf.Max(0, totalTileCount)
             * EnemyCapacityPercentage;
-        long roundedCapacity = (scaledCapacity + 50L) / 100L;
-        return (int)Math.Min(
-            int.MaxValue,
-            Math.Max(1L, roundedCapacity));
+        // Round down so the live enemy count never exceeds 40% of existing cells.
+        return (int)(scaledCapacity / 100L);
     }
 
     internal static int CalculateAvailableEnemySlots(
@@ -2270,12 +2817,20 @@ public class WaveManager : MonoBehaviour
             - Mathf.Max(0, livingEnemyCount));
     }
 
-    private void ConfigureMaximumActiveEnemyCount(BattleData battleData)
+    internal static bool ShouldPauseSpawnGauge(
+        bool isEnemySpawnPoolConfigured,
+        int remainingEnemySpawnCount,
+        bool isActiveEnemyLimitReached)
     {
-        int boardCount = battleData == null
-            ? boardManager == null ? 1 : boardManager.BoardCount
-            : battleData.BoardCount;
-        maximumActiveEnemyCount = CalculateMaximumActiveEnemyCount(boardCount);
+        return isActiveEnemyLimitReached
+            || (isEnemySpawnPoolConfigured
+                && remainingEnemySpawnCount <= 0);
+    }
+
+    private void ConfigureMaximumActiveEnemyCount()
+    {
+        int totalTileCount = boardManager == null ? 0 : boardManager.TotalTileCount;
+        maximumActiveEnemyCount = CalculateMaximumActiveEnemyCount(totalTileCount);
     }
 
     private void TryCompleteDuelClockBattle()
@@ -2284,6 +2839,7 @@ public class WaveManager : MonoBehaviour
             || !isDuelClockEnemyPoolConfigured
             || isBattleCompleted || activeEnemies.Count > 0
             || pendingDetachedEnemyAttacks > 0
+            || pendingDuelClockEnemySpawns > 0
             || !duelClockEnemySpawnPool.IsExhausted)
         {
             return;
@@ -2457,6 +3013,7 @@ public class WaveManager : MonoBehaviour
         }
 
         EnsureDuelClockController();
+        remainingSpawnTurns = ReinforcementActionInterval;
         duelClockController.ConfigureFresh(battleData, combatPacingMode);
     }
 
@@ -2477,6 +3034,7 @@ public class WaveManager : MonoBehaviour
         }
 
         EnsureDuelClockController();
+        remainingSpawnTurns = NormalizeReinforcementCountdown(saveData == null ? 0 : saveData.remainingSpawnTurns);
         duelClockController.ConfigureRestored(
             battleData,
             combatPacingMode,
@@ -2496,6 +3054,8 @@ public class WaveManager : MonoBehaviour
         saveData.combatPacingMode = (int)CombatPacingMode.Legacy;
         saveData.duelClockProgress = 0d;
         saveData.duelClockCumulativeBeats = 0;
+        saveData.duelClockSpawnProgress = 0d;
+        saveData.duelClockCumulativeSpawns = 0;
     }
 
     private void EnsureDuelClockController()
@@ -2520,6 +3080,8 @@ public class WaveManager : MonoBehaviour
     {
         combatPacingMode = CombatPacingMode.Legacy;
         pendingEnemyTurnCycles = 0;
+        pendingDuelClockEnemySpawns = 0;
+        immediateSpawnOccurredDuringEnemyCycle = false;
 
         if (duelClockController != null)
         {

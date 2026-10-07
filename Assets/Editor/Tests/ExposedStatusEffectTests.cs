@@ -138,6 +138,57 @@ public sealed class ExposedStatusEffectTests
     }
 
     [Test]
+    public void ExposedCriticalPersistsForEveryAttackInPhysicalBullet()
+    {
+        object exposedTarget = new object();
+        object otherTarget = new object();
+        PhysicalBulletCriticalScope<object> scope =
+            new PhysicalBulletCriticalScope<object>();
+        int consumedCount = 0;
+
+        scope.Begin();
+
+        Assert.That(
+            scope.Resolve(false, exposedTarget, true),
+            Is.True,
+            "The first pellet should register and use the exposed guarantee.");
+        Assert.That(
+            scope.Resolve(false, exposedTarget, false),
+            Is.True,
+            "Later pellets and chain attacks from the same bullet stay critical.");
+        Assert.That(
+            scope.Resolve(false, otherTarget, false),
+            Is.False,
+            "Exposed remains target-specific within multi-target attacks.");
+
+        scope.Complete(_ => consumedCount++);
+
+        Assert.That(consumedCount, Is.EqualTo(1));
+        Assert.That(
+            scope.Resolve(false, exposedTarget, false),
+            Is.False,
+            "The guarantee must not leak into the next physical bullet.");
+    }
+
+    [Test]
+    public void PhysicalBulletConsumesEveryExposedTargetOnlyOnce()
+    {
+        object firstTarget = new object();
+        object secondTarget = new object();
+        PhysicalBulletCriticalScope<object> scope =
+            new PhysicalBulletCriticalScope<object>();
+        int consumedCount = 0;
+
+        scope.Begin();
+        scope.Resolve(false, firstTarget, true);
+        scope.Resolve(false, firstTarget, true);
+        scope.Resolve(false, secondTarget, true);
+        scope.Complete(_ => consumedCount++);
+
+        Assert.That(consumedCount, Is.EqualTo(2));
+    }
+
+    [Test]
     public void EnemyPrefabReferencesExposedDebuffSprite()
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(

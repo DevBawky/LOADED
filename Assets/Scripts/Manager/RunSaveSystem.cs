@@ -55,12 +55,14 @@ public static class RunSaveSystem
 
         saveData.stageIndex = Mathf.Max(0, stageIndex);
         saveData.battleIndex = Mathf.Max(0, battleIndex);
+        saveData.battleBoardCount = 0;
         saveData.flowState = (int)GameFlowState.Battle;
         saveData.startSelectedBattleFresh = true;
         saveData.cumulativeBattleTurnCount = Mathf.Max(
             0,
             saveData.cumulativeBattleTurnCount);
         saveData.playerTurnCount = 0;
+        saveData.playerLaneIndex = 0;
         saveData.nextPushAvailableTurn = 0;
         saveData.currentWaveIndex = 0;
         saveData.remainingSpawnTurns = 0;
@@ -226,8 +228,7 @@ public static class RunSaveSystem
             && saveData.version == CurrentVersion
             && saveData.stageIndex >= 0
             && saveData.battleIndex >= 0
-            && saveData.bullets != null
-            && saveData.bullets.Count > 0;
+            && saveData.bullets != null;
     }
 
     internal static void NormalizeSaveData(RunSaveData saveData)
@@ -241,6 +242,10 @@ public static class RunSaveSystem
         saveData.nextCycleAcquisitionOrders ??= new List<int>();
         saveData.inventoryItemAssetNames ??= new List<string>();
         saveData.relics ??= new List<RunRelicSaveData>();
+        saveData.battleBoardCount = Mathf.Max(
+            0,
+            saveData.battleBoardCount);
+        saveData.playerLaneIndex = Mathf.Max(0, saveData.playerLaneIndex);
         saveData.playerTurnCount = Mathf.Max(0, saveData.playerTurnCount);
         saveData.cumulativeBattleTurnCount = Mathf.Max(
             0,
@@ -254,6 +259,31 @@ public static class RunSaveSystem
         saveData.reservedSpawnTileIndices ??= new List<int>();
         saveData.enemies ??= new List<RunEnemySaveData>();
         saveData.bombs ??= new List<RunBombSaveData>();
+
+        foreach (RunEnemySaveData enemy in saveData.enemies)
+        {
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            enemy.laneIndex = Mathf.Max(0, enemy.laneIndex);
+            enemy.preparationWaitTurns = Mathf.Max(0, enemy.preparationWaitTurns);
+            enemy.preparedTargetLaneIndex = Mathf.Max(
+                0,
+                enemy.preparedTargetLaneIndex);
+            enemy.preparedBigBarrelLaneIndex = Mathf.Max(
+                0,
+                enemy.preparedBigBarrelLaneIndex);
+        }
+
+        foreach (RunBombSaveData bomb in saveData.bombs)
+        {
+            if (bomb != null)
+            {
+                bomb.laneIndex = Mathf.Max(0, bomb.laneIndex);
+            }
+        }
         saveData.droppedItems ??= new List<RunDroppedItemSaveData>();
         saveData.combatReport ??= new RunCombatReportSaveData();
         saveData.shop ??= new RunShopSaveData();
@@ -306,6 +336,8 @@ public static class RunSaveSystem
         saveData.combatPacingMode = (int)CombatPacingMode.Legacy;
         saveData.duelClockProgress = 0d;
         saveData.duelClockCumulativeBeats = 0;
+        saveData.duelClockSpawnProgress = 0d;
+        saveData.duelClockCumulativeSpawns = 0;
         saveData.duelClockSpawnPoolInitialized = false;
         saveData.duelClockRemainingEnemyAssetNames ??=
             new List<string>();
@@ -354,30 +386,44 @@ public static class RunSaveSystem
                 0,
                 saveData.duelClockEnemyMissedSpawnCounts[index]);
         }
-        saveData.duelClockPendingEnemySpawns = 0;
+        saveData.duelClockPendingEnemySpawns = Mathf.Max(
+            0,
+            saveData.duelClockPendingEnemySpawns);
 
         if (!saveData.duelClockSpawnPoolInitialized)
         {
             saveData.duelClockRemainingEnemyAssetNames.Clear();
         }
 
+        NormalizeDuelClockState(
+            ref saveData.duelClockProgress,
+            ref saveData.duelClockCumulativeBeats);
+        NormalizeDuelClockState(
+            ref saveData.duelClockSpawnProgress,
+            ref saveData.duelClockCumulativeSpawns);
+    }
+
+    private static void NormalizeDuelClockState(
+        ref double progress,
+        ref long cumulativeCycles)
+    {
         try
         {
             DuelClockSnapshot normalized = DuelClockState.Restore(
-                saveData.duelClockProgress,
-                saveData.duelClockCumulativeBeats).Snapshot;
-            saveData.duelClockProgress = normalized.Progress;
-            saveData.duelClockCumulativeBeats = normalized.CumulativeBeats;
+                progress,
+                cumulativeCycles).Snapshot;
+            progress = normalized.Progress;
+            cumulativeCycles = normalized.CumulativeBeats;
         }
         catch (ArgumentOutOfRangeException)
         {
-            saveData.duelClockProgress = 0d;
-            saveData.duelClockCumulativeBeats = 0;
+            progress = 0d;
+            cumulativeCycles = 0;
         }
         catch (OverflowException)
         {
-            saveData.duelClockProgress = 0d;
-            saveData.duelClockCumulativeBeats = 0;
+            progress = 0d;
+            cumulativeCycles = 0;
         }
     }
 }

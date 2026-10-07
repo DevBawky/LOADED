@@ -206,6 +206,7 @@ public sealed class RefactoringPolicyTests
         GameObject inventoryObject = CreateObject("Inventory");
         PlayerInventory inventory =
             inventoryObject.AddComponent<PlayerInventory>();
+        inventory.RestoreRunState(null, null);
         ItemData item = CreateAsset<ItemData>();
         Assert.That(inventory.TryAdd(item), Is.True);
 

@@ -23,13 +23,14 @@
 |---|---|---|
 | `SoundManager` | 음원 재생, 소스/볼륨, 사용자 설정 | `SoundtrackDirector`, `UiButtonFeedbackInstaller`, `UiButtonAudioFeedback`, `UiButtonSpriteHoverScale` |
 | `PlayerShoot` | Unity 생명주기, 입력 게이트, 공개 전투 진입점 | `PlayerShootInputReader`, `PlayerShotRangePreview`, `BulletShotFeedbackView`, `PlayerAttackDamageCalculator`, `FiringSequenceController`, `DamagePreviewController`, `BulletEffectUtility`, `BulletDynamicCombatRules` |
-| `EnemyController` | 적 상태와 턴 행동 조정 | `EnemyRunStateSerializer`, `EnemyTelegraphPresenter`, `EnemySupportTargetSelector`, `EnemyFrontlineTurnPolicy` |
+| `EnemyController` | 적 상태 변경과 턴 행동 실행·연출 | `EnemyRunStateSerializer`, `EnemyTelegraphPresenter`, `EnemySupportTargetSelector`, `EnemyFrontlineTurnPolicy`, `EnemyTurnDecisionPolicy` |
+| `WaveManager` | 적 턴 요청·사이클 상태, 활성 적·웨이브 진행, 완료 이벤트 | `EnemyTurnCycleRunner`, `IEnemyTurnCycleRuntime` |
 | `NodeMapSystem` | 맵 화면 상태와 노드 선택 조정 | `NodeMapGenerator`, `NodeMapSaveSystem`, `NodeMapModels` |
 | `GameStatistics` | 현재 런 통계 집계 | `RunDataModels`, `RunSaveSystem` |
 | `EventDefinition` | authored event content | `EventRunContext`, `EventSelector` |
 | `EventSceneController` | 이벤트 씬 생명주기, 상호작용, 효과·저장·이동 조정 | `EventChoiceAvailabilityEvaluator`, `EventChoiceAvailabilityContext`, `EventChoiceTextFormatter`, `EventChoiceButtonPresenter`, `EventResultPresenter`, `EventRuntimeRules` |
 | `RelicData` | authored relic content | `RelicInstance` |
-| `FirstRunGuideController` | 튜토리얼 진행, 입력 잠금과 대상 선택 조정 | immutable `FirstRunGuideContent`, `FirstRunGuideHighlightPresenter` |
+| `FirstRunGuideController` | 튜토리얼 진행, 입력 잠금과 대상 선택 조정 | immutable `FirstRunGuideContent`, `FirstRunGuideRuntimeView`, `FirstRunGuideHighlightPresenter`, `FirstRunGuideVideoPresenter` |
 | `PlayerCylinderUI` | 실린더 표시, 드래그, 애니메이션 | `CylinderBulletEffectPolicy` |
 | `ShopManager` | 구매 흐름, 오퍼 UI, 새로고침 연출 | `ShopOfferGenerator` |
 | `CombatPresentation` | 총구·기본 명중 표현과 공개 연출 진입점 | `CombatImpactSignaturePresenter` |
@@ -39,6 +40,19 @@
 공유한다. 따라서 미리보기만 별도 규칙을 복제해 실제 발사 결과와 달라지는
 경로를 줄였다. `PlayerShoot`의 기존 이벤트와 공개 메서드는 facade에 남겨
 호출자 호환성을 유지한다.
+
+`EnemyTurnCycleRunner`는 한 적 사이클의 활성 적 스냅샷, 일반 행동의 동시
+완료, 전용 공격의 순차 완료, 분리 공격, 최소 표시 시간, 보스 폭탄 폭발까지
+기다린다. `WaveManager`는 직렬화 필드와 전투 상태의 권위자로 남고 실행기가
+반환된 뒤 기존 순서대로 `EnemyTurnCycleCompleted`, 웨이브 카운트다운,
+`StateChanged`를 발행한다.
+
+`EnemyTurnDecisionPolicy`는 Melee, Gunner, Thrower의 큐 생성·등록·준비·이동
+선택과 Big Barrel 상태 머신의 다음 의도만 계산한다. `EnemyController`는 이
+의도를 받아 실제 상태 변경, 이동 예약, RNG를 사용하는 폭탄 대상 선택,
+코루틴 시작과 행동 완료 이벤트 순서를 계속 소유한다. 따라서 결정 규칙은
+Unity 오브젝트 없이 검증할 수 있지만 연출 완료 시점과 세이브 대상 런타임
+상태는 기존 권위자에서 이동하지 않았다.
 
 골드·체력·약실·스택·보유 탄환 구성에 따라 달라지는 피해 및 치명타 보너스와
 사거리·상태이상·선행 명중에 따른 대상별 배율은 plain C#
@@ -66,10 +80,13 @@ C# `CombatImpactSignaturePresenter`가 소유하고, facade가 캡처한 적 스
 소유하지 않는다.
 
 `FirstRunGuideController`는 가이드 진행 상태, PlayerPrefs 완료 키, 입력 잠금과
-강조할 대상 선택을 계속 소유한다. plain C# `FirstRunGuideHighlightPresenter`는
-선택된 하나 또는 두 UI 대상의 화면 범위를 합성하고, 가이드 Canvas 좌표로
-변환해 패딩과 펄스 알파를 적용한다. 강조 대상이 없거나 비활성화된 경우에는
-표시만 숨기며 가이드 진행이나 게임 입력 상태를 변경하지 않는다.
+강조할 대상 선택을 계속 소유한다. `FirstRunGuideRuntimeView`는 기존 오브젝트
+이름과 정렬 순서를 보존하며 런타임 가이드 계층을 한 번 생성하고 참조를
+반환한다. plain C# `FirstRunGuideHighlightPresenter`는 선택된 하나 또는 두 UI
+대상의 화면 범위를 합성하고, 가이드 Canvas 좌표로 변환해 패딩과 펄스 알파를
+적용한다. `FirstRunGuideVideoPresenter`는 VideoPlayer 이벤트 구독, 준비·재생·
+정지와 텍스처·종횡비·오류 표시를 소유한다. 두 프레젠터와 런타임 뷰는 표시만
+변경하며 가이드 진행, PlayerPrefs 또는 게임 입력 상태를 변경하지 않는다.
 
 전투 보고서의 누적 피해, COUNT 경계, 체력 변화, 발사 수와 처치 성과는
 plain C# `CombatReportRuntime`이 소유한다. `StateManager`가 전투 시작·복원,
@@ -93,6 +110,12 @@ plain C# `CombatReportRuntime`이 소유한다. `StateManager`가 전투 시작�
 담당한다. 두 프레젠터는 표시 상태만 투영하며 선택 결과, 보상, 저장 상태는
 변경하지 않는다.
 
+`RelicChanceEffectHandler`는 Empty Beat, Running Spur, Gold Panner,
+Cracked Primer의 첫 활성 효과 탐색과 `확률 공개 -> 난수 판정 -> 성공 발동`
+순서를 담당한다. `RelicManager`는 유물 목록과 저장 상태, Unity RNG 호출,
+`RelicProbabilityEvaluated`·`RelicTriggered`·전투 이벤트 발행의 권위를 계속
+소유하며 기존 공개 메서드와 직렬화 필드는 변경하지 않았다.
+
 ## 추가 분할하지 않은 대형 클래스
 
 다음 파일은 길지만 현재 감사 기준에서 하나의 표현 또는 도메인 책임 안에
@@ -100,7 +123,7 @@ plain C# `CombatReportRuntime`이 소유한다. `StateManager`가 전투 시작�
 
 - `CombatFeedbackController`: 전투 결과의 화면/카메라 피드백 표현
 - `InventoryTooltipUI`: 인벤토리·상점 툴팁 표현과 위치 계산
-- `RelicManager`: 유물 런타임 규칙과 유물 이벤트 조정
+- `RelicManager`: 유물 컬렉션·저장과 남은 유물 런타임 이벤트 조정
 
 이 파일을 이후 변경할 때는 새로운 규칙이나 저장 책임을 UI에 추가하지
 말고, 실제로 독립 변경되는 경계가 생길 때 협력 객체로 추출한다.
@@ -110,17 +133,14 @@ plain C# `CombatReportRuntime`이 소유한다. `StateManager`가 전투 시작�
 현재 검증을 깨지 않고 즉시 분리할 필요는 없지만 다음 경계는 기능 개발과
 함께 단계적으로 추출할 가치가 있다.
 
-- `EnemyController`: Porter의 지원 대상 선택과 Melee의 전열 우선순위
-  결정은 각각 `EnemySupportTargetSelector`, `EnemyFrontlineTurnPolicy`로
-  분리했다. 남은 Melee/Gunner/Thrower/BigBarrel 턴 결정을 행동 전략으로
-  분리하려면 적 행동별 PlayMode 테스트를 먼저 추가한다. 현재 런타임의
-  전열 제한은 Melee에만 적용되지만 `0727_EnemyAI.md`는 Gunner도 포함하므로,
+- `EnemyController`: Porter 지원 대상, 전열 우선순위, Melee/Gunner/Thrower/
+  BigBarrel의 다음 행동 결정은 각각 plain C# 정책으로 분리했다. 적 상태 변경,
+  이동·공격 코루틴과 연출 순서는 컨트롤러에 남겨 두었다. 현재 런타임의 전열
+  제한은 Melee에만 적용되지만 `0727_EnemyAI.md`는 Gunner도 포함하므로,
   Gunner 적용 여부는 리팩터링이 아닌 별도 게임 규칙 변경으로 결정한다.
-- `FirstRunGuideController`: 하이라이트 좌표와 펄스 표현은
-  `FirstRunGuideHighlightPresenter`로 분리했다. 남은 런타임 UI 생성과 영상
-  표현은 씬 오브젝트 이름 기반 연결을 테스트로 고정한 뒤 단계적으로 분리한다.
-- `RelicManager`: 효과 타입별 이벤트 처리를 독립 handler로 분리. 현재의
-  18개 유물 회귀 테스트를 효과별로 확장한 뒤 작은 묶음부터 이동한다.
+- `RelicManager`: 확률 기반 행동 효과 4종은 handler로 분리했다. 다음에는
+  이동 누적·Carriage 또는 실린더/사격 수명주기처럼 같은 상태를 공유하는
+  효과군을 회귀 테스트로 먼저 고정한 뒤 한 묶음씩 이동한다.
 
 `CombatFeedbackController`와 `InventoryTooltipUI`는 길지만 현재 각각 전투
 피드백 표현과 툴팁 표현이라는 단일 변경 이유를 유지하므로 우선순위가 낮다.
@@ -128,6 +148,8 @@ plain C# `CombatReportRuntime`이 소유한다. `StateManager`가 전투 시작�
 ## 검증 기록
 
 - 생성된 모든 `.cs` 파일에 대응 `.meta`를 추가했다.
+- `RelicChanceEffectHandlerTests` 4개와 기존 `RelicManagerTests` 46개가
+  Unity 6000.3.21f1의 연결된 EditMode Test Runner에서 통과했다.
 - IDE용 `Assembly-CSharp.csproj`에 신규 파일을 임시로 포함해 전체 런타임
   어셈블리를 컴파일했으며 경고 0개, 오류 0개를 확인했다.
 - `PlayerAttackDamageCalculator`의 경계값, 올림, overflow, NaN 동작과
@@ -142,6 +164,12 @@ plain C# `CombatReportRuntime`이 소유한다. `StateManager`가 전투 시작�
   `SceneIntegrityTests`도 통과했다.
 - 테스트 실행 중 `RelicEffectData`의 `[Serializable]` 누락 회귀를 발견해
   복원했다.
+- 적 행동 결정 분리 후 `EnemyTurnDecisionPolicyTests` 33개와 실제
+  `EnemyController.TakeTurn`을 통과하는 PlayMode 특성화 테스트 1개가 모두
+  통과했다. 전체 EditMode 스위트는 총 723개 중 성공 721, 실패 0,
+  기존 명시적 건너뜀 2개로 완료됐다.
+- 첫 플레이 가이드의 런타임 계층 이름·정렬·초기 활성 상태·VideoPlayer 설정과
+  영상 종횡비 계산을 `FirstRunGuideRuntimePresentationTests` 4개로 고정했다.
 
 ## Unity Editor 수동 회귀 체크리스트
 

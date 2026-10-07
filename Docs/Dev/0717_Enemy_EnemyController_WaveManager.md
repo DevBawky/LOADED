@@ -1,5 +1,10 @@
 ## AI-006: EnemyController & WaveManager
 
+> 2026-10-07 후속 변경: 아래 `Waves`와 `Spawn Term` 설명은 레거시 구현
+> 기록이다. 현재 `BattleData`는 최소·최대 보드 칸 수와 가중치 적 스폰
+> 엔트리만 작성하며, `WaveManager`의 production 경로는 Cylinder Tempo를
+> 사용한다. 레거시 웨이브 API는 격리된 테스트 전투 호환용으로만 남아 있다.
+
 > 260802 후속 변경: `BattleData.Waves`는 적 프리팹 대신 `EnemyData`를 참조하고, `WaveManager`는 공용 `Enemy.prefab` 하나를 생성한 뒤 데이터를 주입한다. 최신 구조는 [`0802_EnemyData_Template_and_ActionPresentation.md`](0802_EnemyData_Template_and_ActionPresentation.md)를 기준으로 한다.
 
 > 260718 후속 변경: `WaveManager`는 현재 전투의 웨이브 실행만 담당한다. 전투 하나는 독립 `BattleData`, `StageData`는 BattleData 참조 배열이며 MainGame·Stage Clear·Shop 전환은 `StateManager`가 담당한다. 최신 적용 구조는 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.
@@ -105,6 +110,8 @@
 
 `Assets/Scripts/Enemy/EnemyController.cs`를 생성해 적 프리팹의 런타임 체력, 최대 3개의 공격 행동 큐, 큐 생성 및 공격 준비 여부, 후퇴 여부, 마지막 턴 행동을 관리하도록 했다. 외부에서 `Initialize(BoardManager, PlayerMove, PlayerHealth, WaveManager)`를 호출해 Scene 참조를 명시적으로 전달하며 런타임 자동 탐색은 사용하지 않는다.
 
+후속 리팩터링에서 Melee, Gunner, Thrower와 Big Barrel이 현재 상태에서 선택할 다음 행동은 plain C# `EnemyTurnDecisionPolicy`가 반환한다. `EnemyController`는 선택 결과를 실행하며 큐 상태, 이동 예약, 폭탄 대상 RNG, 코루틴과 `TurnActionCompleted` 발행 순서를 계속 소유한다. 직렬화 필드와 공개 API는 변경하지 않았다.
+
 후속 연출 작업에서 `Assets/Scripts/Common/ActorMotion.cs`를 추가하고 Player와 Enemy 프리팹에 직접 연결했다. `Move Duration` 동안 타일 사이를 보간하면서 `sin(πt) * Jump Height`를 월드 Y에 더해 한 칸씩 폴짝 이동한다. `Rotate Duration` 동안 루트 X Scale을 현재 부호에서 반대 부호로 SmoothStep 보간한다. 플레이어와 적은 모션이 끝난 뒤에만 턴 완료를 전달한다.
 
 적은 먼저 플레이어가 있는 방향을 확인하고 방향이 다르면 해당 턴에는 회전만 한다. Melee는 방향이 맞으면 거리와 관계없이 Queue를 생성하고 다음 적 턴에 첫 공격 스킬을 반드시 등록한다. 플레이어와 거리가 2칸 이상이면서 `Preferred Distance` 이내라면 이후 턴마다 `Melee Additional Attack Chance`를 판정한다. 기본값 0.5에서는 50% 확률로 공격 스킬을 하나 추가하고, 나머지 50%에서는 `Approach`의 `Movement Distance`만큼 플레이어에게 접근한다. 등록할 공격 에셋이 하나뿐이면 추가 등록 선택 시 같은 스킬을 반복하고, 여러 개면 `EnemyData.Actions`의 MeleeAttack 순서를 순환한다. Queue가 가득 찼거나 추가 등록 범위 밖이면 확률 판정 없이 플레이어와 1칸 거리가 될 때까지 접근한다.
@@ -117,7 +124,7 @@ Enemy 루트의 X Scale이 반전될 때 `ActorMotion > Orientation Locked Trans
 
 `Assets/Scripts/Manager/BoardManager.cs`에는 타일 인덱스와 월드 위치를 변환하는 `TryGetTilePosition`, `TryGetTileIndex`, 두 위치의 타일 거리를 계산하는 `TryGetTileDistance`, 읽기 전용 `BoardCount`와 `BoardDistance`를 추가했다.
 
-`Assets/Scripts/Manager/WaveManager.cs`는 `PlayerMove.TurnCompleted`를 구독하고 플레이어 입력을 잠근 뒤 `Enemy Turn Delay`만큼 기다린다. 이후 현재 활성 적의 스냅샷을 등록 순서대로 처리하며 각 적의 이동·회전 모션 완료를 기다리고 다음 적 전에 `Enemy Action Interval`을 적용한다. `Stage 1` 기본값은 각각 0.35초와 0.15초다. 모든 적 행동과 웨이브 카운트 처리가 끝난 뒤 플레이어 입력을 다시 허용한다.
+`Assets/Scripts/Manager/WaveManager.cs`는 적 턴 요청, 현재 사이클 번호, 활성 적과 웨이브 진행, 완료 이벤트를 소유한다. 한 사이클 안의 행동 순서와 연출 완료 대기는 plain C# `EnemyTurnCycleRunner`가 `IEnemyTurnCycleRuntime` 경계를 통해 실행한다. 실행기는 현재 활성 적의 스냅샷을 등록 순서대로 처리하고, 이동·회전처럼 전용 공격 연출이 아닌 행동은 함께 시작해 불필요한 대기열을 줄이며, 전용 공격은 피격·회피 연출을 포함한 행동 Coroutine이 끝날 때까지 기다린다. 공격 뒤 다음 적이 남아 있을 때만 `Enemy Action Interval` 0.05초를 적용하며, 적 주기의 최소 표시 시간인 `Enemy Turn Delay`는 0.1초다. 분리 실행된 공격과 보스 폭탄까지 모두 끝난 뒤 실행기가 반환되고, 그 뒤에만 `WaveManager`가 완료 이벤트를 발행해 플레이어 턴을 복구하고 Cylinder Tempo 이월값을 공개한다.
 
 기존 `Stage Enemy Pool`과 `Max Active Enemies` 기반의 무작위 보충 로직은 제거했다. 대신 직렬화 가능한 `EnemyWave[]`와 각 웨이브의 `EnemyWaveEntry[]`를 추가해 `Enemy Prefab + Count` 조합을 원하는 순서와 종류로 구성한다. 첫 웨이브는 게임 시작 시 일괄 생성하며, 현재 웨이브가 전멸하기 전에는 다음 웨이브 카운트다운을 시작하지 않는다. 전멸 후 플레이어가 소비한 턴마다 `Remaining Spawn Turns`가 감소하고 0이 되면 다음 웨이브의 모든 적을 같은 프레임에 생성한다. 전멸 공격으로 소비된 플레이어 턴도 카운트다운에 포함된다. 새로 생성된 적은 생성된 턴의 적 행동 스냅샷에는 포함되지 않으므로 다음 플레이어 소비 턴부터 행동한다.
 
@@ -197,7 +204,7 @@ Enemy 루트의 X Scale이 반전될 때 `ActorMotion > Orientation Locked Trans
   * 적 사이클 처리 중에도 자연 Duel Clock은 계속 증가한다. 실린더 사격 중에는 기존대로 자연 증가가 멈추며, 플레이어 입력 가능 여부는 적 사이클 간격과 독립적이다.
   * Duel Clock이 100%에 도달하면 다음 적 사이클 하나만 예약하고 실제 사이클이 시작될 때까지 100%를 유지한다. 예약 중의 자연 증가와 플레이어 행동은 추가 COUNT나 숨은 게이지를 누적하지 않는다.
   * Duel Clock 전용 입력 장벽은 사용하지 않는다. 진행 중인 적 사이클 외에는 대기 사이클을 최대 하나만 허용하므로 플레이어가 행동을 멈춘 뒤 여러 적 사이클이 오래 이어지는 현상을 막으면서 회피 이동과 다른 조작은 계속 허용한다.
-  * 플레이어 이동·회전 연출이 끝난 뒤 0.35초 후 첫 적이 행동하며, 각 적 행동 사이에는 기본 0.15초 간격이 적용된다.
+  * 적 주기는 최소 0.1초 동안 유지된다. 공격 연출과 회피 판정 시간은 기존 길이를 유지하고, 공격이 끝난 뒤 다음 적이 남아 있을 때만 0.05초 간격을 둔다. 이동·회전·대기에는 별도 적간 지연을 추가하지 않는다.
   * 적 이동은 여러 칸이어도 타일마다 `Move Duration`과 `sin(πt)` 점프를 반복하고 회전 완료 전에는 다음 적 행동으로 넘어가지 않는다.
   * 실패한 플레이어 행동과 `doesNotConsumeTurn` 탄환 발사는 `PlayerMove.TurnCompleted`를 발생시키지 않으므로 적 턴도 실행되지 않는다.
   * WaveManager는 플레이어 타일과 이미 활성 적이 있는 타일을 제외한 후보에서 무작위 스폰 위치를 선택한다.
@@ -295,8 +302,8 @@ Scene에 빈 GameObject `@_WaveManager`와 선택적인 적 부모 Transform `@_
 * `Count`: 해당 프리팹을 이 웨이브에 생성할 수량, 1 이상
 * `Spawn Position Offset`: 타일 중앙 위치에 더할 월드 좌표 오프셋, `Stage 1` 설정값 `(0, 0.7, 0)`
 * `Spawn Term`: 현재 웨이브 전멸 후 다음 웨이브까지 기다릴 플레이어 소비 턴 수, 기본값 2
-* `Enemy Turn Delay`: 플레이어 행동 완료 후 첫 적 행동까지 기다릴 시간, `Stage 1` 기본값 0.35초
-* `Enemy Action Interval`: 한 적의 행동 완료 후 다음 적 행동까지 기다릴 시간, `Stage 1` 기본값 0.15초
+* `Enemy Turn Delay`: 적 주기의 최소 표시 시간, Battle 기본값 0.1초
+* `Enemy Action Interval`: 공격 연출 완료 후 다음 적 공격 전의 짧은 호흡, Battle 기본값 0.05초. 이동·회전·대기에는 적용하지 않는다.
 * `Board Manager`: Scene의 `@_BoardManager`
 * `Player Move`: Player 오브젝트의 `PlayerMove`
 * `Player Health`: Player 오브젝트의 `PlayerHealth`
@@ -343,8 +350,8 @@ Player의 `PlayerShoot > Wave Manager`에도 Scene의 `@_WaveManager`를 연결�
 14. Enemy가 좌우로 회전해도 HP Canvas와 Fill 방향이 뒤집히지 않는지 확인한다.
 15. A, D, S, 회전, 정상 장전, 턴을 소비하는 발사를 실행하고 적마다 `Last Turn Action`이 한 번만 변경되는지 확인한다.
 16. 실패한 이동 및 장전, 미장전 발사, `doesNotConsumeTurn` 탄환 발사에는 적 상태 및 Spawn Term이 진행되지 않는지 확인한다.
-17. 플레이어 이동과 회전이 폴짝 이동 및 Scale 보간으로 완료된 뒤 `Enemy Turn Delay`만큼 지나 첫 적이 행동하는지 확인한다.
-18. 적들이 `Enemy Action Interval` 간격으로 목록 순서대로 행동하고, 이동·회전 중에는 다음 적이 시작하지 않는지 확인한다.
+17. Cylinder Tempo 6칸이 채워지면 즉시 적 주기가 시작되고 `ENEMY PHASE`가 최소 0.1초 동안 유지되는지 확인한다.
+18. 이동·회전·대기는 불필요한 적간 지연 없이 진행되고, 공격 연출은 회피 가능 시간을 끝까지 보장한 뒤 다음 적 공격 전에만 0.05초 간격을 두는지 확인한다.
 19. 웨이브의 일부 적만 제거했을 때 카운트다운이 시작되지 않고, 전멸시킨 뒤에만 `Spawn Term`이 감소하며 0이 되는 턴에 다음 웨이브 전체가 한 번에 생성되는지 확인한다.
 20. Melee가 플레이어를 바라보지 않으면 회전만 하고, 다음 적 턴에 `Image | Queue`만 활성화하는지 확인한다.
 21. Queue 생성 다음 턴에 거리와 관계없이 첫 MeleeAttack 아이콘이 반드시 하나 등록되는지 확인한다.
@@ -360,7 +367,11 @@ Player의 `PlayerShoot > Wave Manager`에도 Scene의 `@_WaveManager`를 연결�
 31. 플레이어 양옆을 제외한 빈 타일 수가 웨이브 적 수 이상이면 양옆 타일에 Warning이나 첫 웨이브 적이 생성되지 않는지 확인한다.
 32. 안전한 빈 타일 수보다 웨이브 적 수가 많으면 안전 타일을 모두 우선 사용하고 부족한 수만 플레이어 양옆에 배치되는지 확인한다.
 
-C# 컴파일은 경고와 오류 없이 완료됐다. Unity Play Mode를 통한 실제 스폰, 상태 진행, 이펙트 출력 검증은 수행하지 않았다.
+C# 컴파일은 경고와 오류 없이 완료됐다. 후속 적 행동 결정 리팩터링에서는
+정책 테스트 33개와 실제 `EnemyController.TakeTurn` 결과를 확인하는 PlayMode
+특성화 테스트 1개가 통과했다. Unity 6000.3.21f1 전체 EditMode 스위트는
+총 715개 중 성공 713, 실패 0, 기존 명시적 건너뜀 2개로 완료됐다. 실제 전투
+씬에서의 스폰 및 시각 이펙트 수동 검증은 별도 확인 항목으로 남긴다.
 
 ### Lessons Learned
 

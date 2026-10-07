@@ -5,11 +5,55 @@ using UnityEngine;
 
 public partial class PlayerShoot
 {
-    internal static bool ShouldWaitBeforeAdditionalShot(
-        bool hasRequiredShotgunShot,
-        float interval)
+    private const float ProjectileTravelBaseDuration = 0.04f;
+    private const float ProjectileTravelDurationPerTile = 0.02f;
+    private const float MinimumProjectileTravelDuration = 0.06f;
+    private const float MaximumProjectileTravelDuration = 0.14f;
+
+    internal static float ResolveProjectileTravelDuration(int tileDistance)
     {
-        return !hasRequiredShotgunShot && interval > 0f;
+        if (tileDistance < 0)
+        {
+            return MaximumProjectileTravelDuration;
+        }
+
+        return Mathf.Clamp(
+            ProjectileTravelBaseDuration
+            + tileDistance * ProjectileTravelDurationPerTile,
+            MinimumProjectileTravelDuration,
+            MaximumProjectileTravelDuration);
+    }
+
+    internal static float AdvanceShotTimer(
+        float elapsedTime,
+        float unscaledDeltaTime,
+        bool isPaused)
+    {
+        return isPaused
+            ? elapsedTime
+            : elapsedTime + Mathf.Max(0f, unscaledDeltaTime);
+    }
+
+    internal static bool ShouldWaitForCadenceAfterVolleyShot(
+        int shotIndex,
+        int volleyShotCount)
+    {
+        return shotIndex >= Mathf.Max(1, volleyShotCount) - 1;
+    }
+
+    internal static float ResolveShotgunPelletSpreadOffset(
+        int pelletIndex,
+        int pelletCount)
+    {
+        int resolvedCount = Mathf.Max(1, pelletCount);
+        if (resolvedCount == 1)
+        {
+            return 0f;
+        }
+
+        float progress = Mathf.Clamp01(
+            (float)Mathf.Max(0, pelletIndex) / (resolvedCount - 1));
+        return Mathf.Lerp(-0.22f, 0.22f, progress);
     }
 
     internal static void ResetPostFireAbilityStacks(
@@ -27,6 +71,12 @@ public partial class PlayerShoot
 
     private sealed class FiringSequenceController
     {
+        private enum ShotPresentationMode
+        {
+            Standard,
+            VolleyResolution
+        }
+
         private readonly struct ReplayShot
         {
             public ReplayShot(
@@ -54,7 +104,17 @@ public partial class PlayerShoot
         private readonly PlayerShoot owner;
         private readonly HashSet<int> enemiesHitThisTurn = new HashSet<int>();
         private readonly List<ReplayShot> replayShots = new List<ReplayShot>();
+        private readonly PhysicalBulletCriticalScope<EnemyController>
+            physicalBulletCriticalScope =
+                new PhysicalBulletCriticalScope<EnemyController>();
         private float activeCriticalDamageMultiplierBonus;
+        private int activeSniperBulletsBeforeShot;
+        private int activeResonanceStatusMask;
+        private int activeDynamicStatusMask;
+        private bool activeShotDefeatedEnemy;
+        private EnemyController forcedShotTarget;
+        private EnemyController lastPhysicalShotTarget;
+        private EnemyController activePreviousPhysicalTarget;
 
         private DeckManager deckManager => owner.deckManager;
         private CurrencyManager currencyManager
@@ -108,6 +168,12 @@ public partial class PlayerShoot
         {
             get => owner.bulletsFiredThisCylinder;
             set => owner.bulletsFiredThisCylinder = value;
+        }
+
+        private int sniperBulletsFiredThisCylinder
+        {
+            get => owner.sniperBulletsFiredThisCylinder;
+            set => owner.sniperBulletsFiredThisCylinder = value;
         }
 
         private int criticalShotsThisCylinder
@@ -177,17 +243,13 @@ public partial class PlayerShoot
                         bullet,
                         BulletEffectType.Seismometer) != null)
                 {
-                    bullet.AddAbilityStacks(context.Distance);
+                    int distance = context.Source
+                        == PlayerMovementSource.BulletBlink
+                            ? Mathf.Min(3, context.Distance)
+                            : context.Distance;
+                    bullet.AddAbilityStacks(distance);
                 }
 
-                if ((context.Source & (PlayerMovementSource.BulletPositionSwap
-                        | PlayerMovementSource.ForcedMove)) != 0
-                    && FindSpecialEffect(
-                        bullet,
-                        BulletEffectType.Tracking) != null)
-                {
-                    bullet.AddAbilityStacks(1);
-                }
             }
         }
 
@@ -198,6 +260,7 @@ public partial class PlayerShoot
             bool firedAnyBullet = false;
             bool consumesTurn = false;
             BulletInstance previousResolvedBullet = null;
+            int previousStatusMask = 0;
             BulletRuntimeStateSnapshot previousPreFireState = default;
             bool hasPreviousPreFireState = false;
             float stackedDamageBonus = 0f;
@@ -209,9 +272,12 @@ public partial class PlayerShoot
             activeCriticalDamageMultiplierBonus = 0f;
             initialLoadedBulletCount = deckManager.LoadedBullets.Count;
             bulletsFiredThisCylinder = 0;
+            sniperBulletsFiredThisCylinder = 0;
             criticalShotsThisCylinder = 0;
             bulletDestroyedThisCylinder = false;
+            lastPhysicalShotTarget = null;
             pendingSaverGold = 0;
+            physicalBulletCriticalScope.Begin();
             int physicalBulletIndex = 0;
             relicManager?.NotifyCylinderStarted(
                 initialLoadedBulletCount,
@@ -221,30 +287,19 @@ public partial class PlayerShoot
             combatFeedback?.BeginFiringSequence();
             combatFeedback?.BeginCylinder();
             bool saverRefundsTurn = false;
-            int initialBulletIndex = deckManager.LoadedBullets.Count - 1;
-            BulletInstance initialResolvedBullet = ResolveShotBullet(
-                deckManager.LoadedBullets[initialBulletIndex],
-                null);
-            int initialShotDirection = BulletEffectUtility.ResolveShotDirection(
-                initialResolvedBullet,
-                horizontalDirection);
-            bool initialBulletIsPowderPouch = FindSpecialEffect(
-                initialResolvedBullet,
-                BulletEffectType.PowderPouch) != null;
-            bool fireIntoAir = initialBulletIsPowderPouch
-                ? !HasViableFutureShot(
-                    initialBulletIndex - 1,
-                    initialResolvedBullet,
-                    horizontalDirection)
-                : !HasViableShotTarget(
-                    initialResolvedBullet,
-                    initialShotDirection);
     
             while (deckManager.LoadedBullets.Count > 0)
             {
                 while (GamePauseController.IsPaused)
                 {
                     yield return null;
+                }
+
+                // Finish the current bullet's effects, but preserve unfired bullets
+                // once the battle outcome is known. Empty aim alone never cancels.
+                if (ShouldStopFiring())
+                {
+                    break;
                 }
     
                 int bulletIndex = deckManager.LoadedBullets.Count - 1;
@@ -264,20 +319,6 @@ public partial class PlayerShoot
                 BulletEffectData powderEffect = FindSpecialEffect(
                     resolvedBullet,
                     BulletEffectType.PowderPouch);
-                bool hasViableTarget = fireIntoAir
-                    || (powderEffect == null
-                        ? HasViableShotTarget(
-                            resolvedBullet,
-                            shotDirection)
-                        : HasViableFutureShot(
-                            bulletIndex - 1,
-                            resolvedBullet,
-                            horizontalDirection));
-    
-                if (!hasViableTarget)
-                {
-                    break;
-                }
     
                 if (!deckManager.TryFireLoadedBullet(out BulletInstance firedBullet)
                     || firedBullet != bulletData)
@@ -287,6 +328,7 @@ public partial class PlayerShoot
     
                 firedAnyBullet = true;
                 currentConsumedBullet = firedBullet;
+                physicalBulletCriticalScope.Begin();
                 int currentPhysicalBulletIndex = physicalBulletIndex++;
                 consumesTurn |= !resolvedBullet.DoesNotConsumeTurn;
     
@@ -299,6 +341,7 @@ public partial class PlayerShoot
     
                 BulletRuntimeStateSnapshot currentPreFireState =
                     firedBullet.CaptureRuntimeState();
+                activeDynamicStatusMask = 0;
     
                 if (powderEffect != null)
                 {
@@ -307,6 +350,7 @@ public partial class PlayerShoot
                 }
                 else
                 {
+                    activeResonanceStatusMask = previousStatusMask;
                     BulletDynamicCombatContext damageContext =
                         CreateDynamicCombatContext(
                             firedBullet,
@@ -318,9 +362,33 @@ public partial class PlayerShoot
                             firedBullet,
                             resolvedBullet,
                             damageContext);
+                    damageMultiplier *= BulletEffectUtility
+                        .GetPositionDamageMultiplier(
+                            resolvedBullet,
+                            currentPhysicalBulletIndex == 0,
+                            deckManager.LoadedBullets.Count == 0);
+                    BulletEffectData jackpotEffect = FindSpecialEffect(
+                        resolvedBullet,
+                        BulletEffectType.Jackpot);
+                    bool jackpotTriggered = !clonedPreviousShot
+                        && jackpotEffect != null
+                        && jackpotEffect.RollActivation();
+
+                    if (jackpotTriggered)
+                    {
+                        damageMultiplier *= BulletEffectUtility
+                            .GetJackpotDamageMultiplier(jackpotEffect);
+                        currencyManager ??= FindFirstObjectByType<CurrencyManager>();
+                        currencyManager?.AddMoneyFromWorld(
+                            Mathf.Max(0, jackpotEffect.StackCount),
+                            transform.position);
+                    }
                     damageMultiplier *= 1f + spreadDamageBonus;
                     activeCriticalDamageMultiplierBonus =
-                        pendingCriticalDamageMultiplierBonus;
+                        pendingCriticalDamageMultiplierBonus
+                        + GetMasterpieceCriticalDamageMultiplierBonus(
+                            resolvedBullet,
+                            damageContext);
                     pendingCriticalDamageMultiplierBonus = 0f;
                     float shotCriticalDamageMultiplierBonus =
                         activeCriticalDamageMultiplierBonus;
@@ -387,24 +455,61 @@ public partial class PlayerShoot
                     int shotgunAdditionalShotCount = Mathf.Max(
                         0,
                         resolvedBullet.ShotCount - 1);
+                    BulletEffectData massProducedEffect = FindSpecialEffect(
+                        resolvedBullet,
+                        BulletEffectType.MassProduced);
+                    int massProducedAdditionalShotCount =
+                        BulletEffectUtility.GetMassProducedAdditionalShots(
+                            massProducedEffect,
+                            damageContext.OwnedLowGradeCount);
+                    int requiredAdditionalShotCount =
+                        shotgunAdditionalShotCount
+                        + massProducedAdditionalShotCount;
                     int additionalShotCount = 0;
                     int chainAdditionalShotCount = 0;
+                    bool defeatedWithThisBullet = false;
                     bool keepFiring;
+
+                    int shotgunVolleyShotCount = resolvedBullet.ShotCount;
+                    if (shotgunVolleyShotCount > 1)
+                    {
+                        yield return PlayShotgunVolleyPresentation(
+                            resolvedBullet,
+                            shotDirection,
+                            shotgunVolleyShotCount);
+                    }
     
                     do
                     {
+                        PrepareFocusedShotgunTarget(
+                            resolvedBullet,
+                            additionalShotCount);
+                        float pelletDamageMultiplier = damageMultiplier
+                            * BulletEffectUtility
+                                .GetRandomPelletDamageMultiplier(
+                                    resolvedBullet,
+                                    false);
                         bool shotCompleted = false;
                         yield return FireSingleShot(
                             resolvedBullet,
                             shotDirection,
-                            damageMultiplier,
+                            pelletDamageMultiplier,
                             criticalChanceBonus,
                             true,
-                            fireIntoAir,
+                            true,
                             additionalShotCount == 0,
                             false,
                             currentPhysicalBulletIndex,
-                            completed => shotCompleted = completed);
+                            completed => shotCompleted = completed,
+                            ShouldWaitForCadenceAfterVolleyShot(
+                                additionalShotCount,
+                                shotgunVolleyShotCount),
+                            additionalShotCount < shotgunVolleyShotCount
+                                && shotgunVolleyShotCount > 1
+                                    ? ShotPresentationMode.VolleyResolution
+                                    : ShotPresentationMode.Standard);
+                        forcedShotTarget = null;
+                        defeatedWithThisBullet |= activeShotDefeatedEnemy;
     
                         if (!shotCompleted)
                         {
@@ -418,7 +523,7 @@ public partial class PlayerShoot
                         }
 
                         bool hasRequiredShotgunShot =
-                            additionalShotCount < shotgunAdditionalShotCount;
+                            additionalShotCount < requiredAdditionalShotCount;
                         bool hasPrimerReuseShot =
                             !hasRequiredShotgunShot && primerReusePending;
                         bool hasChainShot = !hasRequiredShotgunShot
@@ -444,15 +549,49 @@ public partial class PlayerShoot
                                 chainAdditionalShotCount++;
                             }
     
-                            if (ShouldWaitBeforeAdditionalShot(
-                                hasRequiredShotgunShot,
-                                shotInterval))
-                            {
-                                yield return WaitForShotInterval();
-                            }
                         }
                     }
                     while (keepFiring);
+
+                    BulletEffectData collectionEffect = FindSpecialEffect(
+                        resolvedBullet,
+                        BulletEffectType.Collection);
+                    int collectionChainCount = 0;
+
+                    while (defeatedWithThisBullet
+                        && collectionEffect != null
+                        && collectionChainCount
+                            < Mathf.Max(0, collectionEffect.StackCount))
+                    {
+                        forcedShotTarget = SelectLowestHealthTarget();
+
+                        if (forcedShotTarget == null)
+                        {
+                            break;
+                        }
+
+                        bool collectionShotCompleted = false;
+                        yield return FireSingleShot(
+                            resolvedBullet,
+                            shotDirection,
+                            damageMultiplier,
+                            criticalChanceBonus,
+                            false,
+                            false,
+                            false,
+                            false,
+                            currentPhysicalBulletIndex,
+                            completed => collectionShotCompleted = completed);
+                        forcedShotTarget = null;
+
+                        if (!collectionShotCompleted)
+                        {
+                            break;
+                        }
+
+                        collectionChainCount++;
+                        defeatedWithThisBullet = activeShotDefeatedEnemy;
+                    }
     
                     for (int shellShotIndex = 0;
                          shellShotIndex < shellExtraShots;
@@ -465,7 +604,7 @@ public partial class PlayerShoot
                             damageMultiplier * shellEffect.Amount / 100f,
                             criticalChanceBonus,
                             false,
-                            fireIntoAir,
+                            true,
                             false,
                             false,
                             currentPhysicalBulletIndex,
@@ -478,10 +617,6 @@ public partial class PlayerShoot
     
                         firedBullet.ConsumeAbilityStacks(shellCost);
     
-                        if (shotInterval > 0f)
-                        {
-                            yield return WaitForShotInterval();
-                        }
                     }
     
                     if (deckManager.LoadedBullets.Count == 0
@@ -496,7 +631,7 @@ public partial class PlayerShoot
                             damageMultiplier,
                             criticalChanceBonus,
                             false,
-                            fireIntoAir,
+                            true,
                             false,
                             true,
                             currentPhysicalBulletIndex,
@@ -558,8 +693,6 @@ public partial class PlayerShoot
                             Mathf.Max(1, recoilEffect.KnockbackDistance));
                     }
 
-                    ApplyTrackingMarks(firedBullet, resolvedBullet);
-
                     BulletEffectData spreadEffect = FindSpecialEffect(
                         resolvedBullet,
                         BulletEffectType.Spread);
@@ -602,6 +735,24 @@ public partial class PlayerShoot
                     }
     
                     HandlePostBulletAbility(firedBullet, resolvedBullet);
+
+                    BulletEffectData blinkEffect = FindSpecialEffect(
+                        resolvedBullet,
+                        BulletEffectType.Blink);
+                    if (blinkEffect != null && playerMove != null)
+                    {
+                        yield return playerMove.BlinkFromBullet();
+                    }
+                }
+
+                BulletEffectData specterReturnEffect = FindSpecialEffect(
+                    resolvedBullet,
+                    BulletEffectType.SpecterReturn);
+                if (!clonedPreviousShot
+                    && specterReturnEffect != null
+                    && specterReturnEffect.RollActivation())
+                {
+                    deckManager.TryReturnFiredBulletToDeckTop(firedBullet);
                 }
 
                 int nextFacingDirection =
@@ -624,20 +775,25 @@ public partial class PlayerShoot
                     pendingSaverGold += Mathf.RoundToInt(saverEffect.Amount);
                     saverRefundsTurn |= saverEffect.StackCount >= 2;
                 }
-    
+
+                CompletePhysicalBulletCriticalScope();
+
+                yield return WaitForEnemyReplacementAfterBullet();
+
                 previousResolvedBullet = resolvedBullet;
+                previousStatusMask = BulletEffectUtility
+                    .GetInflictedStatusMask(resolvedBullet);
+                previousStatusMask |= activeDynamicStatusMask;
+
+                if (FindSpecialEffect(
+                        resolvedBullet,
+                        BulletEffectType.Resonance) != null)
+                {
+                    previousStatusMask |= activeResonanceStatusMask;
+                }
                 previousPreFireState = currentPreFireState;
                 hasPreviousPreFireState = true;
                 currentConsumedBullet = null;
-    
-                if (deckManager.LoadedBullets.Count > 0 && shotInterval > 0f)
-                {
-                    yield return WaitForShotInterval();
-                }
-                else
-                {
-                    yield return null;
-                }
             }
     
             if (!bulletDestroyedThisCylinder && pendingSaverGold > 0)
@@ -668,6 +824,7 @@ public partial class PlayerShoot
             reservedDamageByEnemy.Clear();
             pendingEffectDefeats.Clear();
             replayShots.Clear();
+            physicalBulletCriticalScope.Begin();
             activeCriticalDamageMultiplierBonus = 0f;
             waveManager?.NotifyFiringSequenceCompleted();
             deckManager.CompleteFiringSequence();
@@ -691,22 +848,49 @@ public partial class PlayerShoot
             bool isBaseBullet,
             bool isRelicGenerated,
             int physicalBulletIndex,
-            Action<bool> onCompleted)
+            Action<bool> onCompleted,
+            bool waitForCadenceAfterResolution = true,
+            ShotPresentationMode presentationMode =
+                ShotPresentationMode.Standard)
         {
-            if (bulletData == null)
+            bool resolvesStartedVolley = presentationMode
+                == ShotPresentationMode.VolleyResolution;
+            if (bulletData == null
+                || (resolvesStartedVolley
+                    ? playerHealth != null && playerHealth.IsDefeated
+                    : ShouldStopFiring()))
             {
                 onCompleted?.Invoke(false);
                 yield break;
             }
+
+            activeShotDefeatedEnemy = false;
+            if (isBaseBullet)
+            {
+                activePreviousPhysicalTarget = lastPhysicalShotTarget;
+            }
     
             activeShotIndex = bulletsFiredThisCylinder;
+            activeSniperBulletsBeforeShot = sniperBulletsFiredThisCylinder;
+
+            if (!isBaseBullet && !isRelicGenerated
+                && currentConsumedBullet != null
+                && currentConsumedBullet.BulletType == BulletType.Sniper)
+            {
+                activeSniperBulletsBeforeShot = Mathf.Max(
+                    0,
+                    activeSniperBulletsBeforeShot - 1);
+            }
     
             bool hasEnemyTarget = RefreshViableTargets(
                 bulletData,
                 horizontalDirection);
             bool isBoardWideShot = IsBoardWideShot(bulletData);
+            bool isAutoTargetingShot =
+                BulletEffectUtility.IsAutoTargetingShot(bulletData);
             IPlayerBulletBlocker bulletBlocker = null;
             bool hasBulletBlocker = !isBoardWideShot
+                && !isAutoTargetingShot
                 && waveManager.TryGetFirstBulletBlocker(
                     transform.position,
                     horizontalDirection,
@@ -747,13 +931,20 @@ public partial class PlayerShoot
             if (hasEnemyTarget)
             {
                 BuildHitTargets(bulletData);
+                if (isBaseBullet)
+                {
+                    lastPhysicalShotTarget = hitBuffer.Count > 0
+                        ? hitBuffer[0]
+                        : null;
+                }
                 reachesBulletBlocker = hasBulletBlocker
                     && hitBuffer.Count == targetBuffer.Count
                     && hitBuffer.Count < bulletData.MaxHitCount
                     && bulletData.RollPenetrationAfterHit(hitBuffer.Count);
                 endPoint = reachesBulletBlocker
                     ? bulletBlocker.WorldPosition
-                    : hitBuffer[hitBuffer.Count - 1].transform.position;
+                    : GetProjectileImpactPoint(
+                        hitBuffer[hitBuffer.Count - 1]);
             }
             else if (hasBulletBlocker)
             {
@@ -764,6 +955,10 @@ public partial class PlayerShoot
             else
             {
                 hitBuffer.Clear();
+                if (isBaseBullet)
+                {
+                    lastPhysicalShotTarget = null;
+                }
                 endPoint = GetMissEndPoint(
                     horizontalDirection,
                     GetShotRange(bulletData));
@@ -777,7 +972,7 @@ public partial class PlayerShoot
             bool shotHasCriticalOutcome =
                 PlayerAttackDamageCalculator.ResolveCriticalForTarget(
                     isCritical,
-                    HasExposedHitTarget());
+                    HasGuaranteedCriticalHitTarget());
             List<DamageReservation> shotReservations = hasViableTarget
                 ? ReserveProjectedHitDamage(
                     bulletData,
@@ -787,44 +982,91 @@ public partial class PlayerShoot
                 : null;
     
             Vector3 shotStartPoint = firePoint.position;
-            Vector3 shotEndPoint = GetShotLineEndPoint(shotStartPoint, endPoint);
-            BulletLine bulletLine = Instantiate(
-                bulletLinePrefab,
-                shotStartPoint,
-                Quaternion.identity);
-    
-            if (!bulletLine.Initialize(
+            Vector3 shotEndPoint = hasViableTarget
+                ? endPoint
+                : GetShotLineEndPoint(shotStartPoint, endPoint);
+            int tileDistance = -1;
+            if (boardManager != null
+                && boardManager.TryGetTileDistance(
+                    transform.position,
+                    endPoint,
+                    out int resolvedTileDistance))
+            {
+                tileDistance = resolvedTileDistance;
+            }
+            float projectileTravelDuration =
+                ResolveProjectileTravelDuration(tileDistance);
+            BulletProjectileView projectile = null;
+            bool presentsIndividualShot = presentationMode
+                == ShotPresentationMode.Standard;
+            if (presentsIndividualShot)
+            {
+                bool projectileStarted = BulletProjectileView.TrySpawn(
+                    bulletData.ProjectileVisual,
                     bulletData,
                     shotStartPoint,
-                    shotEndPoint))
-            {
-                ReleaseProjectedDamage(shotReservations);
-                Destroy(bulletLine.gameObject);
-                relicManager?.NotifyShotCancelled();
-                onCompleted?.Invoke(false);
-                yield break;
+                    shotEndPoint,
+                    out projectile);
+                if (!projectileStarted && bulletLinePrefab != null)
+                {
+                    BulletLine bulletLine = Instantiate(
+                        bulletLinePrefab,
+                        shotStartPoint,
+                        Quaternion.identity);
+                    if (!bulletLine.Initialize(
+                            bulletData,
+                            shotStartPoint,
+                            shotEndPoint))
+                    {
+                        Destroy(bulletLine.gameObject);
+                    }
+                }
             }
-    
-            ShowBulletFeedback(bulletData);
+
             if (shotHasCriticalOutcome && hasViableTarget)
             {
                 SoundManager.PlaySfx("SFX_Critical");
             }
-            SoundManager.PlaySfx(shotHasCriticalOutcome
-                ? "SFX_Player_Critical_Shoot"
-                : "SFX_Player_Shoot");
-            combatFeedback?.RecordShotCameraShake();
-            RecordSuccessfulShot(bulletData, isRelicGenerated);
+            if (presentsIndividualShot)
+            {
+                ShowBulletFeedback(bulletData);
+                SoundManager.PlaySfx(shotHasCriticalOutcome
+                    ? "SFX_Player_Critical_Shoot"
+                    : "SFX_Player_Shoot");
+                combatFeedback?.RecordShotCameraShake();
+            }
+            RecordSuccessfulShot(
+                bulletData,
+                isBaseBullet,
+                isRelicGenerated);
             owner.BulletFired?.Invoke(bulletData);
             GameStatistics.RecordBulletFired(bulletData);
-            combatPresentation?.PlayShot(
-                firePoint,
-                bulletData,
-                shotHasCriticalOutcome,
-                horizontalDirection);
+            if (presentsIndividualShot)
+            {
+                combatPresentation?.PlayShot(
+                    firePoint,
+                    bulletData,
+                    shotHasCriticalOutcome,
+                    horizontalDirection);
+            }
+            // The next shot must not begin until projectile arrival and every
+            // effect scheduled by this shot have finished resolving.
+            if (presentsIndividualShot)
+            {
+                yield return WaitForProjectileArrival(
+                    projectile,
+                    projectileTravelDuration);
+            }
             yield return ApplyShotScopedEffects(bulletData, horizontalDirection);
             yield return ApplyHitResults(
                 bulletData,
+                horizontalDirection,
+                isCritical,
+                damageMultiplier,
+                reachesBulletBlocker);
+            yield return ApplyReturnShot(
+                bulletData,
+                shotEndPoint,
                 horizontalDirection,
                 isCritical,
                 damageMultiplier);
@@ -838,20 +1080,322 @@ public partial class PlayerShoot
                 bulletBlocker.HandlePlayerBulletImpact();
             }
             ReleaseProjectedDamage(shotReservations);
-            UpdateRitualFocus(shotHasCriticalOutcome && hasEnemyTarget);
             HandleShotResult(
                 bulletData,
                 shotHasCriticalOutcome,
                 generatesShells);
+            if (waitForCadenceAfterResolution)
+            {
+                yield return WaitForShotCadenceAfterResolution();
+            }
             onCompleted?.Invoke(true);
         }
 
-        private bool HasExposedHitTarget()
+        private IEnumerator PlayShotgunVolleyPresentation(
+            BulletInstance bullet,
+            int horizontalDirection,
+            int pelletCount)
+        {
+            if (bullet == null || pelletCount <= 1 || ShouldStopFiring())
+            {
+                yield break;
+            }
+
+            List<BulletProjectileView> projectiles =
+                new List<BulletProjectileView>(pelletCount);
+            float travelDuration = 0f;
+            int presentedPelletCount = 0;
+
+            for (int pelletIndex = 0;
+                 pelletIndex < pelletCount;
+                 pelletIndex++)
+            {
+                PrepareFocusedShotgunTarget(bullet, pelletIndex);
+                ResolveVolleyPresentationPath(
+                    bullet,
+                    horizontalDirection,
+                    out Vector3 startPoint,
+                    out Vector3 endPoint,
+                    out float pelletTravelDuration);
+                float spreadOffset = ResolveShotgunPelletSpreadOffset(
+                    pelletIndex,
+                    pelletCount);
+                startPoint += Vector3.up * spreadOffset * 0.2f;
+                endPoint += Vector3.up * spreadOffset;
+                travelDuration = Mathf.Max(
+                    travelDuration,
+                    pelletTravelDuration);
+
+                bool projectileStarted = BulletProjectileView.TrySpawn(
+                    bullet.ProjectileVisual,
+                    bullet,
+                    startPoint,
+                    endPoint,
+                    out BulletProjectileView projectile);
+                if (projectileStarted)
+                {
+                    projectiles.Add(projectile);
+                    owner.activeVolleyProjectileViews.Add(projectile);
+                    presentedPelletCount++;
+                }
+                else if (bulletLinePrefab != null)
+                {
+                    BulletLine bulletLine = Instantiate(
+                        bulletLinePrefab,
+                        startPoint,
+                        Quaternion.identity);
+                    if (!bulletLine.Initialize(
+                            bullet,
+                            startPoint,
+                            endPoint))
+                    {
+                        Destroy(bulletLine.gameObject);
+                    }
+                    else
+                    {
+                        presentedPelletCount++;
+                    }
+                }
+            }
+
+            forcedShotTarget = null;
+            owner.ShotgunVolleyPresented?.Invoke(presentedPelletCount);
+            ShowBulletFeedback(bullet);
+            SoundManager.PlaySfx("SFX_Player_Shoot");
+            combatFeedback?.RecordShotCameraShake();
+            combatPresentation?.PlayShot(
+                firePoint,
+                bullet,
+                false,
+                horizontalDirection);
+            yield return WaitForShotgunVolleyArrival(
+                projectiles,
+                travelDuration);
+        }
+
+        private void ResolveVolleyPresentationPath(
+            BulletInstance bullet,
+            int horizontalDirection,
+            out Vector3 startPoint,
+            out Vector3 endPoint,
+            out float travelDuration)
+        {
+            bool hasEnemyTarget = RefreshViableTargets(
+                bullet,
+                horizontalDirection);
+            bool isBoardWideShot = IsBoardWideShot(bullet);
+            bool isAutoTargetingShot =
+                BulletEffectUtility.IsAutoTargetingShot(bullet);
+            IPlayerBulletBlocker bulletBlocker = null;
+            bool hasBulletBlocker = !isBoardWideShot
+                && !isAutoTargetingShot
+                && waveManager.TryGetFirstBulletBlocker(
+                    transform.position,
+                    horizontalDirection,
+                    GetShotRange(bullet),
+                    out bulletBlocker);
+
+            if (hasBulletBlocker)
+            {
+                RemoveTargetsBehindBlocker(
+                    bulletBlocker,
+                    horizontalDirection);
+                hasEnemyTarget = targetBuffer.Count > 0;
+            }
+
+            bool hasViableTarget = hasEnemyTarget || hasBulletBlocker;
+            Vector3 impactPoint;
+            if (hasEnemyTarget)
+            {
+                impactPoint = GetProjectileImpactPoint(targetBuffer[0]);
+            }
+            else if (hasBulletBlocker)
+            {
+                impactPoint = bulletBlocker.WorldPosition;
+            }
+            else
+            {
+                impactPoint = GetMissEndPoint(
+                    horizontalDirection,
+                    GetShotRange(bullet));
+            }
+
+            startPoint = firePoint.position;
+            endPoint = hasViableTarget
+                ? impactPoint
+                : GetShotLineEndPoint(startPoint, impactPoint);
+            int tileDistance = -1;
+            if (boardManager != null
+                && boardManager.TryGetTileDistance(
+                    transform.position,
+                    impactPoint,
+                    out int resolvedTileDistance))
+            {
+                tileDistance = resolvedTileDistance;
+            }
+
+            travelDuration = ResolveProjectileTravelDuration(tileDistance);
+        }
+
+        private IEnumerator WaitForShotgunVolleyArrival(
+            IReadOnlyList<BulletProjectileView> projectiles,
+            float travelDuration)
+        {
+            float duration = Mathf.Max(0f, travelDuration);
+            float elapsedTime = 0f;
+
+            while (elapsedTime < duration)
+            {
+                yield return null;
+                elapsedTime = AdvanceShotTimer(
+                    elapsedTime,
+                    Time.unscaledDeltaTime,
+                    GamePauseController.IsPaused);
+                float progress = duration <= 0f
+                    ? 1f
+                    : elapsedTime / duration;
+
+                foreach (BulletProjectileView projectile in projectiles)
+                {
+                    if (projectile != null)
+                    {
+                        projectile.SetTravelProgress(progress);
+                    }
+                }
+            }
+
+            foreach (BulletProjectileView projectile in projectiles)
+            {
+                if (projectile != null)
+                {
+                    projectile.CompleteTravel();
+                }
+
+                owner.activeVolleyProjectileViews.Remove(projectile);
+            }
+        }
+
+        private bool pendingEmergencyReload
+        {
+            get => owner.pendingEmergencyReload;
+            set => owner.pendingEmergencyReload = value;
+        }
+
+        private bool ShouldStopFiring()
+        {
+            return playerHealth != null && playerHealth.IsDefeated
+                || waveManager != null
+                && (waveManager.IsBattleCompleted
+                    || waveManager.IsBattleCompletionPending
+                    && waveManager.IsFinalDefeatForPresentation());
+        }
+
+        private static Vector3 GetProjectileImpactPoint(
+            EnemyController enemy)
+        {
+            if (enemy == null)
+            {
+                return Vector3.zero;
+            }
+
+            SpriteRenderer targetRenderer = enemy.HoverRenderer;
+            return targetRenderer == null
+                ? enemy.transform.position
+                : targetRenderer.bounds.center;
+        }
+
+        private IEnumerator WaitForProjectileArrival(
+            BulletProjectileView projectile,
+            float travelDuration)
+        {
+            if (owner.activeProjectileView != null
+                && owner.activeProjectileView != projectile)
+            {
+                owner.activeProjectileView.CancelTravel();
+            }
+
+            owner.activeProjectileView = projectile;
+
+            if (travelDuration <= 0f)
+            {
+                if (projectile != null)
+                {
+                    projectile.CompleteTravel();
+                }
+
+                if (owner.activeProjectileView == projectile)
+                {
+                    owner.activeProjectileView = null;
+                }
+
+                yield break;
+            }
+
+            float elapsedTime = 0f;
+
+            while (elapsedTime < travelDuration)
+            {
+                yield return null;
+
+                elapsedTime = AdvanceShotTimer(
+                    elapsedTime,
+                    Time.unscaledDeltaTime,
+                    GamePauseController.IsPaused);
+                if (projectile != null)
+                {
+                    projectile.SetTravelProgress(
+                        elapsedTime / travelDuration);
+                }
+            }
+
+            if (projectile != null)
+            {
+                projectile.CompleteTravel();
+            }
+
+            if (owner.activeProjectileView == projectile)
+            {
+                owner.activeProjectileView = null;
+            }
+        }
+
+        private IEnumerator WaitForShotCadenceAfterResolution()
+        {
+            float duration = Mathf.Max(0f, shotInterval);
+            float elapsedTime = 0f;
+
+            while (elapsedTime < duration)
+            {
+                yield return null;
+
+                elapsedTime = AdvanceShotTimer(
+                    elapsedTime,
+                    Time.unscaledDeltaTime,
+                    GamePauseController.IsPaused);
+            }
+        }
+
+        private IEnumerator WaitForEnemyReplacementAfterBullet()
+        {
+            while (ShouldWaitForEnemyReplacement(
+                waveManager == null
+                    ? CombatPacingMode.Legacy
+                    : waveManager.PacingMode,
+                waveManager != null && waveManager.IsBattleCompleted,
+                playerHealth != null && playerHealth.IsDefeated,
+                waveManager == null ? 0 : waveManager.LivingEnemyCount,
+                waveManager != null && waveManager.HasRemainingEnemiesToSpawn))
+            {
+                yield return null;
+            }
+        }
+
+        private bool HasGuaranteedCriticalHitTarget()
         {
             foreach (EnemyController enemy in hitBuffer)
             {
                 if (enemy != null && enemy.CurrentHealth > 0
-                    && enemy.IsExposed)
+                    && ResolvePhysicalBulletCritical(false, enemy))
                 {
                     return true;
                 }
@@ -859,14 +1403,44 @@ public partial class PlayerShoot
 
             return false;
         }
+
+        private bool ResolvePhysicalBulletCritical(
+            bool rolledCritical,
+            EnemyController enemy)
+        {
+            return physicalBulletCriticalScope.Resolve(
+                rolledCritical,
+                enemy,
+                enemy != null && enemy.IsExposed);
+        }
+
+        private void CompletePhysicalBulletCriticalScope()
+        {
+            physicalBulletCriticalScope.Complete(enemy =>
+            {
+                if (enemy != null)
+                {
+                    enemy.TryConsumeExposedForAttack();
+                }
+            });
+        }
     
         private void RecordSuccessfulShot(
             BulletInstance firedBullet,
+            bool isBaseBullet,
             bool isRelicGenerated)
         {
             if (!isRelicGenerated && bulletsFiredThisCylinder < int.MaxValue)
             {
                 bulletsFiredThisCylinder++;
+            }
+
+            if (isBaseBullet && !isRelicGenerated
+                && currentConsumedBullet != null
+                && currentConsumedBullet.BulletType == BulletType.Sniper
+                && sniperBulletsFiredThisCylinder < int.MaxValue)
+            {
+                sniperBulletsFiredThisCylinder++;
             }
     
             if (deckManager == null || isRelicGenerated)
@@ -903,12 +1477,27 @@ public partial class PlayerShoot
             {
                 return false;
             }
+
+            if (forcedShotTarget != null
+                && HasProjectedDurability(forcedShotTarget))
+            {
+                targetBuffer.Add(forcedShotTarget);
+                return true;
+            }
     
             if (IsBoardWideShot(bullet))
             {
                 foreach (EnemyController enemy in waveManager.ActiveEnemies)
                 {
-                    if (HasProjectedDurability(enemy))
+                    if (HasProjectedDurability(enemy)
+                        && (bullet.BulletType != BulletType.Storm
+                            || BulletEffectUtility.CanStormTarget(
+                                bullet,
+                                playerMove == null
+                                    ? 0
+                                    : playerMove.CurrentLaneIndex,
+                                enemy.CurrentLaneIndex,
+                                enemy.TotalStatusStackCount)))
                     {
                         targetBuffer.Add(enemy);
                     }
@@ -917,9 +1506,22 @@ public partial class PlayerShoot
                 SortTargetsByTileIndex(targetBuffer);
                 return targetBuffer.Count > 0;
             }
+
+            if (BulletEffectUtility.IsAutoTargetingShot(bullet))
+            {
+                EnemyController target = SelectSniperTarget(bullet);
+
+                if (target != null)
+                {
+                    targetBuffer.Add(target);
+                }
+
+                return targetBuffer.Count > 0;
+            }
     
             waveManager.GetEnemiesInDirection(
                 transform.position,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 horizontalDirection,
                 GetShotRange(bullet),
                 targetBuffer);
@@ -937,28 +1539,6 @@ public partial class PlayerShoot
             return targetBuffer.Count > 0;
         }
     
-        private bool HasViableShotTarget(
-            BulletInstance bullet,
-            int horizontalDirection)
-        {
-            if (RefreshViableTargets(bullet, horizontalDirection))
-            {
-                return true;
-            }
-    
-            if (IsBoardWideShot(bullet))
-            {
-                return false;
-            }
-    
-            return bullet != null && waveManager != null
-                && waveManager.TryGetFirstBulletBlocker(
-                    transform.position,
-                    horizontalDirection,
-                    GetShotRange(bullet),
-                    out _);
-        }
-    
         private void RemoveTargetsBehindBlocker(
             IPlayerBulletBlocker blocker,
             int horizontalDirection)
@@ -966,6 +1546,7 @@ public partial class PlayerShoot
             if (blocker == null || boardManager == null
                 || !boardManager.TryGetTileIndex(
                     transform.position,
+                    playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                     out int originIndex))
             {
                 return;
@@ -980,54 +1561,13 @@ public partial class PlayerShoot
     
                 if (target == null || !boardManager.TryGetTileIndex(
                         target.transform.position,
+                        target.CurrentLaneIndex,
                         out int targetIndex)
                     || (targetIndex - originIndex) * direction >= blockerDistance)
                 {
                     targetBuffer.RemoveAt(index);
                 }
             }
-        }
-    
-        private bool HasViableFutureShot(
-            int loadedBulletIndex,
-            BulletInstance previousResolvedBullet,
-            int horizontalDirection)
-        {
-            for (int bulletIndex = loadedBulletIndex;
-                 bulletIndex >= 0;
-                 bulletIndex--)
-            {
-                BulletInstance loadedBullet = deckManager.LoadedBullets[bulletIndex];
-                BulletInstance resolvedBullet = ResolveShotBullet(
-                    loadedBullet,
-                    previousResolvedBullet);
-    
-                if (resolvedBullet == null)
-                {
-                    continue;
-                }
-    
-                if (FindSpecialEffect(
-                        resolvedBullet,
-                        BulletEffectType.PowderPouch) == null
-                    && HasViableShotTarget(
-                        resolvedBullet,
-                        BulletEffectUtility.ResolveShotDirection(
-                            resolvedBullet,
-                            horizontalDirection)))
-                {
-                    return true;
-                }
-
-                horizontalDirection =
-                    BulletEffectUtility.ResolveFacingDirectionAfterShot(
-                        resolvedBullet,
-                        horizontalDirection);
-    
-                previousResolvedBullet = resolvedBullet;
-            }
-    
-            return false;
         }
     
         private bool HasProjectedDurability(EnemyController enemy)
@@ -1071,9 +1611,7 @@ public partial class PlayerShoot
                         CountActiveEnemies()));
                 int attackDamage = CalculateAttackDamage(
                     bullet,
-                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
-                        isCritical,
-                        enemy.IsExposed),
+                    ResolvePhysicalBulletCritical(isCritical, enemy),
                     damageMultiplier * targetDamageMultiplier,
                     activeShotIndex,
                     deckManager != null
@@ -1180,48 +1718,6 @@ public partial class PlayerShoot
             }
         }
 
-        private void ApplyTrackingMarks(
-            BulletInstance firedBullet,
-            BulletInstance resolvedBullet)
-        {
-            BulletEffectData effect = FindSpecialEffect(
-                resolvedBullet,
-                BulletEffectType.Tracking);
-            int markCount = firedBullet == null ? 0 : firedBullet.AbilityStacks;
-
-            if (effect == null || markCount <= 0 || waveManager == null)
-            {
-                return;
-            }
-
-            for (int markIndex = 0; markIndex < markCount; markIndex++)
-            {
-                targetBuffer.Clear();
-
-                foreach (EnemyController enemy in waveManager.ActiveEnemies)
-                {
-                    if (enemy != null && enemy.CurrentHealth > 0)
-                    {
-                        targetBuffer.Add(enemy);
-                    }
-                }
-
-                if (targetBuffer.Count == 0)
-                {
-                    break;
-                }
-
-                EnemyController target = targetBuffer[
-                    UnityEngine.Random.Range(0, targetBuffer.Count)];
-                target.AddStatusEffect(
-                    StatusEffectType.Mark,
-                    Mathf.Max(1, effect.StackCount),
-                    true);
-            }
-
-            firedBullet.SetAbilityStacks(0);
-        }
-    
         private void ApplyPowderPouch(
             BulletInstance powderPouch,
             float criticalChanceBonus)
@@ -1292,11 +1788,58 @@ public partial class PlayerShoot
                 maxExtraShots);
             return extraShots;
         }
+
+        private static float GetMasterpieceCriticalDamageMultiplierBonus(
+            BulletInstance bullet,
+            BulletDynamicCombatContext context)
+        {
+            return BulletEffectUtility.GetMasterpieceCriticalDamageBonus(
+                FindSpecialEffect(bullet, BulletEffectType.Masterpiece),
+                context.OwnedHighGradeCount);
+        }
     
         private void HandlePostBulletAbility(
             BulletInstance firedBullet,
             BulletInstance resolvedBullet)
         {
+            BulletEffectData coagulationEffect = FindSpecialEffect(
+                resolvedBullet,
+                BulletEffectType.Coagulation);
+
+            if (coagulationEffect != null && playerHealth != null)
+            {
+                int bloodBulletCount = CountOwnedBulletsOfType(
+                    BulletType.Blood,
+                    firedBullet);
+                float recoveryPercent = BulletEffectUtility
+                    .GetCoagulationRecoveryPercent(
+                        coagulationEffect,
+                        bloodBulletCount);
+                int missingHealth = Mathf.Max(
+                    0,
+                    playerHealth.MaxHealth - playerHealth.CurrentHealth);
+                playerHealth.Heal(Mathf.CeilToInt(
+                    missingHealth * recoveryPercent / 100f));
+            }
+
+            if (FindSpecialEffect(
+                    resolvedBullet,
+                    BulletEffectType.Loader) != null)
+            {
+                pendingEmergencyReload = true;
+            }
+
+            BulletEffectData ritualEffect = FindSpecialEffect(
+                resolvedBullet,
+                BulletEffectType.Ritual);
+
+            if (ritualEffect != null && playerHealth != null
+                && playerHealth.SpendMaxHealth(
+                    Mathf.Max(1, ritualEffect.StackCount)))
+            {
+                firedBullet.AddPermanentStacks(1);
+            }
+
             BulletEffectData accumulatorEffect = FindSpecialEffect(
                 resolvedBullet,
                 BulletEffectType.Accumulator);
@@ -1313,6 +1856,44 @@ public partial class PlayerShoot
             }
 
             ResetPostFireAbilityStacks(firedBullet, resolvedBullet);
+        }
+
+        private int CountOwnedBulletsOfType(
+            BulletType bulletType,
+            BulletInstance currentBullet)
+        {
+            if (deckManager == null)
+            {
+                return currentBullet != null
+                    && currentBullet.BulletType == bulletType ? 1 : 0;
+            }
+
+            deckManager.GetOwnedBullets(ownedBulletBuffer);
+            int count = 0;
+            bool containsCurrent = false;
+
+            foreach (BulletInstance bullet in ownedBulletBuffer)
+            {
+                if (bullet == null)
+                {
+                    continue;
+                }
+
+                containsCurrent |= ReferenceEquals(bullet, currentBullet);
+
+                if (bullet.BulletType == bulletType)
+                {
+                    count++;
+                }
+            }
+
+            if (!containsCurrent && currentBullet != null
+                && currentBullet.BulletType == bulletType)
+            {
+                count++;
+            }
+
+            return count;
         }
     
         private void HandleShotResult(
@@ -1540,7 +2121,8 @@ public partial class PlayerShoot
             BulletInstance bulletData,
             int horizontalDirection,
             bool isCritical,
-            float damageMultiplier)
+            float damageMultiplier,
+            bool reachesBulletBlocker)
         {
             if (bulletData == null || hitBuffer.Count == 0)
             {
@@ -1582,18 +2164,24 @@ public partial class PlayerShoot
                     combatPresentation == null
                         ? default
                         : combatPresentation.CaptureEnemy(enemy);
+                if (!IsBoardWideShot(bulletData)
+                    && (hitIndex < shotTargets.Count - 1 || reachesBulletBlocker))
+                {
+                    combatPresentation?.PlayPenetration(enemySnapshot, horizontalDirection,
+                        bulletData, hitIndex + 1);
+                }
                 int sourceTileIndex = -1;
                 boardManager.TryGetTileIndex(
                     enemy.transform.position,
+                    enemy.CurrentLaneIndex,
                     out sourceTileIndex);
                 int healthBeforeHit = enemy.CurrentHealth;
                 int targetMaxHealth = enemy.MaxHealth;
                 bool hadDebuffBeforeHit = enemy.ActiveStatusTypeCount > 0;
                 bool defeatPresented = false;
-                bool targetIsCritical =
-                    PlayerAttackDamageCalculator.ResolveCriticalForTarget(
-                        isCritical,
-                        enemy.IsExposed);
+                bool targetIsCritical = ResolvePhysicalBulletCritical(
+                    isCritical,
+                    enemy);
                 float targetDamageMultiplier = GetTargetDamageMultiplier(
                     bulletData,
                     enemy);
@@ -1672,15 +2260,24 @@ public partial class PlayerShoot
                     continue;
                 }
     
-                if (targetIsCritical && enemy.IsExposed)
-                {
-                    enemy.TryConsumeExposedForAttack();
-                }
-
-                int reportedDamage = enemy.PredictAttackDamage(attackDamage);
-                int appliedDamage = enemy.ApplyAttackDamage(
-                    attackDamage,
-                    targetIsCritical);
+                bool executesTarget = FindSpecialEffect(
+                        bulletData,
+                        BulletEffectType.Execution) != null
+                    && !enemy.IsBoss
+                    && enemy.MaxHealth > 0
+                    && (long)enemy.CurrentHealth * 4L < enemy.MaxHealth;
+                int reportedDamage = executesTarget
+                    ? BulletEffectUtility.SaturatingAdd(
+                        enemy.CurrentHealth,
+                        enemy.CurrentShield)
+                    : enemy.PredictAttackDamage(attackDamage);
+                int shieldBeforeHit = enemy.CurrentShield;
+                int healthAtImpact = enemy.CurrentHealth;
+                int appliedDamage = executesTarget
+                    ? enemy.ExecuteByPlayer()
+                    : enemy.ApplyAttackDamage(
+                        attackDamage,
+                        targetIsCritical);
                 if (appliedDamage > 0)
                 {
                     enemiesHitThisTurn.Add(enemy.GetInstanceID());
@@ -1703,7 +2300,8 @@ public partial class PlayerShoot
                         reportedDamage,
                         targetMaxHealth,
                         targetIsCritical,
-                        healthBeforeHit);
+                        healthAtImpact,
+                        shieldBeforeHit);
                     PlayDefeatImpact(
                         enemySnapshot,
                         horizontalDirection,
@@ -1741,6 +2339,7 @@ public partial class PlayerShoot
                 yield return ApplyClosedCircuitDamageTransfer(
                     bulletData,
                     sourceTileIndex,
+                    enemy.CurrentLaneIndex,
                     horizontalDirection,
                     reportedDamage,
                     processedDefeatIds);
@@ -1876,13 +2475,244 @@ public partial class PlayerShoot
                 }
             }
 
-            return BulletDynamicCombatRules.CalculateTargetDamageMultiplier(
+            float multiplier = BulletDynamicCombatRules
+                .CalculateTargetDamageMultiplier(
                 bullet,
                 new BulletTargetDamageContext(
                     tileDistance,
                     enemy == null ? 0 : enemy.TotalStatusStackCount,
                     enemy != null
-                    && enemiesHitThisTurn.Contains(enemy.GetInstanceID())));
+                    && enemiesHitThisTurn.Contains(enemy.GetInstanceID()),
+                    activeSniperBulletsBeforeShot));
+            BulletEffectData lockOnEffect = FindSpecialEffect(
+                bullet,
+                BulletEffectType.LockOn);
+            if (lockOnEffect != null
+                && enemy != null
+                && enemy == activePreviousPhysicalTarget)
+            {
+                multiplier *= 1f + Mathf.Max(0f, lockOnEffect.Amount) / 100f;
+            }
+
+            return multiplier;
+        }
+
+        private void PrepareFocusedShotgunTarget(
+            BulletInstance bullet,
+            int pelletIndex)
+        {
+            forcedShotTarget = null;
+            if (FindSpecialEffect(
+                    bullet,
+                    BulletEffectType.FocusedShotgun) == null
+                || waveManager == null)
+            {
+                return;
+            }
+
+            List<int> occupiedLanes = new List<int>();
+            foreach (EnemyController candidate in waveManager.ActiveEnemies)
+            {
+                if (HasProjectedDurability(candidate)
+                    && !occupiedLanes.Contains(candidate.CurrentLaneIndex))
+                {
+                    occupiedLanes.Add(candidate.CurrentLaneIndex);
+                }
+            }
+
+            if (occupiedLanes.Count == 0)
+            {
+                return;
+            }
+
+            occupiedLanes.Sort();
+            int preferredLane = playerMove == null
+                ? occupiedLanes[0]
+                : playerMove.CurrentLaneIndex;
+            if (!occupiedLanes.Contains(preferredLane))
+            {
+                preferredLane = occupiedLanes[0];
+            }
+
+            int targetLane = preferredLane;
+            if (occupiedLanes.Count > 1 && pelletIndex >= 4)
+            {
+                List<int> otherLanes = occupiedLanes.FindAll(
+                    lane => lane != preferredLane);
+                targetLane = otherLanes[(pelletIndex - 4) % otherLanes.Count];
+            }
+
+            foreach (EnemyController candidate in waveManager.ActiveEnemies)
+            {
+                if (!HasProjectedDurability(candidate)
+                    || candidate.CurrentLaneIndex != targetLane)
+                {
+                    continue;
+                }
+
+                if (forcedShotTarget == null
+                    || GetEnemyTileDistance(candidate)
+                        < GetEnemyTileDistance(forcedShotTarget)
+                    || GetEnemyTileDistance(candidate)
+                        == GetEnemyTileDistance(forcedShotTarget)
+                    && candidate.GetInstanceID()
+                        < forcedShotTarget.GetInstanceID())
+                {
+                    forcedShotTarget = candidate;
+                }
+            }
+        }
+
+        private EnemyController SelectSniperTarget(BulletInstance bullet)
+        {
+            if (FindSpecialEffect(bullet, BulletEffectType.LockOn) != null
+                && HasProjectedDurability(lastPhysicalShotTarget))
+            {
+                return lastPhysicalShotTarget;
+            }
+
+            EnemyController best = null;
+
+            foreach (EnemyController candidate in waveManager.ActiveEnemies)
+            {
+                if (!HasProjectedDurability(candidate))
+                {
+                    continue;
+                }
+
+                if ((FindSpecialEffect(bullet, BulletEffectType.Hunt) != null
+                        || FindSpecialEffect(
+                            bullet,
+                            BulletEffectType.LockOn) != null)
+                    && playerMove != null
+                    && candidate.CurrentLaneIndex != playerMove.CurrentLaneIndex)
+                {
+                    continue;
+                }
+
+                if (best == null || IsPreferredSniperTarget(
+                        bullet,
+                        candidate,
+                        best))
+                {
+                    best = candidate;
+                }
+            }
+
+            return best;
+        }
+
+        private EnemyController SelectLowestHealthTarget()
+        {
+            EnemyController best = null;
+
+            if (waveManager == null)
+            {
+                return null;
+            }
+
+            foreach (EnemyController candidate in waveManager.ActiveEnemies)
+            {
+                if (!HasProjectedDurability(candidate))
+                {
+                    continue;
+                }
+
+                if (best == null
+                    || candidate.CurrentHealth < best.CurrentHealth
+                    || candidate.CurrentHealth == best.CurrentHealth
+                    && candidate.GetInstanceID() < best.GetInstanceID())
+                {
+                    best = candidate;
+                }
+            }
+
+            return best;
+        }
+
+        private bool IsPreferredSniperTarget(
+            BulletInstance bullet,
+            EnemyController candidate,
+            EnemyController current)
+        {
+            if (FindSpecialEffect(bullet, BulletEffectType.Assassination)
+                != null)
+            {
+                int statusComparison = candidate.TotalStatusStackCount
+                    .CompareTo(current.TotalStatusStackCount);
+                if (statusComparison != 0)
+                {
+                    return statusComparison > 0;
+                }
+
+                int healthComparison = current.CurrentHealth.CompareTo(
+                    candidate.CurrentHealth);
+                if (healthComparison != 0)
+                {
+                    return healthComparison > 0;
+                }
+            }
+            else if (FindSpecialEffect(bullet, BulletEffectType.Hunt) != null
+                     || FindSpecialEffect(
+                         bullet,
+                         BulletEffectType.LockOn) != null)
+            {
+                int healthComparison = current.CurrentHealth.CompareTo(
+                    candidate.CurrentHealth);
+                if (healthComparison != 0)
+                {
+                    return healthComparison > 0;
+                }
+            }
+            else if (FindSpecialEffect(
+                         bullet,
+                         BulletEffectType.Execution) != null)
+            {
+                long left = (long)candidate.CurrentHealth
+                    * Mathf.Max(1, current.MaxHealth);
+                long right = (long)current.CurrentHealth
+                    * Mathf.Max(1, candidate.MaxHealth);
+                if (left != right)
+                {
+                    return left < right;
+                }
+            }
+            else if (FindSpecialEffect(bullet, BulletEffectType.Mastery)
+                     != null)
+            {
+                int maxHealthComparison = candidate.MaxHealth.CompareTo(
+                    current.MaxHealth);
+                if (maxHealthComparison != 0)
+                {
+                    return maxHealthComparison > 0;
+                }
+            }
+            else
+            {
+                int distanceComparison = GetEnemyTileDistance(candidate)
+                    .CompareTo(GetEnemyTileDistance(current));
+                if (distanceComparison != 0)
+                {
+                    return distanceComparison > 0;
+                }
+            }
+
+            return candidate.GetInstanceID() < current.GetInstanceID();
+        }
+
+        private int GetEnemyTileDistance(EnemyController enemy)
+        {
+            if (enemy == null || boardManager == null)
+            {
+                return 0;
+            }
+
+            return boardManager.TryGetTileDistance(
+                transform.position,
+                enemy.transform.position,
+                out int distance)
+                    ? Mathf.Max(0, distance)
+                    : 0;
         }
 
         private int GetShotRange(BulletInstance bullet)
@@ -1918,7 +2748,8 @@ public partial class PlayerShoot
             int appliedDamage,
             int targetMaxHealth,
             bool wasCritical,
-            int targetHealthBeforeDamage)
+            int targetHealthBeforeDamage,
+            int targetShieldBeforeDamage = 0)
         {
             return combatFeedback == null
                 ? default
@@ -1931,7 +2762,9 @@ public partial class PlayerShoot
                     waveManager != null
                         && waveManager.ActiveEnemies.Count <= 1,
                     GetCurrentCylinderBuild(),
-                    targetHealthBeforeDamage);
+                    targetHealthBeforeDamage,
+                    true,
+                    targetShieldBeforeDamage);
         }
 
         private void PlayDefeatImpact(
@@ -1943,6 +2776,7 @@ public partial class PlayerShoot
             float feedbackMultiplier = cue.FeedbackMultiplier > 0f
                 ? cue.FeedbackMultiplier
                 : 1f;
+            snapshot.OverkillStrength = cue.OverkillStrength;
             combatPresentation?.PlayImpact(
                 snapshot,
                 horizontalDirection,
@@ -1952,7 +2786,10 @@ public partial class PlayerShoot
                 combatFeedback == null
                     ? 0f
                     : combatFeedback.GetRemainingDefeatPresentationDelay(cue),
-                cue.WasFinalEnemy);
+                cue.WasFinalEnemy,
+                cue.FiringSequenceDefeatCount,
+                cue.HasPreviousDefeatPosition,
+                cue.PreviousDefeatPosition);
         }
     
         private IEnumerator ApplyEyeOfTheStormDamage(
@@ -2006,7 +2843,8 @@ public partial class PlayerShoot
                         reportedDamage,
                         targetMaxHealth,
                         false,
-                        healthBeforeDamage);
+                        healthBeforeDamage,
+                        enemy.LastDamageAbsorbed);
                     PlayDefeatImpact(
                         snapshot,
                         horizontalDirection,
@@ -2040,7 +2878,182 @@ public partial class PlayerShoot
                         GetCurrentCylinderBuild());
                 }
     
-                yield return null;
+            }
+        }
+
+        private IEnumerator ApplyReturnShot(
+            BulletInstance bullet,
+            Vector3 returnStartPoint,
+            int horizontalDirection,
+            bool isCritical,
+            float damageMultiplier)
+        {
+            BulletEffectData returnEffect = FindSpecialEffect(
+                bullet,
+                BulletEffectType.Monopoly);
+
+            if (returnEffect == null || waveManager == null
+                || boardManager == null || playerMove == null)
+            {
+                yield break;
+            }
+
+            int playerLane = playerMove.CurrentLaneIndex;
+
+            if (!boardManager.TryGetTileIndex(
+                    transform.position,
+                    playerLane,
+                    out int playerTile)
+                || !boardManager.TryGetTileIndex(
+                    returnStartPoint,
+                    playerLane,
+                    out int returnTile))
+            {
+                yield break;
+            }
+
+            List<EnemyController> returnTargets = new List<EnemyController>();
+            int minimumTile = Mathf.Min(playerTile, returnTile);
+            int maximumTile = Mathf.Max(playerTile, returnTile);
+
+            foreach (EnemyController candidate in waveManager.ActiveEnemies)
+            {
+                if (candidate == null || candidate.CurrentHealth <= 0
+                    || candidate.CurrentLaneIndex != playerLane
+                    || !boardManager.TryGetTileIndex(
+                        candidate.transform.position,
+                        candidate.CurrentLaneIndex,
+                        out int candidateTile)
+                    || candidateTile < minimumTile
+                    || candidateTile > maximumTile)
+                {
+                    continue;
+                }
+
+                returnTargets.Add(candidate);
+            }
+
+            returnTargets.Sort((first, second) =>
+            {
+                boardManager.TryGetTileIndex(
+                    first.transform.position,
+                    first.CurrentLaneIndex,
+                    out int firstTile);
+                boardManager.TryGetTileIndex(
+                    second.transform.position,
+                    second.CurrentLaneIndex,
+                    out int secondTile);
+                return Mathf.Abs(secondTile - playerTile).CompareTo(
+                    Mathf.Abs(firstTile - playerTile));
+            });
+
+            Vector3 returnEndPoint = firePoint.position;
+            float travelDuration = ResolveProjectileTravelDuration(
+                Mathf.Abs(returnTile - playerTile));
+            bool projectileStarted = BulletProjectileView.TrySpawn(
+                bullet.ProjectileVisual,
+                bullet,
+                returnStartPoint,
+                returnEndPoint,
+                out BulletProjectileView projectile);
+
+            if (!projectileStarted && bulletLinePrefab != null)
+            {
+                BulletLine bulletLine = Instantiate(
+                    bulletLinePrefab,
+                    returnStartPoint,
+                    Quaternion.identity);
+
+                if (!bulletLine.Initialize(
+                        bullet,
+                        returnStartPoint,
+                        returnEndPoint))
+                {
+                    Destroy(bulletLine.gameObject);
+                }
+            }
+
+            yield return WaitForProjectileArrival(projectile, travelDuration);
+            float returnMultiplier = damageMultiplier
+                * BulletEffectUtility.GetReturnDamageMultiplier(returnEffect);
+            HashSet<int> processedDefeatIds = new HashSet<int>();
+
+            foreach (EnemyController enemy in returnTargets)
+            {
+                if (enemy == null || enemy.CurrentHealth <= 0)
+                {
+                    continue;
+                }
+
+                CombatPresentation.EnemySnapshot snapshot =
+                    combatPresentation == null
+                        ? default
+                        : combatPresentation.CaptureEnemy(enemy);
+                int healthBefore = enemy.CurrentHealth;
+                int maxHealth = enemy.MaxHealth;
+                bool targetIsCritical = ResolvePhysicalBulletCritical(
+                    isCritical,
+                    enemy);
+                int attackDamage = CalculateAttackDamage(
+                    bullet,
+                    targetIsCritical,
+                    returnMultiplier * GetTargetDamageMultiplier(bullet, enemy),
+                    activeShotIndex,
+                    deckManager != null
+                        && deckManager.LoadedBullets.Count == 0);
+                int reportedDamage = enemy.PredictAttackDamage(attackDamage);
+                int appliedDamage = enemy.ApplyAttackDamage(
+                    attackDamage,
+                    targetIsCritical);
+
+                if (appliedDamage > 0)
+                {
+                    enemiesHitThisTurn.Add(enemy.GetInstanceID());
+                    owner.DamageDealt?.Invoke(reportedDamage);
+                    relicManager?.NotifyEnemyDamaged(enemy, reportedDamage);
+                }
+
+                bool defeated = healthBefore > 0 && enemy.CurrentHealth <= 0;
+                combatFeedback?.RecordDamage(
+                    reportedDamage,
+                    reportedDamage > appliedDamage);
+
+                if (defeated)
+                {
+                    CombatFeedbackController.DefeatPresentationCue cue =
+                        RecordDefeat(
+                            snapshot.Position,
+                            -horizontalDirection,
+                            reportedDamage,
+                            maxHealth,
+                            targetIsCritical,
+                            healthBefore);
+                    PlayDefeatImpact(
+                        snapshot,
+                        -horizontalDirection,
+                        bullet,
+                        cue);
+                    yield return ApplyDefeatTriggeredAbilities(
+                        bullet,
+                        enemy,
+                        enemy.GetInstanceID(),
+                        -horizontalDirection,
+                        appliedDamage,
+                        snapshot.Position,
+                        processedDefeatIds);
+                }
+                else if (appliedDamage > 0)
+                {
+                    combatPresentation?.PlayImpact(
+                        snapshot,
+                        -horizontalDirection,
+                        bullet,
+                        CombatImpactTierUtility.Resolve(
+                            targetIsCritical,
+                            reportedDamage,
+                            maxHealth,
+                            false));
+                }
             }
         }
     
@@ -2089,6 +3102,7 @@ public partial class PlayerShoot
                     || targetTileIndex >= boardManager.BoardCount
                     || !waveManager.TryGetEnemyAtTile(
                         targetTileIndex,
+                        playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                         out EnemyController targetEnemy)
                     || targetEnemy == null || targetEnemy.CurrentHealth <= 0)
                 {
@@ -2134,7 +3148,8 @@ public partial class PlayerShoot
                         reportedDamage,
                         targetMaxHealth,
                         false,
-                        healthBeforeTransfer);
+                        healthBeforeTransfer,
+                        targetEnemy.LastDamageAbsorbed);
                     PlayDefeatImpact(
                         targetSnapshot,
                         horizontalDirection,
@@ -2174,6 +3189,7 @@ public partial class PlayerShoot
         private IEnumerator ApplyClosedCircuitDamageTransfer(
             BulletInstance bullet,
             int sourceTileIndex,
+            int sourceLaneIndex,
             int horizontalDirection,
             int sourceDamage,
             HashSet<int> processedDefeatIds)
@@ -2194,8 +3210,13 @@ public partial class PlayerShoot
             foreach (EnemyController candidate in waveManager.ActiveEnemies)
             {
                 if (candidate == null || candidate.CurrentHealth <= 0
+                    || !CanPlayerEffectTargetLane(
+                        sourceLaneIndex,
+                        candidate.CurrentLaneIndex,
+                        false)
                     || !boardManager.TryGetTileIndex(
                         candidate.transform.position,
+                        candidate.CurrentLaneIndex,
                         out int candidateTile))
                 {
                     continue;
@@ -2248,7 +3269,8 @@ public partial class PlayerShoot
                         reportedDamage,
                         targetMaxHealth,
                         false,
-                        healthBeforeDamage);
+                        healthBeforeDamage,
+                        target.LastDamageAbsorbed);
                 PlayDefeatImpact(
                     snapshot,
                     horizontalDirection,
@@ -2298,6 +3320,8 @@ public partial class PlayerShoot
             {
                 yield break;
             }
+
+            activeShotDefeatedEnemy = true;
     
             relicManager?.NotifyEnemyDefeated(
                 enemy,
@@ -2327,6 +3351,52 @@ public partial class PlayerShoot
             {
                 onCompleted?.Invoke(default);
                 yield break;
+            }
+
+            BulletEffectData crescendoEffect = FindSpecialEffect(
+                bullet,
+                BulletEffectType.Crescendo);
+
+            if (crescendoEffect != null && crescendoEffect.RollActivation())
+            {
+                StatusEffectType selectedStatus =
+                    StatusEffectController.GetStackableStatusType(
+                        UnityEngine.Random.Range(
+                            0,
+                            StatusEffectController.StackableStatusTypeCount));
+
+                if (enemy.AddStatusEffect(
+                        selectedStatus,
+                        BulletEffectUtility.GetCrescendoStatusStacks(
+                            crescendoEffect),
+                        true))
+                {
+                    activeDynamicStatusMask |= 1 << (int)selectedStatus;
+                }
+            }
+
+            BulletEffectData mixedEffect = FindSpecialEffect(
+                bullet,
+                BulletEffectType.MixedGrade);
+
+            if (mixedEffect != null && mixedEffect.RollActivation())
+            {
+                ApplyStatusMaskToEnemy(
+                    enemy,
+                    BulletEffectUtility.MixedGradeStatusMask,
+                    Mathf.Max(0, mixedEffect.StackCount));
+            }
+
+            BulletEffectData resonanceEffect = FindSpecialEffect(
+                bullet,
+                BulletEffectType.Resonance);
+
+            if (resonanceEffect != null && resonanceEffect.RollActivation())
+            {
+                ApplyStatusMaskToEnemy(
+                    enemy,
+                    activeResonanceStatusMask,
+                    Mathf.Max(0, resonanceEffect.StackCount));
             }
     
             BulletEffectData amplifierEffect = FindSpecialEffect(
@@ -2404,6 +3474,37 @@ public partial class PlayerShoot
     
             onCompleted?.Invoke(defeatResult);
             yield break;
+        }
+
+        private static bool ApplyStatusMaskToEnemy(
+            EnemyController enemy,
+            int statusMask,
+            int stacks)
+        {
+            if (enemy == null || enemy.CurrentHealth <= 0 || stacks <= 0)
+            {
+                return false;
+            }
+
+            bool applied = false;
+
+            for (int index = 0;
+                 index < StatusEffectController.StackableStatusTypeCount;
+                 index++)
+            {
+                StatusEffectType statusType =
+                    StatusEffectController.GetStackableStatusType(index);
+
+                if (BulletEffectUtility.IncludesStatus(statusMask, statusType))
+                {
+                    applied |= enemy.AddStatusEffect(
+                        statusType,
+                        stacks,
+                        true);
+                }
+            }
+
+            return applied;
         }
     
         private void GrantDevourerStack(BulletInstance resolvedBullet)
@@ -2733,8 +3834,7 @@ public partial class PlayerShoot
                 shotIndex,
                 isLastLoadedShot,
                 applyRuntimeRelicModifiers,
-                activeCriticalDamageMultiplierBonus
-                    + GetRitualCriticalDamageMultiplierBonus());
+                activeCriticalDamageMultiplierBonus);
         }
 
         private static bool IsBoardWideShot(BulletInstance bullet)
@@ -2762,14 +3862,10 @@ public partial class PlayerShoot
             return owner.GetShotLineEndPoint(startPoint, targetEndPoint);
         }
 
-        private IEnumerator WaitForShotInterval()
-        {
-            return owner.WaitForShotInterval();
-        }
-
         private void ShowBulletFeedback(BulletInstance bullet)
         {
             owner.ShowBulletFeedback(bullet);
         }
+
     }
 }

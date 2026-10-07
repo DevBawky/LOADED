@@ -1,5 +1,9 @@
 # WebGL 저장과 로딩 최적화
 
+> 과거 구현 기록입니다. 2026-10-06부터 Windows 64비트만 대상으로 하며 WebGL 빌드·검증·배포를 중단했습니다.
+> `WebBuild/`, WebGL 템플릿, `WebBuildCommand`, GitHub Pages 워크플로는 제거했습니다.
+> 아래 메뉴·템플릿 설명은 현재 실행 지침이 아닙니다. 공용 런 저장 코드의 과거 플랫폼 호환 분기는 유지합니다.
+
 ## 저장 및 불러오기
 
 `RunSaveSystem`은 데스크톱에서는 기존처럼 `Application.persistentDataPath`의 JSON 파일을 사용한다. WebGL에서는 같은 JSON을 `loaded.run.save.v3` PlayerPrefs 키에 저장하고 즉시 `PlayerPrefs.Save()`를 호출한다. 이전 WebGL 빌드에서 가상 파일 시스템 저장이 남아 있으면 최초 불러오기 때 새 저장소로 가져온다.

@@ -205,19 +205,24 @@ public static class BigBarrelAssetBuilder
             "폭약왕 빅 베럴을 처치했습니다.";
         serialized.FindProperty("battleType").enumValueIndex =
             (int)BattleType.Boss;
-        serialized.FindProperty("boardCount").intValue = 7;
+        serialized.FindProperty("minimumBoardCount").intValue = 7;
+        serialized.FindProperty("maximumBoardCount").intValue = 7;
         BoardTile tilePrefab = AssetDatabase.LoadAssetAtPath<BoardTile>(
             "Assets/Prefabs/Tiles/Tile.prefab");
         serialized.FindProperty("tilePrefab").objectReferenceValue = tilePrefab;
-        serialized.FindProperty("spawnTerm").intValue = 0;
-        SerializedProperty waves = serialized.FindProperty("waves");
-        waves.arraySize = 1;
-        SerializedProperty enemies = waves.GetArrayElementAtIndex(0)
-            .FindPropertyRelative("enemies");
-        enemies.arraySize = 1;
-        SerializedProperty entry = enemies.GetArrayElementAtIndex(0);
-        entry.FindPropertyRelative("enemyData").objectReferenceValue = bossData;
-        entry.FindPropertyRelative("count").intValue = 1;
+        serialized.FindProperty("duelClockEnemySpawnCount").intValue = 1;
+        SerializedProperty entries = serialized.FindProperty(
+            "duelClockEnemySpawnEntries");
+        entries.arraySize = 1;
+        SerializedProperty entry = entries.GetArrayElementAtIndex(0);
+        entry.FindPropertyRelative("enemyData").objectReferenceValue =
+            bossData;
+        entry.FindPropertyRelative("weight").floatValue = 1f;
+        entry.FindPropertyRelative("minimumSpawnCount").intValue = 1;
+        entry.FindPropertyRelative("missedSpawnWeightIncrease").floatValue =
+            0f;
+        entry.FindPropertyRelative("previousSpawnWeightMultiplier")
+            .floatValue = 1f;
         serialized.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(battle);
         return battle;

@@ -89,8 +89,10 @@ internal static class BulletEffectDescriptionFormatter
             BulletEffectType.GainGold =>
                 $"골드를 {FormatNumber(effect.Amount)} 획득합니다.",
             BulletEffectType.Jackpot =>
-                "발사 직전 자신만 마지막 약실에 남아 있으면 최종 피해가 "
-                + $"x{FormatNumber(effect.Amount / 100f)}로 증가합니다.",
+                $"발사할 때 {FormatNumber(effect.ActivationChance)}% 확률로 대박이 납니다. "
+                + $"대박 시 최종 피해 x{FormatNumber(effect.Amount / 100f)}, "
+                + $"골드 +{Mathf.Max(0, effect.StackCount)}. "
+                + "한 번의 실제 발사당 한 번만 추첨합니다.",
             BulletEffectType.PowderPouch =>
                 "발사한 탄환을 영구 파괴합니다. "
                 + "남은 탄환들의 치명타 확률을 "
@@ -105,14 +107,15 @@ internal static class BulletEffectDescriptionFormatter
                 + $"x{FormatNumber(effect.Amount / 100f)} 배율을 적용합니다.",
             BulletEffectType.ChainFire => DescribeChainFire(effect),
             BulletEffectType.Resonance =>
-                "실린더에 남은 다른 공명 탄환 하나당 최종 피해를 "
-                + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
+                "직전 탄환이 부여한 상태이상 종류를 명중 대상에게 "
+                + $"각각 {Mathf.Max(0, effect.StackCount)}스택 부여합니다.",
             BulletEffectType.Gilded =>
                 $"보유 골드 {Mathf.Max(1, effect.StackCount)}당 최종 피해를 "
                 + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
             BulletEffectType.Coagulation =>
-                $"잃은 체력 {Mathf.Max(1, effect.StackCount)}%당 "
-                + $"치명타 확률을 +{FormatNumber(effect.Amount)}%p 증가시킵니다.",
+                $"발사 후 잃은 체력의 {FormatNumber(effect.Amount)}%를 회복합니다. "
+                + $"보유한 혈투 탄환 하나당 회복 비율 +{Mathf.Max(0, effect.StackCount)}%p "
+                + $"(최대 {Mathf.Max(0, effect.KnockbackDistance)}%).",
             BulletEffectType.Heart =>
                 $"최대 체력 {Mathf.Max(1, effect.StackCount)}당 최종 피해를 "
                 + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
@@ -120,8 +123,7 @@ internal static class BulletEffectDescriptionFormatter
             BulletEffectType.QuickDraw =>
                 "방향과 관계없이 생존한 모든 적을 공격합니다.",
             BulletEffectType.Loader =>
-                "발사 시작 시 빈 약실 하나당 최종 피해를 "
-                + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
+                "발사 후 다음 재장전이 턴을 소모하지 않습니다.",
             BulletEffectType.Rangefinder =>
                 "대상과의 거리 1칸당 최종 피해를 "
                 + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
@@ -134,8 +136,8 @@ internal static class BulletEffectDescriptionFormatter
                 + $"x{Mathf.Max(2, Mathf.RoundToInt(effect.Amount))}배로 증가시킵니다.",
             BulletEffectType.VenomBurst => DescribeVenomBurst(effect),
             BulletEffectType.Crescendo =>
-                "자신을 제외한 보유 탄환 하나당 기본 피해가 "
-                + $"{FormatNumber(effect.Amount)} 감소합니다.",
+                "명중 시 독·표식·약화·기절 중 하나를 무작위로 "
+                + $"{Mathf.Max(0, effect.StackCount)}스택 부여합니다.",
             BulletEffectType.Rebate =>
                 $"치명타 발생 시 골드를 {FormatNumber(effect.Amount)} 획득합니다.",
             BulletEffectType.Distributor =>
@@ -168,20 +170,21 @@ internal static class BulletEffectDescriptionFormatter
                 + "유산 스택 하나당 최종 피해가 "
                 + $"+{FormatNumber(effect.Amount)}% 증가합니다.",
             BulletEffectType.Collection =>
-                "보유한 서로 다른 탄환 종류 하나당 최종 피해를 "
-                + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
+                "이 탄환으로 적을 처치하면 생존한 적 중 현재 체력이 가장 낮은 "
+                + $"적에게 즉시 다시 발사합니다. 최대 {Mathf.Max(0, effect.StackCount)}회 연쇄합니다.",
             BulletEffectType.MixedGrade =>
-                "실린더에 남은 다른 등급 탄환 하나당 최종 피해를 "
-                + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
+                "명중 대상에게 독·표식·약화를 "
+                + $"각각 {Mathf.Max(0, effect.StackCount)}스택 부여합니다.",
             BulletEffectType.Masterpiece =>
-                "보유한 에이스·레전드리 탄환 하나당 최종 피해를 "
-                + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
+                "치명타가 확정됩니다. 보유한 에이스·레전드리 탄환 하나당 "
+                + $"치명타 배율 +{FormatNumber(effect.Amount)} "
+                + $"(최대 {Mathf.Max(0, effect.StackCount)}개).",
             BulletEffectType.MassProduced =>
-                "보유한 일반·레어 탄환 하나당 최종 피해를 "
-                + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
+                "보유한 노멀·레어 탄환 하나당 추가 공격합니다 "
+                + $"(최대 {Mathf.Max(0, effect.StackCount)}회).",
             BulletEffectType.Monopoly =>
-                "가장 많이 보유한 등급의 탄환 하나당 최종 피해를 "
-                + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
+                "명중 지점에서 플레이어에게 되돌아오며 같은 레인의 귀환 경로에 "
+                + $"있는 적에게 원래 피해의 {FormatNumber(effect.Amount)}%를 줍니다.",
             BulletEffectType.Seismometer =>
                 "플레이어가 1칸 이동할 때마다 이동 스택 +1을 획득합니다. "
                 + "이동 스택 하나당 최종 피해가 "
@@ -211,12 +214,9 @@ internal static class BulletEffectDescriptionFormatter
                 + $"+{FormatNumber(effect.Amount)} 증가시킵니다. "
                 + "치명타 배율 보너스는 누적됩니다.",
             BulletEffectType.Tracking =>
-                "탄환 효과로 이동할 때마다 추적 스택 +1을 획득합니다. "
-                + "발사 후 추적 스택 하나당 무작위 적에게 "
-                + $"표식 +{GetStacks(effect)}을 부여합니다. "
-                + "발사 후 모든 추적 스택을 소모합니다.",
+                "모든 레인에서 상태이상이 있는 모든 적을 공격합니다.",
             BulletEffectType.Assassination =>
-                "이번 턴에 이미 피격된 대상에게 최종 피해를 "
+                "상태이상 스택이 가장 많은 적을 조준하고, 스택당 최종 피해를 "
                 + $"+{FormatNumber(effect.Amount)}% 증가시킵니다.",
             BulletEffectType.FleshForBone =>
                 $"발사 시 플레이어가 체력 {FormatNumber(effect.Amount)}을 잃습니다. "
@@ -227,6 +227,35 @@ internal static class BulletEffectDescriptionFormatter
                 + $"+{FormatNumber(effect.Amount)}% 증가합니다.",
             BulletEffectType.RotatePlayer =>
                 "발사 후 플레이어가 반대 방향을 바라봅니다.",
+            BulletEffectType.Mastery =>
+                "최대 체력이 가장 높은 적을 조준하고, 이번 실린더에서 앞서 발사한 "
+                + $"저격 탄환 1발당 최종 피해를 x{FormatNumber(effect.Amount)}로 증가시킵니다.",
+            BulletEffectType.Cataclysm =>
+                "모든 레인의 모든 적을 공격합니다.",
+            BulletEffectType.FocusedShotgun =>
+                "8개 팰릿을 발사합니다. 여러 레인에 적이 있으면 기준 레인에 4발, "
+                + "나머지 레인에 남은 팰릿을 균등 분배합니다.",
+            BulletEffectType.Vanguard =>
+                $"실린더에서 첫 번째로 발사되면 최종 피해 +{FormatNumber(effect.Amount)}%.",
+            BulletEffectType.Finisher =>
+                $"실린더에서 마지막으로 발사되면 최종 피해 +{FormatNumber(effect.Amount)}%.",
+            BulletEffectType.SpecterReturn =>
+                $"발사 후 {FormatNumber(effect.ActivationChance)}% 확률로 무덤 대신 덱 맨 위로 돌아갑니다.",
+            BulletEffectType.Necromancy =>
+                $"함께 장전된 다른 유령 탄환 하나당 최종 피해 +{FormatNumber(effect.Amount)}% "
+                + $"(최대 {Mathf.Max(0, effect.StackCount)}개).",
+            BulletEffectType.Hunt =>
+                "현재 플레이어 레인에서 현재 체력이 가장 낮은 적을 조준합니다.",
+            BulletEffectType.LockOn =>
+                "직전 물리 탄환의 주 대상이 생존해 있으면 다시 조준하고, "
+                + $"같은 대상에게 최종 피해 +{FormatNumber(effect.Amount)}%.",
+            BulletEffectType.Execution =>
+                "모든 레인에서 체력 비율이 가장 낮은 적을 조준합니다. "
+                + "보스가 아닌 적이 공격 전 최대 체력의 25% 미만이면 즉시 처형합니다.",
+            BulletEffectType.Blink =>
+                "발사 후 점유되지 않은 무작위 타일로 순간이동합니다.",
+            BulletEffectType.RandomPelletDamage =>
+                $"각 팰릿의 기본 피해를 {FormatNumber(effect.Amount)}~{Mathf.Max(0, effect.StackCount)} 사이에서 독립 결정합니다.",
             _ => string.Empty
         };
 
@@ -434,20 +463,9 @@ internal static class BulletEffectDescriptionFormatter
 
     private static string DescribeRitual(BulletEffectData effect)
     {
-        string description =
-            $"치명타 발생 시 집중 스택 +{Mathf.Max(1, effect.StackCount)}을 획득합니다. "
-            + "집중 스택 하나당 치명타 배율이 "
-            + $"+{FormatNumber(effect.Amount)} 증가합니다. "
-            + "비치명타 발생 시 집중 스택을 초기화합니다.";
-
-        if (effect.ActivationChance > 0f)
-        {
-            description += " 비치명타 발생 시 "
-                + $"{FormatNumber(Mathf.Clamp(effect.ActivationChance, 0f, 100f))}% "
-                + "확률로 탄환이 영구 파괴됩니다.";
-        }
-
-        return description;
+        return $"발사할 때 최대 체력을 {Mathf.Max(1, effect.StackCount)} 지불합니다. "
+            + $"이후 이번 런 동안 이 탄환의 기본 피해가 영구적으로 "
+            + $"+{FormatNumber(effect.Amount)} 증가합니다.";
     }
 
     private static bool UsesActivationRoll(BulletEffectType effectType)

@@ -30,7 +30,7 @@
 * 골드는 적 처치 보상으로 획득하고 `Text | Current Money`에 `$ {Money}` 형식으로 표시해주세요.
 * 구매 시 돈을 먼저 지출하고 덱 추가가 실패하면 환불해주세요.
 * 적 처치 보상은 골드, 아이템, 탄환 중 하나를 가중치로 선택할 수 있게 해주세요.
-* 하나의 Stage는 여러 `BattleData`로 구성하고 각 전투마다 보드, 전투 타입과 웨이브를 설정할 수 있게 해주세요.
+* 하나의 Stage는 여러 `BattleData`로 구성하고 각 전투마다 보드 범위, 전투 타입과 가중치 적 풀을 설정할 수 있게 해주세요.
 * 일반 전투와 보스 전투 모두 `Battle Clear → Shop → 다음 전투 또는 다음 Stage` 순서로 진행해주세요.
 * Battle Clear와 Shop에서는 이동, 장전과 발사를 포함한 플레이어 입력을 잠가주세요.
 * 마지막 전투 뒤에도 상점을 이용한 다음 Run Complete로 전환해주세요.
@@ -46,11 +46,17 @@ StageData[]
 └─ StageData
    └─ BattleData[]
       └─ BattleData
-         ├─ Board Count / Tile Prefab
+         ├─ Minimum / Maximum Board Count / Tile Prefab
          ├─ Battle Type (Normal / Boss)
-         └─ EnemyWave[]
-            └─ Enemy Prefab / Count
+         └─ DuelClockEnemySpawnEntry[] / Total Spawn Count
+            └─ EnemyData / Weight / Minimum Spawn Count
 ```
+
+2026-10-07 이후 `BattleData`는 전투 시작 시 최소·최대 범위 안에서 보드
+칸 수를 한 번 추첨한다. 실제 선택된 값은 런 저장 데이터에 기록되어 이어하기,
+Battle Clear와 Shop 복원에서 동일하게 재사용된다. 구형 `Board Count`,
+`Spawn Term`, `Waves`, `Combat Pacing`과 Duel Clock 마이그레이션 필드는
+에셋 스키마에서 제거됐으며, 적 구성은 가중치 스폰 엔트리가 유일한 작성 원본이다.
 
 `ShopManager`는 남은 등급을 가중치로 먼저 선택한 뒤 해당 등급의 후보 하나를 균등 선택하고, 선택한 탄환은 후보에서 제거해 한 상점 내 중복을 막는다. 260720 등급 개편으로 등급은 Normal, Rare, Ace, Legendary 네 단계이며 기존 Uncommon과 Rare는 Rare로 통합했다. 통합 전 두 등급의 확률 질량을 보존한 기본 상대 가중치는 Normal 100, Rare 85, Ace 10, Legendary 3이다.
 
@@ -113,3 +119,11 @@ StageData[]
 진행 상태가 여러 Manager에 걸쳐 있을 때는 패널 전환보다 먼저 행동 종료와 입력 잠금을 확정해야 다음 전투와의 상태 경쟁을 막을 수 있다.
 
 상점의 “판매 완료”는 GameObject 활성 상태와 Button 상호작용 상태를 구분해 명시해야 UI 요구가 정확하게 구현된다.
+
+## 골드 획득 표시 (2026-09-24)
+
+- `CurrencyManager`는 처치 골드를 즉시 지급하고 `MoneyChanged`를 한 번 발행한다. `GoldRewardPresenter`는 표시 숫자와 임시 UI만 관리한다. 저장·사용·비활성화 시 연출을 정리해도 재화는 재지급하거나 누락하지 않는다.
+- 기존 `Flying Gold` HUD 프리팹 복제/물결 비행은 사용하지 않는다. 직렬화된 구 설정은 호환을 위해 보존한다. 런타임 코인 Sprite로 최대 4개씩 분산시키고, 0.18초 뒤 0.46초 동안 HUD로 가속 흡수한다. 처치 위치의 `+금액`과 짧은 금빛 파편을 함께 표시한다.
+- 코인에 실제 금액을 나눠 담아 도착 시 표시 숫자만 갱신한다. 동시 코인은 24개로 제한하고 초과 보상은 기존 비행에 합친다. HUD의 합산 획득 숫자와 작은 반동·금빛 틴트가 연속 획득을 연결한다.
+- `SFX_GainGold`는 기존처럼 처치 보상을 지급하는 순간 원래 볼륨으로 재생한다. 코인 도착 시에는 소리를 중복 재생하지 않는다. 추가 사운드 ID나 사용자 볼륨 설정 변경은 없다.
+- 일시정지 중에는 비행·파편·텍스트가 멈춘다. 연출에 게임플레이 난수를 사용하지 않는다. 작은 코인 수·파편 수 제한으로 큰 보상도 UI 개수가 금액만큼 증가하지 않는다.

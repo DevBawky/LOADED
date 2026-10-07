@@ -47,6 +47,7 @@ internal sealed class EnemyThrownProjectileFlight
     public bool HasReachedDodgeWindow =>
         elapsedTime >= dodgeWindowStartTime;
     public Vector3 CurrentPosition => CalculatePosition();
+    public float Progress => duration <= 0f ? 1f : Mathf.Clamp01(elapsedTime / duration);
 
     public EnemyThrownProjectileFrame Advance(float deltaTime)
     {
@@ -94,6 +95,7 @@ internal sealed class EnemyThrownAttackRuntime
     private readonly EnemyThrownProjectileFlight flight;
     private readonly GameObject projectile;
     private readonly int targetTileIndex;
+    private readonly int targetLaneIndex;
     private readonly Vector3 targetPosition;
     private readonly int attackDamage;
     private readonly GameObject explosionVfxPrefab;
@@ -110,6 +112,7 @@ internal sealed class EnemyThrownAttackRuntime
         EnemyThrownProjectileFlight flight,
         GameObject projectile,
         int targetTileIndex,
+        int targetLaneIndex,
         Vector3 targetPosition,
         int attackDamage,
         GameObject explosionVfxPrefab,
@@ -125,6 +128,7 @@ internal sealed class EnemyThrownAttackRuntime
         this.flight = flight;
         this.projectile = projectile;
         this.targetTileIndex = targetTileIndex;
+        this.targetLaneIndex = targetLaneIndex;
         this.targetPosition = targetPosition;
         this.attackDamage = Mathf.Max(0, attackDamage);
         this.explosionVfxPrefab = explosionVfxPrefab;
@@ -137,6 +141,17 @@ internal sealed class EnemyThrownAttackRuntime
     {
         try
         {
+            if (boardManager != null && projectile != null)
+            {
+                Vector3 origin = flight.CurrentPosition;
+                if (source != null
+                    && boardManager.TryGetTileIndex(source.transform.position, source.CurrentLaneIndex, out int tile)
+                    && boardManager.TryGetTilePosition(tile, source.CurrentLaneIndex, out Vector3 floor)) origin = floor;
+                boardManager.SetWarningOrigin(projectile.transform, origin);
+                boardManager.SetTileWarningActive(targetTileIndex,
+                    targetLaneIndex, projectile.transform, true);
+            }
+
             EnemyPlayerDodgeWindowState dodgeState = default;
             EnemyPlayerDodgeResolution dodgeResolution = default;
             bool dodgeWindowStarted = false;
@@ -149,6 +164,11 @@ internal sealed class EnemyThrownAttackRuntime
                 }
 
                 dodgeWindowStarted = true;
+                SoundManager.PlayEnemyAttackWarning();
+                if (boardManager != null && projectile != null)
+                {
+                    boardManager.SetWarningUrgent(projectile.transform, true);
+                }
                 dodgeState = CapturePlayerDodgeWindow();
             }
 
@@ -168,6 +188,8 @@ internal sealed class EnemyThrownAttackRuntime
 
                 EnemyThrownProjectileFrame frame = flight.Advance(
                     Time.deltaTime);
+                if (boardManager != null && projectile != null)
+                    boardManager.SetWarningProgress(projectile.transform, flight.Progress);
 
                 if (frame.ReachedDodgeWindow)
                 {
@@ -190,13 +212,23 @@ internal sealed class EnemyThrownAttackRuntime
 
             BeginDodgeWindow();
             TryConfirmPlayerDodge(dodgeState, ref dodgeResolution);
+            if (projectile != null)
+                boardManager?.SetWarningProgress(projectile.transform, 1f);
             ResolvePlayerDodgeAtImpact(
                 dodgeState,
                 ref dodgeResolution);
             ResolveImpact(dodgeResolution.PlayerDodged);
+            if (boardManager != null && projectile != null)
+            {
+                boardManager.CompleteTileWarnings(projectile.transform);
+            }
         }
         finally
         {
+            if (boardManager != null && projectile != null)
+            {
+                boardManager.ReleaseTileWarnings(projectile.transform);
+            }
             IsComplete = true;
         }
     }
@@ -206,6 +238,7 @@ internal sealed class EnemyThrownAttackRuntime
         if (!IsPlayerInTargetTile() || boardManager == null
             || playerMove == null || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return default;
@@ -214,6 +247,7 @@ internal sealed class EnemyThrownAttackRuntime
         return new EnemyPlayerDodgeWindowState(
             true,
             playerTileIndex,
+            playerMove.CurrentLaneIndex,
             playerMove.transform.position);
     }
 
@@ -224,11 +258,13 @@ internal sealed class EnemyThrownAttackRuntime
         if (boardManager == null || playerMove == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int currentPlayerTileIndex)
             || !resolution.TryConfirmBeforeImpact(
                 dodgeState,
                 IsPlayerInTargetTile(),
                 currentPlayerTileIndex,
+                playerMove.CurrentLaneIndex,
                 playerMove.transform.position,
                 out int movementDirection))
         {
@@ -245,14 +281,17 @@ internal sealed class EnemyThrownAttackRuntime
         ref EnemyPlayerDodgeResolution resolution)
     {
         int currentPlayerTileIndex = -1;
+        int currentPlayerLaneIndex = -1;
         Vector3 currentPlayerPosition = playerMove == null
             ? dodgeState.PlayerPosition
             : playerMove.transform.position;
 
         if (boardManager != null && playerMove != null)
         {
+            currentPlayerLaneIndex = playerMove.CurrentLaneIndex;
             boardManager.TryGetTileIndex(
                 currentPlayerPosition,
+                currentPlayerLaneIndex,
                 out currentPlayerTileIndex);
         }
 
@@ -260,6 +299,7 @@ internal sealed class EnemyThrownAttackRuntime
                 dodgeState,
                 IsPlayerInTargetTile(),
                 currentPlayerTileIndex,
+                currentPlayerLaneIndex,
                 currentPlayerPosition,
                 out int movementDirection))
         {
@@ -290,8 +330,10 @@ internal sealed class EnemyThrownAttackRuntime
         return targetTileIndex >= 0 && boardManager != null
             && playerMove != null && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex)
-            && playerTileIndex == targetTileIndex;
+            && playerTileIndex == targetTileIndex
+            && playerMove.CurrentLaneIndex == targetLaneIndex;
     }
 
     private void ResolveImpact(bool playerDodged)
@@ -319,6 +361,7 @@ internal sealed class EnemyThrownAttackRuntime
         {
             waveManager.TryGetEnemyAtTile(
                 targetTileIndex,
+                targetLaneIndex,
                 out enemyTarget);
         }
 

@@ -71,6 +71,7 @@ public sealed class BulletPoolAutoSyncPostprocessor : AssetPostprocessor
     {
         if (EditorApplication.isCompiling
             || EditorApplication.isUpdating
+            || EditorApplication.isPlaying
             || EditorApplication.isPlayingOrWillChangePlaymode)
         {
             return;

@@ -50,7 +50,8 @@ public enum PlayerMovementSource
     NormalMove = 1 << 0,
     BulletPositionSwap = 1 << 1,
     ForcedMove = 1 << 2,
-    All = NormalMove | BulletPositionSwap | ForcedMove
+    BulletBlink = 1 << 3,
+    All = NormalMove | BulletPositionSwap | ForcedMove | BulletBlink
 }
 
 [Serializable]

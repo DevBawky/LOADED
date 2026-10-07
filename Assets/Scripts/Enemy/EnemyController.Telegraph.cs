@@ -6,24 +6,42 @@ public partial class EnemyController
     private sealed class EnemyTelegraphPresenter
     {
         private readonly EnemyController owner;
-        private readonly List<LineRenderer> bigBarrelTelegraphLines =
-            new List<LineRenderer>();
+        private readonly HashSet<Vector2Int> warningCells = new HashSet<Vector2Int>();
+        private readonly HashSet<Vector2Int> nextWarningCells = new HashSet<Vector2Int>();
         private LineRenderer attackTelegraphLine;
         private LineRenderer shieldIndicatorLine;
         private MaterialPropertyBlock lineColorProperties;
-        private Vector3 bigBarrelTelegraphAnchorPosition;
+        private bool isExecutingDirectAttack;
+        private EnemyAttackData executingAttackData;
+
+        public void ShowPlannedAttack(IEnumerable<Vector2Int> cells)
+        {
+            if (cells == null)
+            {
+                if (warningCells.Count > 0) HideAttackTelegraph();
+                return;
+            }
+            nextWarningCells.Clear();
+            nextWarningCells.UnionWith(cells);
+            if (warningCells.SetEquals(nextWarningCells)) return;
+            ApplyWarningCells();
+            boardManager?.SetWarningProgress(owner, 0f);
+            boardManager?.SetWarningUrgent(owner, false);
+        }
 
         private EnemyData enemyData => owner.enemyData;
         private BoardManager boardManager => owner.boardManager;
-        private PlayerMove playerMove => owner.playerMove;
         private Transform transform => owner.transform;
         private SpriteRenderer avatarSortingRenderer =>
             owner.avatarSortingRenderer;
         private bool isAttackPrepared => owner.isAttackPrepared;
         private int preparedTargetTileIndex =>
             owner.preparedTargetTileIndex;
-        private Vector3 preparedTargetPosition =>
-            owner.preparedTargetPosition;
+        private int preparedTargetLaneIndex =>
+            owner.preparedTargetLaneIndex;
+        private int currentLaneIndex => owner.currentLaneIndex;
+        private int preparedBigBarrelLaneIndex =>
+            owner.preparedBigBarrelLaneIndex;
         private List<int> preparedShotgunTileIndices =>
             owner.preparedShotgunTileIndices;
         private int currentShield => owner.currentShield;
@@ -49,32 +67,26 @@ public partial class EnemyController
 
         public void RefreshAttackTelegraph()
         {
-            if (!isAttackPrepared || enemyData == null
-                || enemyData.BehaviorType == EnemyBehaviorType.Melee)
+            if (owner.hasCommittedIntent && !owner.isActing)
+            {
+                ShowPlannedAttack(owner.GetNextTurnIntent().Action == EnemyTurnActionType.Fire
+                    ? owner.committedAttackCells : null);
+                if (enemyData == null || enemyData.BehaviorType != EnemyBehaviorType.Porter) return;
+            }
+            if (!isAttackPrepared || enemyData == null)
             {
                 HideAttackTelegraph();
                 return;
             }
     
-            if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
+            if (enemyData.BehaviorType != EnemyBehaviorType.Porter)
             {
-                if (bigBarrelStep == BigBarrelStep.ExecuteShotgun)
-                {
-                    CreateBigBarrelShotgunTelegraphs();
-                }
-    
+                // Idle intent is an icon; floor warnings belong to an attack.
                 return;
             }
-    
-            Material telegraphMaterial = enemyData.BehaviorType switch
-            {
-                EnemyBehaviorType.Thrower =>
-                    enemyData.ThrowerTelegraphMaterial,
-                EnemyBehaviorType.Porter =>
-                    enemyData.SupportTelegraphMaterial,
-                _ => enemyData.GunnerTelegraphMaterial
-            };
-    
+
+            Material telegraphMaterial = enemyData.SupportTelegraphMaterial;
+
             if (telegraphMaterial == null)
             {
                 HideAttackTelegraph();
@@ -85,37 +97,126 @@ public partial class EnemyController
             lineRenderer.sharedMaterial = telegraphMaterial;
             lineRenderer.widthMultiplier = enemyData.TelegraphLineWidth;
             lineRenderer.sortingOrder = enemyData.TelegraphSortingOrder;
-            Color telegraphColor = enemyData.BehaviorType
-                == EnemyBehaviorType.Porter
-                    ? preparedSupportType == EnemySupportType.Heal
-                        ? enemyData.SupportHealColor
-                        : enemyData.SupportShieldColor
-                    : Color.white;
+            Color telegraphColor = preparedSupportType == EnemySupportType.Heal
+                ? enemyData.SupportHealColor
+                : enemyData.SupportShieldColor;
             lineRenderer.startColor = telegraphColor;
             lineRenderer.endColor = telegraphColor;
-    
-            if (enemyData.BehaviorType == EnemyBehaviorType.Porter)
-            {
-                ApplyLineShaderColor(lineRenderer, telegraphColor);
-            }
-    
+            ApplyLineShaderColor(lineRenderer, telegraphColor);
+
             if (avatarSortingRenderer != null)
             {
                 lineRenderer.sortingLayerID =
                     avatarSortingRenderer.sortingLayerID;
             }
     
-            bool positionsApplied = enemyData.BehaviorType switch
-            {
-                EnemyBehaviorType.Thrower =>
-                    ApplyThrowerTelegraphPositions(lineRenderer),
-                EnemyBehaviorType.Porter =>
-                    ApplySupportTelegraphPositions(lineRenderer),
-                _ => ApplyGunnerTelegraphPositions(lineRenderer)
-            };
-            lineRenderer.enabled = positionsApplied;
+            lineRenderer.enabled = ApplySupportTelegraphPositions(lineRenderer);
         }
-    
+
+        public void BeginAttack(EnemyAttackData executingAttack = null)
+        {
+            if (enemyData == null || enemyData.BehaviorType == EnemyBehaviorType.Porter)
+            {
+                return;
+            }
+            isExecutingDirectAttack = enemyData.BehaviorType == EnemyBehaviorType.Melee
+                || enemyData.BehaviorType == EnemyBehaviorType.Gunner;
+            executingAttackData = executingAttack;
+            boardManager?.SetWarningUrgent(owner, false);
+            RefreshDamageTileWarnings(executingAttack);
+            boardManager?.SetWarningProgress(owner, 0f);
+        }
+
+        public bool RefreshExecutingAttack()
+        {
+            if (!isExecutingDirectAttack)
+            {
+                return false;
+            }
+            // The footprint was locked when the intent was committed.
+            return true;
+        }
+
+        public void SetProgress(float progress)
+        {
+            boardManager?.SetWarningProgress(owner, progress);
+        }
+
+        public void MarkAttackImminent()
+        {
+            boardManager?.SetWarningUrgent(owner, true);
+        }
+
+        public void CompleteAttack()
+        {
+            isExecutingDirectAttack = false;
+            executingAttackData = null;
+            boardManager?.CompleteTileWarnings(owner);
+            warningCells.Clear();
+            nextWarningCells.Clear();
+        }
+
+        private void RefreshDamageTileWarnings(EnemyAttackData executingAttack = null)
+        {
+            if (attackTelegraphLine != null)
+            {
+                attackTelegraphLine.enabled = false;
+            }
+
+            nextWarningCells.Clear();
+            if (boardManager != null)
+            {
+                switch (enemyData.BehaviorType)
+                {
+                    case EnemyBehaviorType.Thrower:
+                        nextWarningCells.Add(new Vector2Int(
+                            preparedTargetTileIndex, preparedTargetLaneIndex));
+                        break;
+                    case EnemyBehaviorType.BigBarrel:
+                        if (bigBarrelStep == BigBarrelStep.ExecuteShotgun)
+                        {
+                            foreach (int tile in preparedShotgunTileIndices)
+                            {
+                                nextWarningCells.Add(new Vector2Int(
+                                    tile, preparedBigBarrelLaneIndex));
+                            }
+                        }
+                        break;
+                    case EnemyBehaviorType.Melee:
+                    case EnemyBehaviorType.Gunner:
+                        nextWarningCells.UnionWith(owner.executingAttackCells);
+                        break;
+                }
+
+            }
+            ApplyWarningCells();
+        }
+
+        private void ApplyWarningCells()
+        {
+            if (boardManager != null)
+            {
+                Vector3 origin = owner.hasCommittedIntent ? owner.committedOrigin : transform.position;
+                int lane = owner.hasCommittedIntent ? owner.committedLane : currentLaneIndex;
+                if (boardManager.TryGetTileIndex(origin, lane, out int tile)
+                    && boardManager.TryGetTilePosition(tile, lane, out Vector3 floor)) origin = floor;
+                boardManager.SetWarningOrigin(owner, origin);
+                foreach (Vector2Int cell in warningCells)
+                {
+                    if (!nextWarningCells.Contains(cell))
+                    {
+                        boardManager.SetTileWarningActive(cell.x, cell.y, owner, false);
+                    }
+                }
+                foreach (Vector2Int cell in nextWarningCells)
+                {
+                    boardManager.SetTileWarningActive(cell.x, cell.y, owner, true);
+                }
+            }
+            warningCells.Clear();
+            warningCells.UnionWith(nextWarningCells);
+        }
+
         private LineRenderer GetOrCreateAttackTelegraphLine()
         {
             if (attackTelegraphLine != null)
@@ -136,76 +237,6 @@ public partial class EnemyController
             attackTelegraphLine.numCapVertices = 2;
             attackTelegraphLine.enabled = false;
             return attackTelegraphLine;
-        }
-    
-        private bool ApplyGunnerTelegraphPositions(LineRenderer lineRenderer)
-        {
-            if (boardManager == null
-                || !boardManager.TryGetTileIndex(
-                    transform.position,
-                    out int attackerTileIndex))
-            {
-                return false;
-            }
-    
-            int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
-            int endTileIndex = Mathf.Clamp(
-                attackerTileIndex + attackDirection * enemyData.FiringRange,
-                0,
-                boardManager.BoardCount - 1);
-    
-            if (endTileIndex == attackerTileIndex
-                || !boardManager.TryGetTilePosition(
-                    endTileIndex,
-                    out Vector3 endPosition))
-            {
-                return false;
-            }
-    
-            Vector3 startPosition = transform.position;
-            float verticalOffset = enemyData.TelegraphVerticalOffset;
-            startPosition.y += verticalOffset;
-            endPosition.y = startPosition.y;
-            endPosition.z = startPosition.z;
-            lineRenderer.positionCount = 2;
-            lineRenderer.SetPosition(0, startPosition);
-            lineRenderer.SetPosition(1, endPosition);
-            return true;
-        }
-    
-        private bool ApplyThrowerTelegraphPositions(LineRenderer lineRenderer)
-        {
-            if (preparedTargetTileIndex < 0)
-            {
-                return false;
-            }
-    
-            int segmentCount = enemyData.ThrowerTelegraphSegments;
-            Vector3 startPosition = transform.position;
-            Vector3 targetPosition = preparedTargetPosition;
-            float verticalOffset = enemyData.TelegraphVerticalOffset;
-            startPosition.y += verticalOffset;
-            targetPosition.y += verticalOffset;
-            targetPosition.z = startPosition.z;
-            lineRenderer.positionCount = segmentCount;
-    
-            for (int segmentIndex = 0;
-                 segmentIndex < segmentCount;
-                 segmentIndex++)
-            {
-                float progress = segmentCount <= 1
-                    ? 1f
-                    : (float)segmentIndex / (segmentCount - 1);
-                Vector3 position = Vector3.Lerp(
-                    startPosition,
-                    targetPosition,
-                    progress);
-                position += Vector3.up * (Mathf.Sin(progress * Mathf.PI)
-                    * enemyData.ThrownProjectileArcHeight);
-                lineRenderer.SetPosition(segmentIndex, position);
-            }
-    
-            return true;
         }
     
         private bool ApplySupportTelegraphPositions(LineRenderer lineRenderer)
@@ -230,102 +261,18 @@ public partial class EnemyController
     
         public void HideAttackTelegraph()
         {
+            isExecutingDirectAttack = false;
+            executingAttackData = null;
             if (attackTelegraphLine != null)
             {
                 attackTelegraphLine.enabled = false;
             }
     
-            foreach (LineRenderer line in bigBarrelTelegraphLines)
-            {
-                if (line != null)
-                {
-                    line.gameObject.SetActive(false);
-                    Destroy(line.gameObject);
-                }
-            }
-    
-            bigBarrelTelegraphLines.Clear();
+            boardManager?.ReleaseTileWarnings(owner);
+            warningCells.Clear();
+            nextWarningCells.Clear();
         }
-    
-        public void CreateBigBarrelShotgunTelegraphs()
-        {
-            ClearBigBarrelTelegraphsOnly();
-            Color color = new Color(1f, 0.08f, 0.04f, 0.78f);
-    
-            foreach (int tileIndex in preparedShotgunTileIndices)
-            {
-                LineRenderer line = BoardTelegraphUtility.CreateTileRange(
-                    transform,
-                    "Line | Shotgun Target",
-                    boardManager,
-                    tileIndex,
-                    tileIndex,
-                    enemyData.BigBarrel.ShotgunTelegraphMaterial,
-                    color,
-                    enemyData.TelegraphVerticalOffset * 0.5f,
-                    enemyData.TelegraphSortingOrder);
-    
-                if (line != null)
-                {
-                    bigBarrelTelegraphLines.Add(line);
-                }
-            }
-    
-            bigBarrelTelegraphAnchorPosition = transform.position;
-        }
-    
-        public void MoveBigBarrelTelegraphsWithBoss()
-        {
-            if (bigBarrelStep != BigBarrelStep.ExecuteShotgun
-                || bigBarrelTelegraphLines.Count == 0)
-            {
-                bigBarrelTelegraphAnchorPosition = transform.position;
-                return;
-            }
-    
-            Vector3 movement = transform.position
-                - bigBarrelTelegraphAnchorPosition;
-    
-            if (movement.sqrMagnitude <= Mathf.Epsilon)
-            {
-                return;
-            }
-    
-            foreach (LineRenderer line in bigBarrelTelegraphLines)
-            {
-                if (line == null)
-                {
-                    continue;
-                }
-    
-                for (int positionIndex = 0;
-                     positionIndex < line.positionCount;
-                     positionIndex++)
-                {
-                    line.SetPosition(
-                        positionIndex,
-                        line.GetPosition(positionIndex) + movement);
-                }
-            }
-    
-            bigBarrelTelegraphAnchorPosition = transform.position;
-        }
-    
-        public void ClearBigBarrelTelegraphsOnly()
-        {
-            foreach (LineRenderer line in bigBarrelTelegraphLines)
-            {
-                if (line != null)
-                {
-                    line.gameObject.SetActive(false);
-                    Destroy(line.gameObject);
-                }
-            }
-    
-            bigBarrelTelegraphLines.Clear();
-            bigBarrelTelegraphAnchorPosition = transform.position;
-        }
-    
+
         public void RefreshShieldIndicator(
             Material indicatorMaterial = null,
             Color? indicatorColor = null)

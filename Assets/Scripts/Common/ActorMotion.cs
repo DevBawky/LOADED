@@ -66,7 +66,8 @@ public class ActorMotion : MonoBehaviour
         {
             yield return MoveBetweenPositions(
                 path[pathIndex],
-                Mathf.Max(0f, durationPerStep));
+                Mathf.Max(0f, durationPerStep),
+                false);
         }
 
         IsAnimating = false;
@@ -170,7 +171,8 @@ public class ActorMotion : MonoBehaviour
 
     private IEnumerator MoveBetweenPositions(
         Vector3 targetPosition,
-        float duration)
+        float duration,
+        bool airborne = true)
     {
         Vector3 startPosition = actorTransform.position;
 
@@ -199,7 +201,7 @@ public class ActorMotion : MonoBehaviour
                 targetPosition,
                 smoothProgress);
             position += Vector3.up
-                * (Mathf.Sin(progress * Mathf.PI) * jumpHeight);
+                * (airborne ? Mathf.Sin(progress * Mathf.PI) * jumpHeight : 0f);
             actorTransform.position = position;
         }
 

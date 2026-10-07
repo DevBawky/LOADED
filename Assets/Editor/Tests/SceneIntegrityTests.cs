@@ -65,6 +65,25 @@ public sealed class SceneIntegrityTests
     }
 
     [Test]
+    public void GameStartCanvas_SettlementButtonRemainsOnCanvasPlane()
+    {
+        GameObject canvas = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/Canvas _ Game Start.prefab");
+
+        Assert.That(canvas, Is.Not.Null);
+        Button settlementButton = AssertNamedComponent<Button>(
+            canvas,
+            "Button | Gain Gold");
+        RectTransform rect = settlementButton.transform as RectTransform;
+
+        Assert.That(rect, Is.Not.Null);
+        Assert.That(
+            rect.localPosition.z,
+            Is.EqualTo(0f).Within(0.001f),
+            "The settlement button must stay on the same UI plane as the result panel.");
+    }
+
+    [Test]
     public void StageOneBattleList_ContainsOnlyValidAuthoredBattles()
     {
         StageData stage = AssetDatabase.LoadAssetAtPath<StageData>(
@@ -87,9 +106,13 @@ public sealed class SceneIntegrityTests
                 Is.Not.Null,
                 $"Stage 1 battle '{battle.name}' is missing a tile prefab.");
             Assert.That(
-                battle.Waves,
+                battle.DuelClockEnemySpawnEntries,
                 Is.Not.Empty,
-                $"Stage 1 battle '{battle.name}' has no authored waves.");
+                $"Stage 1 battle '{battle.name}' has no authored enemy pool.");
+            Assert.That(
+                battle.MaximumBoardCount,
+                Is.GreaterThanOrEqualTo(battle.MinimumBoardCount),
+                $"Stage 1 battle '{battle.name}' has an invalid board range.");
             Assert.That(
                 battle.IsBoss,
                 Is.EqualTo(index == lastBattleIndex),
@@ -199,7 +222,9 @@ public sealed class SceneIntegrityTests
             }
 
             Assert.That(activeTitle, Is.Not.Null);
-            Assert.That(activeTitle.text, Is.EqualTo("상점. 마을"));
+            Assert.That(
+                activeTitle.text,
+                Is.EqualTo(StageProgressUI.ShopStageTitle));
         }
         finally
         {

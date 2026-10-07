@@ -293,6 +293,7 @@ GameObject:
   - component: {fileID: 6842197531604829375}
   - component: {fileID: 700000000000000002}
   - component: {fileID: 4868757420946430006}
+  - component: {fileID: 5026302165888869603}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -335,6 +336,7 @@ MonoBehaviour:
   combatFeedback: {fileID: 0}
   relicManager: {fileID: 0}
   instantActionCooldown: 0.16
+  inputBufferDuration: 0.3
   pushCollisionDamageRatio: 0.2
   pushFlightDuration: 0.1
   pushCollisionImpactRatio: 0.5
@@ -415,7 +417,7 @@ MonoBehaviour:
   bulletFeedbackImage: {fileID: 0}
   combatPresentation: {fileID: 700000000000000020}
   combatFeedback: {fileID: 700000000000000021}
-  shotInterval: 0.15
+  shotInterval: 0.05
   maxRandomShotAngle: 5
 --- !u!114 &700000000000000020
 MonoBehaviour:
@@ -482,17 +484,17 @@ MonoBehaviour:
   comboLowColor: {r: 1, g: 1, b: 1, a: 1}
   comboMidColor: {r: 1, g: 0.42, b: 0.12, a: 1}
   comboCriticalColor: {r: 1, g: 0.18, b: 0.08, a: 1}
-  firingSequenceFeedbackStrengthPerKill: 0.2
   defeatPresentationInterval: 0.18
   killComboTextPrefab: {fileID: 6304521783619051883, guid: e42db836b5444fe59470033ca0bc92a1, type: 3}
+  defeatCoinBurstPrefab: {fileID: 3689948925623426366, guid: a9871a20a615dd640b8c1d8dd253c681, type: 3}
   comboGoldPerKill: 2
   killComboTextDuration: 2
   killComboTextDurationPerAdditionalKill: 0.12
-  maximumKillComboTextDurationBonus: 2
+  maximumKillComboTextDurationBonus: 1.2
   killComboTextScale: 1
   maximumComboTextScaleBonus: 0.2
-  secondKillTextColor: {r: 0, g: 1, b: 0.100815535, a: 1}
-  highComboTextColor: {r: 1, g: 0.058823526, b: 0.9856514, a: 1}
+  secondKillTextColor: {r: 1, g: 0.46, b: 0.08, a: 1}
+  highComboTextColor: {r: 1, g: 0.12, b: 0.06, a: 1}
   kickReadyTextColor: {r: 0.5424528, g: 0.8952603, b: 1, a: 1}
   bulletDestroyedTextColor: {r: 0.2, g: 0.22, b: 0.24, a: 1}
   dodgeTextColor: {r: 0.45, g: 0.92, b: 1, a: 1}
@@ -647,6 +649,24 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &5026302165888869603
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 918824946450782430}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2868105115cac724f95ff519238bf21f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattleContactShadow
+  worldSize: {x: 1.05, y: 0.46}
+  opacity: 0.34
+  surfaceOffset: 0.012
+  groundProbeDistance: 4
+  shadowLengthMultiplier: 0.9
+  groundingTolerance: 0.001
 --- !u!1 &1766241549305578079
 GameObject:
   m_ObjectHideFlags: 0

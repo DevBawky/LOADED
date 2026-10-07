@@ -25,6 +25,9 @@ public class PlayerMove : MonoBehaviour
     [Tooltip("대기와 재장전 사이에 적용하는 최소 입력 간격입니다.")]
     [SerializeField] private float instantActionCooldown =
         DefaultInstantActionCooldown;
+    [Min(0f)]
+    [Tooltip("실행 잠금 직전에 누른 최신 행동을 보존하는 시간입니다.")]
+    [SerializeField] private float inputBufferDuration = 0.3f;
 
     [Header("Push")]
     [Range(0f, 1f)]
@@ -68,6 +71,7 @@ public class PlayerMove : MonoBehaviour
     private bool isEnemyTurnResolving;
     private bool isInputLocked;
     private bool isDuelClockActive;
+    private int currentLaneIndex;
     private float nextInstantActionAllowedAt;
     private bool isPushVisualDisplaced;
     private EnemyController forcedMoveReservationOwner;
@@ -76,6 +80,8 @@ public class PlayerMove : MonoBehaviour
     private readonly List<Vector3> pushPathBuffer = new List<Vector3>();
     private readonly List<int> movementReservationTileBuffer =
         new List<int>();
+    private readonly PlayerActionInputBuffer actionInputBuffer =
+        new PlayerActionInputBuffer();
 
     public event Action TurnCompleted;
     public event Action<int> TurnCountChanged;
@@ -102,6 +108,7 @@ public class PlayerMove : MonoBehaviour
     public int NextPushAvailableTurn => Mathf.Max(
         0,
         nextPushAvailableTurn);
+    public int CurrentLaneIndex => currentLaneIndex;
     public bool CanPush => RemainingPushCooldownTurns == 0;
     public float PushCollisionDamageRatio =>
         Mathf.Clamp01(pushCollisionDamageRatio);
@@ -130,9 +137,11 @@ public class PlayerMove : MonoBehaviour
         Vector3 worldPosition,
         bool facingRight,
         int savedTurnCount,
-        int savedNextPushAvailableTurn)
+        int savedNextPushAvailableTurn,
+        int savedLaneIndex = 0)
     {
         transform.position = worldPosition;
+        SetLaneIndex(savedLaneIndex);
         Vector3 localScale = transform.localScale;
         float scaleMagnitude = Mathf.Abs(localScale.x);
         localScale.x = Mathf.Max(0.0001f, scaleMagnitude)
@@ -146,6 +155,7 @@ public class PlayerMove : MonoBehaviour
         isActing = false;
         isEnemyTurnResolving = false;
         nextInstantActionAllowedAt = 0f;
+        actionInputBuffer.Clear();
         RestorePushVisualPosition();
         TurnCountChanged?.Invoke(TurnCount);
         PositionChanged?.Invoke();
@@ -165,6 +175,11 @@ public class PlayerMove : MonoBehaviour
     public void SetInputLocked(bool inputLocked)
     {
         isInputLocked = inputLocked;
+
+        if (inputLocked)
+        {
+            actionInputBuffer.Clear();
+        }
     }
 
     internal void SetDuelClockActive(bool active)
@@ -200,41 +215,66 @@ public class PlayerMove : MonoBehaviour
         isActing = false;
         isEnemyTurnResolving = false;
         nextInstantActionAllowedAt = 0f;
+        actionInputBuffer.Clear();
     }
 
     private void Update()
     {
-        if (!CanPerformAction())
+        if (!CanAcceptBufferedInput())
         {
+            actionInputBuffer.Clear();
             return;
         }
 
+        if (TryReadLocalInput(out PlayerBehaviourAction inputAction))
+        {
+            BufferInputAction(inputAction);
+        }
+
+        TryExecuteBufferedLocalAction();
+    }
+
+    private static bool TryReadLocalInput(
+        out PlayerBehaviourAction action)
+    {
         Keyboard keyboard = Keyboard.current;
 
         if (keyboard != null)
         {
             if (keyboard.aKey.wasPressedThisFrame)
             {
-                MoveLeft();
-                return;
+                action = PlayerBehaviourAction.MoveLeft;
+                return true;
             }
 
             if (keyboard.dKey.wasPressedThisFrame)
             {
-                MoveRight();
-                return;
+                action = PlayerBehaviourAction.MoveRight;
+                return true;
             }
 
             if (keyboard.wKey.wasPressedThisFrame)
             {
-                Rotate();
-                return;
+                action = PlayerBehaviourAction.MoveUp;
+                return true;
             }
 
             if (keyboard.sKey.wasPressedThisFrame)
             {
-                Wait();
-                return;
+                action = PlayerBehaviourAction.MoveDown;
+                return true;
+            }
+
+            if (keyboard.qKey.wasPressedThisFrame)
+            {
+                action = PlayerBehaviourAction.Rotate;
+                return true;
+            }
+
+            if (keyboard.eKey.wasPressedThisFrame)
+            {
+                action = PlayerBehaviourAction.Wait;
+                return true;
             }
         }
 
@@ -242,13 +282,105 @@ public class PlayerMove : MonoBehaviour
 
         if (mouse != null && mouse.middleButton.wasPressedThisFrame)
         {
-            Rotate();
+            action = PlayerBehaviourAction.Rotate;
+            return true;
         }
+
+        action = default;
+        return false;
+    }
+
+    private void TryExecuteBufferedLocalAction()
+    {
+        if (!TryPeekBufferedInput(out PlayerBehaviourAction action)
+            || action == PlayerBehaviourAction.Reload
+            || action == PlayerBehaviourAction.Shoot
+            || !CanExecuteBufferedLocalAction(action)
+            || !TryConsumeBufferedInput(action))
+        {
+            return;
+        }
+
+        switch (action)
+        {
+            case PlayerBehaviourAction.MoveLeft:
+                MoveLeft();
+                break;
+            case PlayerBehaviourAction.MoveRight:
+                MoveRight();
+                break;
+            case PlayerBehaviourAction.MoveUp:
+                MoveUp();
+                break;
+            case PlayerBehaviourAction.MoveDown:
+                MoveDown();
+                break;
+            case PlayerBehaviourAction.Rotate:
+                Rotate();
+                break;
+            case PlayerBehaviourAction.Wait:
+                Wait();
+                break;
+        }
+    }
+
+    private bool CanExecuteBufferedLocalAction(
+        PlayerBehaviourAction action)
+    {
+        return action switch
+        {
+            PlayerBehaviourAction.MoveLeft => CanPerformMovementAction(),
+            PlayerBehaviourAction.MoveRight => CanPerformMovementAction(),
+            PlayerBehaviourAction.MoveUp => CanPerformMovementAction(),
+            PlayerBehaviourAction.MoveDown => CanPerformMovementAction(),
+            PlayerBehaviourAction.Wait => CanPerformInstantAction(),
+            PlayerBehaviourAction.Rotate => CanPerformAction(),
+            _ => false
+        };
+    }
+
+    internal void BufferInputAction(PlayerBehaviourAction action)
+    {
+        if (!CanAcceptBufferedInput())
+        {
+            actionInputBuffer.Clear();
+            return;
+        }
+
+        actionInputBuffer.Store(
+            action,
+            Time.unscaledTime,
+            inputBufferDuration);
+    }
+
+    internal bool TryPeekBufferedInput(out PlayerBehaviourAction action)
+    {
+        return actionInputBuffer.TryPeek(Time.unscaledTime, out action);
+    }
+
+    internal bool TryConsumeBufferedInput(PlayerBehaviourAction action)
+    {
+        return actionInputBuffer.TryConsume(
+            action,
+            Time.unscaledTime);
+    }
+
+    internal void ClearBufferedInput()
+    {
+        actionInputBuffer.Clear();
+    }
+
+    private bool CanAcceptBufferedInput()
+    {
+        return !GamePauseController.IsPaused
+            && !LoadingTransitionController.IsTransitioning
+            && !isInputLocked
+            && (!isDuelClockActive || !IsStunned);
     }
 
     public void MoveForward()
     {
-        if (!CanPerformAction())
+        if (!CanPerformMovementAction())
         {
             return;
         }
@@ -259,7 +391,7 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveLeft()
     {
-        if (!CanPerformAction())
+        if (!CanPerformMovementAction())
         {
             return;
         }
@@ -269,12 +401,33 @@ public class PlayerMove : MonoBehaviour
 
     public void MoveRight()
     {
-        if (!CanPerformAction())
+        if (!CanPerformMovementAction())
         {
             return;
         }
 
         Move(1);
+    }
+
+    public void MoveUp()
+    {
+        MoveVertical(1);
+    }
+
+    public void MoveDown()
+    {
+        MoveVertical(-1);
+    }
+
+    public void SetLaneIndex(int laneIndex)
+    {
+        int maximumLaneIndex = boardManager == null
+            ? Mathf.Max(0, laneIndex)
+            : Mathf.Max(0, boardManager.LaneCount - 1);
+        currentLaneIndex = Mathf.Clamp(
+            laneIndex,
+            0,
+            maximumLaneIndex);
     }
 
     public void Rotate()
@@ -331,19 +484,21 @@ public class PlayerMove : MonoBehaviour
 
         if (!boardManager.TryGetAdjacentTilePosition(
                 transform.position,
+                currentLaneIndex,
                 direction,
                 out Vector3 targetPosition))
         {
             return;
         }
 
-        if (!boardManager.TryGetTileIndex(targetPosition, out int targetTileIndex))
+        if (!boardManager.TryGetTileIndex(targetPosition, currentLaneIndex, out int targetTileIndex))
         {
             return;
         }
 
         if (!boardManager.TryGetTileIndex(
                 transform.position,
+                currentLaneIndex,
                 out int currentTileIndex))
         {
             return;
@@ -351,8 +506,14 @@ public class PlayerMove : MonoBehaviour
 
         if (waveManager.TryGetEnemyAtTile(
                 targetTileIndex,
+                currentLaneIndex,
                 out EnemyController adjacentEnemy))
         {
+            if (isEnemyTurnResolving)
+            {
+                return;
+            }
+
             if (waveManager.HasMovementReservation(adjacentEnemy))
             {
                 return;
@@ -371,9 +532,16 @@ public class PlayerMove : MonoBehaviour
             return;
         }
 
-        if (waveManager.IsTileReservedForSpawn(targetTileIndex)
-            || waveManager.IsTileReservedForMovement(targetTileIndex)
-            || !waveManager.TryReserveMovementTile(this, targetTileIndex))
+        if ((waveManager.IsTileReservedForSpawn(
+                targetTileIndex,
+                currentLaneIndex)
+            || waveManager.IsTileReservedForMovement(
+                targetTileIndex,
+                currentLaneIndex)
+                || !waveManager.TryReserveMovementTile(
+                    this,
+                    targetTileIndex,
+                    currentLaneIndex)))
         {
             return;
         }
@@ -382,7 +550,75 @@ public class PlayerMove : MonoBehaviour
         StartCoroutine(MoveRoutine(
             targetPosition,
             currentTileIndex,
-            targetTileIndex));
+            currentLaneIndex,
+            targetTileIndex,
+            currentLaneIndex));
+    }
+
+    private void MoveVertical(int direction)
+    {
+        if (!CanPerformMovementAction())
+        {
+            return;
+        }
+
+        if (boardManager == null || waveManager == null || actorMotion == null)
+        {
+            Debug.LogError(
+                "Board Manager and Actor Motion must be assigned, and Wave Manager must initialize Player Move.",
+                this);
+            return;
+        }
+
+        if (!boardManager.TryGetTileIndex(
+                transform.position,
+                currentLaneIndex,
+                out int currentTileIndex)
+            || !boardManager.TryGetTilePosition(
+                currentTileIndex,
+                currentLaneIndex,
+                out Vector3 currentLanePosition)
+            || !boardManager.TryGetAdjacentLanePosition(
+                currentTileIndex,
+                currentLaneIndex,
+                direction,
+                out int targetLaneIndex,
+                out Vector3 targetLanePosition)
+            || !boardManager.TryGetTileIndex(targetLanePosition, targetLaneIndex,
+                out int targetTileIndex))
+        {
+            return;
+        }
+
+        if (waveManager.TryGetEnemyAtTile(
+                    targetTileIndex,
+                    targetLaneIndex,
+                    out _)
+                || waveManager.IsTileReservedForSpawn(
+                    targetTileIndex,
+                    targetLaneIndex)
+                || waveManager.IsTileReservedForMovement(
+                    targetTileIndex,
+                    targetLaneIndex)
+                || !waveManager.TryReserveMovementTile(
+                    this,
+                    targetTileIndex,
+                    targetLaneIndex))
+        {
+            return;
+        }
+
+        Vector3 positionOffset = transform.position - currentLanePosition;
+        Vector3 targetPosition = targetLanePosition + positionOffset;
+        BehaviourActionStarted?.Invoke(direction > 0
+            ? PlayerBehaviourAction.MoveUp
+            : PlayerBehaviourAction.MoveDown);
+        StartCoroutine(MoveRoutine(
+            targetPosition,
+            currentTileIndex,
+            currentLaneIndex,
+            targetTileIndex,
+            targetLaneIndex));
     }
 
     private void NotifyMoveStarted(int direction)
@@ -440,27 +676,34 @@ public class PlayerMove : MonoBehaviour
     public IEnumerator SwapPositionWithEnemy(EnemyController enemy)
     {
         if (enemy == null || enemy.CurrentHealth <= 0
+            || enemy.CurrentLaneIndex != currentLaneIndex
             || boardManager == null || actorMotion == null
             || waveManager == null
             || waveManager.HasMovementReservation(enemy)
             || !boardManager.TryGetTileIndex(
                 transform.position,
+                currentLaneIndex,
                 out int playerTileIndex)
             || !boardManager.TryGetTileIndex(
                 enemy.transform.position,
+                enemy.CurrentLaneIndex,
                 out int enemyTileIndex)
             || playerTileIndex == enemyTileIndex
             || !boardManager.TryGetTilePosition(
                 playerTileIndex,
+                currentLaneIndex,
                 out Vector3 playerTilePosition)
             || !boardManager.TryGetTilePosition(
                 enemyTileIndex,
+                currentLaneIndex,
                 out Vector3 enemyTilePosition)
             || !waveManager.TryReserveMovementSwap(
                 this,
                 enemyTileIndex,
+                currentLaneIndex,
                 enemy,
-                playerTileIndex))
+                playerTileIndex,
+                currentLaneIndex))
         {
             yield break;
         }
@@ -503,11 +746,80 @@ public class PlayerMove : MonoBehaviour
         isActing = wasActing;
     }
 
+    public IEnumerator BlinkFromBullet()
+    {
+        if (boardManager == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                currentLaneIndex,
+                out int startTileIndex)
+            || !boardManager.TryGetTilePosition(
+                startTileIndex,
+                currentLaneIndex,
+                out Vector3 startTilePosition))
+        {
+            yield break;
+        }
+
+        List<(int Tile, int Lane, Vector3 Position)> candidates =
+            new List<(int, int, Vector3)>();
+        for (int laneIndex = 0; laneIndex < boardManager.LaneCount; laneIndex++)
+        {
+            for (int tileIndex = 0; tileIndex < boardManager.BoardCount; tileIndex++)
+            {
+                if (laneIndex == currentLaneIndex && tileIndex == startTileIndex
+                    || waveManager.TryGetEnemyAtTile(tileIndex, laneIndex, out _)
+                    || waveManager.IsTileReservedForSpawn(tileIndex, laneIndex)
+                    || waveManager.IsTileReservedForMovement(tileIndex, laneIndex)
+                    || !boardManager.TryGetTilePosition(
+                        tileIndex,
+                        laneIndex,
+                        out Vector3 tilePosition))
+                {
+                    continue;
+                }
+
+                candidates.Add((tileIndex, laneIndex, tilePosition));
+            }
+        }
+
+        if (candidates.Count == 0)
+        {
+            yield break;
+        }
+
+        (int Tile, int Lane, Vector3 Position) target =
+            candidates[UnityEngine.Random.Range(0, candidates.Count)];
+        if (!waveManager.TryReserveMovementTile(this, target.Tile, target.Lane))
+        {
+            yield break;
+        }
+
+        bool wasActing = isActing;
+        isActing = true;
+        Vector3 offset = transform.position - startTilePosition;
+        int startLaneIndex = currentLaneIndex;
+        currentLaneIndex = target.Lane;
+        transform.position = target.Position + offset;
+        SoundManager.PlaySfx("SFX_Move");
+        waveManager.ReleaseMovementTiles(this);
+        NotifyPlayerMoved(
+            startTileIndex,
+            startLaneIndex,
+            target.Tile,
+            target.Lane,
+            PlayerMovementSource.BulletBlink);
+        PositionChanged?.Invoke();
+        isActing = wasActing;
+        yield return null;
+    }
+
     public IEnumerator PushPlayerFromBullet(int direction, int distance)
     {
         if (direction == 0 || distance <= 0 || boardManager == null
             || actorMotion == null || !boardManager.TryGetTileIndex(
                 transform.position,
+                currentLaneIndex,
                 out int startTileIndex))
         {
             yield break;
@@ -523,9 +835,15 @@ public class PlayerMove : MonoBehaviour
 
             if (candidateIndex < 0 || candidateIndex >= boardManager.BoardCount
                 || waveManager != null
-                && (waveManager.IsTileOccupied(candidateIndex)
-                    || waveManager.IsTileReservedForMovement(candidateIndex)
-                    || waveManager.IsTileReservedForSpawn(candidateIndex)))
+                && (waveManager.IsTileOccupied(
+                        candidateIndex,
+                        currentLaneIndex)
+                    || waveManager.IsTileReservedForMovement(
+                        candidateIndex,
+                        currentLaneIndex)
+                    || waveManager.IsTileReservedForSpawn(
+                        candidateIndex,
+                        currentLaneIndex)))
             {
                 break;
             }
@@ -536,11 +854,13 @@ public class PlayerMove : MonoBehaviour
 
         if (endTileIndex == startTileIndex || !boardManager.TryGetTilePosition(
                 endTileIndex,
+                currentLaneIndex,
                 out Vector3 targetPosition)
             || waveManager != null
             && !waveManager.TryReserveMovementTiles(
                 this,
-                movementReservationTileBuffer))
+                movementReservationTileBuffer,
+                currentLaneIndex))
         {
             yield break;
         }
@@ -871,9 +1191,11 @@ public class PlayerMove : MonoBehaviour
         if (pushedEnemy == null || direction == 0
             || !boardManager.TryGetTileIndex(
                 pushedEnemy.transform.position,
+                pushedEnemy.CurrentLaneIndex,
                 out int pushedEnemyIndex)
             || !boardManager.TryGetTileIndex(
                 transform.position,
+                currentLaneIndex,
                 out int playerTileIndex))
         {
             return false;
@@ -892,24 +1214,30 @@ public class PlayerMove : MonoBehaviour
 
             if (waveManager.TryGetEnemyAtTile(
                     tileIndex,
+                    pushedEnemy.CurrentLaneIndex,
                     out collidedEnemy,
                     pushedEnemy))
             {
                 break;
             }
 
-            if (waveManager.IsTileOccupied(tileIndex, pushedEnemy))
+            if (waveManager.IsTileOccupied(
+                    tileIndex,
+                    pushedEnemy.CurrentLaneIndex,
+                    pushedEnemy))
             {
                 break;
             }
 
-            if (tileIndex == playerTileIndex)
+            if (tileIndex == playerTileIndex
+                && pushedEnemy.CurrentLaneIndex == currentLaneIndex)
             {
                 break;
             }
 
             if (waveManager.IsTileReservedForMovement(
                     tileIndex,
+                    pushedEnemy.CurrentLaneIndex,
                     pushedEnemy))
             {
                 break;
@@ -917,6 +1245,7 @@ public class PlayerMove : MonoBehaviour
 
             if (!boardManager.TryGetTilePosition(
                     tileIndex,
+                    pushedEnemy.CurrentLaneIndex,
                     out Vector3 tilePosition))
             {
                 return false;
@@ -966,9 +1295,12 @@ public class PlayerMove : MonoBehaviour
     private IEnumerator MoveRoutine(
         Vector3 targetPosition,
         int startTileIndex,
-        int endTileIndex)
+        int startLaneIndex,
+        int endTileIndex,
+        int endLaneIndex)
     {
         isActing = true;
+        currentLaneIndex = endLaneIndex;
         SoundManager.PlaySfx("SFX_Move");
         try
         {
@@ -980,7 +1312,9 @@ public class PlayerMove : MonoBehaviour
         }
         NotifyPlayerMoved(
             startTileIndex,
+            startLaneIndex,
             endTileIndex,
+            endLaneIndex,
             PlayerMovementSource.NormalMove);
         PositionChanged?.Invoke();
         relicManager ??= FindFirstObjectByType<RelicManager>(
@@ -999,7 +1333,27 @@ public class PlayerMove : MonoBehaviour
         int endTileIndex,
         PlayerMovementSource source)
     {
-        int distance = Math.Abs(endTileIndex - startTileIndex);
+        NotifyPlayerMoved(
+            startTileIndex,
+            currentLaneIndex,
+            endTileIndex,
+            currentLaneIndex,
+            source);
+    }
+
+    private void NotifyPlayerMoved(
+        int startTileIndex,
+        int startLaneIndex,
+        int endTileIndex,
+        int endLaneIndex,
+        PlayerMovementSource source)
+    {
+        int startColumn = boardManager == null ? startTileIndex
+            : boardManager.GetColumnIndex(startTileIndex, startLaneIndex);
+        int endColumn = boardManager == null ? endTileIndex
+            : boardManager.GetColumnIndex(endTileIndex, endLaneIndex);
+        int distance = Math.Abs(endColumn - startColumn)
+            + Math.Abs(endLaneIndex - startLaneIndex);
 
         if (distance <= 0 || source == PlayerMovementSource.None)
         {
@@ -1008,7 +1362,9 @@ public class PlayerMove : MonoBehaviour
 
         PlayerMoved?.Invoke(new PlayerMovementContext(
             startTileIndex,
+            startLaneIndex,
             endTileIndex,
+            endLaneIndex,
             distance,
             source));
     }
@@ -1070,10 +1426,14 @@ public class PlayerMove : MonoBehaviour
 
         movementReservationTileBuffer.Clear();
 
+        int laneIndex = owner is EnemyController enemy
+            ? enemy.CurrentLaneIndex
+            : currentLaneIndex;
         for (int index = 0; index < path.Count; index++)
         {
             if (!boardManager.TryGetTileIndex(
                     path[index],
+                    laneIndex,
                     out int tileIndex))
             {
                 return false;
@@ -1084,7 +1444,8 @@ public class PlayerMove : MonoBehaviour
 
         return waveManager.TryReserveMovementTiles(
             owner,
-            movementReservationTileBuffer);
+            movementReservationTileBuffer,
+            laneIndex);
     }
 
     public bool TryConsumeDuelClockStunBeat()
@@ -1151,7 +1512,18 @@ public class PlayerMove : MonoBehaviour
         bool isDuelClockActive,
         bool isEnemyTurnResolving)
     {
-        return isEnemyTurnResolving && !isDuelClockActive;
+        return isEnemyTurnResolving;
+    }
+
+    private bool CanPerformMovementAction()
+    {
+        return !GamePauseController.IsPaused
+            && !LoadingTransitionController.IsTransitioning
+            && !isInputLocked
+            && !isShooting
+            && !isActing
+            && (!isEnemyTurnResolving || isDuelClockActive)
+            && (!isDuelClockActive || !IsStunned);
     }
 
     private static int MultiplyDamage(int damage, double multiplier)

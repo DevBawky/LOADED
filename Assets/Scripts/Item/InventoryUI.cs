@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.InputSystem;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class InventoryUI : MonoBehaviour
+public class InventoryUI : MonoBehaviour, IPointerClickHandler
 {
     [SerializeField] private PlayerInventory playerInventory;
     [SerializeField] private ShopManager shopManager;
@@ -50,26 +50,24 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    private void Update()
+    public void OnPointerClick(PointerEventData eventData)
     {
-        Mouse mouse = Mouse.current;
-        bool useRequested = mouse != null
-            && mouse.leftButton.wasPressedThisFrame;
-        bool sellRequested = mouse != null
-            && mouse.rightButton.wasPressedThisFrame
+        bool useRequested = eventData != null
+            && eventData.button == PointerEventData.InputButton.Left;
+        bool sellRequested = eventData != null
+            && eventData.button == PointerEventData.InputButton.Right
             && shopManager != null
             && shopManager.CanSellInventoryItems;
 
         if (GamePauseController.IsPaused
             || LoadingTransitionController.IsTransitioning
-            || mouse == null
             || !useRequested && !sellRequested
             || playerInventory == null || itemImages == null)
         {
             return;
         }
 
-        Vector2 pointerPosition = mouse.position.ReadValue();
+        Vector2 pointerPosition = eventData.position;
 
         for (int index = 0; index < itemImages.Length; index++)
         {

@@ -5,10 +5,11 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class EnemyDamageNumberDisplay : MonoBehaviour
 {
+    private const float SeparationPerScaleUnit = 0.9f;
+
     [Header("Damage Number Prefabs")]
     [SerializeField] private DamageNumber normalDamagePrefab;
     [SerializeField] private DamageNumber criticalDamagePrefab;
-    [SerializeField] private DamageNumber devastatingDamagePrefab;
     [SerializeField] private DamageNumber poisonDamagePrefab;
     [SerializeField] private DamageNumber markBonusDamagePrefab;
 
@@ -39,48 +40,42 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     [SerializeField] private bool followTarget;
 
     [Header("Overlap Avoidance")]
-    [Tooltip("같은 적에게 표시 중인 숫자 사이에 확보할 최소 월드 간격입니다. 0이면 강제 간격을 사용하지 않습니다.")]
+    [Tooltip("모든 적에게 표시 중인 숫자 사이에 확보할 추가 월드 간격입니다. 텍스트 스케일 기반의 자동 최소 간격보다 작게 설정해도 자동 최소값이 적용됩니다.")]
     [SerializeField, Min(0f)] private float minimumSpawnSeparation = 0.2f;
+    [Tooltip("기준 위치에서 위로 분산할 수 있는 최대 행 수입니다.")]
+    [SerializeField, Range(1, 4)] private int maximumSpawnRows = 2;
 
-    [Header("Impact Tier Styling")]
-    [SerializeField] private Color criticalDamageColor =
-        new Color(1f, 0.86f, 0.28f, 1f);
-    [SerializeField] private Color devastatingDamageColor =
-        new Color(1f, 0.32f, 0.08f, 1f);
-    [SerializeField] private Color defeatDamageColor =
-        new Color(1f, 0.92f, 0.78f, 1f);
+    [Header("Readability Scale")]
+    [SerializeField, Range(0.1f, 1f)] private float damageNumberScaleMultiplier = 0.5f;
+    [SerializeField, Range(0.1f, 1f)] private float statusTextScaleMultiplier = 0.5f;
+
+    [Header("Attack Styling")]
     [SerializeField] private float criticalDamageScale = 1.18f;
-    [SerializeField] private float devastatingDamageScale = 1.42f;
 
-    private readonly DamageNumberSpawnLayout spawnLayout =
+    private static readonly DamageNumberSpawnLayout SharedSpawnLayout =
         new DamageNumberSpawnLayout();
 
-    private void OnDisable()
+    public void ShowAttackDamage(int damage, bool isCritical = false)
     {
-        spawnLayout.Clear();
-    }
-
-    public void ShowAttackDamage(
-        int damage,
-        CombatImpactTier impactTier,
-        bool isCritical = false)
-    {
-        DamageNumber preferredPrefab = impactTier switch
-        {
-            CombatImpactTier.Defeat => isCritical
-                ? criticalDamagePrefab
-                : normalDamagePrefab,
-            CombatImpactTier.Devastating => devastatingDamagePrefab != null
-                ? devastatingDamagePrefab
-                : criticalDamagePrefab,
-            CombatImpactTier.Critical => criticalDamagePrefab,
-            _ => normalDamagePrefab
-        };
+        DamageNumber preferredPrefab = ResolveAttackDamagePrefab(
+            normalDamagePrefab,
+            criticalDamagePrefab,
+            isCritical);
         SpawnNumber(
             preferredPrefab,
             damage,
             normalDamagePrefab,
-            impactTier);
+            isCritical);
+    }
+
+    internal static DamageNumber ResolveAttackDamagePrefab(
+        DamageNumber normalPrefab,
+        DamageNumber criticalPrefab,
+        bool isCritical)
+    {
+        // Impact tier controls presentation intensity only. The attack's
+        // authoritative critical result is the sole prefab selector.
+        return isCritical ? criticalPrefab : normalPrefab;
     }
 
     public void ShowPoisonDamage(int damage)
@@ -89,7 +84,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             poisonDamagePrefab,
             damage,
             normalDamagePrefab,
-            CombatImpactTier.Normal);
+            false);
     }
 
     public void ShowMarkBonusDamage(int damage)
@@ -98,7 +93,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             markBonusDamagePrefab,
             damage,
             normalDamagePrefab,
-            CombatImpactTier.Normal);
+            false);
     }
 
     public void ShowStatus(StatusEffectType type)
@@ -129,7 +124,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
         DamageNumber preferredPrefab,
         int damage,
         DamageNumber fallbackPrefab,
-        CombatImpactTier impactTier)
+        bool isCritical)
     {
         if (damage <= 0)
         {
@@ -145,26 +140,39 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
-        Vector3 localOffset = spawnLayout.FindAvailableOffset(
-            damageOffset,
-            minimumSpawnSeparation);
-        Vector3 position = transform.position + localOffset;
+        Camera battleCamera = Camera.main;
+        Vector3 visualOrigin = BattleCameraEffectSpace.ResolveActorVisualOrigin(
+            transform,
+            transform.position);
+        Vector3 position = SharedSpawnLayout.FindAvailableOffset(
+            ResolveSpawnAnchor(
+                visualOrigin,
+                damageOffset,
+                battleCamera),
+            ResolveMinimumSpawnSeparation(
+                minimumSpawnSeparation,
+                damageNumberScaleMultiplier,
+                statusTextScaleMultiplier),
+            battleCamera,
+            Mathf.Max(1, maximumSpawnRows));
         DamageNumber number = SpawnWithoutSpamMovement(
             prefab,
             position,
             damage);
-        ConfigureSpawnedNumber(number, localOffset);
-        ApplyTierStyle(number, impactTier);
+        ConfigureSpawnedNumber(number, position);
+        ApplyAttackStyle(number, isCritical);
     }
 
     private void ConfigureSpawnedNumber(
         DamageNumber number,
-        Vector3 localOffset)
+        Vector3 spawnPosition)
     {
         if (number == null)
         {
             return;
         }
+
+        ConfigureForBattleCamera(number);
 
         // The project layout owns separation. Keeping Damage Numbers Pro's
         // Collision and Push active here would apply a second, much larger
@@ -176,7 +184,7 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             number.SetFollowedTarget(transform, false);
         }
 
-        spawnLayout.Track(localOffset, number);
+        SharedSpawnLayout.Track(spawnPosition, number);
     }
 
     private static DamageNumber SpawnWithoutSpamMovement(
@@ -186,6 +194,8 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     {
         bool collisionEnabled = prefab.enableCollision;
         bool pushEnabled = prefab.enablePush;
+        bool game3DEnabled = prefab.enable3DGame;
+        bool faceCameraViewEnabled = prefab.faceCameraView;
 
         try
         {
@@ -193,12 +203,16 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             // synchronous initialization, then restore the prefab settings.
             prefab.enableCollision = false;
             prefab.enablePush = false;
+            prefab.enable3DGame = true;
+            prefab.faceCameraView = true;
             return prefab.Spawn(position, damage);
         }
         finally
         {
             prefab.enableCollision = collisionEnabled;
             prefab.enablePush = pushEnabled;
+            prefab.enable3DGame = game3DEnabled;
+            prefab.faceCameraView = faceCameraViewEnabled;
         }
     }
 
@@ -209,43 +223,100 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
     {
         bool collisionEnabled = prefab.enableCollision;
         bool pushEnabled = prefab.enablePush;
+        bool game3DEnabled = prefab.enable3DGame;
+        bool faceCameraViewEnabled = prefab.faceCameraView;
 
         try
         {
             prefab.enableCollision = false;
             prefab.enablePush = false;
+            prefab.enable3DGame = true;
+            prefab.faceCameraView = true;
             return prefab.Spawn(position, statusText);
         }
         finally
         {
             prefab.enableCollision = collisionEnabled;
             prefab.enablePush = pushEnabled;
+            prefab.enable3DGame = game3DEnabled;
+            prefab.faceCameraView = faceCameraViewEnabled;
         }
     }
 
-    private void ApplyTierStyle(
+    internal static void ConfigureForBattleCamera(
         DamageNumber number,
-        CombatImpactTier impactTier)
+        Camera battleCamera = null)
     {
-        if (number == null || impactTier == CombatImpactTier.Normal)
+        if (number == null)
         {
             return;
         }
 
-        switch (impactTier)
+        battleCamera ??= Camera.main;
+        number.enable3DGame = true;
+        number.faceCameraView = true;
+        number.lookAtCamera = false;
+        number.cameraOverride = battleCamera == null
+            ? null
+            : battleCamera.transform;
+        BattleSpriteBillboard.FaceTransform(number.transform, battleCamera);
+    }
+
+    private void ApplyAttackStyle(DamageNumber number, bool isCritical)
+    {
+        if (number == null)
         {
-            case CombatImpactTier.Critical:
-                number.SetColor(criticalDamageColor);
-                number.SetScale(criticalDamageScale);
-                break;
-            case CombatImpactTier.Devastating:
-                number.SetColor(devastatingDamageColor);
-                number.SetScale(devastatingDamageScale);
-                break;
-            case CombatImpactTier.Defeat:
-                number.SetColor(defeatDamageColor);
-                break;
+            return;
         }
+
+        number.SetScale(ResolveDamageNumberScale(
+            isCritical,
+            damageNumberScaleMultiplier,
+            criticalDamageScale));
+    }
+
+    internal static float ResolveDamageNumberScale(
+        bool isCritical,
+        float scaleMultiplier,
+        float criticalScale)
+    {
+        float attackScale = isCritical ? criticalScale : 1f;
+        return Mathf.Max(0f, scaleMultiplier)
+            * Mathf.Max(0f, attackScale);
+    }
+
+    internal static float ResolveMinimumSpawnSeparation(
+        float authoredMinimum,
+        float damageScaleMultiplier,
+        float statusScaleMultiplier)
+    {
+        float largestBaseScale = Mathf.Max(
+            Mathf.Max(0f, damageScaleMultiplier),
+            Mathf.Max(0f, statusScaleMultiplier));
+        return Mathf.Max(
+            Mathf.Max(0f, authoredMinimum),
+            largestBaseScale * SeparationPerScaleUnit);
+    }
+
+    internal static Vector3 ResolveSpawnAnchor(
+        Vector3 targetPosition,
+        Vector3 authoredOffset,
+        Camera battleCamera)
+    {
+        if (battleCamera == null)
+        {
+            return targetPosition + authoredOffset;
+        }
+
+        // The old 2D Z value was a render-depth offset. Move toward the
+        // camera so it cannot shift the popup away from the target on screen.
+        return BattleCameraEffectSpace.Offset(
+            targetPosition,
+            new Vector3(
+                authoredOffset.x,
+                authoredOffset.y,
+                -authoredOffset.z),
+            battleCamera);
     }
 
     private void SpawnStatus(DamageNumber prefab, string statusText)
@@ -255,15 +326,31 @@ public sealed class EnemyDamageNumberDisplay : MonoBehaviour
             return;
         }
 
-        Vector3 localOffset = spawnLayout.FindAvailableOffset(
-            statusOffset,
-            minimumSpawnSeparation);
-        Vector3 position = transform.position + localOffset;
+        Camera battleCamera = Camera.main;
+        Vector3 visualOrigin = BattleCameraEffectSpace.ResolveActorVisualOrigin(
+            transform,
+            transform.position);
+        Vector3 position = SharedSpawnLayout.FindAvailableOffset(
+            ResolveSpawnAnchor(
+                visualOrigin,
+                statusOffset,
+                battleCamera),
+            ResolveMinimumSpawnSeparation(
+                minimumSpawnSeparation,
+                damageNumberScaleMultiplier,
+                statusTextScaleMultiplier),
+            battleCamera,
+            Mathf.Max(1, maximumSpawnRows));
         DamageNumber number = SpawnWithoutSpamMovement(
             prefab,
             position,
             statusText);
-        ConfigureSpawnedNumber(number, localOffset);
+        ConfigureSpawnedNumber(number, position);
+
+        if (number != null)
+        {
+            number.SetScale(statusTextScaleMultiplier);
+        }
     }
 }
 
@@ -274,7 +361,9 @@ internal sealed class DamageNumberSpawnLayout
 
     public Vector3 FindAvailableOffset(
         Vector3 requestedOffset,
-        float minimumSeparation)
+        float minimumSeparation,
+        Camera battleCamera = null,
+        int maximumRows = 2)
     {
         RemoveInactiveReservations();
 
@@ -285,28 +374,41 @@ internal sealed class DamageNumberSpawnLayout
             return requestedOffset;
         }
 
-        int candidateCount = reservations.Count * 3 + 16;
+        int candidateCount = Mathf.Max(0, maximumRows) * 3 + 1;
+        Vector3 bestCandidate = requestedOffset;
+        float bestClearance = -1f;
 
         for (int index = 0; index < candidateCount; index++)
         {
             Vector3 candidate = requestedOffset
-                + CalculateCandidateOffset(index, separation);
+                + CalculateCandidateOffset(
+                    index,
+                    separation,
+                    battleCamera);
+            float clearance = FindNearestReservationDistance(
+                candidate,
+                battleCamera);
 
-            if (!OverlapsReservation(candidate, separation))
+            if (clearance >= separation)
             {
                 return candidate;
             }
+
+            if (clearance > bestClearance)
+            {
+                bestClearance = clearance;
+                bestCandidate = candidate;
+            }
         }
 
-        return requestedOffset
-            + Vector3.up * separation * (reservations.Count + 1);
+        return bestCandidate;
     }
 
-    public void Track(Vector3 localOffset, DamageNumber number)
+    public void Track(Vector3 worldPosition, DamageNumber number)
     {
         if (number != null)
         {
-            reservations.Add(new Reservation(localOffset, number));
+            reservations.Add(new Reservation(worldPosition, number));
         }
     }
 
@@ -328,29 +430,35 @@ internal sealed class DamageNumberSpawnLayout
         }
     }
 
-    private bool OverlapsReservation(
+    private float FindNearestReservationDistance(
         Vector3 candidate,
-        float minimumSeparation)
+        Camera battleCamera)
     {
-        Vector2 candidatePosition = candidate;
+        Vector2 candidatePosition = ResolveLayoutPosition(
+            candidate,
+            battleCamera);
+        float nearestDistance = float.PositiveInfinity;
 
         foreach (Reservation reservation in reservations)
         {
-            Vector2 reservedPosition = reservation.LocalOffset;
-
-            if (Vector2.Distance(candidatePosition, reservedPosition)
-                < minimumSeparation)
-            {
-                return true;
-            }
+            Vector3 reservedWorldPosition = reservation.Number == null
+                ? reservation.WorldPosition
+                : reservation.Number.transform.position;
+            Vector2 reservedPosition = ResolveLayoutPosition(
+                reservedWorldPosition,
+                battleCamera);
+            nearestDistance = Mathf.Min(
+                nearestDistance,
+                Vector2.Distance(candidatePosition, reservedPosition));
         }
 
-        return false;
+        return nearestDistance;
     }
 
     private static Vector3 CalculateCandidateOffset(
         int index,
-        float separation)
+        float separation,
+        Camera battleCamera)
     {
         if (index <= 0)
         {
@@ -359,22 +467,45 @@ internal sealed class DamageNumberSpawnLayout
 
         int gridIndex = index - 1;
         int row = gridIndex / 3 + 1;
-        int column = gridIndex % 3 - 1;
-        return new Vector3(
+        int columnIndex = gridIndex % 3;
+        int column = columnIndex switch
+        {
+            0 => -1,
+            1 => 1,
+            _ => 0
+        };
+        Vector2 layoutOffset = new Vector2(
             column * separation,
-            row * separation,
-            0f);
+            row * separation);
+        return battleCamera == null
+            ? new Vector3(layoutOffset.x, layoutOffset.y, 0f)
+            : battleCamera.transform.right * layoutOffset.x
+                + battleCamera.transform.up * layoutOffset.y;
+    }
+
+    private static Vector2 ResolveLayoutPosition(
+        Vector3 worldPosition,
+        Camera battleCamera)
+    {
+        if (battleCamera == null)
+        {
+            return worldPosition;
+        }
+
+        return new Vector2(
+            Vector3.Dot(worldPosition, battleCamera.transform.right),
+            Vector3.Dot(worldPosition, battleCamera.transform.up));
     }
 
     private readonly struct Reservation
     {
-        public Reservation(Vector3 localOffset, DamageNumber number)
+        public Reservation(Vector3 worldPosition, DamageNumber number)
         {
-            LocalOffset = localOffset;
+            WorldPosition = worldPosition;
             Number = number;
         }
 
-        public Vector3 LocalOffset { get; }
+        public Vector3 WorldPosition { get; }
         public DamageNumber Number { get; }
     }
 }

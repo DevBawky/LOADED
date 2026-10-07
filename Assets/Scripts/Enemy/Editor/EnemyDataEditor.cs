@@ -34,14 +34,11 @@ public class EnemyDataEditor : Editor
     private SerializedProperty thrownProjectileArcHeight;
     private SerializedProperty explosionVfxPrefab;
     private SerializedProperty explosionVfxScale;
-    private SerializedProperty gunnerTelegraphMaterial;
-    private SerializedProperty throwerTelegraphMaterial;
     private SerializedProperty supportTelegraphMaterial;
     private SerializedProperty supportHealColor;
     private SerializedProperty supportShieldColor;
     private SerializedProperty telegraphLineWidth;
     private SerializedProperty telegraphVerticalOffset;
-    private SerializedProperty throwerTelegraphSegments;
     private SerializedProperty telegraphSortingOrder;
     private SerializedProperty actions;
     private SerializedProperty bigBarrel;
@@ -78,14 +75,11 @@ public class EnemyDataEditor : Editor
         thrownProjectileArcHeight = Find("thrownProjectileArcHeight");
         explosionVfxPrefab = Find("explosionVfxPrefab");
         explosionVfxScale = Find("explosionVfxScale");
-        gunnerTelegraphMaterial = Find("gunnerTelegraphMaterial");
-        throwerTelegraphMaterial = Find("throwerTelegraphMaterial");
         supportTelegraphMaterial = Find("supportTelegraphMaterial");
         supportHealColor = Find("supportHealColor");
         supportShieldColor = Find("supportShieldColor");
         telegraphLineWidth = Find("telegraphLineWidth");
         telegraphVerticalOffset = Find("telegraphVerticalOffset");
-        throwerTelegraphSegments = Find("throwerTelegraphSegments");
         telegraphSortingOrder = Find("telegraphSortingOrder");
         actions = Find("actions");
         bigBarrel = Find("bigBarrel");
@@ -121,6 +115,9 @@ public class EnemyDataEditor : Editor
         EnemyBehaviorType selectedType =
             (EnemyBehaviorType)behaviorType.enumValueIndex;
 
+        if (selectedType != EnemyBehaviorType.Porter)
+            EditorGUILayout.PropertyField(recoveryTurns, new GUIContent("공격 쿨타임 (턴)"));
+
         switch (selectedType)
         {
             case EnemyBehaviorType.Melee:
@@ -135,16 +132,12 @@ public class EnemyDataEditor : Editor
                     "공격 타일을 먼저 등록한 뒤, 설정된 사거리 안까지 접근합니다. 사선이 확보되면 공격을 준비하고 다음 COUNT에 사격합니다.",
                     MessageType.Info);
                 EditorGUILayout.PropertyField(firingRange);
-                EditorGUILayout.PropertyField(recoveryTurns);
-                EditorGUILayout.PropertyField(gunnerTelegraphMaterial);
-                DrawTelegraphSettings();
                 break;
 
             case EnemyBehaviorType.Thrower:
                 EditorGUILayout.HelpBox(
                     "사거리는 보드 전체입니다. 준비 순간의 플레이어 타일을 고정한 뒤 투척합니다.",
                     MessageType.Info);
-                EditorGUILayout.PropertyField(recoveryTurns);
                 EditorGUILayout.PropertyField(thrownProjectileSprite);
                 EditorGUILayout.PropertyField(thrownProjectileColor);
                 EditorGUILayout.PropertyField(thrownProjectileSize);
@@ -152,9 +145,6 @@ public class EnemyDataEditor : Editor
                 EditorGUILayout.PropertyField(thrownProjectileArcHeight);
                 EditorGUILayout.PropertyField(explosionVfxPrefab);
                 EditorGUILayout.PropertyField(explosionVfxScale);
-                EditorGUILayout.PropertyField(throwerTelegraphMaterial);
-                EditorGUILayout.PropertyField(throwerTelegraphSegments);
-                DrawTelegraphSettings();
                 break;
 
             case EnemyBehaviorType.Porter:
@@ -174,10 +164,9 @@ public class EnemyDataEditor : Editor
 
             case EnemyBehaviorType.BigBarrel:
                 EditorGUILayout.HelpBox(
-                    "고정 순서로 폭탄 투척, 거리 조정, 양옆 산탄 사격, 재장전을 반복합니다.",
+                    "폭탄 투척과 양옆 산탄 사격을 번갈아 준비·실행하며, 각 공격 후 쿨타임 동안 위치를 조정합니다.",
                     MessageType.Info);
                 EditorGUILayout.PropertyField(preferredDistance);
-                EditorGUILayout.PropertyField(recoveryTurns);
                 EditorGUILayout.PropertyField(thrownProjectileSprite);
                 EditorGUILayout.PropertyField(thrownProjectileColor);
                 EditorGUILayout.PropertyField(thrownProjectileSize);
@@ -185,8 +174,6 @@ public class EnemyDataEditor : Editor
                 EditorGUILayout.PropertyField(explosionVfxPrefab);
                 EditorGUILayout.PropertyField(explosionVfxScale);
                 EditorGUILayout.PropertyField(bigBarrel, true);
-                EditorGUILayout.PropertyField(throwerTelegraphSegments);
-                DrawTelegraphSettings();
                 break;
         }
 
@@ -297,19 +284,11 @@ public class EnemyDataEditor : Editor
                 MessageType.Error);
         }
 
-        Material requiredTelegraph = data.BehaviorType switch
-        {
-            EnemyBehaviorType.Gunner => data.GunnerTelegraphMaterial,
-            EnemyBehaviorType.Thrower => data.ThrowerTelegraphMaterial,
-            EnemyBehaviorType.Porter => data.SupportTelegraphMaterial,
-            _ => null
-        };
-
-        if (data.BehaviorType != EnemyBehaviorType.Melee
-            && requiredTelegraph == null)
+        if (data.BehaviorType == EnemyBehaviorType.Porter
+            && data.SupportTelegraphMaterial == null)
         {
             EditorGUILayout.HelpBox(
-                "행동 예고선 머티리얼이 연결되지 않았습니다.",
+                "Support telegraph material is not assigned.",
                 MessageType.Warning);
         }
 
@@ -342,16 +321,6 @@ public class EnemyDataEditor : Editor
         else if (settings.BossBombPrefab.GetComponent<BossBomb>() == null)
         {
             Warning("BossBomb 프리팹 루트에 BossBomb 컴포넌트가 필요합니다.");
-        }
-
-        if (settings.BombTelegraphMaterial == null)
-        {
-            Warning("폭탄 Telegraph Material이 연결되지 않았습니다.");
-        }
-
-        if (settings.ShotgunTelegraphMaterial == null)
-        {
-            Warning("산탄 Telegraph Material이 연결되지 않았습니다.");
         }
 
         if (settings.ConfiguredBombDamage <= 0)

@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::StageData
   stageId: stage_1
   displayName: Dust'n Dawn
+  laneCount: 2
   battles:
   - {fileID: 11400000, guid: 9dc865d939c4004468d1fade197f6efb, type: 2}
   - {fileID: 11400000, guid: ff985747aa30ae648b26ef8bf105b731, type: 2}

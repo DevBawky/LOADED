@@ -10,8 +10,7 @@ public sealed class BulletDynamicCombatRulesTests
     {
         BulletData data = CreateBullet(
             new EffectDefinition(BulletEffectType.Gilded, 10f, 20),
-            new EffectDefinition(BulletEffectType.Heart, 10f, 20),
-            new EffectDefinition(BulletEffectType.Loader, 10f));
+            new EffectDefinition(BulletEffectType.Heart, 10f, 20));
 
         try
         {
@@ -32,7 +31,7 @@ public sealed class BulletDynamicCombatRulesTests
 
             Assert.That(
                 result.DamageMultiplier,
-                Is.EqualTo(1.1f * 1.5f * 1.5f * 1.2f)
+                Is.EqualTo(1.1f * 1.5f * 1.5f)
                     .Within(0.0001f));
             Assert.That(bullet.TemporaryDamageBonus, Is.EqualTo(0.1f));
         }
@@ -43,10 +42,9 @@ public sealed class BulletDynamicCombatRulesTests
     }
 
     [Test]
-    public void EvaluateCombinesTemporaryCoagulationAndFocusCriticalBonus()
+    public void EvaluateCombinesTemporaryAndFocusCriticalBonus()
     {
         BulletData data = CreateBullet(
-            new EffectDefinition(BulletEffectType.Coagulation, 5f, 10),
             new EffectDefinition(BulletEffectType.Focus, 2f));
 
         try
@@ -64,7 +62,7 @@ public sealed class BulletDynamicCombatRulesTests
                     bullet,
                     context);
 
-            Assert.That(result.CriticalChanceBonus, Is.EqualTo(38f));
+            Assert.That(result.CriticalChanceBonus, Is.EqualTo(13f));
         }
         finally
         {
@@ -77,7 +75,7 @@ public sealed class BulletDynamicCombatRulesTests
     {
         BulletData data = CreateBullet(
             new EffectDefinition(BulletEffectType.HighRoller, 100f),
-            new EffectDefinition(BulletEffectType.Coagulation, 5f, 10));
+            new EffectDefinition(BulletEffectType.Focus, 5f));
 
         try
         {
@@ -93,7 +91,7 @@ public sealed class BulletDynamicCombatRulesTests
                     CreateContext(currentHealth: 50, maxHealth: 100));
 
             Assert.That(damageMultiplier, Is.EqualTo(1f));
-            Assert.That(criticalChanceBonus, Is.EqualTo(25f));
+            Assert.That(criticalChanceBonus, Is.EqualTo(0f));
         }
         finally
         {
@@ -102,12 +100,114 @@ public sealed class BulletDynamicCombatRulesTests
     }
 
     [Test]
-    public void TargetMultiplierUsesRangeStatusAndPriorHitTogether()
+    public void RemadeBulletHelpersUseStatusShotsAndRecoveryRules()
+    {
+        BulletData data = CreateBullet(
+            new EffectDefinition(BulletEffectType.Crescendo, 2f, 4),
+            new EffectDefinition(BulletEffectType.MassProduced, 0f, 3),
+            new EffectDefinition(BulletEffectType.Coagulation, 12f, 4));
+
+        try
+        {
+            SerializedObject serialized = new SerializedObject(data);
+            SerializedProperty effects = serialized.FindProperty("effects");
+            effects.GetArrayElementAtIndex(0)
+                .FindPropertyRelative("knockbackDistance").intValue = 10;
+            effects.GetArrayElementAtIndex(2)
+                .FindPropertyRelative("knockbackDistance").intValue = 40;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            BulletInstance bullet = new BulletInstance(data, 0);
+
+            Assert.That(
+                BulletEffectUtility.GetCrescendoStatusStacks(
+                    bullet.Effects[0]),
+                Is.EqualTo(4));
+            Assert.That(
+                BulletEffectUtility.GetMassProducedAdditionalShots(
+                    bullet.Effects[1],
+                    8),
+                Is.EqualTo(3));
+            Assert.That(
+                BulletEffectUtility.GetCoagulationRecoveryPercent(
+                    bullet.Effects[2],
+                    20),
+                Is.EqualTo(40f));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void MixedGradeMaskExcludesStunAndCrescendoIsResolvedAtRuntime()
+    {
+        BulletData data = CreateBullet(
+            new EffectDefinition(BulletEffectType.Crescendo, 0f, 2),
+            new EffectDefinition(BulletEffectType.MixedGrade, 0f, 1));
+
+        try
+        {
+            BulletInstance bullet = new BulletInstance(data, 0);
+            int mask = BulletEffectUtility.GetInflictedStatusMask(bullet);
+
+            Assert.That(mask, Is.EqualTo(BulletEffectUtility.MixedGradeStatusMask));
+            Assert.That(
+                BulletEffectUtility.IncludesStatus(mask, StatusEffectType.Mark),
+                Is.True);
+            Assert.That(
+                BulletEffectUtility.IncludesStatus(mask, StatusEffectType.Poison),
+                Is.True);
+            Assert.That(
+                BulletEffectUtility.IncludesStatus(mask, StatusEffectType.Weakness),
+                Is.True);
+            Assert.That(
+                BulletEffectUtility.IncludesStatus(mask, StatusEffectType.Stun),
+                Is.False);
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void MasterpieceAndRitualHelpersUseOwnedAndPermanentStacks()
+    {
+        BulletData data = CreateBullet(
+            new EffectDefinition(BulletEffectType.Masterpiece, 0.25f, 4),
+            new EffectDefinition(BulletEffectType.Ritual, 5f));
+
+        try
+        {
+            BulletInstance bullet = new BulletInstance(data, 0);
+            bullet.AddPermanentStacks(3);
+
+            Assert.That(
+                BulletEffectUtility.GetMasterpieceCriticalDamageBonus(
+                    bullet.Effects[0],
+                    9),
+                Is.EqualTo(1f));
+            Assert.That(
+                BulletEffectUtility.GetRitualDamageBonus(
+                    bullet.Effects[1],
+                    bullet.PermanentStacks),
+                Is.EqualTo(15));
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(data);
+        }
+    }
+
+    [Test]
+    public void TargetMultiplierUsesStatusStacksAndPriorSniperShots()
     {
         BulletData data = CreateBullet(
             new EffectDefinition(BulletEffectType.Rangefinder, 10f),
             new EffectDefinition(BulletEffectType.Judgment, 20f),
-            new EffectDefinition(BulletEffectType.Assassination, 50f));
+            new EffectDefinition(BulletEffectType.Assassination, 50f),
+            new EffectDefinition(BulletEffectType.Mastery, 1.2f));
 
         try
         {
@@ -115,11 +215,12 @@ public sealed class BulletDynamicCombatRulesTests
             float multiplier =
                 BulletDynamicCombatRules.CalculateTargetDamageMultiplier(
                     bullet,
-                    new BulletTargetDamageContext(3, 2, true));
+                    new BulletTargetDamageContext(3, 2, true, 3));
 
             Assert.That(
                 multiplier,
-                Is.EqualTo(1.3f * 1.4f * 1.5f).Within(0.0001f));
+                Is.EqualTo(1.4f * 2f * Mathf.Pow(1.2f, 3))
+                    .Within(0.0001f));
         }
         finally
         {

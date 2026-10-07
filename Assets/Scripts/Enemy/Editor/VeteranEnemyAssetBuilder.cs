@@ -210,87 +210,39 @@ public static class VeteranEnemyAssetBuilder
         EnemyData veteranGunner,
         EnemyData veteranThrower)
     {
-        EnsureReplacement(
-            $"{BattleFolder}/2 Middle/Stage 1 Middle 1.asset",
-            3,
-            baseMelee,
-            veteranMelee);
-        EnsureReplacement(
-            $"{BattleFolder}/2 Middle/Stage 1 Middle 2.asset",
-            1,
-            baseGunner,
-            veteranGunner);
-        EnsureReplacement(
-            $"{BattleFolder}/2 Middle/Stage 1 Middle 2.asset",
-            3,
-            baseThrower,
-            veteranThrower);
+        string[] battleGuids = AssetDatabase.FindAssets(
+            "t:BattleData",
+            new[] { BattleFolder });
 
-        string[] finalePaths =
+        foreach (string battleGuid in battleGuids)
         {
-            $"{BattleFolder}/3 Finale/Stage 1 Finale 1.asset",
-            $"{BattleFolder}/3 Finale/Stage 1 Finale 2.asset",
-            $"{BattleFolder}/3 Finale/Stage 1 Finale 3.asset"
-        };
-
-        foreach (string path in finalePaths)
-        {
+            string path = AssetDatabase.GUIDToAssetPath(battleGuid);
             BattleData battle = LoadRequired<BattleData>(path);
-            int finalWaveIndex = battle.Waves.Count - 1;
-            EnsureReplacement(path, finalWaveIndex, baseMelee, veteranMelee);
-            EnsureReplacement(path, finalWaveIndex, baseGunner, veteranGunner);
-            EnsureReplacement(
-                path,
-                finalWaveIndex,
-                baseThrower,
-                veteranThrower);
-        }
 
-        string elitePath = $"{BattleFolder}/Stage 1 Elite.asset";
-        BattleData elite = LoadRequired<BattleData>(elitePath);
+            if (battle.IsBoss)
+            {
+                continue;
+            }
 
-        for (int waveIndex = 0; waveIndex < elite.Waves.Count; waveIndex++)
-        {
-            EnsureReplacement(
-                elitePath,
-                waveIndex,
-                baseMelee,
-                veteranMelee);
-            EnsureReplacement(
-                elitePath,
-                waveIndex,
-                baseGunner,
-                veteranGunner);
-            EnsureReplacement(
-                elitePath,
-                waveIndex,
-                baseThrower,
-                veteranThrower);
+            EnsureReplacement(path, baseMelee, veteranMelee);
+            EnsureReplacement(path, baseGunner, veteranGunner);
+            EnsureReplacement(path, baseThrower, veteranThrower);
         }
     }
 
     private static void EnsureReplacement(
         string battlePath,
-        int waveIndex,
         EnemyData baseEnemy,
         EnemyData veteranEnemy)
     {
         BattleData battle = LoadRequired<BattleData>(battlePath);
         SerializedObject serialized = new SerializedObject(battle);
-        SerializedProperty waves = serialized.FindProperty("waves");
+        SerializedProperty entries = serialized.FindProperty(
+            "duelClockEnemySpawnEntries");
 
-        if (waveIndex < 0 || waveIndex >= waves.arraySize)
+        for (int index = 0; index < entries.arraySize; index++)
         {
-            throw new System.InvalidOperationException(
-                $"Battle '{battlePath}' has no wave at index {waveIndex}.");
-        }
-
-        SerializedProperty enemies = waves.GetArrayElementAtIndex(waveIndex)
-            .FindPropertyRelative("enemies");
-
-        for (int index = 0; index < enemies.arraySize; index++)
-        {
-            SerializedProperty entry = enemies.GetArrayElementAtIndex(index);
+            SerializedProperty entry = entries.GetArrayElementAtIndex(index);
 
             if (entry.FindPropertyRelative("enemyData").objectReferenceValue
                 == veteranEnemy)
@@ -299,9 +251,9 @@ public static class VeteranEnemyAssetBuilder
             }
         }
 
-        for (int index = 0; index < enemies.arraySize; index++)
+        for (int index = 0; index < entries.arraySize; index++)
         {
-            SerializedProperty entry = enemies.GetArrayElementAtIndex(index);
+            SerializedProperty entry = entries.GetArrayElementAtIndex(index);
             SerializedProperty enemyData =
                 entry.FindPropertyRelative("enemyData");
 
@@ -310,23 +262,27 @@ public static class VeteranEnemyAssetBuilder
                 continue;
             }
 
-            SerializedProperty count = entry.FindPropertyRelative("count");
+            SerializedProperty baseWeight =
+                entry.FindPropertyRelative("weight");
+            float originalWeight = Mathf.Max(0.01f, baseWeight.floatValue);
+            float veteranWeight = Mathf.Max(0.01f, originalWeight * 0.2f);
 
-            if (count.intValue <= 1)
+            if (veteranWeight >= originalWeight)
             {
-                enemyData.objectReferenceValue = veteranEnemy;
+                veteranWeight = originalWeight * 0.5f;
             }
-            else
-            {
-                count.intValue--;
-                int veteranIndex = enemies.arraySize;
-                enemies.InsertArrayElementAtIndex(veteranIndex);
-                SerializedProperty veteranEntry =
-                    enemies.GetArrayElementAtIndex(veteranIndex);
-                veteranEntry.FindPropertyRelative("enemyData")
-                    .objectReferenceValue = veteranEnemy;
-                veteranEntry.FindPropertyRelative("count").intValue = 1;
-            }
+
+            baseWeight.floatValue = originalWeight - veteranWeight;
+            int veteranIndex = entries.arraySize;
+            entries.InsertArrayElementAtIndex(veteranIndex);
+            SerializedProperty veteranEntry =
+                entries.GetArrayElementAtIndex(veteranIndex);
+            veteranEntry.FindPropertyRelative("enemyData")
+                .objectReferenceValue = veteranEnemy;
+            veteranEntry.FindPropertyRelative("weight").floatValue =
+                veteranWeight;
+            veteranEntry.FindPropertyRelative("minimumSpawnCount")
+                .intValue = 0;
 
             serialized.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(battle);

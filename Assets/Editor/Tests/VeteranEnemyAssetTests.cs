@@ -49,21 +49,19 @@ public sealed class VeteranEnemyAssetTests
             BattleData battle = AssetDatabase.LoadAssetAtPath<BattleData>(
                 AssetDatabase.GUIDToAssetPath(guid));
 
-            foreach (EnemyWave wave in battle.Waves)
+            foreach (DuelClockEnemySpawnEntry entry in
+                     battle.DuelClockEnemySpawnEntries)
             {
-                foreach (EnemyWaveEntry entry in wave.Enemies)
-                {
-                    EnemyData enemy = entry.EnemyData;
-                    Assert.That(enemy, Is.Not.Null);
-                    Assert.That(
-                        enemy.BehaviorType,
-                        Is.Not.EqualTo(EnemyBehaviorType.Porter),
-                        $"Porter is assigned to Stage 1 battle '{battle.name}'.");
+                EnemyData enemy = entry.EnemyData;
+                Assert.That(enemy, Is.Not.Null);
+                Assert.That(
+                    enemy.BehaviorType,
+                    Is.Not.EqualTo(EnemyBehaviorType.Porter),
+                    $"Porter is assigned to Stage 1 battle '{battle.name}'.");
 
-                    if (enemy.EnemyId.StartsWith("stage1_veteran_"))
-                    {
-                        veteranIds.Add(enemy.EnemyId);
-                    }
+                if (enemy.EnemyId.StartsWith("stage1_veteran_"))
+                {
+                    veteranIds.Add(enemy.EnemyId);
                 }
             }
         }
@@ -79,22 +77,25 @@ public sealed class VeteranEnemyAssetTests
     }
 
     [Test]
-    public void FinaleLastWavesContainEveryVeteranType()
+    public void FinaleEnemyPoolsContainEveryVeteranType()
     {
-        string[] finaleNames =
-        {
-            "Stage 1 Finale 1",
-            "Stage 1 Finale 2",
-            "Stage 1 Finale 3"
-        };
+        string finaleFolder = $"{BattleFolder}/3 Finale";
+        string[] finaleGuids = AssetDatabase.FindAssets(
+            "t:BattleData",
+            new[] { finaleFolder });
 
-        foreach (string finaleName in finaleNames)
+        Assert.That(finaleGuids, Is.Not.Empty);
+
+        foreach (string finaleGuid in finaleGuids)
         {
             BattleData battle = AssetDatabase.LoadAssetAtPath<BattleData>(
-                $"{BattleFolder}/3 Finale/{finaleName}.asset");
+                AssetDatabase.GUIDToAssetPath(finaleGuid));
             Assert.That(battle, Is.Not.Null);
-            EnemyWave finalWave = battle.Waves[battle.Waves.Count - 1];
-            string[] ids = finalWave.Enemies
+            Assert.That(
+                battle.DuelClockEnemySpawnEntries,
+                Is.Not.Empty,
+                battle.name);
+            string[] ids = battle.DuelClockEnemySpawnEntries
                 .Select(entry => entry.EnemyData.EnemyId)
                 .ToArray();
 

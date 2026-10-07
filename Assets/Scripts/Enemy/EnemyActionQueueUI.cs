@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(20001)]
 public class EnemyActionQueueUI : MonoBehaviour
 {
     private const string ReadyImageName = "Image | Queue Ready";
@@ -32,11 +33,102 @@ public class EnemyActionQueueUI : MonoBehaviour
     [Header("Fallback")]
     [SerializeField] private Color missingIconColor = Color.red;
 
+    [Header("Lane Layout")]
+    [SerializeField, Min(0f)] private float laneVerticalSeparation = 2f;
+    [SerializeField, Min(0f)] private float laneLayoutTransitionDuration = 0.18f;
+
     private readonly List<Image> spawnedIcons = new List<Image>();
     private Material stunnedQueueMaterial;
+    private Material readyIntentMaterial;
     private bool isPrepared;
     private bool isStunned;
     private int displayRevision;
+    private bool hasCapturedQueuePosition;
+    private Vector2 baseQueuePosition;
+    private Vector3 baseQueueLocalPosition;
+    private RectTransform laneHealthPanel;
+    private RectTransform laneStatusPanel;
+    private Vector3 baseHealthPosition;
+    private Vector3 baseStatusPosition;
+    private Coroutine laneLayoutTransitionCoroutine;
+    private int appliedLaneIndex;
+    private Outline hoverOutline;
+    private bool isHovered;
+    private bool originalOutlineEnabled;
+    private Color originalOutlineColor;
+    private Vector2 originalOutlineDistance;
+    private EnemyIntentGraphic intentGraphic;
+    private Camera intentCamera;
+    private EnemyActionTooltipTrigger intentTooltip;
+    private EnemyTurnActionType displayedIntent;
+    private Vector3 displayedWorldDirection;
+
+    internal void ShowIntent(EnemyTurnActionType action, Vector3 worldDirection, bool acting,
+        EnemyAttackIconType attackType = EnemyAttackIconType.Melee)
+    {
+        if (queueImage == null) return;
+        if (intentGraphic == null)
+        {
+            GameObject icon = new GameObject("Icon | Next Action", typeof(RectTransform),
+                typeof(CanvasRenderer), typeof(EnemyIntentGraphic), typeof(LayoutElement));
+            icon.layer = queueImage.gameObject.layer;
+            icon.transform.SetParent(queueImage.transform, false);
+            icon.GetComponent<LayoutElement>().ignoreLayout = true;
+            intentGraphic = icon.GetComponent<EnemyIntentGraphic>();
+            intentGraphic.raycastTarget = true;
+            intentTooltip = icon.AddComponent<EnemyActionTooltipTrigger>();
+            intentGraphic.rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            intentGraphic.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            intentGraphic.rectTransform.sizeDelta = Vector2.one * Mathf.Max(1f, queueImage.rectTransform.rect.height * 0.8f);
+            intentCamera = Camera.main;
+        }
+        foreach (Image oldIcon in spawnedIcons)
+            if (oldIcon != null) oldIcon.gameObject.SetActive(false);
+        queueImage.gameObject.SetActive(true);
+        intentGraphic.gameObject.SetActive(true);
+        intentGraphic.transform.SetAsLastSibling();
+        displayedIntent = action;
+        displayedWorldDirection = worldDirection;
+        bool ready = action == EnemyTurnActionType.Fire;
+        intentGraphic.SetAttackReady(ready);
+        intentGraphic.SetAttackType(attackType);
+        if (!ready) intentGraphic.color = acting ? new Color(1f, 0.7f, 0.2f) : Color.white;
+        SetPrepared(ready);
+        intentTooltip.ConfigureIntent(action, attackType);
+        queueImage.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal,
+            Mathf.Max(1f, queueImage.rectTransform.rect.height));
+        SyncReadyImageRect();
+        RefreshIntentDirection();
+    }
+
+    private void LateUpdate()
+    {
+        // Resolve after the world canvas has applied its camera-facing pose.
+        if (intentGraphic != null && intentGraphic.isActiveAndEnabled)
+            RefreshIntentDirection();
+    }
+
+    private void RefreshIntentDirection()
+    {
+        Vector2 direction = Vector2.right;
+        Vector3 worldDirection = displayedWorldDirection;
+        if (worldDirection.sqrMagnitude > 0.001f && intentCamera != null)
+        {
+            Vector3 origin = intentGraphic.transform.position;
+            Vector2 screen = intentCamera.WorldToScreenPoint(origin);
+            Vector2 delta = (Vector2)(intentCamera.WorldToScreenPoint(transform.position + worldDirection)
+                - intentCamera.WorldToScreenPoint(transform.position));
+            Vector2 right = (Vector2)intentCamera.WorldToScreenPoint(
+                origin + intentGraphic.transform.TransformVector(Vector3.right)) - screen;
+            Vector2 up = (Vector2)intentCamera.WorldToScreenPoint(
+                origin + intentGraphic.transform.TransformVector(Vector3.up)) - screen;
+            float determinant = right.x * up.y - right.y * up.x;
+            if (Mathf.Abs(determinant) > 0.000001f)
+                direction = new Vector2(delta.x * up.y - delta.y * up.x,
+                    right.x * delta.y - right.y * delta.x) / determinant;
+        }
+        intentGraphic.SetIntent(displayedIntent, direction);
+    }
 
     public int IconCount => spawnedIcons.Count;
     public Sprite NormalQueueSprite => normalQueueSprite;
@@ -45,15 +137,89 @@ public class EnemyActionQueueUI : MonoBehaviour
 
     private void Awake()
     {
+        EnsureWorldCanvasDepthOffset();
+        CaptureBaseQueuePosition();
         EnsureReadyImage();
         ResetDisplay();
     }
 
+    internal BattleWorldCanvasDepthOffset EnsureWorldCanvasDepthOffset()
+    {
+        if (queueImage == null)
+        {
+            return null;
+        }
+
+        Canvas canvas = queueImage.GetComponentInParent<Canvas>(true);
+        if (canvas == null || canvas.renderMode != RenderMode.WorldSpace)
+        {
+            return null;
+        }
+
+        BattleWorldCanvasDepthOffset depthOffset =
+            canvas.GetComponent<BattleWorldCanvasDepthOffset>();
+        if (depthOffset == null)
+        {
+            depthOffset =
+                canvas.gameObject.AddComponent<BattleWorldCanvasDepthOffset>();
+        }
+        return depthOffset;
+    }
+
     private void OnDestroy()
     {
+        if (readyIntentMaterial != null) Destroy(readyIntentMaterial);
         if (stunnedQueueMaterial != null)
         {
             Destroy(stunnedQueueMaterial);
+        }
+    }
+
+    internal void SetHovered(bool hovered)
+    {
+        if (hovered == isHovered)
+        {
+            return;
+        }
+        isHovered = hovered;
+        if (queueImage == null)
+        {
+            return;
+        }
+        if (hovered)
+        {
+            hoverOutline = queueImage.GetComponent<Outline>();
+            if (hoverOutline == null)
+            {
+                hoverOutline = queueImage.gameObject.AddComponent<Outline>();
+                hoverOutline.enabled = false;
+            }
+            originalOutlineEnabled = hoverOutline.enabled;
+            originalOutlineColor = hoverOutline.effectColor;
+            originalOutlineDistance = hoverOutline.effectDistance;
+            hoverOutline.effectColor = new Color(1f, 0.94f, 0.72f, 1f);
+            Vector2 size = queueImage.rectTransform.rect.size;
+            float thickness = Mathf.Max(0.001f, Mathf.Min(size.x, size.y) * 0.05f);
+            hoverOutline.effectDistance = new Vector2(thickness, -thickness);
+            hoverOutline.enabled = true;
+        }
+        else if (hoverOutline != null)
+        {
+            hoverOutline.effectColor = originalOutlineColor;
+            hoverOutline.effectDistance = originalOutlineDistance;
+            hoverOutline.enabled = originalOutlineEnabled;
+        }
+    }
+
+    private void OnDisable()
+    {
+        SetHovered(false);
+
+        if (laneLayoutTransitionCoroutine != null)
+        {
+            StopCoroutine(laneLayoutTransitionCoroutine);
+            laneLayoutTransitionCoroutine = null;
+            ApplyLaneLayout(appliedLaneIndex, false);
         }
     }
 
@@ -69,6 +235,223 @@ public class EnemyActionQueueUI : MonoBehaviour
         queueImage.gameObject.SetActive(true);
         RefreshEmphasis();
         RefreshQueueWidth();
+    }
+
+    public void ApplyLaneLayout(int laneIndex)
+    {
+        ApplyLaneLayout(laneIndex, false);
+    }
+
+    public void ApplyLaneLayout(int laneIndex, bool animate)
+    {
+        ApplyLaneLayout(
+            laneIndex,
+            animate,
+            laneLayoutTransitionDuration);
+    }
+
+    internal void ApplyLaneLayout(
+        int laneIndex,
+        bool animate,
+        float transitionDuration)
+    {
+        if (queueImage == null)
+        {
+            return;
+        }
+
+        appliedLaneIndex = laneIndex;
+        CaptureBaseQueuePosition();
+        RectTransform queueRect = queueImage.rectTransform;
+        if (laneHealthPanel == null && queueRect.parent != null)
+        {
+            laneHealthPanel = queueRect.parent.Find(
+                "Panel | HP_BG") as RectTransform;
+            laneStatusPanel = queueRect.parent.Find(
+                "Image | Status") as RectTransform;
+            if (laneHealthPanel != null)
+            {
+                baseHealthPosition = laneHealthPanel.localPosition;
+            }
+            if (laneStatusPanel != null)
+            {
+                baseStatusPosition = laneStatusPanel.localPosition;
+            }
+        }
+        if (laneHealthPanel != null)
+        {
+            const float gap = 0.6f;
+            float healthHalf = laneHealthPanel.rect.height * 0.5f;
+            float queueHalf = queueRect.rect.height * 0.5f;
+            bool lowerLane = laneIndex <= 0;
+            float healthY = lowerLane
+                ? baseQueueLocalPosition.y
+                : baseHealthPosition.y;
+            Vector3 targetHealthPosition = new Vector3(
+                baseHealthPosition.x,
+                healthY,
+                baseHealthPosition.z);
+            Vector3 targetQueuePosition = new Vector3(
+                baseQueueLocalPosition.x,
+                healthY + (lowerLane ? -1f : 1f)
+                    * (healthHalf + gap + queueHalf),
+                baseQueueLocalPosition.z);
+            if (laneStatusPanel != null)
+            {
+                laneStatusPanel.localPosition = baseStatusPosition;
+            }
+            ApplyLaneLayoutPositions(
+                queueRect,
+                targetQueuePosition,
+                targetHealthPosition,
+                animate,
+                transitionDuration);
+            return;
+        }
+
+        Vector2 targetAnchoredPosition = baseQueuePosition
+            + Vector2.up * Mathf.Max(0, laneIndex)
+                * laneVerticalSeparation;
+        ApplyFallbackLaneLayout(
+            queueImage.rectTransform,
+            targetAnchoredPosition,
+            animate,
+            transitionDuration);
+    }
+
+    private void ApplyLaneLayoutPositions(
+        RectTransform queueRect,
+        Vector3 targetQueuePosition,
+        Vector3 targetHealthPosition,
+        bool animate,
+        float transitionDuration)
+    {
+        StopLaneLayoutTransition();
+
+        if (!animate || !isActiveAndEnabled
+            || transitionDuration <= 0f)
+        {
+            queueRect.localPosition = targetQueuePosition;
+            laneHealthPanel.localPosition = targetHealthPosition;
+            SyncReadyImageRect();
+            return;
+        }
+
+        laneLayoutTransitionCoroutine = StartCoroutine(
+            AnimateLaneLayout(
+                queueRect,
+                targetQueuePosition,
+                laneHealthPanel,
+                targetHealthPosition,
+                transitionDuration));
+    }
+
+    private void ApplyFallbackLaneLayout(
+        RectTransform queueRect,
+        Vector2 targetPosition,
+        bool animate,
+        float transitionDuration)
+    {
+        StopLaneLayoutTransition();
+
+        if (!animate || !isActiveAndEnabled
+            || transitionDuration <= 0f)
+        {
+            queueRect.anchoredPosition = targetPosition;
+            SyncReadyImageRect();
+            return;
+        }
+
+        laneLayoutTransitionCoroutine = StartCoroutine(
+            AnimateFallbackLaneLayout(
+                queueRect,
+                targetPosition,
+                transitionDuration));
+    }
+
+    private IEnumerator AnimateLaneLayout(
+        RectTransform queueRect,
+        Vector3 targetQueuePosition,
+        RectTransform healthRect,
+        Vector3 targetHealthPosition,
+        float transitionDuration)
+    {
+        Vector3 startQueuePosition = queueRect.localPosition;
+        Vector3 startHealthPosition = healthRect.localPosition;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < transitionDuration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(
+                elapsedTime / transitionDuration);
+            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
+            queueRect.localPosition = Vector3.Lerp(
+                startQueuePosition,
+                targetQueuePosition,
+                smoothProgress);
+            healthRect.localPosition = Vector3.Lerp(
+                startHealthPosition,
+                targetHealthPosition,
+                smoothProgress);
+            SyncReadyImageRect();
+        }
+
+        queueRect.localPosition = targetQueuePosition;
+        healthRect.localPosition = targetHealthPosition;
+        SyncReadyImageRect();
+        laneLayoutTransitionCoroutine = null;
+    }
+
+    private IEnumerator AnimateFallbackLaneLayout(
+        RectTransform queueRect,
+        Vector2 targetPosition,
+        float transitionDuration)
+    {
+        Vector2 startPosition = queueRect.anchoredPosition;
+        float elapsedTime = 0f;
+
+        while (elapsedTime < transitionDuration)
+        {
+            yield return null;
+
+            if (GamePauseController.IsPaused)
+            {
+                continue;
+            }
+
+            elapsedTime += Time.deltaTime;
+            float progress = Mathf.Clamp01(
+                elapsedTime / transitionDuration);
+            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
+            queueRect.anchoredPosition = Vector2.Lerp(
+                startPosition,
+                targetPosition,
+                smoothProgress);
+            SyncReadyImageRect();
+        }
+
+        queueRect.anchoredPosition = targetPosition;
+        SyncReadyImageRect();
+        laneLayoutTransitionCoroutine = null;
+    }
+
+    private void StopLaneLayoutTransition()
+    {
+        if (laneLayoutTransitionCoroutine == null)
+        {
+            return;
+        }
+
+        StopCoroutine(laneLayoutTransitionCoroutine);
+        laneLayoutTransitionCoroutine = null;
     }
 
     public bool AddAttackIcon(EnemyActionData actionData)
@@ -105,6 +488,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         tooltipTrigger.Configure(actionData);
         spawnedIcons.Add(attackIcon);
+        if (intentGraphic != null) attackIcon.gameObject.SetActive(false);
         RefreshQueueWidth();
         return true;
     }
@@ -217,6 +601,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         spawnedIcons.Clear();
         isPrepared = false;
+        intentGraphic?.SetAttackReady(false);
 
         if (queueImage != null)
         {
@@ -271,6 +656,18 @@ public class EnemyActionQueueUI : MonoBehaviour
         }
 
         queueImage.color = Color.white;
+    }
+
+    private void CaptureBaseQueuePosition()
+    {
+        if (hasCapturedQueuePosition || queueImage == null)
+        {
+            return;
+        }
+
+        baseQueuePosition = queueImage.rectTransform.anchoredPosition;
+        baseQueueLocalPosition = queueImage.rectTransform.localPosition;
+        hasCapturedQueuePosition = true;
     }
 
     private void EnsureReadyImage()
@@ -358,7 +755,7 @@ public class EnemyActionQueueUI : MonoBehaviour
 
         Material emphasisMaterial = isStunned
             ? GetOrCreateStunnedMaterial()
-            : isPrepared ? queueReadyMaterial : null;
+            : isPrepared ? GetOrCreateReadyIntentMaterial() : null;
         queueReadyImage.material = emphasisMaterial;
         queueReadyImage.gameObject.SetActive(
             emphasisMaterial != null
@@ -383,6 +780,20 @@ public class EnemyActionQueueUI : MonoBehaviour
         stunnedQueueMaterial.SetFloat("_Speed", stunnedFlameSpeed);
         stunnedQueueMaterial.SetFloat("_PulseAmount", 0.1f);
         return stunnedQueueMaterial;
+    }
+
+    private Material GetOrCreateReadyIntentMaterial()
+    {
+        if (readyIntentMaterial != null || queueReadyMaterial == null) return readyIntentMaterial;
+        readyIntentMaterial = new Material(queueReadyMaterial)
+        {
+            name = $"{queueReadyMaterial.name} (Attack Ready)"
+        };
+        readyIntentMaterial.SetColor("_EmberColor", new Color(0.6f, 0.005f, 0f, 1f));
+        readyIntentMaterial.SetColor("_FlameColor", new Color(1f, 0.025f, 0f, 1f));
+        readyIntentMaterial.SetColor("_HotColor", new Color(1f, 0.22f, 0.08f, 1f));
+        readyIntentMaterial.SetFloat("_PulseAmount", 0.45f);
+        return readyIntentMaterial;
     }
 
     private void RefreshQueueWidth()

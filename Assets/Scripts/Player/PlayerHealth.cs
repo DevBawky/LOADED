@@ -185,6 +185,23 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
+    public bool SpendMaxHealth(int amount)
+    {
+        int cost = Mathf.Max(0, amount);
+
+        if (cost <= 0 || IsDefeated || maxHealth <= 1)
+        {
+            return false;
+        }
+
+        int spent = Mathf.Min(cost, maxHealth - 1);
+        maxHealth -= spent;
+        currentHealth = Mathf.Min(currentHealth, maxHealth);
+        RefreshUI();
+        HealthChanged?.Invoke(currentHealth, maxHealth);
+        return spent > 0;
+    }
+
     public void RestoreRunHealth(int health, int savedMaxHealth)
     {
         maxHealth = Mathf.Max(1, savedMaxHealth);
@@ -196,6 +213,19 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
     public void RestoreStatusRunState(RunStatusEffectSaveData state)
     {
         statusEffects?.RestoreRunState(state);
+    }
+
+    internal void SetTestHealth(int health, int maximum)
+    {
+        if (!BattleTestContext.IsActive) return;
+        maxHealth = Mathf.Max(1, maximum);
+        int previousHealth = currentHealth;
+        SetCurrentHealth(Mathf.Clamp(health, 0, maxHealth));
+        if (previousHealth == currentHealth)
+        {
+            RefreshUI();
+            HealthChanged?.Invoke(currentHealth, maxHealth);
+        }
     }
 
     private void SetCurrentHealth(int health)
@@ -219,6 +249,11 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
 
     private int ResolveDamageTargetHealth(int damage)
     {
+        if (BattleTestContext.IsActive && BattleTestContext.Invulnerable)
+        {
+            return currentHealth;
+        }
+
         if (damage <= 0)
         {
             return currentHealth;

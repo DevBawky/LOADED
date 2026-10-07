@@ -13,17 +13,18 @@ public class BossBomb : MonoBehaviour
 
     [Header("Runtime State")]
     [SerializeField] private int tileIndex = -1;
+    [SerializeField] private int laneIndex;
     [SerializeField] private int remainingFuse;
     [SerializeField] private bool isExploding;
 
     private BossBombManager manager;
     private EnemyData sourceData;
     private int createdTurnCycle;
-    private LineRenderer explosionRangeLine;
+    private bool hasRangeWarning;
     private Color baseBombColor = Color.white;
-    private Color baseRangeColor = new Color(1f, 0.45f, 0f, 0.65f);
 
     public int TileIndex => tileIndex;
+    public int LaneIndex => laneIndex;
     public int RemainingFuse => remainingFuse;
     public int CreatedTurnCycle => createdTurnCycle;
     public bool IsExploding => isExploding;
@@ -36,6 +37,23 @@ public class BossBomb : MonoBehaviour
         int fuseTurns,
         int turnCycle)
     {
+        return Initialize(
+            assignedManager,
+            assignedSourceData,
+            assignedTileIndex,
+            0,
+            fuseTurns,
+            turnCycle);
+    }
+
+    public bool Initialize(
+        BossBombManager assignedManager,
+        EnemyData assignedSourceData,
+        int assignedTileIndex,
+        int assignedLaneIndex,
+        int fuseTurns,
+        int turnCycle)
+    {
         if (assignedManager == null || assignedSourceData == null
             || assignedTileIndex < 0)
         {
@@ -45,10 +63,12 @@ public class BossBomb : MonoBehaviour
         manager = assignedManager;
         sourceData = assignedSourceData;
         tileIndex = assignedTileIndex;
+        laneIndex = Mathf.Max(0, assignedLaneIndex);
         remainingFuse = Mathf.Clamp(fuseTurns, 1, 3);
         createdTurnCycle = turnCycle;
         isExploding = false;
         EnsureFallbackVisuals();
+        PlaceVisualAboveGround();
         RefreshFuseText();
 
         if (remainingFuse == 1)
@@ -82,7 +102,7 @@ public class BossBomb : MonoBehaviour
         remainingFuse = Mathf.Max(0, remainingFuse - 1);
         RefreshFuseText();
 
-        if (remainingFuse == 1 && explosionRangeLine == null)
+        if (remainingFuse == 1 && !hasRangeWarning)
         {
             CreateExplosionRangeTelegraph();
         }
@@ -101,7 +121,11 @@ public class BossBomb : MonoBehaviour
         }
 
         isExploding = true;
-        DisposeVisuals();
+        CreateExplosionRangeTelegraph();
+        if (manager != null && manager.BoardManager != null)
+        {
+            manager.BoardManager.SetWarningUrgent(this, true);
+        }
 
         if (bombRenderer != null)
         {
@@ -118,11 +142,23 @@ public class BossBomb : MonoBehaviour
 
     public void DisposeVisuals()
     {
-        if (explosionRangeLine != null)
+        if (manager != null && manager.BoardManager != null)
         {
-            explosionRangeLine.gameObject.SetActive(false);
-            Destroy(explosionRangeLine.gameObject);
-            explosionRangeLine = null;
+            manager.BoardManager.ReleaseTileWarnings(this);
+        }
+        hasRangeWarning = false;
+    }
+
+    private void OnDisable()
+    {
+        DisposeVisuals();
+    }
+
+    private void OnEnable()
+    {
+        if (manager != null && sourceData != null && !isExploding)
+        {
+            CreateExplosionRangeTelegraph();
         }
     }
 
@@ -193,24 +229,47 @@ public class BossBomb : MonoBehaviour
         }
     }
 
+    private void PlaceVisualAboveGround()
+    {
+        // Board positions describe the floor, while the bomb sprite has a
+        // centered pivot. Match the actors' camera-facing material and keep
+        // the complete sprite above the depth-writing terrain.
+        BattleSpriteBillboard billboard = GetComponent<BattleSpriteBillboard>();
+        if (billboard == null) billboard = gameObject.AddComponent<BattleSpriteBillboard>();
+        billboard.SetTargetCamera(Camera.main);
+        if (manager.BoardManager != null && manager.BoardManager.TryGetTilePosition(
+            tileIndex, laneIndex, out Vector3 ground))
+        {
+            transform.position += Vector3.up * (ground.y + 0.03f - bombRenderer.bounds.min.y);
+            bombRenderer.sortingOrder = EnemyController.CalculateLaneSortingOrder(
+                laneIndex, manager.BoardManager.LaneCount) + 2;
+        }
+        if (fuseText is TextMeshPro textMesh)
+        {
+            textMesh.sortingLayerID = bombRenderer.sortingLayerID;
+            textMesh.sortingOrder = bombRenderer.sortingOrder + 2;
+        }
+    }
+
     private void CreateExplosionRangeTelegraph()
     {
-        if (explosionRangeLine != null || remainingFuse != 1)
+        if (hasRangeWarning || (remainingFuse != 1 && !isExploding) || manager == null
+            || manager.BoardManager == null || sourceData == null)
         {
             return;
         }
 
-        BigBarrelSettings settings = sourceData.BigBarrel;
-        explosionRangeLine = BoardTelegraphUtility.CreateTileRange(
-            transform,
-            "Line | Bomb Explosion Range",
-            manager.BoardManager,
-            tileIndex - settings.BombExplosionRadius,
-            tileIndex + settings.BombExplosionRadius,
-            settings.BombTelegraphMaterial,
-            baseRangeColor,
-            sourceData.TelegraphVerticalOffset * 0.5f,
-            sourceData.TelegraphSortingOrder - 2);
+        BoardManager board = manager.BoardManager;
+        if (board.TryGetTilePosition(tileIndex, laneIndex, out Vector3 origin))
+            board.SetWarningOrigin(this, origin);
+        int radius = sourceData.BigBarrel.BombExplosionRadius;
+        int firstTile = Mathf.Max(0, tileIndex - radius);
+        int lastTile = Mathf.Min(board.BoardCount - 1, tileIndex + radius);
+        for (int tile = firstTile; tile <= lastTile; tile++)
+        {
+            board.SetTileWarningActive(tile, laneIndex, this, true);
+        }
+        hasRangeWarning = true;
     }
 
     private void RefreshFuseText()
@@ -228,14 +287,6 @@ public class BossBomb : MonoBehaviour
             Color color = baseBombColor;
             color.a *= alpha;
             bombRenderer.color = color;
-        }
-
-        if (explosionRangeLine != null)
-        {
-            Color color = baseRangeColor;
-            color.a *= alpha;
-            explosionRangeLine.startColor = color;
-            explosionRangeLine.endColor = color;
         }
     }
 }

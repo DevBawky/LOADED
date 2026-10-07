@@ -258,6 +258,7 @@ public class ItemData : ScriptableObject
         List<EnemyController> targets = new List<EnemyController>();
         waveManager.GetEnemiesInDirection(
             playerMove.transform.position,
+            playerMove.CurrentLaneIndex,
             direction,
             int.MaxValue,
             targets);

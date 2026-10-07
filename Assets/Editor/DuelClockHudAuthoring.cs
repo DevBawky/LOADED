@@ -1,13 +1,9 @@
 #if UNITY_EDITOR
 using System;
-using System.Collections.Generic;
 using TMPro;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using Object = UnityEngine.Object;
 
 public static class DuelClockHudAuthoring
 {
@@ -15,643 +11,79 @@ public static class DuelClockHudAuthoring
         "Assets/Prefabs/UI/Canvas.prefab";
     private const string BattleScenePath =
         "Assets/Scenes/Battle.unity";
-    private const string FloatingPanelName = "Panel | Floating";
-    private const string HudRootName = "Layout | Duel Clock";
 
-    private static readonly Color32 BackdropColor =
-        new Color32(255, 255, 255, 255);
-    private static readonly Color32 TitleColor =
-        new Color32(247, 191, 62, 255);
-    private static readonly Color32 PrimaryTextColor =
-        new Color32(250, 245, 238, 255);
-    private static readonly Color32 SecondaryTextColor =
-        new Color32(201, 194, 211, 255);
-    private static readonly Color32 BeatTextColor =
-        new Color32(255, 226, 145, 255);
-    private static readonly Color32 CompletedSpawnTextColor =
-        new Color32(145, 148, 158, 255);
-    private static readonly Color32 TrackColor =
-        new Color32(48, 36, 56, 255);
-    private static readonly Color32 StatusPanelColor =
-        new Color32(42, 31, 49, 238);
-    private static readonly Color32 FillStartColor =
-        new Color32(247, 191, 62, 255);
-    private static readonly Color32 FillEndColor =
-        new Color32(231, 77, 42, 255);
-    private static readonly Color32 MarkerColor =
-        new Color32(255, 215, 92, 255);
-
-    [MenuItem("Tools/LOADED/Build Duel Clock HUD")]
-    public static void BuildFromMenu()
+    [MenuItem("Tools/LOADED/Validate Duel Clock HUD")]
+    public static void ValidateFromMenu()
     {
-        if (EditorApplication.isPlayingOrWillChangePlaymode)
-        {
-            throw new InvalidOperationException(
-                "Exit Play Mode before building the Duel Clock HUD.");
-        }
-
-        if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-        {
-            Debug.Log(
-                "Duel Clock HUD build was cancelled to preserve unsaved scene changes.");
-            return;
-        }
-
-        BuildInternal();
+        ValidateAssets();
     }
 
     public static void ApplyFromCommandLine()
     {
-        BuildInternal();
+        ValidateAssets();
     }
 
-    private static void BuildInternal()
+    private static void ValidateAssets()
     {
-        bool prefabChanged = BuildCanvasPrefab();
-
-        if (prefabChanged)
-        {
-            AssetDatabase.ImportAsset(
-                CanvasPrefabPath,
-                ImportAssetOptions.ForceUpdate);
-        }
-
-        int removedDuplicateCount = ReconcileBattleScene();
-        Debug.Log(
-            "Duel Clock HUD authoring complete. "
-            + $"Prefab changed: {prefabChanged}, "
-            + $"removed Battle duplicates: {removedDuplicateCount}.");
-    }
-
-    private static bool BuildCanvasPrefab()
-    {
-        GameObject prefabRoot = PrefabUtility.LoadPrefabContents(
+        GameObject canvas = AssetDatabase.LoadAssetAtPath<GameObject>(
             CanvasPrefabPath);
 
-        try
-        {
-            Transform floatingPanel = FindDescendant(
-                prefabRoot.transform,
-                FloatingPanelName);
-            Transform hudRoot = floatingPanel == null
-                ? null
-                : FindDirectChild(floatingPanel, HudRootName);
-
-            if (hudRoot == null)
-            {
-                throw new InvalidOperationException(
-                    $"Canvas prefab is missing '{FloatingPanelName}/{HudRootName}'.");
-            }
-
-            TMP_Text fontSource = hudRoot.GetComponentInChildren<TMP_Text>(
-                true);
-            fontSource ??= prefabRoot.GetComponentInChildren<TMP_Text>(true);
-
-            if (fontSource == null || fontSource.font == null)
-            {
-                throw new InvalidOperationException(
-                    "Canvas prefab does not contain a usable TMP font source.");
-            }
-
-            if (IsCurrentLayout(hudRoot))
-            {
-                return false;
-            }
-
-            ConfigureHud(hudRoot, fontSource.font);
-            PrefabUtility.SaveAsPrefabAsset(prefabRoot, CanvasPrefabPath);
-            return true;
-        }
-        finally
-        {
-            PrefabUtility.UnloadPrefabContents(prefabRoot);
-        }
-    }
-
-    private static void ConfigureHud(
-        Transform hudRoot,
-        TMP_FontAsset font)
-    {
-        ClearChildren(hudRoot);
-        hudRoot.gameObject.layer = 5;
-        hudRoot.gameObject.SetActive(true);
-
-        RectTransform rootRect = hudRoot as RectTransform;
-        rootRect.anchorMin = new Vector2(0.5f, 1f);
-        rootRect.anchorMax = rootRect.anchorMin;
-        rootRect.pivot = new Vector2(0.5f, 1f);
-        rootRect.anchoredPosition = new Vector2(0f, -20f);
-        rootRect.sizeDelta = new Vector2(420f, 164f);
-        rootRect.localScale = Vector3.one;
-
-        Image backdrop = GetOrAddComponent<Image>(hudRoot.gameObject);
-        backdrop.color = BackdropColor;
-        backdrop.raycastTarget = false;
-        backdrop.type = backdrop.sprite != null
-            && backdrop.sprite.border.sqrMagnitude > 0f
-                ? Image.Type.Sliced
-                : Image.Type.Simple;
-
-        CanvasGroup canvasGroup = GetOrAddComponent<CanvasGroup>(
-            hudRoot.gameObject);
-        canvasGroup.alpha = 1f;
-        canvasGroup.interactable = false;
-        canvasGroup.blocksRaycasts = false;
-
-        VerticalLayoutGroup rootLayout =
-            GetOrAddComponent<VerticalLayoutGroup>(hudRoot.gameObject);
-        rootLayout.padding = new RectOffset(16, 16, 12, 12);
-        rootLayout.spacing = 8f;
-        rootLayout.childAlignment = TextAnchor.UpperLeft;
-        rootLayout.childControlWidth = true;
-        rootLayout.childControlHeight = true;
-        rootLayout.childForceExpandWidth = true;
-        rootLayout.childForceExpandHeight = false;
-
-        GameObject header = CreateLayoutRow(
-            "Layout | Header",
-            hudRoot,
-            30f,
-            8f);
-        TMP_Text titleText = CreateText(
-            "Text | Title",
-            header.transform,
-            font,
-            "DUEL CLOCK",
-            18f,
-            FontStyles.Bold,
-            TextAlignmentOptions.Left,
-            TitleColor,
-            1f,
-            0f);
-        TMP_Text progressText = CreateText(
-            "Text | Progress",
-            header.transform,
-            font,
-            "62%",
-            26f,
-            FontStyles.Bold,
-            TextAlignmentOptions.Right,
-            PrimaryTextColor,
-            0f,
-            92f);
-
-        GameObject meter = CreateContainer(
-            "Layout | Meter",
-            hudRoot,
-            34f);
-        Image track = CreateImage(
-            "Image | Track",
-            meter.transform,
-            TrackColor);
-        Stretch(track.rectTransform, 0f, 0f, 0f, 0f);
-        Image progressFill = CreateImage(
-            "Image | Progress Fill",
-            meter.transform,
-            FillStartColor);
-        Stretch(progressFill.rectTransform, 4f, 4f, 4f, 4f);
-        progressFill.type = Image.Type.Filled;
-        progressFill.fillMethod = Image.FillMethod.Horizontal;
-        progressFill.fillOrigin = (int)Image.OriginHorizontal.Left;
-        progressFill.fillAmount = 0.62f;
-
-        Image marker = CreateImage(
-            "Image | Beat Marker",
-            meter.transform,
-            MarkerColor);
-        RectTransform markerRect = marker.rectTransform;
-        markerRect.anchorMin = new Vector2(1f, 0f);
-        markerRect.anchorMax = new Vector2(1f, 1f);
-        markerRect.pivot = new Vector2(1f, 0.5f);
-        markerRect.anchoredPosition = new Vector2(-2f, 0f);
-        markerRect.sizeDelta = new Vector2(2f, -2f);
-
-        GameObject status = CreateLayoutRow(
-            "Layout | Status",
-            hudRoot,
-            60f,
-            8f);
-
-        GameObject remainingEnemyPanel = CreateStatusPanel(
-            "Panel | Remaining Enemies",
-            status.transform);
-        CreateText(
-            "Text | Remaining Enemy Label",
-            remainingEnemyPanel.transform,
-            font,
-            "남은 적",
-            12f,
-            FontStyles.Normal,
-            TextAlignmentOptions.Left,
-            SecondaryTextColor,
-            1f,
-            0f);
-        TMP_Text actionPreviewText = CreateText(
-            "Text | Action Preview",
-            remainingEnemyPanel.transform,
-            font,
-            "5",
-            24f,
-            FontStyles.Bold,
-            TextAlignmentOptions.Right,
-            PrimaryTextColor,
-            0f,
-            56f);
-
-        GameObject nextSpawnPanel = CreateStatusPanel(
-            "Panel | Next Spawn",
-            status.transform);
-        CreateText(
-            "Text | Next Spawn Label",
-            nextSpawnPanel.transform,
-            font,
-            "다음 적",
-            12f,
-            FontStyles.Normal,
-            TextAlignmentOptions.Left,
-            SecondaryTextColor,
-            1f,
-            0f);
-        TMP_Text enemyCountText = CreateText(
-            "Text | Enemy Count",
-            nextSpawnPanel.transform,
-            font,
-            "5 COUNT",
-            20f,
-            FontStyles.Bold,
-            TextAlignmentOptions.Right,
-            BeatTextColor,
-            0f,
-            112f);
-
-        DuelClockHUD hud = GetOrAddComponent<DuelClockHUD>(
-            hudRoot.gameObject);
-        SerializedObject serializedHud = new SerializedObject(hud);
-        serializedHud.FindProperty("authoredLayoutVersion").intValue =
-            DuelClockHUD.CurrentLayoutVersion;
-        serializedHud.FindProperty("canvasGroup").objectReferenceValue =
-            canvasGroup;
-        serializedHud.FindProperty("progressFill").objectReferenceValue =
-            progressFill;
-        serializedHud.FindProperty("progressStartColor").colorValue =
-            FillStartColor;
-        serializedHud.FindProperty("progressEndColor").colorValue =
-            FillEndColor;
-        serializedHud.FindProperty("fillLerpSpeed").floatValue = 12f;
-        serializedHud.FindProperty("beatFillLerpSpeed").floatValue = 28f;
-        serializedHud.FindProperty("beatFullHoldDuration").floatValue =
-            0.08f;
-        serializedHud.FindProperty("beatPulseDuration").floatValue = 0.2f;
-        serializedHud.FindProperty("beatPulseScale").floatValue = 1.12f;
-        serializedHud.FindProperty("beatPulseColor").colorValue = TitleColor;
-        serializedHud.FindProperty("titleText").objectReferenceValue =
-            titleText;
-        serializedHud.FindProperty("enemyCountText").objectReferenceValue =
-            enemyCountText;
-        serializedHud.FindProperty("allEnemiesSpawnedTextColor").colorValue =
-            CompletedSpawnTextColor;
-        serializedHud.FindProperty("progressText").objectReferenceValue =
-            progressText;
-        serializedHud.FindProperty("actionPreviewText")
-            .objectReferenceValue = actionPreviewText;
-        serializedHud.ApplyModifiedPropertiesWithoutUndo();
-    }
-
-    private static bool IsCurrentLayout(Transform hudRoot)
-    {
-        DuelClockHUD hud = hudRoot.GetComponent<DuelClockHUD>();
-
-        if (hud == null)
-        {
-            return false;
-        }
-
-        SerializedObject serializedHud = new SerializedObject(hud);
-        SerializedProperty layoutVersion = serializedHud.FindProperty(
-            "authoredLayoutVersion");
-        Transform header = FindDirectChild(hudRoot, "Layout | Header");
-        Transform meter = FindDirectChild(hudRoot, "Layout | Meter");
-        Transform status = FindDirectChild(hudRoot, "Layout | Status");
-        Transform remainingEnemies = status == null
-            ? null
-            : FindDirectChild(status, "Panel | Remaining Enemies");
-        Transform nextSpawn = status == null
-            ? null
-            : FindDirectChild(status, "Panel | Next Spawn");
-        return layoutVersion != null
-            && layoutVersion.intValue == DuelClockHUD.CurrentLayoutVersion
-            && header != null
-            && meter != null
-            && status != null
-            && remainingEnemies != null
-            && nextSpawn != null
-            && FindDirectChild(header, "Text | Title") != null
-            && FindDirectChild(header, "Text | Progress") != null
-            && FindDirectChild(meter, "Image | Track") != null
-            && FindDirectChild(meter, "Image | Progress Fill") != null
-            && FindDirectChild(meter, "Image | Beat Marker") != null
-            && FindDirectChild(
-                remainingEnemies,
-                "Text | Remaining Enemy Label") != null
-            && FindDirectChild(
-                remainingEnemies,
-                "Text | Action Preview") != null
-            && FindDirectChild(
-                nextSpawn,
-                "Text | Next Spawn Label") != null
-            && FindDirectChild(nextSpawn, "Text | Enemy Count") != null;
-    }
-
-    private static int ReconcileBattleScene()
-    {
-        Scene scene = EditorSceneManager.OpenScene(
-            BattleScenePath,
-            OpenSceneMode.Single);
-        Transform floatingPanel = null;
-
-        foreach (GameObject root in scene.GetRootGameObjects())
-        {
-            floatingPanel = FindDescendant(
-                root.transform,
-                FloatingPanelName);
-
-            if (floatingPanel != null)
-            {
-                break;
-            }
-        }
-
-        if (floatingPanel == null)
+        if (canvas == null)
         {
             throw new InvalidOperationException(
-                $"Battle scene is missing '{FloatingPanelName}'.");
+                $"Canvas prefab is missing at '{CanvasPrefabPath}'.");
         }
 
-        List<Transform> hudRoots = FindDirectChildren(
-            floatingPanel,
-            HudRootName);
-        Transform configuredRoot = null;
+        DuelClockHUD[] huds = canvas.GetComponentsInChildren<DuelClockHUD>(
+            true);
 
-        foreach (Transform candidate in hudRoots)
-        {
-            if (candidate.GetComponent<DuelClockHUD>() != null)
-            {
-                configuredRoot = candidate;
-                break;
-            }
-        }
-
-        if (configuredRoot == null)
+        if (huds.Length != 1)
         {
             throw new InvalidOperationException(
-                "Battle scene did not inherit the configured Duel Clock HUD from Canvas.prefab.");
+                "Canvas prefab must contain exactly one DuelClockHUD.");
         }
 
-        int removedDuplicateCount = 0;
+        ValidateHudReferences(huds[0]);
 
-        foreach (Transform candidate in hudRoots)
+        if (AssetDatabase.LoadAssetAtPath<SceneAsset>(BattleScenePath) == null)
         {
-            if (candidate != configuredRoot)
-            {
-                Object.DestroyImmediate(candidate.gameObject);
-                removedDuplicateCount++;
-            }
+            throw new InvalidOperationException(
+                $"Battle scene is missing at '{BattleScenePath}'.");
         }
 
-        if (removedDuplicateCount > 0)
+        Debug.Log(
+            "Duel Clock HUD validation complete. "
+            + "No prefab or scene content was generated or modified.",
+            huds[0]);
+    }
+
+    private static void ValidateHudReferences(DuelClockHUD hud)
+    {
+        SerializedObject serializedHud = new SerializedObject(hud);
+        RequireReference<CanvasGroup>(serializedHud, "canvasGroup");
+        RequireReference<Image>(serializedHud, "progressFill");
+        RequireReference<Image>(serializedHud, "spawnProgressFill");
+        RequireReference<TMP_Text>(serializedHud, "titleText");
+        RequireReference<TMP_Text>(serializedHud, "progressText");
+        RequireReference<TMP_Text>(serializedHud, "spawnGaugeLabelText");
+        RequireReference<TMP_Text>(serializedHud, "unspawnedEnemyCountText");
+    }
+
+    private static void RequireReference<T>(
+        SerializedObject serializedObject,
+        string propertyName)
+        where T : UnityEngine.Object
+    {
+        SerializedProperty property = serializedObject.FindProperty(
+            propertyName);
+
+        if (property?.objectReferenceValue is T)
         {
-            EditorSceneManager.MarkSceneDirty(scene);
-
-            if (!EditorSceneManager.SaveScene(scene))
-            {
-                throw new InvalidOperationException(
-                    "Battle scene could not be saved after Duel Clock HUD authoring.");
-            }
+            return;
         }
 
-        return removedDuplicateCount;
-    }
-
-    private static GameObject CreateLayoutRow(
-        string objectName,
-        Transform parent,
-        float preferredHeight,
-        float spacing)
-    {
-        GameObject row = CreateContainer(
-            objectName,
-            parent,
-            preferredHeight);
-        HorizontalLayoutGroup layout = row.AddComponent<
-            HorizontalLayoutGroup>();
-        layout.spacing = spacing;
-        layout.childAlignment = TextAnchor.MiddleLeft;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        layout.childForceExpandWidth = false;
-        layout.childForceExpandHeight = true;
-        return row;
-    }
-
-    private static GameObject CreateContainer(
-        string objectName,
-        Transform parent,
-        float preferredHeight)
-    {
-        GameObject container = new GameObject(
-            objectName,
-            typeof(RectTransform),
-            typeof(LayoutElement));
-        container.layer = 5;
-        container.transform.SetParent(parent, false);
-        LayoutElement element = container.GetComponent<LayoutElement>();
-        element.preferredHeight = preferredHeight;
-        element.flexibleWidth = 1f;
-        return container;
-    }
-
-    private static GameObject CreateStatusPanel(
-        string objectName,
-        Transform parent)
-    {
-        GameObject panel = new GameObject(
-            objectName,
-            typeof(RectTransform),
-            typeof(LayoutElement));
-        panel.layer = 5;
-        panel.transform.SetParent(parent, false);
-
-        LayoutElement element = panel.GetComponent<LayoutElement>();
-        element.preferredHeight = 60f;
-        element.flexibleWidth = 1f;
-
-        Image image = panel.AddComponent<Image>();
-        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>(
-            "UI/Skin/UISprite.psd");
-        image.type = Image.Type.Sliced;
-        image.color = StatusPanelColor;
-        image.raycastTarget = false;
-
-        HorizontalLayoutGroup layout = panel.AddComponent<
-            HorizontalLayoutGroup>();
-        layout.padding = new RectOffset(10, 10, 7, 7);
-        layout.spacing = 6f;
-        layout.childAlignment = TextAnchor.MiddleLeft;
-        layout.childControlWidth = true;
-        layout.childControlHeight = true;
-        layout.childForceExpandWidth = false;
-        layout.childForceExpandHeight = true;
-        return panel;
-    }
-
-    private static TMP_Text CreateText(
-        string objectName,
-        Transform parent,
-        TMP_FontAsset font,
-        string text,
-        float fontSize,
-        FontStyles fontStyle,
-        TextAlignmentOptions alignment,
-        Color color,
-        float flexibleWidth,
-        float preferredWidth)
-    {
-        GameObject textObject = new GameObject(
-            objectName,
-            typeof(RectTransform),
-            typeof(LayoutElement));
-        textObject.layer = 5;
-        textObject.transform.SetParent(parent, false);
-        TMP_Text textComponent = textObject.AddComponent<TextMeshProUGUI>();
-        textComponent.font = font;
-        textComponent.text = text;
-        textComponent.fontSize = fontSize;
-        textComponent.fontStyle = fontStyle;
-        textComponent.alignment = alignment;
-        textComponent.color = color;
-        textComponent.enableAutoSizing = true;
-        textComponent.fontSizeMin = 10f;
-        textComponent.fontSizeMax = fontSize;
-        textComponent.textWrappingMode = TextWrappingModes.NoWrap;
-        textComponent.overflowMode = TextOverflowModes.Ellipsis;
-        textComponent.raycastTarget = false;
-        LayoutElement element = textObject.GetComponent<LayoutElement>();
-        element.flexibleWidth = flexibleWidth;
-
-        if (preferredWidth > 0f)
-        {
-            element.preferredWidth = preferredWidth;
-        }
-
-        return textComponent;
-    }
-
-    private static Image CreateImage(
-        string objectName,
-        Transform parent,
-        Color color)
-    {
-        GameObject imageObject = new GameObject(
-            objectName,
-            typeof(RectTransform));
-        imageObject.layer = 5;
-        imageObject.transform.SetParent(parent, false);
-        Image image = imageObject.AddComponent<Image>();
-        image.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>(
-            "UI/Skin/UISprite.psd");
-        image.color = color;
-        image.raycastTarget = false;
-        return image;
-    }
-
-    private static void Stretch(
-        RectTransform rect,
-        float left,
-        float right,
-        float top,
-        float bottom)
-    {
-        rect.anchorMin = Vector2.zero;
-        rect.anchorMax = Vector2.one;
-        rect.pivot = new Vector2(0.5f, 0.5f);
-        rect.offsetMin = new Vector2(left, bottom);
-        rect.offsetMax = new Vector2(-right, -top);
-        rect.localScale = Vector3.one;
-    }
-
-    private static void ClearChildren(Transform parent)
-    {
-        for (int index = parent.childCount - 1; index >= 0; index--)
-        {
-            Object.DestroyImmediate(parent.GetChild(index).gameObject);
-        }
-    }
-
-    private static T GetOrAddComponent<T>(GameObject target)
-        where T : Component
-    {
-        T component = target.GetComponent<T>();
-        return component != null ? component : target.AddComponent<T>();
-    }
-
-    private static Transform FindDescendant(
-        Transform root,
-        string objectName)
-    {
-        if (root.name == objectName)
-        {
-            return root;
-        }
-
-        for (int index = 0; index < root.childCount; index++)
-        {
-            Transform found = FindDescendant(
-                root.GetChild(index),
-                objectName);
-
-            if (found != null)
-            {
-                return found;
-            }
-        }
-
-        return null;
-    }
-
-    private static Transform FindDirectChild(
-        Transform parent,
-        string objectName)
-    {
-        for (int index = 0; index < parent.childCount; index++)
-        {
-            Transform child = parent.GetChild(index);
-
-            if (child.name == objectName)
-            {
-                return child;
-            }
-        }
-
-        return null;
-    }
-
-    private static List<Transform> FindDirectChildren(
-        Transform parent,
-        string objectName)
-    {
-        List<Transform> results = new List<Transform>();
-
-        for (int index = 0; index < parent.childCount; index++)
-        {
-            Transform child = parent.GetChild(index);
-
-            if (child.name == objectName)
-            {
-                results.Add(child);
-            }
-        }
-
-        return results;
+        throw new InvalidOperationException(
+            $"DuelClockHUD requires a valid '{propertyName}' reference.");
     }
 }
 #endif

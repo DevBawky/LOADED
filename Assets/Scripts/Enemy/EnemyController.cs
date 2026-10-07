@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UI;
 
 public enum EnemyTurnActionType
@@ -47,7 +48,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     public static event Action<EnemyController, int, int>
         PlayerStatusDefeated;
 
-    private const int MaxBigBarrelPostShotgunRecoveryTurns = 2;
+    private const float GunnerPostImpactPresentationDuration = 0.12f;
+    internal const int LaneSortingOrderStride = 500;
+    private const int LaneCanvasSortingOffset = 200;
 
     private const int InitialFacingDirection = -1;
     private static readonly int IdleAnimationStateHash =
@@ -69,6 +72,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private static readonly int GridColorId =
         Shader.PropertyToID("_GridColor");
     private const int DefaultProjectileResolution = 32;
+    private const string DamagePreviewBulletIconName =
+        "Image | Damage Preview Bullet";
+    private const float DamagePreviewBulletIconAlpha = 0.28f;
+    private static readonly Vector2 DamagePreviewBulletIconSize =
+        new Vector2(4.25f, 4.25f);
     private static Sprite defaultThrownProjectileSprite;
 
     [Header("Data")]
@@ -93,7 +101,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private bool isQueueCreated;
     [SerializeField] private bool isAttackPrepared;
     [SerializeField] private bool isRetreating;
+    [SerializeField] private int currentLaneIndex;
     [SerializeField] private int preparedTargetTileIndex = -1;
+    [SerializeField] private int preparedTargetLaneIndex;
     [SerializeField] private Vector3 preparedTargetPosition;
     [SerializeField] private EnemyController preparedSupportTarget;
     [SerializeField] private EnemySupportType preparedSupportType;
@@ -104,6 +114,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     [SerializeField] private bool isBigBarrelPhaseTwo;
     [SerializeField] private bool bigBarrelActionUsesPhaseTwo;
     [SerializeField] private int preparedBigBarrelFuse;
+    [SerializeField] private int preparedBigBarrelLaneIndex;
     [SerializeField] private int bigBarrelReloadTurnsRemaining;
     [SerializeField] private List<int> preparedBombTargetTileIndices =
         new List<int>();
@@ -119,6 +130,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private readonly List<Vector3> movePath = new List<Vector3>();
     private readonly List<int> movePathTileIndices = new List<int>();
     private readonly List<int> frontlineEnemyTileBuffer = new List<int>();
+    private readonly List<EnemyLanePursuitCandidate> lanePursuitCandidates =
+        new List<EnemyLanePursuitCandidate>();
     private readonly List<EnemyController> attackTargetBuffer =
         new List<EnemyController>();
     private readonly List<EnemySupportTargetCandidate<EnemyController>>
@@ -126,11 +139,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             new List<EnemySupportTargetCandidate<EnemyController>>();
     private EnemyHealthBarFeedback healthBarFeedback;
     private EnemyHealthTextFeedback healthTextFeedback;
+    private UnityEngine.UI.Image damagePreviewBulletIcon;
     private BossHudController bossHud;
     private Animator avatarAnimator;
     private EnemyAnimationSfx avatarEffects;
     private EnemyAttackAnimationEvents avatarActionWindow;
     private SpriteRenderer avatarSortingRenderer;
+    private SortingGroup laneSortingGroup;
+    private Canvas enemyCanvas;
     private CombatFeedbackController combatFeedback;
     private int avatarAnimationSequence;
     private bool isAttackDodgeWindowOpen;
@@ -139,6 +155,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private bool clearExposedAfterPlayerTurn;
     private EnemyRunStateSerializer runStateSerializer;
     private EnemyTelegraphPresenter telegraphPresenter;
+    private readonly HashSet<Vector2Int> executingAttackCells = new HashSet<Vector2Int>();
 
     public event Action<EnemyController, EnemyTurnActionType> TurnActionCompleted;
     public event Action<EnemyController, EnemyAttackData> AttackExecuted;
@@ -150,8 +167,17 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     public EnemyData Data => enemyData;
     public int CurrentHealth => currentHealth;
     public int CurrentShield => currentShield;
+    internal int LastDamageAbsorbed { get; private set; }
     public int RemainingSupportCharges => remainingSupportCharges;
     public int MaxHealth => enemyData == null ? 0 : enemyData.MaxHealth;
+    public bool IsBoss => enemyData != null
+        && enemyData.BehaviorType == EnemyBehaviorType.BigBarrel;
+    internal SpriteRenderer HoverRenderer => avatarSortingRenderer;
+    internal EnemyActionQueueUI ActionQueueView => actionQueueUI;
+    internal int HoverSortingOrder => laneSortingGroup == null
+        ? CalculateLaneSortingOrder(currentLaneIndex, boardManager == null ? 2 : boardManager.LaneCount)
+        : laneSortingGroup.sortingOrder;
+
     public EnemyActionData LoadedAttackAction => queuedAttackActions.Count > 0
         ? queuedAttackActions[0]
         : null;
@@ -160,19 +186,24 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     public bool IsQueueCreated => isQueueCreated;
     public bool IsAttackPrepared => isAttackPrepared;
     public bool IsRetreating => isRetreating;
+    public int CurrentLaneIndex => currentLaneIndex;
     public int PreparedTargetTileIndex => preparedTargetTileIndex;
     public EnemyTurnActionType LastTurnAction => lastTurnAction;
     public bool IsActing => isActing;
     public bool IsExposed => statusEffects != null && statusEffects.IsExposed;
     public bool WillExecuteDedicatedTurnMotion =>
-        isAttackPrepared
-        || (enemyData != null
-            && enemyData.BehaviorType == EnemyBehaviorType.BigBarrel
-            && (bigBarrelStep == BigBarrelStep.ExecuteBomb
-                || bigBarrelStep == BigBarrelStep.ExecuteShotgun));
+        isAttackPrepared || GetNextTurnIntent().Action == EnemyTurnActionType.Fire;
 
     public bool WillPreparedAttackHitPlayer()
     {
+        if (hasCommittedIntent)
+        {
+            return GetNextTurnIntent().Action == EnemyTurnActionType.Fire
+                && (!IsBoss || IsShotgunIntent()) && playerMove != null && boardManager != null
+                && boardManager.TryGetTileIndex(playerMove.transform.position,
+                    playerMove.CurrentLaneIndex, out int plannedPlayerTile)
+                && committedAttackCells.Contains(new Vector2Int(plannedPlayerTile, playerMove.CurrentLaneIndex));
+        }
         if (!isAttackPrepared || currentHealth <= 0 || enemyData == null
             || playerMove == null || boardManager == null
             || statusEffects != null && statusEffects.IsStunned
@@ -183,6 +214,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return false;
@@ -190,7 +222,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
-            return preparedTargetTileIndex == playerTileIndex;
+            return preparedTargetTileIndex == playerTileIndex
+                && preparedTargetLaneIndex == playerMove.CurrentLaneIndex;
         }
 
         if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
@@ -198,6 +231,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return LoadedAttackAction != null
                 && LoadedAttackAction.ActionType
                     == EnemyActionType.ShotgunAttack
+                && preparedBigBarrelLaneIndex
+                    == playerMove.CurrentLaneIndex
                 && preparedShotgunTileIndices.Contains(playerTileIndex);
         }
 
@@ -267,6 +302,24 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void LateUpdate()
     {
+        if (isInitialized && currentHealth > 0 && !isActing)
+        {
+            if (waveManager != null && !waveManager.IsResolvingTurn
+                && playerMove != null && !playerMove.IsActing && !playerMove.IsShooting)
+                CommitTurnIntent();
+            if (!hasCommittedIntent) return;
+            TurnIntent intent = GetNextTurnIntent();
+            Vector3 direction = intent.Path != null && intent.Path.Length > 0
+                ? intent.Path[intent.Path.Length - 1] - transform.position
+                : Vector3.right * intent.Direction;
+            actionQueueUI?.ShowIntent(intent.Action, direction, false, AttackIconType);
+            telegraphPresenter?.ShowPlannedAttack(hasCommittedIntent
+                && intent.Action == EnemyTurnActionType.Fire ? committedAttackCells : null);
+        }
+        if (telegraphPresenter != null && telegraphPresenter.RefreshExecutingAttack())
+        {
+            return;
+        }
         if (!isAttackPrepared || enemyData == null)
         {
             return;
@@ -274,14 +327,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
         {
-            MoveBigBarrelTelegraphsWithBoss();
             return;
         }
 
-        if (enemyData.BehaviorType != EnemyBehaviorType.Melee)
-        {
-            RefreshAttackTelegraph();
-        }
+        RefreshAttackTelegraph();
     }
 
     public bool Initialize(
@@ -290,6 +339,23 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         PlayerMove assignedPlayerMove,
         PlayerHealth assignedPlayerHealth,
         WaveManager assignedWaveManager)
+    {
+        return Initialize(
+            assignedEnemyData,
+            assignedBoardManager,
+            assignedPlayerMove,
+            assignedPlayerHealth,
+            assignedWaveManager,
+            0);
+    }
+
+    public bool Initialize(
+        EnemyData assignedEnemyData,
+        BoardManager assignedBoardManager,
+        PlayerMove assignedPlayerMove,
+        PlayerHealth assignedPlayerHealth,
+        WaveManager assignedWaveManager,
+        int assignedLaneIndex)
     {
         if (assignedEnemyData == null || assignedBoardManager == null
             || assignedPlayerMove == null || assignedPlayerHealth == null
@@ -314,6 +380,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         ApplyInitialFacingDirection();
         SpawnAvatar();
         ResetRuntimeState();
+        currentLaneIndex = Mathf.Clamp(
+            assignedLaneIndex,
+            0,
+            boardManager.LaneCount - 1);
+        ApplyLaneSortingOrder();
 
         if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
         {
@@ -338,6 +409,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         RunEnemySaveData state,
         EnemyController restoredSupportTarget)
     {
+        ClearTurnIntent();
         runStateSerializer.Restore(state, restoredSupportTarget);
     }
     public void TakeTurn()
@@ -347,6 +419,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
+        CommitTurnIntent();
+        TurnIntent intent = GetNextTurnIntent();
+        if (intent.Action == EnemyTurnActionType.Wait && isAttackPrepared)
+            CancelAttackPreparation();
         isActing = true;
 
         if (statusEffects != null && statusEffects.ConsumeStunTurn())
@@ -362,95 +438,24 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return;
         }
 
-        if (enemyData.BehaviorType == EnemyBehaviorType.BigBarrel)
+        Vector3 intentDirection = intent.Path != null && intent.Path.Length > 0
+            ? intent.Path[intent.Path.Length - 1] - transform.position : Vector3.right * intent.Direction;
+        actionQueueUI?.ShowIntent(intent.Action, intentDirection, true, AttackIconType);
+        if (IsBoss)
         {
-            TakeBigBarrelTurn();
-            return;
+            ExecuteBossIntent(intent);
         }
-
-        if (isAttackPrepared && queuedAttackActions.Count == 0)
+        else
         {
-            ClearAttackQueue();
+            ExecuteIntent(intent);
         }
-
-        if (isAttackPrepared)
-        {
-            isAttackPrepared = false;
-            HideAttackTelegraph();
-            StartCoroutine(FireAttackQueue());
-            return;
-        }
-
-        // A prepared attack is already committed. Frontline priority is only
-        // used while choosing a new action; it must never delay a telegraphed
-        // attack when the player changes position before the enemy turn.
-        if (!CanTakeFrontlineTurn())
-        {
-            if (TryGetTurnContext(
-                    out int waitingDirectionToPlayer,
-                    out _)
-                && waitingDirectionToPlayer != 0
-                && !IsFacing(waitingDirectionToPlayer))
-            {
-                RotateToward(waitingDirectionToPlayer);
-            }
-            else
-            {
-                CompleteAction(EnemyTurnActionType.Wait);
-            }
-
-            return;
-        }
-
-        if (recoveryTurnsRemaining > 0)
-        {
-            recoveryTurnsRemaining--;
-            CompleteAction(EnemyTurnActionType.Reload);
-            return;
-        }
-
-        if (!TryGetTurnContext(out int directionToPlayer, out int distanceToPlayer))
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
-        {
-            if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
-            {
-                RotateToward(directionToPlayer);
-                return;
-            }
-
-            TakeThrowerTurn();
-            return;
-        }
-
-        if (enemyData.BehaviorType == EnemyBehaviorType.Porter)
-        {
-            TakePorterTurn(directionToPlayer, distanceToPlayer);
-            return;
-        }
-
-        if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
-        {
-            RotateToward(directionToPlayer);
-            return;
-        }
-
-        if (enemyData.BehaviorType == EnemyBehaviorType.Melee)
-        {
-            TakeMeleeTurn(directionToPlayer, distanceToPlayer);
-            return;
-        }
-
-        TakeGunnerTurn(directionToPlayer, distanceToPlayer);
     }
 
     private void OnDisable()
     {
+        actionQueueUI?.SetHovered(false);
         waveManager?.ReleaseMovementTiles(this);
+        boardManager?.ReleaseTileWarnings(this);
         HideAttackTelegraph();
         bossHud?.Unbind(this);
         bossHud = null;
@@ -511,6 +516,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         // Stun interrupts only the ready state. The registered attacks and
         // their icons stay queued so the enemy must prepare them again later.
         isAttackPrepared = false;
+        if (hasCommittedIntent)
+            committedIntent = new TurnIntent(EnemyTurnActionType.Wait);
+        SetPreparedTargetWarning(false);
         actionQueueUI?.SetPrepared(false);
         HideAttackTelegraph();
 
@@ -611,15 +619,31 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         // Damage popups communicate the attack's full power, not the amount
         // clamped by the enemy's remaining health.
-        damageNumberDisplay?.ShowAttackDamage(
-            damage,
-            CombatImpactTierUtility.Resolve(
-                isCritical,
-                modifiedDamage,
-                MaxHealth,
-                currentHealth <= 0),
-            isCritical);
+        damageNumberDisplay?.ShowAttackDamage(damage, isCritical);
         damageNumberDisplay?.ShowMarkBonusDamage(markBonusDamage);
+        return appliedDamage;
+    }
+
+    public int ExecuteByPlayer()
+    {
+        if (currentHealth <= 0 || IsBoss)
+        {
+            return 0;
+        }
+
+        long lethalDamage = (long)currentHealth + Mathf.Max(0, currentShield);
+        int requestedDamage = lethalDamage >= int.MaxValue
+            ? int.MaxValue
+            : (int)lethalDamage;
+        int appliedDamage = ApplyDamageInternal(
+            requestedDamage,
+            false,
+            1.6f);
+        if (appliedDamage > 0)
+        {
+            damageNumberDisplay?.ShowAttackDamage(requestedDamage);
+        }
+
         return appliedDamage;
     }
 
@@ -636,7 +660,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     }
 
     public void ShowDamagePreview(
-        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments)
+        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments,
+        Sprite bulletIcon = null)
     {
         healthBarFeedback?.ShowDamagePreview(
             currentHealth,
@@ -646,12 +671,134 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             currentHealth,
             MaxHealth,
             segments);
+        ShowDamagePreviewBulletIcon(bulletIcon);
+    }
+
+    public void ShowDamagePreview(
+        IReadOnlyList<EnemyHealthBarFeedback.DamagePreviewSegment> segments,
+        BulletData bullet)
+    {
+        healthBarFeedback?.ShowDamagePreview(
+            currentHealth,
+            MaxHealth,
+            segments);
+        healthTextFeedback?.ShowDamagePreview(
+            currentHealth,
+            MaxHealth,
+            segments);
+        ShowDamagePreviewBulletIcon(bullet);
     }
 
     public void ClearDamagePreview()
     {
         healthBarFeedback?.ClearDamagePreview();
         healthTextFeedback?.ClearDamagePreview();
+        HideDamagePreviewBulletIcon();
+    }
+
+    private void ShowDamagePreviewBulletIcon(Sprite bulletIcon)
+    {
+        if (bulletIcon == null)
+        {
+            HideDamagePreviewBulletIcon();
+            return;
+        }
+
+        UnityEngine.UI.Image previewIcon = EnsureDamagePreviewBulletIcon();
+        if (previewIcon == null)
+        {
+            return;
+        }
+
+        previewIcon.sprite = bulletIcon;
+        previewIcon.color = new Color(
+            1f,
+            1f,
+            1f,
+            DamagePreviewBulletIconAlpha);
+        previewIcon.preserveAspect = true;
+        previewIcon.raycastTarget = false;
+        previewIcon.gameObject.SetActive(true);
+        previewIcon.transform.SetAsLastSibling();
+    }
+
+    private void ShowDamagePreviewBulletIcon(BulletData bullet)
+    {
+        if (bullet == null)
+        {
+            HideDamagePreviewBulletIcon();
+            return;
+        }
+
+        UnityEngine.UI.Image previewIcon = EnsureDamagePreviewBulletIcon();
+        if (previewIcon == null)
+        {
+            return;
+        }
+
+        BulletIconPresenter.Apply(previewIcon, bullet, true);
+        previewIcon.color = new Color(
+            1f,
+            1f,
+            1f,
+            DamagePreviewBulletIconAlpha);
+        previewIcon.raycastTarget = false;
+        previewIcon.gameObject.SetActive(true);
+        previewIcon.transform.SetAsLastSibling();
+    }
+
+    private void HideDamagePreviewBulletIcon()
+    {
+        if (damagePreviewBulletIcon != null)
+        {
+            damagePreviewBulletIcon.gameObject.SetActive(false);
+        }
+    }
+
+    private UnityEngine.UI.Image EnsureDamagePreviewBulletIcon()
+    {
+        if (damagePreviewBulletIcon != null)
+        {
+            return damagePreviewBulletIcon;
+        }
+
+        if (canvasTransform == null)
+        {
+            return null;
+        }
+
+        Transform existing = canvasTransform.Find(
+            DamagePreviewBulletIconName);
+        if (existing != null)
+        {
+            damagePreviewBulletIcon =
+                existing.GetComponent<UnityEngine.UI.Image>();
+        }
+
+        if (damagePreviewBulletIcon == null)
+        {
+            GameObject previewObject = new GameObject(
+                DamagePreviewBulletIconName,
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(UnityEngine.UI.Image));
+            previewObject.layer = canvasTransform.gameObject.layer;
+            RectTransform previewRect =
+                previewObject.GetComponent<RectTransform>();
+            previewRect.SetParent(canvasTransform, false);
+            previewRect.anchorMin = new Vector2(0.5f, 0.5f);
+            previewRect.anchorMax = new Vector2(0.5f, 0.5f);
+            previewRect.pivot = new Vector2(0.5f, 0.5f);
+            previewRect.anchoredPosition = Vector2.zero;
+            previewRect.sizeDelta = DamagePreviewBulletIconSize;
+            previewRect.localScale = Vector3.one;
+            damagePreviewBulletIcon =
+                previewObject.GetComponent<UnityEngine.UI.Image>();
+        }
+
+        damagePreviewBulletIcon.raycastTarget = false;
+        damagePreviewBulletIcon.preserveAspect = true;
+        return damagePreviewBulletIcon;
     }
 
     public bool ApplyStatusDamage(int damage, bool creditedToPlayer)
@@ -700,11 +847,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(
-                damage,
-                currentHealth <= 0
-                    ? CombatImpactTier.Defeat
-                    : CombatImpactTier.Normal);
+            damageNumberDisplay?.ShowAttackDamage(damage);
         }
 
         return appliedDamage > 0;
@@ -720,11 +863,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(
-                damage,
-                currentHealth <= 0
-                    ? CombatImpactTier.Defeat
-                    : CombatImpactTier.Normal);
+            damageNumberDisplay?.ShowAttackDamage(damage);
         }
 
         return appliedDamage;
@@ -736,11 +875,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (appliedDamage > 0)
         {
-            damageNumberDisplay?.ShowAttackDamage(
-                damage,
-                currentHealth <= 0
-                    ? CombatImpactTier.Defeat
-                    : CombatImpactTier.Normal);
+            damageNumberDisplay?.ShowAttackDamage(damage);
         }
 
         return appliedDamage;
@@ -800,6 +935,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     internal bool ApplyExposedFromDodge()
     {
+        if (statusEffects == null)
+        {
+            statusEffects = GetComponent<StatusEffectController>();
+        }
+
         if (currentHealth <= 0 || statusEffects == null)
         {
             return false;
@@ -867,6 +1007,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     internal void HandlePlayerActionStarted(PlayerBehaviourAction action)
     {
+        // Also covers input before the first LateUpdate after spawning.
+        if (!isActing && waveManager != null && !waveManager.IsResolvingTurn)
+            CommitTurnIntent();
         if (!IsExposed)
         {
             clearExposedAfterPlayerTurn = false;
@@ -935,6 +1078,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         int absorbedDamage = Mathf.Min(currentShield, damage);
+        LastDamageAbsorbed = absorbedDamage;
 
         if (absorbedDamage > 0)
         {
@@ -1042,134 +1186,122 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             }
         }
 
-        if (GetAvailableAttackCount(EnemyActionType.MeleeAttack) == 0)
-        {
-            ClearAttackQueue();
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
+        bool hasAttack = GetAvailableAttackCount(
+            EnemyActionType.MeleeAttack) > 0;
+        EnemyStandardTurnIntent intent =
+            EnemyTurnDecisionPolicy.GetMeleeIntent(
+                hasAttack,
+                isQueueCreated,
+                queuedAttackActions.Count,
+                distanceToPlayer);
 
-        if (!isQueueCreated)
+        switch (intent)
         {
-            CreateAttackQueueWithAction(
-                EnemyActionType.MeleeAttack,
-                0);
-            return;
-        }
+            case EnemyStandardTurnIntent.CreateAttackQueue:
+                CreateAttackQueueWithAction(
+                    EnemyActionType.MeleeAttack,
+                    0);
+                break;
 
-        if (queuedAttackActions.Count == 0)
-        {
-            RegisterAction(EnemyActionType.MeleeAttack, 0);
-            return;
-        }
+            case EnemyStandardTurnIntent.RegisterAttack:
+                RegisterAction(EnemyActionType.MeleeAttack, 0);
+                break;
 
-        if (distanceToPlayer > 1)
-        {
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
+            case EnemyStandardTurnIntent.PrepareAttack:
+                PrepareCurrentAttackQueue();
+                break;
 
-        PrepareCurrentAttackQueue();
+            case EnemyStandardTurnIntent.MoveTowardPlayer:
+                if (!hasAttack)
+                {
+                    ClearAttackQueue();
+                }
+
+                MoveTowardPlayer(directionToPlayer);
+                break;
+
+            default:
+                CompleteAction(EnemyTurnActionType.Wait);
+                break;
+        }
     }
 
     private void TakeGunnerTurn(int directionToPlayer, int distanceToPlayer)
     {
-        int definedAttackCount = GetAvailableAttackCount(
-            EnemyActionType.RangedAttack);
+        bool hasAttack = GetAvailableAttackCount(
+            EnemyActionType.RangedAttack) > 0;
+        bool canPrepareAttack = hasAttack
+            && isQueueCreated
+            && queuedAttackActions.Count > 0
+            && CanPrepareGunnerAttack(
+                directionToPlayer,
+                distanceToPlayer);
+        EnemyStandardTurnIntent intent =
+            EnemyTurnDecisionPolicy.GetGunnerIntent(
+                hasAttack,
+                isQueueCreated,
+                queuedAttackActions.Count,
+                canPrepareAttack,
+                distanceToPlayer,
+                enemyData.FiringRange);
 
-        if (definedAttackCount == 0)
+        switch (intent)
         {
-            ClearAttackQueue();
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
+            case EnemyStandardTurnIntent.CreateAttackQueue:
+                CreateAttackQueueWithAction(
+                    EnemyActionType.RangedAttack,
+                    0);
+                break;
 
-        if (!isQueueCreated)
-        {
-            CreateAttackQueueWithAction(
-                EnemyActionType.RangedAttack,
-                0);
-            return;
-        }
+            case EnemyStandardTurnIntent.RegisterAttack:
+                RegisterAction(EnemyActionType.RangedAttack, 0);
+                break;
 
-        if (queuedAttackActions.Count == 0)
-        {
-            RegisterAction(EnemyActionType.RangedAttack, 0);
-            return;
-        }
+            case EnemyStandardTurnIntent.PrepareAttack:
+                PrepareCurrentAttackQueue();
+                break;
 
-        if (CanPrepareGunnerAttack(directionToPlayer, distanceToPlayer))
-        {
-            PrepareCurrentAttackQueue();
-            return;
-        }
+            case EnemyStandardTurnIntent.MoveTowardPlayer:
+                if (!hasAttack)
+                {
+                    ClearAttackQueue();
+                }
 
-        if (distanceToPlayer > enemyData.FiringRange)
-        {
-            MoveTowardPlayer(directionToPlayer);
-            return;
-        }
+                MoveTowardPlayer(directionToPlayer);
+                break;
 
-        CompleteAction(EnemyTurnActionType.Wait);
+            default:
+                CompleteAction(EnemyTurnActionType.Wait);
+                break;
+        }
     }
 
     private void TakeThrowerTurn()
     {
-        if (GetAvailableAttackCount(EnemyActionType.RangedAttack) == 0)
+        bool hasAttack = GetAvailableAttackCount(
+            EnemyActionType.RangedAttack) > 0;
+        EnemyStandardTurnIntent intent =
+            EnemyTurnDecisionPolicy.GetThrowerIntent(
+                hasAttack,
+                isQueueCreated,
+                queuedAttackActions.Count);
+
+        switch (intent)
         {
-            ClearAttackQueue();
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
+            case EnemyStandardTurnIntent.CreateAttackQueue:
+                CreateAttackQueueWithAction(
+                    EnemyActionType.RangedAttack,
+                    0);
+                break;
 
-        if (!isQueueCreated)
-        {
-            CreateAttackQueueWithAction(
-                EnemyActionType.RangedAttack,
-                0);
-            return;
-        }
+            case EnemyStandardTurnIntent.RegisterAttack:
+                RegisterAction(EnemyActionType.RangedAttack, 0);
+                break;
 
-        if (queuedAttackActions.Count == 0)
-        {
-            RegisterAction(EnemyActionType.RangedAttack, 0);
-            return;
-        }
-
-        if (!CaptureThrowerTargetTile())
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        PrepareCurrentAttackQueue();
-    }
-
-    private void TakeBigBarrelTurn()
-    {
-        if (!TryGetTurnContext(
-                out int directionToPlayer,
-                out int distanceToPlayer))
-        {
-            CompleteAction(EnemyTurnActionType.Wait);
-            return;
-        }
-
-        if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
-        {
-            RotateToward(directionToPlayer);
-            return;
-        }
-
-        switch (bigBarrelStep)
-        {
-            case BigBarrelStep.RotateToPlayer:
-                TryEnterBigBarrelPhaseTwo();
-                bigBarrelStep = BigBarrelStep.CreateBombQueue;
-
-                if (directionToPlayer != 0 && !IsFacing(directionToPlayer))
+            case EnemyStandardTurnIntent.CaptureThrowerTarget:
+                if (CaptureThrowerTargetTile())
                 {
-                    RotateToward(directionToPlayer);
+                    PrepareCurrentAttackQueue();
                 }
                 else
                 {
@@ -1177,17 +1309,56 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 }
                 break;
 
-            case BigBarrelStep.CreateBombQueue:
+            default:
+                ClearAttackQueue();
+                CompleteAction(EnemyTurnActionType.Wait);
+                break;
+        }
+    }
+
+    private void TakeBigBarrelTurn()
+    {
+        bool hasTurnContext = TryGetTurnContext(
+            out int directionToPlayer,
+            out int distanceToPlayer);
+        EnemyBigBarrelTurnIntent intent =
+            EnemyTurnDecisionPolicy.GetBigBarrelIntent(
+                hasTurnContext,
+                hasTurnContext
+                    && currentLaneIndex != playerMove.CurrentLaneIndex,
+                !hasTurnContext || directionToPlayer == 0
+                    || IsFacing(directionToPlayer),
+                bigBarrelStep);
+
+        switch (intent)
+        {
+            case EnemyBigBarrelTurnIntent.PursuePlayerLane:
+                TakeLaneMismatchPursuitTurn(
+                    directionToPlayer,
+                    distanceToPlayer);
+                break;
+
+            case EnemyBigBarrelTurnIntent.RotateTowardPlayer:
+                RotateToward(directionToPlayer);
+                break;
+
+            case EnemyBigBarrelTurnIntent.AdvanceOpeningStep:
+                TryEnterBigBarrelPhaseTwo();
+                bigBarrelStep = BigBarrelStep.CreateBombQueue;
+                CompleteAction(EnemyTurnActionType.Wait);
+                break;
+
+            case EnemyBigBarrelTurnIntent.CreateBombQueue:
                 TryEnterBigBarrelPhaseTwo();
                 bigBarrelActionUsesPhaseTwo = isBigBarrelPhaseTwo;
                 CreateBigBarrelBombQueueWithFirstAction();
                 break;
 
-            case BigBarrelStep.RegisterBomb:
+            case EnemyBigBarrelTurnIntent.RegisterBomb:
                 RegisterBigBarrelBombAction();
                 break;
 
-            case BigBarrelStep.PrepareBomb:
+            case EnemyBigBarrelTurnIntent.PrepareBomb:
                 CaptureBigBarrelBombTargets();
                 preparedBigBarrelFuse = bigBarrelActionUsesPhaseTwo
                     ? enemyData.BigBarrel.PhaseTwoBombFuseTurns
@@ -1196,44 +1367,48 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 PrepareCurrentAttackQueue();
                 break;
 
-            case BigBarrelStep.ExecuteBomb:
+            case EnemyBigBarrelTurnIntent.ExecuteBomb:
                 isAttackPrepared = false;
                 HideAttackTelegraph();
                 StartCoroutine(FireBigBarrelBombs());
                 break;
 
-            case BigBarrelStep.AdjustDistance:
+            case EnemyBigBarrelTurnIntent.AdjustDistance:
                 ApproachPlayerAndPrepareShotgun(
                     directionToPlayer,
                     distanceToPlayer);
                 break;
 
-            case BigBarrelStep.CreateShotgunQueue:
+            case EnemyBigBarrelTurnIntent.CreateShotgunQueue:
                 CreateBigBarrelQueueWithAction(
                     EnemyActionType.ShotgunAttack,
                     BigBarrelStep.AdjustDistance,
                     BigBarrelStep.Reload);
                 break;
 
-            case BigBarrelStep.RegisterShotgun:
+            case EnemyBigBarrelTurnIntent.RegisterShotgun:
                 RegisterBigBarrelAction(
                     EnemyActionType.ShotgunAttack,
                     BigBarrelStep.AdjustDistance,
                     BigBarrelStep.Reload);
                 break;
 
-            case BigBarrelStep.PrepareShotgun:
+            case EnemyBigBarrelTurnIntent.PrepareShotgun:
                 PrepareBigBarrelShotgun();
                 break;
 
-            case BigBarrelStep.ExecuteShotgun:
+            case EnemyBigBarrelTurnIntent.ExecuteShotgun:
                 isAttackPrepared = false;
                 HideAttackTelegraph();
                 StartCoroutine(FireBigBarrelShotgun());
                 break;
 
-            case BigBarrelStep.Reload:
+            case EnemyBigBarrelTurnIntent.Reload:
                 TakeBigBarrelReloadTurn();
+                break;
+
+            default:
+                CompleteAction(EnemyTurnActionType.Wait);
                 break;
         }
     }
@@ -1343,22 +1518,54 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private void CaptureBigBarrelBombTargets()
     {
         preparedBombTargetTileIndices.Clear();
-        List<int> candidates = new List<int>();
 
         if (!boardManager.TryGetTileIndex(
                 transform.position,
+                currentLaneIndex,
                 out int bossTileIndex))
         {
             return;
         }
 
+        List<int> availableLanes = new List<int>();
+
+        for (int laneIndex = 0;
+             laneIndex < boardManager.LaneCount;
+             laneIndex++)
+        {
+            for (int tileIndex = 0;
+                 tileIndex < boardManager.BoardCount;
+                 tileIndex++)
+            {
+                if (IsAvailableBigBarrelBombTarget(
+                        tileIndex,
+                        laneIndex,
+                        bossTileIndex))
+                {
+                    availableLanes.Add(laneIndex);
+                    break;
+                }
+            }
+        }
+
+        preparedBigBarrelLaneIndex = SelectBigBarrelBombTargetLane(
+            availableLanes);
+
+        if (preparedBigBarrelLaneIndex < 0)
+        {
+            return;
+        }
+
+        List<int> candidates = new List<int>();
+
         for (int tileIndex = 0;
              tileIndex < boardManager.BoardCount;
              tileIndex++)
         {
-            if (tileIndex != bossTileIndex
-                && (waveManager.BombManager == null
-                    || !waveManager.BombManager.HasBombAtTile(tileIndex)))
+            if (IsAvailableBigBarrelBombTarget(
+                    tileIndex,
+                    preparedBigBarrelLaneIndex,
+                    bossTileIndex))
             {
                 candidates.Add(tileIndex);
             }
@@ -1375,28 +1582,47 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
     }
 
+    private bool IsAvailableBigBarrelBombTarget(
+        int tileIndex,
+        int laneIndex,
+        int bossTileIndex)
+    {
+        return (tileIndex != bossTileIndex
+                || laneIndex != currentLaneIndex)
+            && (waveManager.BombManager == null
+                || !waveManager.BombManager.HasBombAtTile(
+                    tileIndex,
+                    laneIndex));
+    }
+
+    internal static int SelectBigBarrelBombTargetLane(
+        IReadOnlyList<int> availableLaneIndices)
+    {
+        return availableLaneIndices == null
+            || availableLaneIndices.Count == 0
+                ? -1
+                : availableLaneIndices[UnityEngine.Random.Range(
+                    0,
+                    availableLaneIndices.Count)];
+    }
+
     private void CaptureBigBarrelShotgunTargets()
     {
         preparedShotgunTileIndices.Clear();
+        preparedBigBarrelLaneIndex = currentLaneIndex;
 
         if (!boardManager.TryGetTileIndex(
                 transform.position,
+                currentLaneIndex,
                 out int bossTileIndex))
         {
             return;
         }
 
-        int leftTile = bossTileIndex - 1;
-        int rightTile = bossTileIndex + 1;
-
-        if (leftTile >= 0)
+        for (int tile = 0; tile < boardManager.BoardCount; tile++)
         {
-            preparedShotgunTileIndices.Add(leftTile);
-        }
-
-        if (rightTile < boardManager.BoardCount)
-        {
-            preparedShotgunTileIndices.Add(rightTile);
+            if (tile != bossTileIndex)
+                preparedShotgunTileIndices.Add(tile);
         }
     }
 
@@ -1418,18 +1644,30 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!boardManager.TryGetAdjacentTilePosition(
                 transform.position,
+                currentLaneIndex,
                 moveDirection,
                 out Vector3 targetPosition)
             || !boardManager.TryGetTileIndex(
                 targetPosition,
+                currentLaneIndex,
                 out int targetTileIndex)
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex)
             || targetTileIndex == playerTileIndex
-            || waveManager.IsTileOccupied(targetTileIndex, this)
-            || waveManager.IsTileReservedForMovement(targetTileIndex, this)
-            || waveManager.IsTileReservedForSpawn(targetTileIndex))
+                && currentLaneIndex == playerMove.CurrentLaneIndex
+            || waveManager.IsTileOccupied(
+                targetTileIndex,
+                currentLaneIndex,
+                this)
+            || waveManager.IsTileReservedForMovement(
+                targetTileIndex,
+                currentLaneIndex,
+                this)
+            || waveManager.IsTileReservedForSpawn(
+                targetTileIndex,
+                currentLaneIndex))
         {
             CompleteAction(EnemyTurnActionType.Wait);
             return;
@@ -1498,9 +1736,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 || targetTileIndex >= boardManager.BoardCount
                 || !boardManager.TryGetTilePosition(
                     targetTileIndex,
+                    preparedBigBarrelLaneIndex,
                     out Vector3 targetPosition)
                 || waveManager.BombManager == null
-                || waveManager.BombManager.HasBombAtTile(targetTileIndex))
+                || waveManager.BombManager.HasBombAtTile(
+                    targetTileIndex,
+                    preparedBigBarrelLaneIndex))
             {
                 continue;
             }
@@ -1509,6 +1750,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             waveManager.BombManager.TrySpawnBomb(
                 enemyData,
                 targetTileIndex,
+                preparedBigBarrelLaneIndex,
                 preparedBigBarrelFuse,
                 out _);
         }
@@ -1524,7 +1766,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     private IEnumerator FireBigBarrelShotgun()
     {
         EnemyActionData action = DequeueFirstQueuedAction();
-        CaptureBigBarrelShotgunTargets();
+        if (!hasCommittedIntent) CaptureBigBarrelShotgunTargets();
+        BeginAttackTelegraph();
         bool hasHitPlayer = false;
         bool actionTileRemoved = false;
         HashSet<EnemyController> hitEnemies = new HashSet<EnemyController>();
@@ -1550,8 +1793,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 }
 
                 if (!playerDodged && !hasHitPlayer
+                    && playerMove.CurrentLaneIndex
+                        == preparedBigBarrelLaneIndex
                     && boardManager.TryGetTileIndex(
                         playerMove.transform.position,
+                        playerMove.CurrentLaneIndex,
                         out int playerTileIndex)
                     && playerTileIndex == targetTileIndex)
                 {
@@ -1562,6 +1808,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
                 if (waveManager.TryGetEnemyAtTile(
                         targetTileIndex,
+                        preparedBigBarrelLaneIndex,
                         out EnemyController target,
                         this)
                     && hitEnemies.Add(target))
@@ -1571,6 +1818,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 }
             }
 
+            telegraphPresenter?.CompleteAttack();
             RemoveActionTile();
         }
 
@@ -1585,16 +1833,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             AttackExecuted?.Invoke(this, action.AttackData);
         }
 
-        bigBarrelReloadTurnsRemaining = Mathf.Min(
-            MaxBigBarrelPostShotgunRecoveryTurns,
-            enemyData.RecoveryTurns);
-        FinishBigBarrelAttack(bigBarrelReloadTurnsRemaining > 0
-            ? BigBarrelStep.Reload
-            : BigBarrelStep.CreateBombQueue);
+        FinishBigBarrelAttack(BigBarrelStep.CreateBombQueue);
     }
 
     private void RefreshPreparedShotgunAfterPositionChange()
     {
+        if (hasCommittedIntent) return;
         if (!isAttackPrepared || enemyData == null
             || enemyData.BehaviorType != EnemyBehaviorType.BigBarrel
             || bigBarrelStep != BigBarrelStep.ExecuteShotgun)
@@ -1680,6 +1924,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void FinishBigBarrelAttack(BigBarrelStep nextStep)
     {
+        telegraphPresenter?.CompleteAttack();
         isQueueCreated = false;
         isAttackPrepared = false;
         preparedBombTargetTileIndices.Clear();
@@ -1834,12 +2079,13 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             actionType == EnemyActionType.MeleeAttack
             || actionType == EnemyActionType.RangedAttack);
 
-        if (attackAction == null
-            || !actionQueueUI.AddAttackIcon(attackAction, out attackIcon))
+        if (attackAction == null)
         {
             return false;
         }
 
+        // The queue owns attacks even if its optional presentation is absent.
+        actionQueueUI?.AddAttackIcon(attackAction, out attackIcon);
         queuedAttackActions.Add(attackAction);
         RefreshGunnerReloadedAnimation();
         appendedAction = attackAction;
@@ -1935,11 +2181,37 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void PrepareCurrentAttackQueue()
     {
+        if (!CanPrepareAttackAtCurrentPlayerPosition())
+        {
+            isAttackPrepared = false;
+            CompleteAction(EnemyTurnActionType.Wait);
+            return;
+        }
+        CaptureCommittedAttackCells(true);
         isAttackPrepared = true;
-        SoundManager.PlaySfx("SFX_EnemyReady");
-        actionQueueUI.SetPrepared(true);
+        SetPreparedTargetWarning(true);
+        SoundManager.PlayEnemyPreparationWarning();
+        actionQueueUI?.SetPrepared(true);
         RefreshAttackTelegraph();
         CompleteAction(EnemyTurnActionType.PrepareAttack);
+    }
+
+    private void BeginAttackTelegraph(EnemyAttackData attack = null)
+    {
+        executingAttackCells.Clear();
+        if (hasCommittedIntent)
+        {
+            executingAttackCells.UnionWith(committedAttackCells);
+        }
+        else if (enemyData != null) CaptureDirectAttackCells(executingAttackCells, attack);
+        telegraphPresenter?.BeginAttack(attack);
+    }
+
+    private bool IsInsideExecutingAttack(Vector3 position, int lane)
+    {
+        return boardManager != null
+            && boardManager.TryGetTileIndex(position, lane, out int tile)
+            && executingAttackCells.Contains(new Vector2Int(tile, lane));
     }
 
     private void RefreshAttackTelegraph()
@@ -1949,22 +2221,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void HideAttackTelegraph()
     {
+        executingAttackCells.Clear();
         telegraphPresenter.HideAttackTelegraph();
-    }
-
-    private void CreateBigBarrelShotgunTelegraphs()
-    {
-        telegraphPresenter.CreateBigBarrelShotgunTelegraphs();
-    }
-
-    private void MoveBigBarrelTelegraphsWithBoss()
-    {
-        telegraphPresenter.MoveBigBarrelTelegraphsWithBoss();
-    }
-
-    private void ClearBigBarrelTelegraphsOnly()
-    {
-        telegraphPresenter.ClearBigBarrelTelegraphsOnly();
     }
 
     private void RefreshShieldIndicator(
@@ -1989,6 +2247,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         attackTargetBuffer.Clear();
         waveManager.GetEnemiesInDirection(
             transform.position,
+            currentLaneIndex,
             directionToPlayer,
             distanceToPlayer,
             attackTargetBuffer);
@@ -1999,13 +2258,16 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
     {
         if (!boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out preparedTargetTileIndex))
         {
             preparedTargetTileIndex = -1;
+            preparedTargetLaneIndex = 0;
             preparedTargetPosition = Vector3.zero;
             return false;
         }
 
+        preparedTargetLaneIndex = playerMove.CurrentLaneIndex;
         preparedTargetPosition = playerMove.transform.position;
         return true;
     }
@@ -2041,14 +2303,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         isRetreating = enemyData.BehaviorType == EnemyBehaviorType.Melee
             && enemyData.PreferredDistance > 0;
-        recoveryTurnsRemaining = enemyData.BehaviorType
-            == EnemyBehaviorType.Gunner
-            || enemyData.BehaviorType == EnemyBehaviorType.Thrower
-                ? enemyData.RecoveryTurns
-                : 0;
         isQueueCreated = false;
         isAttackPrepared = false;
+        SetPreparedTargetWarning(false);
+        HideAttackTelegraph();
         preparedTargetTileIndex = -1;
+        preparedTargetLaneIndex = 0;
         preparedTargetPosition = Vector3.zero;
         preparedSupportTarget = null;
         preparedSupportType = EnemySupportType.None;
@@ -2077,11 +2337,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             yield break;
         }
 
-        if (enemyData.BehaviorType == EnemyBehaviorType.Gunner)
-        {
-            SoundManager.PlaySfx("SFX_Enemy_Shoot");
-        }
-
+        BeginAttackTelegraph(attackData);
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
             yield return ExecuteThrowerAttack(
@@ -2099,6 +2355,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             {
                 attackEvaluated = true;
                 TryApplyDirectAttack(attackData, playerDodged);
+                telegraphPresenter?.CompleteAttack();
             }
 
             if (!attackPerformed)
@@ -2132,6 +2389,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             return false;
         }
 
+        if (!IsInsideExecutingAttack(targetPosition, currentLaneIndex))
+        {
+            return false;
+        }
+
         if (attackData.AttackEffectPrefab != null)
         {
             TransientVfx.Spawn(
@@ -2155,7 +2417,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 out _,
                 out bool targetsPlayer,
                 out _)
-            && targetsPlayer;
+            && targetsPlayer
+            && IsInsideExecutingAttack(playerMove.transform.position, playerMove.CurrentLaneIndex);
     }
 
     private bool IsPlayerInPreparedThrowerTarget()
@@ -2163,8 +2426,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return preparedTargetTileIndex >= 0
             && boardManager != null
             && playerMove != null
+            && playerMove.CurrentLaneIndex == preparedTargetLaneIndex
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex)
             && playerTileIndex == preparedTargetTileIndex;
     }
@@ -2174,8 +2439,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return preparedShotgunTileIndices.Count > 0
             && boardManager != null
             && playerMove != null
+            && playerMove.CurrentLaneIndex == preparedBigBarrelLaneIndex
             && boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex)
             && preparedShotgunTileIndices.Contains(playerTileIndex);
     }
@@ -2189,6 +2456,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             || playerMove == null
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return default;
@@ -2197,6 +2465,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return new EnemyPlayerDodgeWindowState(
             true,
             playerTileIndex,
+            playerMove.CurrentLaneIndex,
             playerMove.transform.position);
     }
 
@@ -2212,6 +2481,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (!boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int currentPlayerTileIndex))
         {
             return false;
@@ -2221,6 +2491,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 dodgeState,
                 playerIsThreatened,
                 currentPlayerTileIndex,
+                playerMove.CurrentLaneIndex,
                 playerMove.transform.position,
                 out int movementDirection))
         {
@@ -2237,14 +2508,17 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         ref EnemyPlayerDodgeResolution resolution)
     {
         int currentPlayerTileIndex = -1;
+        int currentPlayerLaneIndex = -1;
         Vector3 currentPlayerPosition = playerMove == null
             ? dodgeState.PlayerPosition
             : playerMove.transform.position;
 
         if (boardManager != null && playerMove != null)
         {
+            currentPlayerLaneIndex = playerMove.CurrentLaneIndex;
             boardManager.TryGetTileIndex(
                 currentPlayerPosition,
+                currentPlayerLaneIndex,
                 out currentPlayerTileIndex);
         }
 
@@ -2252,6 +2526,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 dodgeState,
                 playerIsThreatened,
                 currentPlayerTileIndex,
+                currentPlayerLaneIndex,
                 currentPlayerPosition,
                 out int movementDirection))
         {
@@ -2351,6 +2626,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         if (boardManager.TryGetTileIndex(
                 candidate.transform.position,
+                candidate.CurrentLaneIndex,
                 out int measuredTileIndex))
         {
             tileIndex = measuredTileIndex;
@@ -2422,6 +2698,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             flight,
             projectile,
             preparedTargetTileIndex,
+            preparedTargetLaneIndex,
             preparedTargetPosition,
             attackDamage,
             enemyData.ExplosionVfxPrefab,
@@ -2439,6 +2716,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             yield break;
         }
 
+        // The detached projectile now owns the warning, including its impact phase.
+        HideAttackTelegraph();
         while (!runtime.IsComplete)
         {
             yield return null;
@@ -2463,7 +2742,10 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             projectileRenderer.sortingLayerID =
                 avatarSortingRenderer.sortingLayerID;
             projectileRenderer.sortingOrder =
-                GetHighestAvatarSortingOrder() + 1;
+                CalculateLaneSortingOrder(
+                    currentLaneIndex,
+                    boardManager == null ? 1 : boardManager.LaneCount)
+                + GetHighestAvatarSortingOrder() + 1;
         }
 
         return projectile;
@@ -2584,34 +2866,55 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         enemyTarget = null;
         targetsPlayer = false;
         targetPosition = Vector3.zero;
-
-        if (attackData == null || boardManager == null
-            || playerMove == null || waveManager == null
-            || !boardManager.TryGetTileIndex(
-                transform.position,
-                out int attackerIndex)
-            || !boardManager.TryGetTileIndex(
-                playerMove.transform.position,
-                out int playerIndex))
+        if (attackData == null || enemyData == null || boardManager == null)
         {
             return false;
         }
-
-        int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
         int attackRange = enemyData.BehaviorType switch
         {
             EnemyBehaviorType.Melee => attackData.Range,
             EnemyBehaviorType.Gunner => enemyData.FiringRange,
             _ => boardManager.BoardCount
         };
+        return TryGetDirectAttackTarget(attackRange,
+            out enemyTarget, out targetsPlayer, out targetPosition);
+    }
+
+    private bool TryGetDirectAttackTarget(
+        int attackRange,
+        out EnemyController enemyTarget,
+        out bool targetsPlayer,
+        out Vector3 targetPosition)
+    {
+        enemyTarget = null;
+        targetsPlayer = false;
+        targetPosition = Vector3.zero;
+
+        if (boardManager == null
+            || playerMove == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                currentLaneIndex,
+                out int attackerIndex)
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
+                out int playerIndex))
+        {
+            return false;
+        }
+
+        int attackDirection = transform.localScale.x >= 0f ? 1 : -1;
         int playerOffset = playerIndex - attackerIndex;
         int distanceToPlayer = Mathf.Abs(playerOffset);
         bool playerInAttackLine = playerOffset * attackDirection > 0
+            && playerMove.CurrentLaneIndex == currentLaneIndex
             && distanceToPlayer <= attackRange;
 
         attackTargetBuffer.Clear();
         waveManager.GetEnemiesInDirection(
             transform.position,
+            currentLaneIndex,
             attackDirection,
             attackRange,
             attackTargetBuffer);
@@ -2747,11 +3050,13 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void ClearAttackQueue()
     {
+        SetPreparedTargetWarning(false);
         queuedAttackActions.Clear();
         RefreshGunnerReloadedAnimation();
         isQueueCreated = false;
         isAttackPrepared = false;
         preparedTargetTileIndex = -1;
+        preparedTargetLaneIndex = 0;
         preparedTargetPosition = Vector3.zero;
         preparedSupportTarget = null;
         preparedSupportType = EnemySupportType.None;
@@ -2790,6 +3095,229 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             CompleteAction(EnemyTurnActionType.Wait);
         }
+    }
+
+    private void SetPreparedTargetWarning(bool isActive)
+    {
+        if (enemyData == null
+            || enemyData.BehaviorType != EnemyBehaviorType.Thrower
+            || boardManager == null || preparedTargetTileIndex < 0)
+        {
+            return;
+        }
+
+        boardManager.SetTileWarningActive(
+            preparedTargetTileIndex,
+            preparedTargetLaneIndex,
+            this,
+            isActive);
+    }
+
+    private bool TryMoveTowardPlayerLane()
+    {
+        if (boardManager == null || playerMove == null || waveManager == null
+            || actorMotion == null || currentLaneIndex
+                == playerMove.CurrentLaneIndex
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                currentLaneIndex,
+                out int currentTileIndex)
+            || !boardManager.TryGetTilePosition(
+                currentTileIndex,
+                currentLaneIndex,
+                out Vector3 currentLanePosition))
+        {
+            return false;
+        }
+
+        int laneDirection = playerMove.CurrentLaneIndex > currentLaneIndex
+            ? 1
+            : -1;
+
+        if (!boardManager.TryGetAdjacentLanePosition(
+                currentTileIndex,
+                currentLaneIndex,
+                laneDirection,
+                out int targetLaneIndex,
+                out Vector3 targetLanePosition)
+            || !boardManager.TryGetTileIndex(targetLanePosition, targetLaneIndex,
+                out int targetTileIndex)
+            || targetLaneIndex == playerMove.CurrentLaneIndex
+                && boardManager.TryGetTileIndex(
+                    playerMove.transform.position,
+                    playerMove.CurrentLaneIndex,
+                    out int playerTileIndex)
+                && playerTileIndex == targetTileIndex
+            || waveManager.IsTileOccupied(
+                targetTileIndex,
+                targetLaneIndex,
+                this)
+            || waveManager.IsTileReservedForMovement(
+                targetTileIndex,
+                targetLaneIndex,
+                this)
+            || waveManager.IsTileReservedForSpawn(
+                targetTileIndex,
+                targetLaneIndex))
+        {
+            return false;
+        }
+
+        Vector3 positionOffset = transform.position - currentLanePosition;
+        StartCoroutine(MoveRoutine(
+            new[] { targetLanePosition + positionOffset },
+            false,
+            targetLaneIndex));
+        return true;
+    }
+
+    private void TakeLaneMismatchPursuitTurn(
+        int directionToPlayer,
+        int distanceToPlayer)
+    {
+        EnemyLaneMismatchIntent intent =
+            EnemyLanePursuitPolicy.GetMismatchIntent(
+                ShouldPursuePlayerLane(),
+                directionToPlayer,
+                distanceToPlayer,
+                IsFacing(directionToPlayer));
+
+        if (intent == EnemyLaneMismatchIntent.ChangeLane)
+        {
+            if (!TryMoveTowardPlayerLane()
+                && !TryMoveToLaneStagingCell(directionToPlayer))
+            {
+                CompleteAction(EnemyTurnActionType.Wait);
+            }
+
+            return;
+        }
+
+        if (intent == EnemyLaneMismatchIntent.Rotate)
+        {
+            RotateToward(directionToPlayer);
+            return;
+        }
+
+        MoveTowardPlayerUntilAdjacent(
+            directionToPlayer,
+            distanceToPlayer);
+    }
+
+    private bool TryMoveToLaneStagingCell(int directionToPlayer)
+    {
+        int preferredDirection =
+            EnemyLanePursuitPolicy.GetPreferredStagingDirection(
+                directionToPlayer,
+                currentLaneIndex,
+                playerMove.CurrentLaneIndex);
+
+        if (TryBuildMovePath(
+                preferredDirection,
+                1,
+                out Vector3[] preferredPath))
+        {
+            StartCoroutine(MoveRoutine(preferredPath, false));
+            return true;
+        }
+
+        if (TryBuildMovePath(
+                -preferredDirection,
+                1,
+                out Vector3[] fallbackPath))
+        {
+            StartCoroutine(MoveRoutine(fallbackPath, false));
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool ShouldPursuePlayerLane()
+    {
+        if (boardManager == null || playerMove == null || waveManager == null
+            || !boardManager.TryGetTileIndex(
+                playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
+                out int playerTileIndex))
+        {
+            return false;
+        }
+
+        lanePursuitCandidates.Clear();
+
+        foreach (EnemyController candidate in waveManager.ActiveEnemies)
+        {
+            if (!CanChasePlayerLane(candidate)
+                || !boardManager.TryGetTileIndex(
+                    candidate.transform.position,
+                    candidate.CurrentLaneIndex,
+                    out int candidateTileIndex))
+            {
+                continue;
+            }
+
+            lanePursuitCandidates.Add(new EnemyLanePursuitCandidate(
+                candidate.GetInstanceID(),
+                boardManager.GetColumnIndex(candidateTileIndex, candidate.CurrentLaneIndex),
+                candidate.CurrentLaneIndex));
+        }
+
+        return EnemyLanePursuitPolicy.ShouldPursueLane(
+            GetInstanceID(),
+            boardManager.GetColumnIndex(playerTileIndex, playerMove.CurrentLaneIndex),
+            playerMove.CurrentLaneIndex,
+            lanePursuitCandidates);
+    }
+
+    private static bool CanChasePlayerLane(EnemyController candidate)
+    {
+        if (candidate == null || candidate.CurrentHealth <= 0
+            || candidate.Data == null)
+        {
+            return false;
+        }
+
+        return candidate.Data.BehaviorType == EnemyBehaviorType.Melee
+            || candidate.Data.BehaviorType == EnemyBehaviorType.Gunner
+            || candidate.Data.BehaviorType == EnemyBehaviorType.BigBarrel;
+    }
+
+    private void MoveTowardPlayerUntilAdjacent(
+        int directionToPlayer,
+        int distanceToPlayer)
+    {
+        int movementDistance = 1;
+
+        if (enemyData.BehaviorType != EnemyBehaviorType.BigBarrel)
+        {
+            EnemyActionData approachAction = FindAction(
+                EnemyActionType.Approach);
+
+            if (approachAction == null
+                || approachAction.MovementDistance <= 0)
+            {
+                CompleteAction(EnemyTurnActionType.Wait);
+                return;
+            }
+
+            movementDistance = approachAction.MovementDistance;
+        }
+
+        movementDistance = Mathf.Min(
+            movementDistance,
+            Mathf.Max(0, distanceToPlayer - 1));
+
+        if (movementDistance > 0 && TryBuildMovePath(
+                directionToPlayer,
+                movementDistance,
+                out Vector3[] path))
+        {
+            StartCoroutine(MoveRoutine(path, false));
+            return;
+        }
+
+        CompleteAction(EnemyTurnActionType.Wait);
     }
 
     private bool TryMoveAwayFromPlayer(
@@ -2833,16 +3361,27 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             if (!boardManager.TryGetAdjacentTilePosition(
                     currentPosition,
+                    currentLaneIndex,
                     direction,
                     out Vector3 targetPosition)
-                || !boardManager.TryGetTileIndex(targetPosition, out int targetIndex)
+                || !boardManager.TryGetTileIndex(targetPosition, currentLaneIndex, out int targetIndex)
                 || !boardManager.TryGetTileIndex(
                     playerMove.transform.position,
+                    playerMove.CurrentLaneIndex,
                     out int playerIndex)
                 || targetIndex == playerIndex
-                || waveManager.IsTileOccupied(targetIndex, this)
-                || waveManager.IsTileReservedForMovement(targetIndex, this)
-                || waveManager.IsTileReservedForSpawn(targetIndex))
+                    && currentLaneIndex == playerMove.CurrentLaneIndex
+                || waveManager.IsTileOccupied(
+                    targetIndex,
+                    currentLaneIndex,
+                    this)
+                || waveManager.IsTileReservedForMovement(
+                    targetIndex,
+                    currentLaneIndex,
+                    this)
+                || waveManager.IsTileReservedForSpawn(
+                    targetIndex,
+                    currentLaneIndex))
             {
                 break;
             }
@@ -2857,10 +3396,27 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private IEnumerator MoveRoutine(Vector3[] path, bool updateRetreatState)
     {
-        if (!TryReserveMovePath(path))
+        yield return MoveRoutine(path, updateRetreatState, currentLaneIndex);
+    }
+
+    private IEnumerator MoveRoutine(
+        Vector3[] path,
+        bool updateRetreatState,
+        int targetLaneIndex)
+    {
+        if (!TryReserveMovePath(path, targetLaneIndex))
         {
             CompleteAction(EnemyTurnActionType.Wait);
             yield break;
+        }
+
+        bool changesLane = currentLaneIndex != targetLaneIndex;
+        if (changesLane)
+        {
+            actionQueueUI?.ApplyLaneLayout(
+                targetLaneIndex,
+                true,
+                actorMotion.MoveDuration);
         }
 
         try
@@ -2871,6 +3427,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             waveManager?.ReleaseMovementTiles(this);
         }
+
+        currentLaneIndex = targetLaneIndex;
+        ApplyLaneSortingOrder(!changesLane);
 
         if (updateRetreatState
             && boardManager.TryGetTileDistance(
@@ -2885,7 +3444,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         CompleteAction(EnemyTurnActionType.Move);
     }
 
-    private bool TryReserveMovePath(IReadOnlyList<Vector3> path)
+    private bool TryReserveMovePath(
+        IReadOnlyList<Vector3> path,
+        int targetLaneIndex)
     {
         if (waveManager == null || boardManager == null
             || path == null || path.Count == 0)
@@ -2899,6 +3460,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             if (!boardManager.TryGetTileIndex(
                     path[index],
+                    targetLaneIndex,
                     out int tileIndex))
             {
                 return false;
@@ -2909,7 +3471,8 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         return waveManager.TryReserveMovementTiles(
             this,
-            movePathTileIndices);
+            movePathTileIndices,
+            targetLaneIndex);
     }
 
     private IEnumerator RotateRoutine(int directionToPlayer)
@@ -2926,14 +3489,17 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         directionToPlayer = 0;
         distanceToPlayer = 0;
 
-        if (!boardManager.TryGetTileIndex(transform.position, out int enemyIndex)
+        if (!boardManager.TryGetTileIndex(transform.position, currentLaneIndex, out int enemyIndex)
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerIndex))
         {
             return false;
         }
 
+        playerIndex = boardManager.GetColumnIndex(playerIndex, playerMove.CurrentLaneIndex);
+        enemyIndex = boardManager.GetColumnIndex(enemyIndex, currentLaneIndex);
         directionToPlayer = playerIndex > enemyIndex
             ? 1
             : playerIndex < enemyIndex ? -1 : 0;
@@ -2941,10 +3507,11 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return true;
     }
 
-    private bool CanTakeFrontlineTurn()
+    private bool CanPrepareFrontlineAttack()
     {
         bool requiresFrontline = enemyData != null
-            && enemyData.BehaviorType == EnemyBehaviorType.Melee;
+            && (enemyData.BehaviorType == EnemyBehaviorType.Melee
+                || enemyData.BehaviorType == EnemyBehaviorType.Gunner);
 
         if (!requiresFrontline)
         {
@@ -2957,11 +3524,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         if (boardManager == null || playerMove == null || waveManager == null
+            || currentLaneIndex != playerMove.CurrentLaneIndex
             || !boardManager.TryGetTileIndex(
                 transform.position,
+                currentLaneIndex,
                 out int selfTileIndex)
             || !boardManager.TryGetTileIndex(
                 playerMove.transform.position,
+                playerMove.CurrentLaneIndex,
                 out int playerTileIndex))
         {
             return EnemyFrontlineTurnPolicy.CanTakeTurn(
@@ -2978,21 +3548,24 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         {
             if (otherEnemy == null || otherEnemy == this
                 || otherEnemy.CurrentHealth <= 0
+                || otherEnemy.CurrentLaneIndex != currentLaneIndex
                 || !boardManager.TryGetTileIndex(
                     otherEnemy.transform.position,
+                    otherEnemy.CurrentLaneIndex,
                     out int otherTileIndex))
             {
                 continue;
             }
 
-            frontlineEnemyTileBuffer.Add(otherTileIndex);
+            frontlineEnemyTileBuffer.Add(
+                boardManager.GetColumnIndex(otherTileIndex, otherEnemy.CurrentLaneIndex));
         }
 
         return EnemyFrontlineTurnPolicy.CanTakeTurn(
             true,
             true,
-            selfTileIndex,
-            playerTileIndex,
+            boardManager.GetColumnIndex(selfTileIndex, currentLaneIndex),
+            boardManager.GetColumnIndex(playerTileIndex, playerMove.CurrentLaneIndex),
             frontlineEnemyTileBuffer);
     }
 
@@ -3025,6 +3598,9 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void ResetRuntimeState()
     {
+        ClearTurnIntent();
+        preparationWaitTurns = 0;
+        preparationDeferred = false;
         HideAttackTelegraph();
         currentHealth = enemyData == null ? 0 : enemyData.MaxHealth;
         currentShield = 0;
@@ -3039,6 +3615,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         isAttackPrepared = false;
         isRetreating = false;
         preparedTargetTileIndex = -1;
+        preparedTargetLaneIndex = 0;
         preparedTargetPosition = Vector3.zero;
         preparedSupportTarget = null;
         preparedSupportType = EnemySupportType.None;
@@ -3046,6 +3623,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         isBigBarrelPhaseTwo = false;
         bigBarrelActionUsesPhaseTwo = false;
         preparedBigBarrelFuse = 0;
+        preparedBigBarrelLaneIndex = 0;
         bigBarrelReloadTurnsRemaining = 0;
         preparedBombTargetTileIndices.Clear();
         preparedShotgunTileIndices.Clear();
@@ -3096,12 +3674,20 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         avatarInstance.transform.SetParent(transform, false);
         avatarInstance.transform.localPosition = Vector3.zero;
         avatarInstance.transform.localRotation = Quaternion.identity;
+        BattleSpriteBillboard billboard =
+            avatarInstance.GetComponent<BattleSpriteBillboard>();
+        if (billboard == null)
+        {
+            billboard = avatarInstance.AddComponent<BattleSpriteBillboard>();
+        }
+        billboard.SetTargetCamera(Camera.main);
         avatarAnimator = avatarInstance.GetComponent<Animator>();
         avatarAnimator ??=
             avatarInstance.GetComponentInChildren<Animator>(true);
         avatarSortingRenderer =
             avatarInstance.GetComponentInChildren<SpriteRenderer>(true);
         ApplyAvatarPresentation();
+        ApplyLaneSortingOrder();
 
         if (avatarAnimator != null
             && avatarAnimator.GetComponent<EnemyAnimationSfx>() == null)
@@ -3225,7 +3811,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         EnemyPlayerDodgeWindowState dodgeState = default;
         EnemyPlayerDodgeResolution dodgeResolution = default;
         bool dodgeWindowStarted = false;
+        bool dodgeWindowResolved = false;
         bool attackEvaluated = false;
+        float dodgeWindowDuration = enemyData == null
+            ? EnemyData.DefaultAttackDodgeWindowDuration
+            : enemyData.AttackDodgeWindowDuration;
+        float dodgeWindowElapsedTime = 0f;
+        isAttackDodgeWindowOpen = false;
+        isAttackActiveWindowOpen = false;
 
         void BeginDodgeWindow()
         {
@@ -3235,7 +3828,15 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             }
 
             dodgeWindowStarted = true;
+            telegraphPresenter?.SetProgress(1f);
             isAttackDodgeWindowOpen = true;
+            SoundManager.PlayEnemyAttackWarning();
+            if (enemyData != null
+                && enemyData.BehaviorType == EnemyBehaviorType.Gunner)
+            {
+                SoundManager.PlaySfx("SFX_Enemy_Shoot");
+            }
+            telegraphPresenter?.MarkAttackImminent();
             dodgeState = CapturePlayerDodgeWindow(isPlayerThreatened);
         }
 
@@ -3257,12 +3858,26 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         void EvaluateAttackAtImpact()
         {
-            if (evaluateAttackHit == null || attackEvaluated)
+            if (evaluateAttackHit == null || attackEvaluated
+                || !dodgeWindowResolved)
             {
                 return;
             }
 
             attackEvaluated = true;
+            telegraphPresenter?.SetProgress(1f);
+            evaluateAttackHit(dodgeResolution.PlayerDodged);
+        }
+
+        void ResolveDodgeWindow()
+        {
+            if (dodgeWindowResolved || evaluateAttackHit == null)
+            {
+                return;
+            }
+
+            TryConfirmDodgeBeforeImpact();
+            dodgeWindowResolved = true;
             isAttackDodgeWindowOpen = false;
 
             if (!dodgeResolution.IsResolved)
@@ -3272,26 +3887,36 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                     isPlayerThreatened?.Invoke() == true,
                     ref dodgeResolution);
             }
-
-            evaluateAttackHit(dodgeResolution.PlayerDodged);
         }
 
-        if (!hasAnimation)
+        if (evaluateAttackHit != null)
         {
-            BeginDodgeWindow();
+            float chargeElapsedTime = 0f;
             yield return WaitForAttackTiming(
-                enemyData == null
-                    ? EnemyData.DefaultAttackDodgeWindowDuration
-                    : enemyData.AttackDodgeWindowDuration,
+                dodgeWindowDuration,
+                () =>
+                {
+                    chargeElapsedTime += Time.deltaTime;
+                    telegraphPresenter?.SetProgress(
+                        dodgeWindowDuration <= 0f
+                            ? 1f
+                            : chargeElapsedTime / dodgeWindowDuration);
+                });
+            telegraphPresenter?.SetProgress(1f);
+            BeginDodgeWindow();
+        }
+
+        if (!hasAnimation || avatarAnimator == null)
+        {
+            yield return WaitForAttackTiming(
+                dodgeWindowDuration,
                 TryConfirmDodgeBeforeImpact);
-            TryConfirmDodgeBeforeImpact();
+            ResolveDodgeWindow();
             EvaluateAttackAtImpact();
             yield break;
         }
 
         int animationSequence = ++avatarAnimationSequence;
-        isAttackDodgeWindowOpen = false;
-        isAttackActiveWindowOpen = false;
         avatarEffects?.StopEffects();
         avatarAnimator.Play(animationStateHash, 0, 0f);
         avatarAnimator.Update(0f);
@@ -3302,18 +3927,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             attackState.length / Mathf.Max(0.01f, avatarAnimator.speed));
         bool hasActiveWindow = TryGetAttackActiveWindowTiming(
             out EnemyAttackActiveWindowTiming activeWindowTiming);
-        float fallbackHitTime = enemyData == null
-            ? EnemyData.DefaultAttackDodgeWindowDuration
-            : enemyData.AttackDodgeWindowDuration;
+        float fallbackHitTime = dodgeWindowDuration;
 
         float elapsedTime = 0f;
         float previousNormalizedTime = 0f;
-
-        if (evaluateAttackHit != null && (!hasActiveWindow
-            || activeWindowTiming.DodgeStartNormalizedTime <= 0f))
-        {
-            BeginDodgeWindow();
-        }
+        float postImpactElapsedTime = 0f;
+        bool activeWindowReached = false;
 
         while (elapsedTime < duration && avatarAnimator != null
             && animationSequence == avatarAnimationSequence)
@@ -3325,44 +3944,45 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                     ? 1f
                     : Mathf.Clamp01(elapsedTime / duration);
 
-                if (hasActiveWindow)
+                if (!activeWindowReached)
                 {
-                    if (!dodgeWindowStarted
-                        && (isAttackDodgeWindowOpen
-                            || activeWindowTiming.CrossesDodgeStart(
+                    activeWindowReached = hasActiveWindow
+                        ? isAttackActiveWindowOpen
+                            || activeWindowTiming.CrossesActiveStart(
                                 previousNormalizedTime,
-                                normalizedTime)))
-                    {
-                        BeginDodgeWindow();
-                    }
+                                normalizedTime)
+                            || normalizedTime
+                                >= activeWindowTiming.StartNormalizedTime
+                        : elapsedTime >= fallbackHitTime;
+                }
 
-                    bool activeWindowReached =
-                        isAttackActiveWindowOpen
-                        || activeWindowTiming.CrossesActiveStart(
-                            previousNormalizedTime,
-                            normalizedTime)
-                        || normalizedTime
-                            >= activeWindowTiming.StartNormalizedTime;
+                if (!dodgeWindowResolved)
+                {
+                    TryConfirmDodgeBeforeImpact();
 
-                    if (activeWindowReached)
+                    if (dodgeWindowElapsedTime >= dodgeWindowDuration)
                     {
-                        EvaluateAttackAtImpact();
-                    }
-                    else
-                    {
-                        TryConfirmDodgeBeforeImpact();
+                        ResolveDodgeWindow();
                     }
                 }
-                else if (elapsedTime >= fallbackHitTime)
+
+                if (activeWindowReached && dodgeWindowResolved)
                 {
                     EvaluateAttackAtImpact();
                 }
-                else
-                {
-                    TryConfirmDodgeBeforeImpact();
-                }
 
                 previousNormalizedTime = normalizedTime;
+
+                // Keep authored impact timing at its original speed. Only the
+                // gunner's cosmetic tail may finish early after the hit.
+                if (attackEvaluated && enemyData != null
+                    && enemyData.BehaviorType == EnemyBehaviorType.Gunner
+                    && postImpactElapsedTime >= GunnerPostImpactPresentationDuration
+                    && (!hasActiveWindow
+                        || normalizedTime >= activeWindowTiming.EndNormalizedTime))
+                {
+                    break;
+                }
             }
 
             yield return null;
@@ -3370,33 +3990,31 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             if (!GamePauseController.IsPaused)
             {
                 elapsedTime += Time.deltaTime;
+                if (attackEvaluated)
+                {
+                    postImpactElapsedTime += Time.deltaTime;
+                }
+                else if (dodgeWindowStarted)
+                {
+                    dodgeWindowElapsedTime += Time.deltaTime;
+                }
             }
         }
 
         if (animationSequence == avatarAnimationSequence)
         {
-            if (evaluateAttackHit != null && hasActiveWindow)
-            {
-                if (!dodgeWindowStarted
-                    && activeWindowTiming.CrossesDodgeStart(
-                        previousNormalizedTime,
-                        1f))
-                {
-                    BeginDodgeWindow();
-                }
-
-                TryConfirmDodgeBeforeImpact();
-                EvaluateAttackAtImpact();
-            }
-            else if (evaluateAttackHit != null
-                && !attackEvaluated)
+            if (evaluateAttackHit != null && !dodgeWindowResolved)
             {
                 yield return WaitForAttackTiming(
-                    Mathf.Max(0f, fallbackHitTime - elapsedTime),
+                    Mathf.Max(
+                        0f,
+                        dodgeWindowDuration - dodgeWindowElapsedTime),
                     TryConfirmDodgeBeforeImpact);
-                TryConfirmDodgeBeforeImpact();
-                EvaluateAttackAtImpact();
+                ResolveDodgeWindow();
             }
+
+            activeWindowReached = true;
+            EvaluateAttackAtImpact();
 
             isAttackDodgeWindowOpen = false;
             isAttackActiveWindowOpen = false;
@@ -3559,6 +4177,78 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         return highestSortingOrder;
     }
 
+    internal static int CalculateLaneSortingOrder(
+        int laneIndex,
+        int laneCount)
+    {
+        int sanitizedLaneCount = Mathf.Max(1, laneCount);
+        int sanitizedLaneIndex = Mathf.Clamp(
+            laneIndex,
+            0,
+            sanitizedLaneCount - 1);
+        return (sanitizedLaneCount - 1 - sanitizedLaneIndex)
+            * LaneSortingOrderStride;
+    }
+
+    internal static int CalculateLaneCanvasSortingOrder(
+        int laneIndex,
+        int laneCount)
+    {
+        int sanitizedLaneCount = Mathf.Max(1, laneCount);
+        return sanitizedLaneCount * LaneSortingOrderStride
+            + LaneCanvasSortingOffset
+            + CalculateLaneSortingOrder(laneIndex, sanitizedLaneCount);
+    }
+
+    internal void ApplyLaneSortingOrder(bool refreshLaneLayout = true)
+    {
+        int laneCount = boardManager == null
+            ? Mathf.Max(1, currentLaneIndex + 1)
+            : boardManager.LaneCount;
+        int laneSortingOrder = CalculateLaneSortingOrder(
+            currentLaneIndex,
+            laneCount);
+
+        if (laneSortingGroup == null)
+        {
+            laneSortingGroup = GetComponent<SortingGroup>();
+        }
+
+        if (laneSortingGroup == null)
+        {
+            laneSortingGroup = gameObject.AddComponent<SortingGroup>();
+        }
+
+        if (enemyCanvas == null)
+        {
+            enemyCanvas = canvasTransform == null
+                ? GetComponentInChildren<Canvas>(true)
+                : canvasTransform.GetComponent<Canvas>();
+        }
+
+        int sortingLayerId = avatarSortingRenderer != null
+            ? avatarSortingRenderer.sortingLayerID
+            : enemyCanvas == null
+                ? laneSortingGroup.sortingLayerID
+                : enemyCanvas.sortingLayerID;
+        laneSortingGroup.sortingLayerID = sortingLayerId;
+        laneSortingGroup.sortingOrder = laneSortingOrder;
+
+        if (enemyCanvas != null)
+        {
+            enemyCanvas.overrideSorting = true;
+            enemyCanvas.sortingLayerID = sortingLayerId;
+            enemyCanvas.sortingOrder = CalculateLaneCanvasSortingOrder(
+                currentLaneIndex,
+                laneCount);
+        }
+
+        if (refreshLaneLayout)
+        {
+            actionQueueUI?.ApplyLaneLayout(currentLaneIndex);
+        }
+    }
+
     private void RefreshHealthUI(
         bool playDamageFeedback = false,
         bool isCritical = false,
@@ -3649,12 +4339,36 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     private void CompleteAction(EnemyTurnActionType actionType)
     {
+        // The attack starts the cooldown; each subsequent completed enemy
+        // action consumes one turn, including movement, rotation and stun.
+        if (actionType == EnemyTurnActionType.Fire)
+            recoveryTurnsRemaining = enemyData == null ? 0 : enemyData.RecoveryTurns;
+        else if (recoveryTurnsRemaining > 0)
+            recoveryTurnsRemaining--;
+
         if (statusEffects != null && currentHealth > 0)
         {
             statusEffects.ProcessTurnEnd();
         }
 
+        if (preparationDeferred && preparationWaitTurns < int.MaxValue)
+            preparationWaitTurns++;
+        preparationDeferred = false;
         lastTurnAction = actionType;
+        if (actionType == EnemyTurnActionType.PrepareAttack && isAttackPrepared
+            && currentHealth > 0 && hasCommittedIntent)
+        {
+            // Carry the exact aim across the player's response opportunity.
+            // Keeping the original origin also makes a later push interrupt it.
+            committedIntent = new TurnIntent(EnemyTurnActionType.Fire);
+            telegraphPresenter?.ShowPlannedAttack(committedAttackCells);
+            actionQueueUI?.ShowIntent(EnemyTurnActionType.Fire, Vector3.zero, false, AttackIconType);
+        }
+        else
+        {
+            ClearTurnIntent();
+            telegraphPresenter?.HideAttackTelegraph();
+        }
         isActing = false;
         TurnActionCompleted?.Invoke(this, actionType);
     }

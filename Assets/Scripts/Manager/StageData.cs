@@ -4,13 +4,21 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "New Stage", menuName = "Loaded/Stage")]
 public class StageData : ScriptableObject
 {
+    public const int DefaultLaneCount = 2;
+
     [SerializeField] private string stageId;
     [SerializeField] private string displayName;
+    [Header("Board Settings")]
+    [Min(1)]
+    [SerializeField] private int laneCount = DefaultLaneCount;
+
+    [Header("Battles")]
     [SerializeField] private BattleData[] battles =
         System.Array.Empty<BattleData>();
 
     public string StageId => stageId;
     public string DisplayName => displayName;
+    public int LaneCount => Mathf.Max(1, laneCount);
     public IReadOnlyList<BattleData> Battles =>
         battles ?? (IReadOnlyList<BattleData>)System.Array.Empty<BattleData>();
 }

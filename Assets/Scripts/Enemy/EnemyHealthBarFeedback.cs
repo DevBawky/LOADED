@@ -784,10 +784,11 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
                     EaseOut((normalizedTime - 0.58f) / 0.42f));
             }
 
-            Vector2 randomOffset = Vector2.Scale(
+            Vector2 randomOffset = ResolveImpactShakeOffset(
                 Random.insideUnitCircle,
-                shakeAmplitude);
-            randomOffset *= strength * (1f - normalizedTime);
+                shakeAmplitude,
+                strength,
+                normalizedTime);
             barRect.anchoredPosition =
                 baseAnchoredPosition + randomOffset;
             yield return null;
@@ -795,6 +796,21 @@ public sealed class EnemyHealthBarFeedback : MonoBehaviour
 
         RestoreBarTransform();
         impactRoutine = null;
+    }
+
+    internal static Vector2 ResolveImpactShakeOffset(
+        Vector2 randomSample,
+        Vector2 amplitude,
+        float strength,
+        float normalizedTime)
+    {
+        float envelope = Mathf.Max(0f, strength)
+            * (1f - Mathf.Clamp01(normalizedTime));
+
+        // Keep the health bar centered over its owner. Horizontal camera
+        // impact already carries the shot direction, while translating this
+        // world-space UI makes it appear detached from the enemy.
+        return Vector2.up * randomSample.y * amplitude.y * envelope;
     }
 
     private IEnumerator AnimateFlash(bool isCritical)

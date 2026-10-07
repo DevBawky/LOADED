@@ -43,8 +43,8 @@ public sealed class BulletEffectUtilityTests
         BulletGrade.Rare, 6, 10, 20, 40)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Reverse Shot.asset",
         BulletGrade.Rare, 6, 10, 20, 40)]
-    [TestCase("Assets/Scripts/Bullet/SO/Rare/Rotation Shot.asset",
-        BulletGrade.Rare, 6, 10, 20, 40)]
+    [TestCase("Assets/Scripts/Bullet/SO/Normal/Rotation Shot.asset",
+        BulletGrade.Normal, 6, 5, 10, 15)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Evasion.asset",
         BulletGrade.Rare, 6, 10, 20, 40)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Immersion.asset",
@@ -59,7 +59,9 @@ public sealed class BulletEffectUtilityTests
         BulletGrade.Ace, 10, 20, 50, 100)]
     [TestCase("Assets/Scripts/Bullet/SO/Ace/High Roller.asset",
         BulletGrade.Ace, 10, 20, 50, 100)]
-    [TestCase("Assets/Scripts/Bullet/SO/Ace/Mastery.asset",
+    [TestCase("Assets/Scripts/Bullet/SO/Legendary/Mastery.asset",
+        BulletGrade.Legendary, 20, 50, 100, 200)]
+    [TestCase("Assets/Scripts/Bullet/SO/Legendary/Cataclysm.asset",
         BulletGrade.Legendary, 20, 50, 100, 200)]
     [TestCase("Assets/Scripts/Bullet/SO/Legendary/Finale.asset",
         BulletGrade.Legendary, 20, 50, 100, 200)]
@@ -168,7 +170,7 @@ public sealed class BulletEffectUtilityTests
     public void RotationShotAssetRotatesPlayerAfterShot()
     {
         BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(
-            "Assets/Scripts/Bullet/SO/Rare/Rotation Shot.asset");
+            "Assets/Scripts/Bullet/SO/Normal/Rotation Shot.asset");
 
         Assert.That(data, Is.Not.Null);
         Assert.That(
@@ -237,7 +239,7 @@ public sealed class BulletEffectUtilityTests
         try
         {
             Assert.That(data.BulletType, Is.EqualTo(BulletType.Normal));
-            Assert.That(data.BulletTypeDisplayName, Is.EqualTo("일반"));
+            Assert.That(data.BulletTypeDisplayName, Is.EqualTo("표준"));
             Assert.That(data.ShotCount, Is.EqualTo(1));
             Assert.That(data.DoesNotConsumeReloadTurn, Is.False);
         }
@@ -266,14 +268,14 @@ public sealed class BulletEffectUtilityTests
     }
 
     [Test]
-    public void SniperBulletExposesPenetrationTypeDescription()
+    public void SniperBulletExposesAutoTargetingTypeDescription()
     {
         BulletData data = CreateBulletOfType(BulletType.Sniper);
 
         try
         {
             Assert.That(data.BulletTypeDisplayName, Is.EqualTo("저격"));
-            Assert.That(data.GetBulletTypeDescription(0), Does.Contain("관통 확률"));
+            Assert.That(data.GetBulletTypeDescription(0), Does.Contain("자동 조준"));
         }
         finally
         {
@@ -313,7 +315,7 @@ public sealed class BulletEffectUtilityTests
             Is.True);
     }
 
-    [TestCase("Assets/Scripts/Bullet/SO/Ace/Ghost.asset", BulletType.Ghost)]
+    [TestCase("Assets/Scripts/Bullet/SO/Normal/Silent.asset", BulletType.Ghost)]
     [TestCase("Assets/Scripts/Bullet/SO/Legendary/Pierce.asset", BulletType.Piercing)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Venom.asset", BulletType.Debuff)]
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Stun.asset", BulletType.Debuff)]
@@ -321,7 +323,12 @@ public sealed class BulletEffectUtilityTests
     [TestCase("Assets/Scripts/Bullet/SO/Rare/Weakness.asset", BulletType.Debuff)]
     [TestCase("Assets/Scripts/Bullet/SO/Ace/Amplifier.asset", BulletType.Debuff)]
     [TestCase("Assets/Scripts/Bullet/SO/Ace/Venom Burst.asset", BulletType.Debuff)]
-    [TestCase("Assets/Scripts/Bullet/SO/Ace/Tracking.asset", BulletType.Debuff)]
+    [TestCase("Assets/Scripts/Bullet/SO/Rare/Sniping.asset", BulletType.Sniper)]
+    [TestCase("Assets/Scripts/Bullet/SO/Ace/Assassination.asset", BulletType.Sniper)]
+    [TestCase("Assets/Scripts/Bullet/SO/Legendary/Mastery.asset", BulletType.Sniper)]
+    [TestCase("Assets/Scripts/Bullet/SO/Ace/Tracking.asset", BulletType.Storm)]
+    [TestCase("Assets/Scripts/Bullet/SO/Ace/Typhoon.asset", BulletType.Storm)]
+    [TestCase("Assets/Scripts/Bullet/SO/Legendary/Cataclysm.asset", BulletType.Storm)]
     public void AuthoredBulletUsesExpectedType(string path, BulletType expected)
     {
         BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(path);
@@ -330,6 +337,22 @@ public sealed class BulletEffectUtilityTests
         Assert.That(data.BulletType, Is.EqualTo(expected));
         Assert.That(data.BulletTypeDisplayName, Does.Not.EndWith("탄"));
         Assert.That(data.GetBulletTypeDescription(0), Is.Not.Empty);
+    }
+
+    [Test]
+    public void EveryAuthoredBulletUsesThePlannedTwelveTypeClassification()
+    {
+        Assert.That(
+            BulletTypeClassificationBuilder.ExpectedTypes.Count,
+            Is.EqualTo(71));
+
+        foreach (var pair in BulletTypeClassificationBuilder.ExpectedTypes)
+        {
+            BulletData data = AssetDatabase.LoadAssetAtPath<BulletData>(
+                pair.Key);
+            Assert.That(data, Is.Not.Null, pair.Key);
+            Assert.That(data.BulletType, Is.EqualTo(pair.Value), pair.Key);
+        }
     }
 
     [Test]
@@ -351,22 +374,6 @@ public sealed class BulletEffectUtilityTests
         }
     }
 
-    [TestCase(true, 0.2f, false)]
-    [TestCase(true, 0f, false)]
-    [TestCase(false, 0.2f, true)]
-    [TestCase(false, 0f, false)]
-    public void RequiredShotgunShotsSkipTheAdditionalShotInterval(
-        bool hasRequiredShotgunShot,
-        float interval,
-        bool expected)
-    {
-        Assert.That(
-            PlayerShoot.ShouldWaitBeforeAdditionalShot(
-                hasRequiredShotgunShot,
-                interval),
-            Is.EqualTo(expected));
-    }
-
     [Test]
     public void NewBulletCapstonesChangeTheirCorePlayPattern()
     {
@@ -386,9 +393,11 @@ public sealed class BulletEffectUtilityTests
         Assert.That(Find(immersion.GetEffects(3),
             BulletEffectType.Concentration).Amount, Is.EqualTo(10f));
         Assert.That(Find(ritual.GetEffects(3), BulletEffectType.Ritual)
-            .StackCount, Is.EqualTo(2));
+            .StackCount, Is.EqualTo(1));
         Assert.That(Find(ritual.GetEffects(3), BulletEffectType.Ritual)
-            .ActivationChance, Is.Zero);
+            .Amount, Is.EqualTo(8f));
+        Assert.That(Find(ritual.GetEffects(3), BulletEffectType.Ritual)
+            .ActivationChance, Is.EqualTo(100f));
         Assert.That(Find(finale.GetEffects(3), BulletEffectType.Finale)
             .Amount, Is.EqualTo(100f));
     }

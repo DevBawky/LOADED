@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Silent
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_silent
+  displayName: "\uBB34\uC74C\uD0C4"
+  description: "\uC0AC\uACA9\uD574\uB3C4 \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 21300000, guid: 5d629c4fac0013246a2b9bd8c3bdf3c7, type: 3}
+  price: 3
+  grade: 0
+  bulletType: 1
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
+  damage: 8
+  maxRange: 3
+  criticalChance: 5
+  criticalDamageMultiplier: 1.5
+  effects: []
+  conditionalEvents: []
+  penetrationChances: []
+  shotgunShotCount: 1
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 0.65, g: 0.2, b: 1, a: 1}
+  secondaryLineColor: {r: 0.78, g: 0.58, b: 1, a: 1}
+  lineWidthMultiplier: 0.8
+  doesNotConsumeTurn: 1
+  recoilStrength: 0.1
+  upgradeCost: 5
+  upgradeLevels:
+  - description: "\uC0AC\uACA9\uD574\uB3C4 \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
+      \uC54A\uC2B5\uB2C8\uB2E4."
+    damage: 11
+    maxRange: 3
+    criticalChance: 7
+    criticalDamageMultiplier: 1.6
+    effects: []
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 1
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.1
+    upgradeCost: 10
+  - description: "\uC0AC\uACA9\uD574\uB3C4 \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
+      \uC54A\uC2B5\uB2C8\uB2E4."
+    damage: 14
+    maxRange: 4
+    criticalChance: 9
+    criticalDamageMultiplier: 1.7
+    effects: []
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 1
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.1
+    upgradeCost: 20
+  - description: "\uC0AC\uACA9\uD574\uB3C4 \uD134\uC744 \uC18C\uBAA8\uD558\uC9C0
+      \uC54A\uC2B5\uB2C8\uB2E4."
+    damage: 18
+    maxRange: 4
+    criticalChance: 12
+    criticalDamageMultiplier: 1.8
+    effects: []
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 1
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 1
+    recoilStrength: 0.1
+    upgradeCost: 0

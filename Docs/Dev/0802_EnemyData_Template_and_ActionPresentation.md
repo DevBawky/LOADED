@@ -92,17 +92,17 @@ Thrower와 Porter는 전용 Avatar가 준비될 때까지 참조가 비어 있�
 
 ### 공격 판정과 회피 키프레임
 
-일반 근접·총격 공격과 빅 베럴 산탄은 공격 클립의 Animation Event로 회피 시작과 피격 구간을 작성한다. 회피 시작 당시 플레이어가 공격 범위 안에 있었다가 피격 구간이 시작되기 전에 안전한 타일로 이동하면, 범위를 벗어난 첫 프레임에 회피 성공을 확정하고 연출을 즉시 실행한다. 확정된 회피는 같은 공격 안에서 다시 범위에 들어와도 번복하지 않는다. 피격 구간 시작까지 범위를 벗어나지 못했다면 그 첫 프레임에 공격을 한 번만 판정한다.
+일반 근접·총격 공격과 빅 베럴 산탄은 바닥 경고의 `fillAmount`가 0에서 1까지 모두 찬 뒤에 공격 애니메이션을 시작한다. 완충 직후 `Attack Dodge Window Duration`(기본 0.2초) 동안 회피 창을 열며, 완충 순간 공격 범위 안에 있던 플레이어가 이 시간 안에 안전한 타일로 이동하면 범위를 벗어난 첫 프레임에 회피 성공을 확정하고 연출을 즉시 실행한다. 확정된 회피는 같은 공격 안에서 다시 범위에 들어와도 번복하지 않는다. 회피 창이 끝날 때까지 범위를 벗어나지 못하면 회피 실패를 잠그고, 작성된 피격 키프레임에 도달했을 때 공격을 한 번만 판정한다.
 
 1. Avatar 프리팹의 Animator Controller를 열고 실제 공격 상태가 사용하는 Animation Clip을 선택한다. 일반 적은 `Base Layer.Attack`, 빅 베럴 산탄은 `Base Layer.Attack_2`를 사용한다.
-2. `Window > Animation > Animation`에서 클립을 열고 타임라인의 이벤트 추가 버튼으로 공격 예비 동작이 시작되는 프레임에 `BeginAttackDodgeWindow`를 추가한다.
-3. 무기나 타격 이펙트가 실제 대상에 닿기 시작하는 첫 프레임에 `BeginAttackActiveWindow`를 추가한다. 이 이벤트 직전까지가 회피 성공 범위다.
+2. 무기나 타격 이펙트가 실제 대상에 닿기 시작하는 첫 프레임에 `BeginAttackActiveWindow`를 추가한다. 경고 완충 뒤 시작한 0.2초 회피 창과 이 키프레임이 모두 지난 뒤 피해를 판정한다.
+3. 기존 클립의 `BeginAttackDodgeWindow` 이벤트는 직렬화 호환을 위해 유지할 수 있지만, 회피 창 시작 시점은 더 이상 이 이벤트가 아니라 경고 완충 시점으로 통일한다.
 4. 무기나 이펙트가 대상을 완전히 통과한 프레임에 `EndAttackActiveWindow`를 추가한다.
 5. Avatar 프리팹의 Animator GameObject에 `EnemyAttackAnimationEvents`를 `EnemyAnimationSfx`와 나란히 추가한다. 세 이벤트는 매개변수 없이 설정하며, 이 전용 Action Window 컴포넌트가 생성된 Avatar 인스턴스에서 이벤트를 `EnemyController`의 판정으로 전달한다.
 
 `EnemyController`는 Avatar 생성 뒤 프리팹에 작성된 Action Window를 찾아 현재 적 인스턴스와 연결할 뿐, 컴포넌트를 런타임에 자동 추가하지 않는다. 따라서 새로운 Avatar 프리팹을 만들 때 Animator와 `EnemyAnimationSfx`, `EnemyAttackAnimationEvents`를 함께 작성해야 한다.
 
-`BeginAttackDodgeWindow`가 없으면 클립 시작부터 피격 시작까지를 회피 범위로 사용한다. `BeginAttackActiveWindow`와 `EndAttackActiveWindow`가 올바른 순서로 한 쌍을 이루지 않거나 공격 애니메이션 자체가 없으면 Animation Event를 사용하지 않고 `Attack Dodge Window Duration`만큼 기다린 뒤 공격한다. 기본값은 0.2초이며 이 시간 안에 공격 범위를 벗어나는 즉시 회피를 확정한다. 일시정지 중에는 모든 회피 시간이 진행되지 않는다.
+`BeginAttackActiveWindow`와 `EndAttackActiveWindow`가 올바른 순서로 한 쌍을 이루지 않으면 공격 애니메이션 시작 후 `Attack Dodge Window Duration`이 지난 시점을 피격 키프레임으로 사용한다. 공격 애니메이션 자체가 없어도 경고를 먼저 완충하고 동일한 0.2초 회피 창을 모두 재생한 뒤 공격한다. 일시정지 중에는 경고 충전과 회피 시간이 모두 진행되지 않는다.
 
 투척병은 발사 애니메이션이 아니라 투사체 도착 시점을 기준으로 한다. 도착하기 `Attack Dodge Window Duration`초 전부터 도착 순간까지 목표 타일을 벗어나는 첫 프레임에 회피가 확정되고 연출이 시작된다. 그보다 일찍 빠져나간 경우 공격은 빗나가지만 회피 강조 연출은 재생하지 않는다.
 
@@ -155,7 +155,7 @@ Thrower와 Porter는 전용 Avatar가 준비될 때까지 참조가 비어 있�
 |---|---|
 | `Queue Element Reveal Duration` | Queue 배경 또는 행동 타일 하나가 등장하는 시간 |
 | `Queued Action Interval` | 준비된 공격 여러 개를 실제 실행할 때 공격 사이의 간격 |
-| `Attack Dodge Window Duration` | 키프레임이 없는 공격의 지연 및 투척·폭탄의 회피 가능 시간 |
+| `Attack Dodge Window Duration` | 일반 공격·폭탄의 경고 충전 및 완충 후 회피 시간, 투척물의 도착 전 회피 시간 |
 
 두 값은 서로 다른 용도다. Queue 등장 속도는 `Queue Element Reveal Duration`으로 조절한다. 기본값은 0.25초이며 0이면 기존처럼 즉시 표시된다.
 

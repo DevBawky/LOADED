@@ -4,19 +4,28 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class DuelClockController : MonoBehaviour
 {
-    private const double EnemyDefeatReductionDivisor = 4d;
-    private const int NaturalProgressBaselineEnemyCount = 3;
-    private const double NaturalProgressRateStepPerEnemy = 0.3d;
+    internal const double NaturalProgressSpeedMultiplier = 1.35d;
+    internal const double SpawnProgressRateMultiplier = 0.5d;
+    public const int TempoCapacity = 6;
+    // Legacy names/scale remain for serialized HUD and save compatibility.
+    // Every completed paid action now commits exactly one enemy cycle.
+    public const int MovementTempoCost = TempoCapacity;
+    public const int RotationTempoCost = TempoCapacity;
+    public const int WaitTempoCost = TempoCapacity;
+    public const int ReloadTempoCost = TempoCapacity;
+    public const int ShootTempoCost = TempoCapacity;
 
-    private PlayerMove playerMove;
-    private PlayerShoot playerShoot;
-    private WaveManager waveManager;
+    private const double ProgressPerTempo =
+        DuelClockState.CycleLength / TempoCapacity;
+
+    [Header("References")]
+    [SerializeField] private PlayerMove playerMove;
+    [SerializeField] private PlayerShoot playerShoot;
+    [SerializeField] private WaveManager waveManager;
+
     private DuelClockState state = new DuelClockState();
     private CombatPacingMode pacingMode = CombatPacingMode.Legacy;
-    private double naturalProgressPerSecond;
-    private double paidActionProgress;
-    private int enemyWaveCount = 5;
-    private bool shootProgressCommitted;
+    private int pendingActionTempoCost;
     private bool hasReservedBeat;
     private bool playerActionPending;
     private bool paidActionProgressSuppressed;
@@ -25,29 +34,50 @@ public sealed class DuelClockController : MonoBehaviour
     public event Action StateChanged;
     public event Action<long> BeatsCommitted;
 
+    // Retained for source compatibility. Reinforcements are now scheduled by
+    // WaveManager after a complete enemy action cycle.
+    public event Action<long> SpawnCyclesCommitted;
+
     public bool IsActive => pacingMode == CombatPacingMode.DuelClock;
     public CombatPacingMode PacingMode => pacingMode;
     public double Progress => hasReservedBeat
         ? DuelClockState.CycleLength
         : state.Snapshot.Progress;
+    public double TempoProgress => hasReservedBeat
+        ? TempoCapacity
+        : ConvertProgressToTempo(state.Snapshot.Progress);
     public long CumulativeBeats => state.Snapshot.CumulativeBeats;
-    public int EnemyWaveCount => enemyWaveCount;
-    public int EnemyWaveProgress => IsActive
-        ? (int)(CumulativeBeats % enemyWaveCount)
-        : 0;
+    public double SpawnProgress => 0d;
+    public long CumulativeSpawnCycles => 0L;
+    public bool IsTempoCycleReserved => IsActive && hasReservedBeat;
+    internal bool HasPendingPaidAction => IsActive
+        && playerActionPending
+        && !paidActionProgressSuppressed
+        && pendingActionTempoCost > 0;
     internal DuelClockSnapshot Snapshot => state.Snapshot;
-    internal bool HasReservedBeat => IsActive && hasReservedBeat;
+    internal bool HasReservedBeat => IsTempoCycleReserved;
 
     internal void Initialize(
         PlayerMove assignedPlayerMove,
         WaveManager assignedWaveManager)
     {
         UnsubscribeFromCombatEvents();
-        playerMove = assignedPlayerMove;
-        playerShoot = playerMove == null
-            ? null
-            : playerMove.GetComponent<PlayerShoot>();
-        waveManager = assignedWaveManager;
+
+        if (assignedPlayerMove != null)
+        {
+            playerMove = assignedPlayerMove;
+        }
+
+        if (assignedWaveManager != null)
+        {
+            waveManager = assignedWaveManager;
+        }
+
+        if (playerShoot == null && playerMove != null)
+        {
+            playerShoot = playerMove.GetComponent<PlayerShoot>();
+        }
+
         SubscribeToCombatEvents();
     }
 
@@ -71,7 +101,7 @@ public sealed class DuelClockController : MonoBehaviour
         ConfigureSettings(battleData, configuredMode);
         state = IsActive && saveData != null
             ? RestoreStateOrDefault(
-                saveData.duelClockProgress,
+                0d,
                 saveData.duelClockCumulativeBeats)
             : new DuelClockState();
         hasReservedBeat = false;
@@ -93,18 +123,30 @@ public sealed class DuelClockController : MonoBehaviour
         {
             saveData.duelClockProgress = 0d;
             saveData.duelClockCumulativeBeats = 0;
+            saveData.duelClockSpawnProgress = 0d;
+            saveData.duelClockCumulativeSpawns = 0;
             return;
         }
 
         DuelClockSnapshot snapshot = state.Snapshot;
         saveData.duelClockProgress = snapshot.Progress;
         saveData.duelClockCumulativeBeats = snapshot.CumulativeBeats;
+        saveData.duelClockSpawnProgress = 0d;
+        saveData.duelClockCumulativeSpawns = 0;
     }
 
     internal DuelClockAdvanceResult PreviewPaidAction()
     {
-        return state.Preview(
-            IsActive && !hasReservedBeat ? paidActionProgress : 0d);
+        return PreviewAction(PlayerBehaviourAction.Shoot);
+    }
+
+    internal DuelClockAdvanceResult PreviewAction(
+        PlayerBehaviourAction action)
+    {
+        double progress = IsActive && !hasReservedBeat
+            ? ConvertTempoToProgress(GetTempoCost(action))
+            : 0d;
+        return state.Preview(progress);
     }
 
     internal DuelClockAdvanceResult PreviewFreeAction()
@@ -114,29 +156,20 @@ public sealed class DuelClockController : MonoBehaviour
 
     internal bool TryAdvanceNaturalTime(double elapsedSeconds)
     {
-        if (!CanAdvanceNaturally()
-            || double.IsNaN(elapsedSeconds)
-            || double.IsInfinity(elapsedSeconds)
-            || elapsedSeconds <= 0d
-            || naturalProgressPerSecond <= 0d)
-        {
-            return false;
-        }
+        return false;
+    }
 
-        double naturalProgressMultiplier =
-            CalculateNaturalProgressMultiplier(waveManager.LivingEnemyCount);
-        return TryCommitProgress(
-            naturalProgressPerSecond
-            * naturalProgressMultiplier
-            * elapsedSeconds);
+    internal bool TryCommitTestCycle()
+    {
+        return waveManager != null && waveManager.IsTestBattle
+            && !hasReservedBeat
+            && TryCommitTempo(Mathf.Max(1,
+                TempoCapacity - (int)Math.Round(TempoProgress)));
     }
 
     internal void Deactivate()
     {
         pacingMode = CombatPacingMode.Legacy;
-        naturalProgressPerSecond = 0d;
-        paidActionProgress = 0d;
-        enemyWaveCount = 5;
         state = new DuelClockState();
         hasReservedBeat = false;
         ResetPlayerActionTracking();
@@ -158,84 +191,84 @@ public sealed class DuelClockController : MonoBehaviour
 
     private void Update()
     {
-        TryAdvanceNaturalTime(Time.unscaledDeltaTime);
+        // With no natural clock, stun must explicitly pass a player action.
+        if (!IsActive || hasReservedBeat || GamePauseController.IsPaused
+            || playerMove == null || !playerMove.IsStunned || playerMove.IsInputLocked
+            || playerMove.IsActing || playerMove.IsShooting || waveManager == null
+            || waveManager.IsBattleCompleted || waveManager.IsResolvingTurn
+            || LoadingTransitionController.IsTransitioning)
+            return;
+        HandlePlayerActionStarted(PlayerBehaviourAction.Wait);
+        playerMove.CompleteTurn();
     }
 
     private void HandlePlayerTurnCompleted()
     {
-        bool shouldCommitPaidAction = !shootProgressCommitted
-            && !paidActionProgressSuppressed;
+        int completedActionCost = pendingActionTempoCost;
+        bool shouldCommitPaidAction = playerActionPending
+            && !paidActionProgressSuppressed
+            && completedActionCost > 0;
         ResetPlayerActionTracking();
 
-        if (IsActive && shouldCommitPaidAction)
+        if (!IsActive || !shouldCommitPaidAction)
         {
-            TryCommitProgress(paidActionProgress);
+            return;
         }
+
+        if (hasReservedBeat)
+        {
+            return;
+        }
+
+        TryCommitTempo(completedActionCost);
     }
 
     internal void HandlePlayerActionStarted(PlayerBehaviourAction action)
     {
         ResetPlayerActionTracking();
-        playerActionPending = true;
+        playerActionPending = !hasReservedBeat;
+        pendingActionTempoCost = GetTempoCost(action);
 
-        if (IsActive && action == PlayerBehaviourAction.Shoot)
+        if (HasPendingPaidAction)
         {
-            shootProgressCommitted = TryCommitProgress(
-                paidActionProgress);
+            StateChanged?.Invoke();
         }
     }
 
     internal void HandlePlayerDodgeSucceededDuringAction()
     {
-        if (!IsActive || !playerActionPending || shootProgressCommitted)
+        if (!IsActive || !playerActionPending)
         {
             return;
         }
 
         paidActionProgressSuppressed = true;
-    }
-
-    private void HandleEnemyDefeated(EnemyController enemy)
-    {
-        ApplyEnemyDefeat();
+        StateChanged?.Invoke();
     }
 
     internal bool ApplyEnemyDefeat()
     {
-        if (!IsActive)
-        {
-            return false;
-        }
-
-        return TryReduceProgress(
-            CalculateEnemyDefeatReduction(paidActionProgress));
+        return false;
     }
 
     internal static double CalculateEnemyDefeatReduction(
         double configuredPaidActionProgress)
     {
-        if (double.IsNaN(configuredPaidActionProgress)
-            || double.IsInfinity(configuredPaidActionProgress)
-            || configuredPaidActionProgress <= 0d)
-        {
-            return 0d;
-        }
-
-        return configuredPaidActionProgress
-            / EnemyDefeatReductionDivisor;
+        return 0d;
     }
 
     internal static double CalculateNaturalProgressMultiplier(
         int livingEnemyCount)
     {
-        int sanitizedEnemyCount = Math.Max(0, livingEnemyCount);
-        double multiplier = 1d
-            + (NaturalProgressBaselineEnemyCount - sanitizedEnemyCount)
-            * NaturalProgressRateStepPerEnemy;
-        return Math.Max(0d, multiplier);
+        return 0d;
     }
 
     internal void HandleEnemyCycleStarted()
+    {
+        // The reservation remains active until every enemy action settles.
+    }
+
+    internal void HandleEnemyCycleCompleted()
     {
         if (!hasReservedBeat)
         {
@@ -246,8 +279,29 @@ public sealed class DuelClockController : MonoBehaviour
         StateChanged?.Invoke();
     }
 
-    private bool TryCommitProgress(double addedProgress)
+    internal static int GetTempoCost(PlayerBehaviourAction action)
     {
+        return action switch
+        {
+            PlayerBehaviourAction.MoveLeft => MovementTempoCost,
+            PlayerBehaviourAction.MoveRight => MovementTempoCost,
+            PlayerBehaviourAction.MoveUp => MovementTempoCost,
+            PlayerBehaviourAction.MoveDown => MovementTempoCost,
+            PlayerBehaviourAction.Rotate => RotationTempoCost,
+            PlayerBehaviourAction.Wait => WaitTempoCost,
+            PlayerBehaviourAction.Reload => ReloadTempoCost,
+            PlayerBehaviourAction.Shoot => ShootTempoCost,
+            _ => 0
+        };
+    }
+
+    private bool TryCommitTempo(int tempoCost)
+    {
+        if (!IsActive || tempoCost <= 0)
+        {
+            return false;
+        }
+
         if (hasReservedBeat)
         {
             return false;
@@ -257,7 +311,7 @@ public sealed class DuelClockController : MonoBehaviour
 
         try
         {
-            result = state.CommitUntilNextBeat(addedProgress);
+            result = state.Commit(ConvertTempoToProgress(tempoCost));
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -283,57 +337,6 @@ public sealed class DuelClockController : MonoBehaviour
         return true;
     }
 
-    private bool TryReduceProgress(double removedProgress)
-    {
-        double actualReduction;
-
-        try
-        {
-            actualReduction = state.Reduce(removedProgress);
-        }
-        catch (ArgumentOutOfRangeException)
-        {
-            return false;
-        }
-
-        if (actualReduction <= 0d)
-        {
-            return false;
-        }
-
-        StateChanged?.Invoke();
-        return true;
-    }
-
-    private bool CanAdvanceNaturally()
-    {
-        return ShouldAdvanceNaturalClock(
-            IsActive,
-            isActiveAndEnabled,
-            GamePauseController.IsPaused,
-            playerMove != null,
-            waveManager != null,
-            waveManager != null && waveManager.IsBattleCompleted,
-            FirstRunGuideController.IsGuidePanelOpen,
-            playerShoot != null && playerShoot.IsFiring);
-    }
-
-    internal static bool ShouldAdvanceNaturalClock(
-        bool isActive,
-        bool componentEnabled,
-        bool gamePaused,
-        bool hasPlayerMove,
-        bool hasWaveManager,
-        bool battleCompleted,
-        bool guidePanelOpen = false,
-        bool playerFiring = false)
-    {
-        return isActive && componentEnabled && !gamePaused
-            && !guidePanelOpen && !playerFiring
-            && hasPlayerMove && hasWaveManager
-            && !battleCompleted;
-    }
-
     private void ConfigureSettings(
         BattleData battleData,
         CombatPacingMode configuredMode)
@@ -342,15 +345,6 @@ public sealed class DuelClockController : MonoBehaviour
             && configuredMode == CombatPacingMode.DuelClock
                 ? CombatPacingMode.DuelClock
                 : CombatPacingMode.Legacy;
-        naturalProgressPerSecond = IsActive
-            ? SanitizeProgress(battleData.DuelClockNaturalProgressPerSecond)
-            : 0d;
-        paidActionProgress = IsActive
-            ? SanitizeProgress(battleData.DuelClockPaidActionProgress)
-            : 0d;
-        enemyWaveCount = IsActive
-            ? battleData.DuelClockEnemyWaveCount
-            : 5;
     }
 
     private void SubscribeToCombatEvents()
@@ -371,11 +365,6 @@ public sealed class DuelClockController : MonoBehaviour
         if (playerShoot != null)
         {
             playerShoot.BehaviourActionStarted += HandlePlayerActionStarted;
-        }
-
-        if (waveManager != null)
-        {
-            waveManager.EnemyDefeated += HandleEnemyDefeated;
         }
 
         subscribedToCombatEvents = true;
@@ -401,17 +390,12 @@ public sealed class DuelClockController : MonoBehaviour
             playerShoot.BehaviourActionStarted -= HandlePlayerActionStarted;
         }
 
-        if (waveManager != null)
-        {
-            waveManager.EnemyDefeated -= HandleEnemyDefeated;
-        }
-
         subscribedToCombatEvents = false;
     }
 
     private void ResetPlayerActionTracking()
     {
-        shootProgressCommitted = false;
+        pendingActionTempoCost = 0;
         playerActionPending = false;
         paidActionProgressSuppressed = false;
     }
@@ -436,10 +420,38 @@ public sealed class DuelClockController : MonoBehaviour
         }
     }
 
-    private static double SanitizeProgress(float value)
+    private static double ConvertTempoToProgress(int tempoCost)
     {
-        return float.IsNaN(value) || float.IsInfinity(value)
-            ? 0d
-            : Math.Max(0d, value);
+        return Math.Max(0, tempoCost) * ProgressPerTempo;
+    }
+
+    private static double ConvertProgressToTempo(double progress)
+    {
+        return Math.Max(0d, progress) / ProgressPerTempo;
+    }
+
+    internal static bool ShouldAdvanceNaturalClock(
+        bool isActive,
+        bool componentEnabled,
+        bool gamePaused,
+        bool hasPlayerMove,
+        bool hasWaveManager,
+        bool battleCompleted,
+        bool guidePanelOpen = false,
+        bool playerFiring = false)
+    {
+        return false;
+    }
+
+    internal static bool ShouldAdvanceSpawnGaugeNaturally(
+        bool isActive,
+        bool componentEnabled,
+        bool gamePaused,
+        bool hasPlayerMove,
+        bool hasWaveManager,
+        bool battleCompleted,
+        bool guidePanelOpen = false)
+    {
+        return false;
     }
 }

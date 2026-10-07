@@ -42,3 +42,148 @@ internal static class EnemyFrontlineTurnPolicy
         return true;
     }
 }
+
+internal readonly struct EnemyLanePursuitCandidate
+{
+    public EnemyLanePursuitCandidate(
+        int identity,
+        int tileIndex,
+        int laneIndex)
+    {
+        Identity = identity;
+        TileIndex = tileIndex;
+        LaneIndex = laneIndex;
+    }
+
+    public int Identity { get; }
+    public int TileIndex { get; }
+    public int LaneIndex { get; }
+}
+
+internal enum EnemyLaneMismatchIntent
+{
+    ChangeLane,
+    Rotate,
+    Advance
+}
+
+internal static class EnemyLanePursuitPolicy
+{
+    public static EnemyLaneMismatchIntent GetMismatchIntent(
+        bool isLanePursuer,
+        int directionToPlayer,
+        int distanceToPlayer,
+        bool isFacingPlayer)
+    {
+        // Once a rear actor reaches the player's column (or the adjacent
+        // staggered column), horizontal distance can no longer express a
+        // useful approach direction. It must join the player's lane or make
+        // room for that transition instead of waiting forever.
+        if (isLanePursuer || directionToPlayer == 0 || distanceToPlayer <= 1)
+        {
+            return EnemyLaneMismatchIntent.ChangeLane;
+        }
+
+        return isFacingPlayer
+            ? EnemyLaneMismatchIntent.Advance
+            : EnemyLaneMismatchIntent.Rotate;
+    }
+
+    public static int GetPreferredStagingDirection(
+        int directionToPlayer,
+        int currentLaneIndex,
+        int playerLaneIndex)
+    {
+        if (directionToPlayer != 0)
+        {
+            return directionToPlayer > 0 ? 1 : -1;
+        }
+
+        return playerLaneIndex > currentLaneIndex ? 1 : -1;
+    }
+
+    public static bool ShouldPursueLane(
+        int selfIdentity,
+        int playerTileIndex,
+        int playerLaneIndex,
+        IReadOnlyList<EnemyLanePursuitCandidate> candidates)
+    {
+        if (candidates == null || candidates.Count == 0)
+        {
+            return false;
+        }
+
+        int selfCandidateIndex = -1;
+
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            if (candidates[index].Identity == selfIdentity)
+            {
+                selfCandidateIndex = index;
+                break;
+            }
+        }
+
+        if (selfCandidateIndex < 0)
+        {
+            return false;
+        }
+
+        EnemyLanePursuitCandidate self = candidates[selfCandidateIndex];
+        int selfOffset = self.TileIndex - playerTileIndex;
+        int selfSide = System.Math.Sign(selfOffset);
+        int selectedIndex = selfCandidateIndex;
+
+        for (int index = 0; index < candidates.Count; index++)
+        {
+            EnemyLanePursuitCandidate candidate = candidates[index];
+            int candidateOffset = candidate.TileIndex - playerTileIndex;
+
+            if (System.Math.Sign(candidateOffset) != selfSide
+                || !HasHigherPriority(
+                    candidate,
+                    index,
+                    candidates[selectedIndex],
+                    selectedIndex,
+                    playerTileIndex,
+                    playerLaneIndex))
+            {
+                continue;
+            }
+
+            selectedIndex = index;
+        }
+
+        return selectedIndex == selfCandidateIndex;
+    }
+
+    private static bool HasHigherPriority(
+        EnemyLanePursuitCandidate candidate,
+        int candidateIndex,
+        EnemyLanePursuitCandidate selected,
+        int selectedIndex,
+        int playerTileIndex,
+        int playerLaneIndex)
+    {
+        int candidateDistance = System.Math.Abs(
+            candidate.TileIndex - playerTileIndex);
+        int selectedDistance = System.Math.Abs(
+            selected.TileIndex - playerTileIndex);
+
+        if (candidateDistance != selectedDistance)
+        {
+            return candidateDistance < selectedDistance;
+        }
+
+        bool candidateSharesPlayerLane =
+            candidate.LaneIndex == playerLaneIndex;
+        bool selectedSharesPlayerLane = selected.LaneIndex == playerLaneIndex;
+
+        if (candidateSharesPlayerLane != selectedSharesPlayerLane)
+        {
+            return candidateSharesPlayerLane;
+        }
+
+        return candidateIndex < selectedIndex;
+    }
+}

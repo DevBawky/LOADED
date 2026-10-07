@@ -94,7 +94,7 @@ public sealed class BulletEffectDescriptionFormatterTests
 
             Assert.That(
                 massProducedDescription,
-                Does.Contain("일반·레어 탄환"),
+                Does.Contain("노멀·레어 탄환"),
                 $"양산탄 level {level}");
             Assert.That(
                 masterpieceDescription,
@@ -129,9 +129,11 @@ public sealed class BulletEffectDescriptionFormatterTests
 
             try
             {
+                string description = bullet.GetBulletTypeDescription(0);
                 Assert.That(
-                    bullet.GetBulletTypeDescription(0),
-                    Does.EndWith("합니다."),
+                    description.EndsWith("합니다.")
+                    || description.EndsWith("습니다."),
+                    Is.True,
                     bulletType.ToString());
             }
             finally

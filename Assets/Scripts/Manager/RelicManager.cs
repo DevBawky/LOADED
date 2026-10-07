@@ -46,6 +46,7 @@ public sealed class RelicManager : MonoBehaviour
         new List<int>();
     private readonly Dictionary<int, double> activeTargetDamageMultipliers =
         new Dictionary<int, double>();
+    private RelicChanceEffectHandler chanceEffectHandler;
 
     public event Action InventoryChanged;
     public event Action<RelicInstance, RelicEffectData> RelicTriggered;
@@ -59,6 +60,19 @@ public sealed class RelicManager : MonoBehaviour
     public bool IsFull => Count >= MaximumRelicCount;
     public bool CurrentShotForcesCritical => activeShotForcesCritical;
     public int LuckyChamberBulletIndex => luckyChamberBulletIndex;
+    private RelicChanceEffectHandler ChanceEffectHandler
+    {
+        get
+        {
+            ownedRelics ??= new List<RelicInstance>();
+            chanceEffectHandler ??= new RelicChanceEffectHandler(
+                ownedRelics,
+                NotifyProbabilityEvaluated,
+                RollPercent,
+                Trigger);
+            return chanceEffectHandler;
+        }
+    }
 
     public bool IsLuckyChamberShot(int shotOrderIndex)
     {
@@ -316,6 +330,7 @@ public sealed class RelicManager : MonoBehaviour
     private void Awake()
     {
         ownedRelics ??= new List<RelicInstance>();
+        _ = ChanceEffectHandler;
         BindPlayerMove(playerMove != null
             ? playerMove
             : FindFirstObjectByType<PlayerMove>(FindObjectsInactive.Include));
@@ -873,23 +888,7 @@ public sealed class RelicManager : MonoBehaviour
             return false;
         }
 
-        if (FindFirstEffect(
-                RelicEffectType.EmptyBeat,
-                out RelicInstance emptyBeatRelic,
-                out RelicEffectData emptyBeatEffect))
-        {
-            NotifyProbabilityEvaluated(
-                emptyBeatRelic,
-                emptyBeatEffect.PrimerBaseChance);
-
-            if (RollPercent(emptyBeatEffect.PrimerBaseChance))
-            {
-                Trigger(emptyBeatRelic, emptyBeatEffect);
-                return false;
-            }
-        }
-
-        return true;
+        return !ChanceEffectHandler.TryWaiveReloadTurn();
     }
 
     public bool TryGetClosedCircuitTransferDamage(
@@ -993,23 +992,7 @@ public sealed class RelicManager : MonoBehaviour
 
     public bool ShouldMovementConsumeTurn()
     {
-        if (!FindFirstEffect(
-                RelicEffectType.RunningSpur,
-                out RelicInstance relic,
-                out RelicEffectData effect))
-        {
-            return true;
-        }
-
-        NotifyProbabilityEvaluated(relic, effect.PrimerBaseChance);
-
-        if (!RollPercent(effect.PrimerBaseChance))
-        {
-            return true;
-        }
-
-        Trigger(relic, effect);
-        return false;
+        return !ChanceEffectHandler.TryWaiveMovementTurn();
     }
 
     public double GetKickDamageMultiplier()
@@ -1028,44 +1011,12 @@ public sealed class RelicManager : MonoBehaviour
 
     public int GetEnemyGoldDropMultiplier()
     {
-        if (!FindFirstEffect(
-                RelicEffectType.GoldPanner,
-                out RelicInstance relic,
-                out RelicEffectData effect))
-        {
-            return 1;
-        }
-
-        NotifyProbabilityEvaluated(relic, effect.GoldNuggetChance);
-
-        if (!RollPercent(effect.GoldNuggetChance))
-        {
-            return 1;
-        }
-
-        Trigger(relic, effect);
-        return effect.NuggetsRequired;
+        return ChanceEffectHandler.GetEnemyGoldDropMultiplier();
     }
 
     public bool TryReuseFiredBullet()
     {
-        if (!FindFirstEffect(
-                RelicEffectType.CrackedPrimer,
-                out RelicInstance relic,
-                out RelicEffectData effect))
-        {
-            return false;
-        }
-
-        NotifyProbabilityEvaluated(relic, effect.PrimerBaseChance);
-
-        if (!RollPercent(effect.PrimerBaseChance))
-        {
-            return false;
-        }
-
-        Trigger(relic, effect);
-        return true;
+        return ChanceEffectHandler.TryReuseFiredBullet();
     }
 
     public bool TryApplyMutationCatalyst(EnemyController enemy)
@@ -1732,6 +1683,7 @@ public sealed class RelicManager : MonoBehaviour
         bool hasSourceTile = boardManager != null
             && boardManager.TryGetTileIndex(
                 defeatedEnemy.transform.position,
+                defeatedEnemy.CurrentLaneIndex,
                 out sourceTile);
 
         foreach (EnemyController candidate in activeEnemies)
@@ -1746,9 +1698,12 @@ public sealed class RelicManager : MonoBehaviour
 
             if (hasSourceTile && boardManager.TryGetTileIndex(
                     candidate.transform.position,
+                    candidate.CurrentLaneIndex,
                     out int candidateTile))
             {
-                distance = Math.Abs(candidateTile - sourceTile);
+                distance = Math.Abs(
+                    boardManager.GetColumnIndex(candidateTile, candidate.CurrentLaneIndex)
+                    - boardManager.GetColumnIndex(sourceTile, defeatedEnemy.CurrentLaneIndex));
             }
             else
             {

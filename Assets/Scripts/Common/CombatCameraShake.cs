@@ -328,6 +328,8 @@ public sealed class CombatCameraShake : MonoBehaviour
     private float elapsed;
     private float startingStrength;
     private float noiseSeed;
+    private int activeHorizontalDirection;
+    private float activeReboundStrength;
 
     public static void Play(float strength)
     {
@@ -356,7 +358,40 @@ public sealed class CombatCameraShake : MonoBehaviour
             instance = Camera.main.gameObject.AddComponent<CombatCameraShake>();
         }
 
-        instance.RequestShake(strength, duration);
+        instance.RequestShake(strength, duration, 0, 0f);
+    }
+
+    public static void PlayDefeatPunch(
+        float strength,
+        float duration,
+        int horizontalDirection,
+        float reboundStrength)
+    {
+        strength *= CombatAccessibilitySettings.CameraShakeMultiplier;
+
+        if (GamePauseController.IsPaused
+            || strength <= 0f
+            || duration <= 0f
+            || Camera.main == null)
+        {
+            return;
+        }
+
+        if (instance == null)
+        {
+            instance = Camera.main.GetComponent<CombatCameraShake>();
+        }
+
+        if (instance == null)
+        {
+            instance = Camera.main.gameObject.AddComponent<CombatCameraShake>();
+        }
+
+        instance.RequestShake(
+            strength,
+            duration,
+            horizontalDirection == 0 ? 1 : horizontalDirection,
+            Mathf.Clamp01(reboundStrength));
     }
 
     public static void CancelForPause()
@@ -368,7 +403,7 @@ public sealed class CombatCameraShake : MonoBehaviour
     {
         instance = this;
         baseLocalPosition = transform.localPosition;
-        baseLocalRotation = Quaternion.identity;
+        baseLocalRotation = transform.localRotation;
         BindCinemachineNoise();
 
         if (cinemachineNoise == null)
@@ -377,7 +412,11 @@ public sealed class CombatCameraShake : MonoBehaviour
         }
     }
 
-    private void RequestShake(float strength, float duration)
+    private void RequestShake(
+        float strength,
+        float duration,
+        int horizontalDirection,
+        float reboundStrength)
     {
         bool isActive = shakeRoutine != null;
         if (isActive
@@ -391,6 +430,8 @@ public sealed class CombatCameraShake : MonoBehaviour
         activeStrength = Mathf.Max(activeStrength, strength);
         activeDuration = duration;
         elapsed = 0f;
+        activeHorizontalDirection = horizontalDirection;
+        activeReboundStrength = reboundStrength;
 
         if (!isActive)
         {
@@ -437,6 +478,8 @@ public sealed class CombatCameraShake : MonoBehaviour
         activeDuration = 0f;
         elapsed = 0f;
         startingStrength = 0f;
+        activeHorizontalDirection = 0;
+        activeReboundStrength = 0f;
         shakeRoutine = null;
     }
 
@@ -464,10 +507,13 @@ public sealed class CombatCameraShake : MonoBehaviour
 
     private void ApplyStrength(float strength)
     {
+        Vector3 directionalOffset = EvaluateDirectionalOffset();
+
         if (cinemachineNoise != null)
         {
             cinemachineNoise.AmplitudeGain = baseNoiseAmplitude + strength;
             cinemachineNoise.FrequencyGain = Mathf.Max(0f, noiseFrequency);
+            transform.localPosition = baseLocalPosition + directionalOffset;
             return;
         }
 
@@ -475,7 +521,48 @@ public sealed class CombatCameraShake : MonoBehaviour
         float offsetX = Mathf.PerlinNoise(noiseSeed, sampleTime) * 2f - 1f;
         float offsetY = Mathf.PerlinNoise(noiseSeed + 37.1f, sampleTime) * 2f - 1f;
         transform.localPosition = baseLocalPosition
-            + new Vector3(offsetX, offsetY, 0f) * strength;
+            + new Vector3(offsetX, offsetY, 0f) * strength
+            + directionalOffset;
+    }
+
+    private Vector3 EvaluateDirectionalOffset()
+    {
+        if (activeHorizontalDirection == 0 || activeStrength <= 0f)
+        {
+            return Vector3.zero;
+        }
+
+        float progress = activeDuration <= 0f
+            ? 1f
+            : Mathf.Clamp01(elapsed / activeDuration);
+        float offset;
+
+        if (progress < 0.18f)
+        {
+            offset = Mathf.Sin(progress / 0.18f * Mathf.PI * 0.5f);
+        }
+        else if (progress < 0.48f)
+        {
+            float reboundProgress = Mathf.InverseLerp(0.18f, 0.48f, progress);
+            offset = Mathf.Lerp(
+                1f,
+                -activeReboundStrength,
+                Mathf.SmoothStep(0f, 1f, reboundProgress));
+        }
+        else
+        {
+            float settleProgress = Mathf.InverseLerp(0.48f, 1f, progress);
+            offset = Mathf.Lerp(
+                -activeReboundStrength,
+                0f,
+                Mathf.SmoothStep(0f, 1f, settleProgress));
+        }
+
+        return Vector3.right
+            * activeHorizontalDirection
+            * activeStrength
+            * 0.72f
+            * offset;
     }
 
     private float GetCurrentAppliedStrength()
@@ -540,6 +627,8 @@ public sealed class CombatCameraShake : MonoBehaviour
         activeDuration = 0f;
         elapsed = 0f;
         startingStrength = 0f;
+        activeHorizontalDirection = 0;
+        activeReboundStrength = 0f;
     }
 
     private void RestoreCameraTransform()
@@ -549,10 +638,8 @@ public sealed class CombatCameraShake : MonoBehaviour
             cinemachineNoise.AmplitudeGain = baseNoiseAmplitude;
             cinemachineNoise.FrequencyGain = baseNoiseFrequency;
         }
-        else
-        {
-            transform.localPosition = baseLocalPosition;
-        }
+
+        transform.localPosition = baseLocalPosition;
 
         transform.localRotation = baseLocalRotation;
     }

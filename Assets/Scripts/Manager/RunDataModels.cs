@@ -54,27 +54,46 @@ public sealed class RunStatusEffectSaveData
 }
 
 [Serializable]
+public sealed class RunEnemyIntentSaveData
+{
+    // False in pre-intent v3 saves, including JsonUtility's missing-field default.
+    public bool committed;
+    public int action;
+    public int direction;
+    public int lane;
+    public List<int> pathTiles = new List<int>();
+    public List<int> attackTiles = new List<int>();
+    public List<int> attackLanes = new List<int>();
+}
+
+[Serializable]
 public sealed class RunEnemySaveData
 {
     public string enemyAssetName;
     public int tileIndex;
+    public int laneIndex;
     public bool facingRight;
     public int currentHealth;
     public int currentShield;
     public int remainingSupportCharges;
     public int recoveryTurnsRemaining;
+    public int preparationWaitTurns;
+    public bool preparationDeferred;
     public List<string> queuedActionAssetNames = new List<string>();
     public bool isQueueCreated;
     public bool isAttackPrepared;
     public bool isRetreating;
     public int preparedTargetTileIndex;
+    public int preparedTargetLaneIndex;
     public int preparedSupportTargetIndex = -1;
     public int preparedSupportType;
     public int lastTurnAction;
+    public RunEnemyIntentSaveData nextIntent;
     public int bigBarrelStep;
     public bool isBigBarrelPhaseTwo;
     public bool bigBarrelActionUsesPhaseTwo;
     public int preparedBigBarrelFuse;
+    public int preparedBigBarrelLaneIndex;
     public int bigBarrelReloadTurnsRemaining;
     public List<int> preparedBombTargetTileIndices = new List<int>();
     public List<int> preparedShotgunTileIndices = new List<int>();
@@ -87,6 +106,7 @@ public sealed class RunBombSaveData
 {
     public string sourceEnemyAssetName;
     public int tileIndex;
+    public int laneIndex;
     public int remainingFuse;
     public int createdTurnCycle;
 }
@@ -148,6 +168,7 @@ public sealed class RunSaveData
     public int flowState = (int)GameFlowState.Battle;
     public int stageIndex;
     public int battleIndex;
+    public int battleBoardCount;
     public bool startSelectedBattleFresh;
     public int currentHealth;
     public int maxHealth;
@@ -159,6 +180,7 @@ public sealed class RunSaveData
     public List<string> inventoryItemAssetNames = new List<string>();
     public List<RunRelicSaveData> relics = new List<RunRelicSaveData>();
     public int playerTileIndex;
+    public int playerLaneIndex;
     public bool playerFacingRight;
     public int playerTurnCount;
     public int cumulativeBattleTurnCount;
@@ -166,6 +188,8 @@ public sealed class RunSaveData
     public int combatPacingMode = (int)CombatPacingMode.Legacy;
     public double duelClockProgress;
     public long duelClockCumulativeBeats;
+    public double duelClockSpawnProgress;
+    public long duelClockCumulativeSpawns;
     public bool duelClockSpawnPoolInitialized;
     public List<string> duelClockRemainingEnemyAssetNames =
         new List<string>();

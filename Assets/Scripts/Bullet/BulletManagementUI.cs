@@ -482,7 +482,7 @@ public class BulletManagementUI : MonoBehaviour
         Image icon = FindNamedChild<Image>(
             button.transform,
             "Image | Bullet Sprite");
-        ApplyIcon(icon, GetPreferredIcon(bullet));
+        BulletIconPresenter.Apply(icon, bullet);
         if (icon != null)
         {
             icon.raycastTarget = true;
@@ -561,7 +561,7 @@ public class BulletManagementUI : MonoBehaviour
         }
 
         ApplyIcon(bulletIcon, null);
-        ApplyIcon(cylinderIcon, selectedBullet.CylinderIcon);
+        BulletIconPresenter.Apply(cylinderIcon, selectedBullet);
 
         if (bulletNameText != null)
         {
@@ -758,7 +758,7 @@ public class BulletManagementUI : MonoBehaviour
     private void RefreshEventSelection()
     {
         ApplyIcon(bulletIcon, null);
-        ApplyIcon(cylinderIcon, selectedBullet.CylinderIcon);
+        BulletIconPresenter.Apply(cylinderIcon, selectedBullet);
 
         if (bulletNameText != null)
         {

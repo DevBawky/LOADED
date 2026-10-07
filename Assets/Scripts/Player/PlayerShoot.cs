@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public partial class PlayerShoot : MonoBehaviour
 {
     public event Action<BulletInstance> BulletFired;
+    internal event Action<int> ShotgunVolleyPresented;
     public event Action<int> DamageDealt;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
     public event Action<BulletInstance> LoadedBulletEjected;
@@ -78,6 +79,7 @@ public partial class PlayerShoot : MonoBehaviour
         {
             Enemy = enemy;
             RemainingHealth = enemy == null ? 0 : enemy.CurrentHealth;
+            LaneIndex = enemy == null ? 0 : enemy.CurrentLaneIndex;
             StatusStacks = new int[
                 StatusEffectController.StackableStatusTypeCount];
             Segments = new List<
@@ -100,6 +102,7 @@ public partial class PlayerShoot : MonoBehaviour
         public EnemyController Enemy { get; }
         public int RemainingHealth { get; set; }
         public int TileIndex { get; set; } = -1;
+        public int LaneIndex { get; }
         public int[] StatusStacks { get; }
         public bool WasHitThisTurn { get; set; }
         public bool IsExposed { get; set; }
@@ -163,7 +166,7 @@ public partial class PlayerShoot : MonoBehaviour
     [SerializeField] private CombatPresentation combatPresentation;
     [SerializeField] private CombatFeedbackController combatFeedback;
     [Min(0f)]
-    [SerializeField] private float shotInterval = 0.2f;
+    [SerializeField] private float shotInterval = 0.05f;
 
     [Header("Shot Presentation")]
     [Min(0f)]
@@ -191,13 +194,28 @@ public partial class PlayerShoot : MonoBehaviour
     private BulletInstance currentConsumedBullet;
     private int initialLoadedBulletCount;
     private int bulletsFiredThisCylinder;
+    private int sniperBulletsFiredThisCylinder;
     private int criticalShotsThisCylinder;
     private int activeShotIndex;
     private bool bulletDestroyedThisCylinder;
     private int pendingSaverGold;
+    private bool pendingEmergencyReload;
     private PlayerShotRangePreview rangePreview;
+    private BulletProjectileView activeProjectileView;
+    private readonly List<BulletProjectileView> activeVolleyProjectileViews =
+        new List<BulletProjectileView>();
 
     public bool IsFiring => isFiring;
+    internal bool TestPendingEmergencyReload => pendingEmergencyReload;
+
+    internal void RestoreTestShotState(bool emergencyReload)
+    {
+        if (!BattleTestContext.IsActive || isFiring) return;
+        pendingEmergencyReload = emergencyReload;
+        firingSequence?.ResetTurnTargetHistory();
+        ClearLoadedBulletDamagePreview();
+    }
+
     public int InitialLoadedBulletCount => isFiring
         ? Mathf.Max(0, initialLoadedBulletCount)
         : deckManager == null ? 0 : deckManager.LoadedBullets.Count;
@@ -300,6 +318,7 @@ public partial class PlayerShoot : MonoBehaviour
         }
         ClearLoadedBulletDamagePreview();
         EndFiringSequence();
+        CancelActiveProjectile();
 
         bulletFeedbackView?.Hide();
         reservedDamageByEnemy.Clear();
@@ -351,11 +370,17 @@ public partial class PlayerShoot : MonoBehaviour
             : enemy.transform.position.x >= playerMove.transform.position.x
                 ? 1
                 : -1;
+        CombatPresentation.EnemySnapshot snapshot = combatPresentation == null
+            ? default
+            : combatPresentation.CaptureEnemy(enemy);
+        Vector3 defeatPosition = snapshot.Captured
+            ? snapshot.Position
+            : enemy.transform.position;
         CombatFeedbackController.DefeatPresentationCue presentationCue =
             combatFeedback == null
                 ? default
                 : combatFeedback.RecordDefeat(
-                    enemy.transform.position,
+                    defeatPosition,
                     horizontalDirection,
                     damage,
                     enemy.MaxHealth,
@@ -363,10 +388,10 @@ public partial class PlayerShoot : MonoBehaviour
                     waveManager != null
                         && waveManager.ActiveEnemies.Count <= 1,
                     GetCurrentCylinderBuild(),
-                    healthBeforeDamage);
-        CombatPresentation.EnemySnapshot snapshot = combatPresentation == null
-            ? default
-            : combatPresentation.CaptureEnemy(enemy);
+                    healthBeforeDamage,
+                    true,
+                    enemy.LastDamageAbsorbed);
+        snapshot.OverkillStrength = presentationCue.OverkillStrength;
         combatPresentation?.PlayImpact(
             snapshot,
             horizontalDirection,
@@ -384,7 +409,7 @@ public partial class PlayerShoot : MonoBehaviour
             damage,
             healthBeforeDamage,
             enemy.MaxHealth,
-            enemy.transform.position,
+            defeatPosition,
             presentationCue,
             true);
     }
@@ -408,13 +433,67 @@ public partial class PlayerShoot : MonoBehaviour
     private void Update()
     {
         if (GamePauseController.IsPaused
-            || LoadingTransitionController.IsTransitioning
-            || isFiring)
+            || LoadingTransitionController.IsTransitioning)
+        {
+            playerMove?.ClearBufferedInput();
+            return;
+        }
+
+        PlayerShootInputAction inputAction =
+            PlayerShootInputReader.Read(eventSystem);
+
+        if (inputAction != PlayerShootInputAction.None
+            && (cylinderUI == null || !cylinderUI.IsDragging))
+        {
+            if (playerMove == null)
+            {
+                ExecuteInputAction(inputAction);
+                return;
+            }
+
+            playerMove.BufferInputAction(ToBehaviourAction(inputAction));
+        }
+
+        TryExecuteBufferedInputAction();
+    }
+
+    private void TryExecuteBufferedInputAction()
+    {
+        if (playerMove == null || isFiring
+            || cylinderUI != null && cylinderUI.IsDragging
+            || !playerMove.TryPeekBufferedInput(
+                out PlayerBehaviourAction action))
         {
             return;
         }
 
-        switch (PlayerShootInputReader.Read(eventSystem))
+        PlayerShootInputAction inputAction = action switch
+        {
+            PlayerBehaviourAction.Reload => PlayerShootInputAction.Reload,
+            PlayerBehaviourAction.Shoot => PlayerShootInputAction.Shoot,
+            _ => PlayerShootInputAction.None
+        };
+
+        bool canExecute = inputAction switch
+        {
+            PlayerShootInputAction.Reload =>
+                playerMove.CanStartInstantAction,
+            PlayerShootInputAction.Shoot => playerMove.CanStartAction,
+            _ => false
+        };
+
+        if (!canExecute
+            || !playerMove.TryConsumeBufferedInput(action))
+        {
+            return;
+        }
+
+        ExecuteInputAction(inputAction);
+    }
+
+    private void ExecuteInputAction(PlayerShootInputAction inputAction)
+    {
+        switch (inputAction)
         {
             case PlayerShootInputAction.Reload:
                 Reload();
@@ -425,13 +504,20 @@ public partial class PlayerShoot : MonoBehaviour
         }
     }
 
+    private static PlayerBehaviourAction ToBehaviourAction(
+        PlayerShootInputAction inputAction)
+    {
+        return inputAction == PlayerShootInputAction.Reload
+            ? PlayerBehaviourAction.Reload
+            : PlayerBehaviourAction.Shoot;
+    }
+
     public void Reload()
     {
         if (GamePauseController.IsPaused
             || LoadingTransitionController.IsTransitioning
             || isFiring
-            || cylinderUI != null && cylinderUI.IsDragging
-            || !TryBeginAction())
+            || cylinderUI != null && cylinderUI.IsDragging)
         {
             return;
         }
@@ -447,6 +533,14 @@ public partial class PlayerShoot : MonoBehaviour
             return;
         }
 
+        if (deckManager.ReloadableBulletCount <= 0
+            || deckManager.LoadedBullets.Count
+                >= deckManager.MaxReloadAmount
+            || !TryBeginAction())
+        {
+            return;
+        }
+
         bool wasCylinderEmpty = deckManager.LoadedBullets.Count == 0;
 
         if (deckManager.TryReload(out BulletInstance loadedBullet))
@@ -458,12 +552,14 @@ public partial class PlayerShoot : MonoBehaviour
 
             relicManager ??= FindFirstObjectByType<RelicManager>(
                 FindObjectsInactive.Include);
-            bool consumesTurn = relicManager == null
+            bool usesEmergencyReload = pendingEmergencyReload;
+            pendingEmergencyReload = false;
+            bool consumesTurn = !usesEmergencyReload && (relicManager == null
                 ? loadedBullet == null
                     || !loadedBullet.DoesNotConsumeReloadTurn
                 : relicManager.ShouldReloadConsumeTurn(
                     loadedBullet,
-                    wasCylinderEmpty);
+                    wasCylinderEmpty));
 
             if (consumesTurn)
             {
@@ -475,18 +571,18 @@ public partial class PlayerShoot : MonoBehaviour
     public void Shoot()
     {
         if (GamePauseController.IsPaused || isFiring
-            || cylinderUI != null && cylinderUI.IsDragging
-            || !TryBeginAction())
+            || LoadingTransitionController.IsTransitioning
+            || cylinderUI != null && cylinderUI.IsDragging)
         {
             return;
         }
 
         if (deckManager == null || playerMove == null || playerHealth == null
-            || boardManager == null || waveManager == null || firePoint == null
-            || bulletLinePrefab == null)
+            || boardManager == null || waveManager == null
+            || firePoint == null)
         {
             Debug.LogError(
-                "Deck Manager, Player Move, Player Health, Board Manager, Wave Manager, Fire Point, and Bullet Line Prefab must be assigned in the Inspector.",
+                "Deck Manager, Player Move, Player Health, Board Manager, Wave Manager, and Fire Point must be assigned in the Inspector.",
                 this);
             return;
         }
@@ -506,7 +602,11 @@ public partial class PlayerShoot : MonoBehaviour
         BulletInstance firstBullet = deckManager.LoadedBullets[firstBulletIndex];
 
         if (firstBullet == null
-            || !boardManager.TryGetTileIndex(transform.position, out _))
+            || !boardManager.TryGetTileIndex(
+                transform.position,
+                playerMove.CurrentLaneIndex,
+                out _)
+            || !TryBeginAction())
         {
             return;
         }
@@ -529,13 +629,32 @@ public partial class PlayerShoot : MonoBehaviour
         playerMove?.SetShooting(false);
     }
 
+    private void CancelActiveProjectile()
+    {
+        if (activeProjectileView != null)
+        {
+            activeProjectileView.CancelTravel();
+        }
+
+        activeProjectileView = null;
+
+        foreach (BulletProjectileView projectile in activeVolleyProjectileViews)
+        {
+            if (projectile != null)
+            {
+                projectile.CancelTravel();
+            }
+        }
+
+        activeVolleyProjectileViews.Clear();
+    }
+
     public bool TryEjectLoadedBullet(int loadedBulletIndex)
     {
         if (GamePauseController.IsPaused
             || LoadingTransitionController.IsTransitioning
             || isFiring
-            || cylinderUI != null && cylinderUI.IsDragging
-            || !TryBeginAction())
+            || cylinderUI != null && cylinderUI.IsDragging)
         {
             return false;
         }
@@ -550,7 +669,8 @@ public partial class PlayerShoot : MonoBehaviour
 
         if (!playerMove.CanStartAction
             || loadedBulletIndex < 0
-            || loadedBulletIndex >= deckManager.LoadedBullets.Count)
+            || loadedBulletIndex >= deckManager.LoadedBullets.Count
+            || !TryBeginAction())
         {
             return false;
         }
@@ -667,6 +787,28 @@ public partial class PlayerShoot : MonoBehaviour
         return BulletEffectUtility.IsBoardWideShot(bullet);
     }
 
+    internal static bool CanPlayerEffectTargetLane(
+        int sourceLaneIndex,
+        int targetLaneIndex,
+        bool isBoardWide)
+    {
+        return isBoardWide || sourceLaneIndex == targetLaneIndex;
+    }
+
+    internal static bool ShouldWaitForEnemyReplacement(
+        CombatPacingMode pacingMode,
+        bool isBattleCompleted,
+        bool isPlayerDefeated,
+        int livingEnemyCount,
+        bool hasRemainingEnemiesToSpawn)
+    {
+        return pacingMode == CombatPacingMode.DuelClock
+            && !isBattleCompleted
+            && !isPlayerDefeated
+            && livingEnemyCount <= 0
+            && hasRemainingEnemiesToSpawn;
+    }
+
     private void SortTargetsByTileIndex(List<EnemyController> targets)
     {
         if (boardManager == null)
@@ -680,9 +822,11 @@ public partial class PlayerShoot : MonoBehaviour
             int secondIndex = 0;
             bool hasFirst = first != null && boardManager.TryGetTileIndex(
                 first.transform.position,
+                first.CurrentLaneIndex,
                 out firstIndex);
             bool hasSecond = second != null && boardManager.TryGetTileIndex(
                 second.transform.position,
+                second.CurrentLaneIndex,
                 out secondIndex);
 
             if (!hasFirst || !hasSecond)
@@ -690,7 +834,8 @@ public partial class PlayerShoot : MonoBehaviour
                 return hasFirst == hasSecond ? 0 : hasFirst ? -1 : 1;
             }
 
-            return firstIndex.CompareTo(secondIndex);
+            return boardManager.GetColumnIndex(firstIndex, first.CurrentLaneIndex)
+                .CompareTo(boardManager.GetColumnIndex(secondIndex, second.CurrentLaneIndex));
         });
     }
 
@@ -698,6 +843,7 @@ public partial class PlayerShoot : MonoBehaviour
     {
         if (boardManager.TryGetRangedTilePosition(
                 transform.position,
+                playerMove == null ? 0 : playerMove.CurrentLaneIndex,
                 horizontalDirection,
                 maxRange,
                 out Vector3 rangedTilePosition))
@@ -729,21 +875,6 @@ public partial class PlayerShoot : MonoBehaviour
             randomAngle,
             Vector3.forward) * horizontalShotVector;
         return startPoint + angledShotVector;
-    }
-
-    private IEnumerator WaitForShotInterval()
-    {
-        float elapsedTime = 0f;
-
-        while (elapsedTime < shotInterval)
-        {
-            yield return null;
-
-            if (!GamePauseController.IsPaused)
-            {
-                elapsedTime += Time.deltaTime;
-            }
-        }
     }
 
     private void ShowBulletFeedback(BulletInstance bulletData)

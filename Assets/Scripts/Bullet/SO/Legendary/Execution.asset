@@ -1,0 +1,126 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e27069a4c44bf9a8fedaf6c76af09c, type: 3}
+  m_Name: Execution
+  m_EditorClassIdentifier: Assembly-CSharp::BulletData
+  bulletId: bullet_execution
+  displayName: "\uCC98\uD615\uD0C4"
+  description: "\uBAA8\uB4E0 \uB808\uC778\uC5D0\uC11C \uCCB4\uB825 \uBE44\uC728\uC774
+    \uAC00\uC7A5 \uB0AE\uC740 \uC801\uC744 \uC870\uC900\uD569\uB2C8\uB2E4. \uACF5\uACA9
+    \uC804 \uBCF4\uC2A4\uAC00 \uC544\uB2CC \uC801\uC758 \uCCB4\uB825\uC774 25% \uBBF8\uB9CC\uC774\uBA74
+    \uC989\uC2DC \uCC98\uD615\uD569\uB2C8\uB2E4."
+  cylinderIcon: {fileID: 21300000, guid: d16b8504c2ab12c428d7e7f044f940b2, type: 3}
+  price: 20
+  grade: 3
+  bulletType: 2
+  useCustomGradeNameColor: 0
+  customGradeNameColor: {r: 1, g: 1, b: 1, a: 1}
+  levelOneColor: {r: 0.4, g: 1, b: 0.4, a: 1}
+  levelTwoColor: {r: 0.35, g: 0.75, b: 1, a: 1}
+  levelThreeColor: {r: 1, g: 0.65, b: 0.2, a: 1}
+  projectileVisual: {fileID: 11400000, guid: f10b0dc850f8bdf46b906e76bb096788, type: 2}
+  damage: 28
+  maxRange: 6
+  criticalChance: 20
+  criticalDamageMultiplier: 2.2
+  effects:
+  - effectType: 64
+    target: 0
+    activationChance: 100
+    stackCount: 1
+    knockbackDistance: 1
+    amount: 0
+    secondTransferPercent: 0
+    thirdTransferPercent: 0
+  conditionalEvents: []
+  penetrationChances: []
+  shotgunShotCount: 1
+  lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+  primaryLineColor: {r: 1, g: 1, b: 1, a: 1}
+  secondaryLineColor: {r: 0.72, g: 0.36, b: 0.16, a: 1}
+  lineWidthMultiplier: 0.5
+  doesNotConsumeTurn: 0
+  recoilStrength: 0.1
+  upgradeCost: 50
+  upgradeLevels:
+  - description: "\uBAA8\uB4E0 \uB808\uC778\uC5D0\uC11C \uCCB4\uB825 \uBE44\uC728\uC774
+      \uAC00\uC7A5 \uB0AE\uC740 \uC801\uC744 \uC870\uC900\uD569\uB2C8\uB2E4. \uACF5\uACA9
+      \uC804 \uBCF4\uC2A4\uAC00 \uC544\uB2CC \uC801\uC758 \uCCB4\uB825\uC774 25%
+      \uBBF8\uB9CC\uC774\uBA74 \uC989\uC2DC \uCC98\uD615\uD569\uB2C8\uB2E4."
+    damage: 35
+    maxRange: 6
+    criticalChance: 25
+    criticalDamageMultiplier: 2.4
+    effects:
+    - effectType: 64
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 1
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 100
+  - description: "\uBAA8\uB4E0 \uB808\uC778\uC5D0\uC11C \uCCB4\uB825 \uBE44\uC728\uC774
+      \uAC00\uC7A5 \uB0AE\uC740 \uC801\uC744 \uC870\uC900\uD569\uB2C8\uB2E4. \uACF5\uACA9
+      \uC804 \uBCF4\uC2A4\uAC00 \uC544\uB2CC \uC801\uC758 \uCCB4\uB825\uC774 25%
+      \uBBF8\uB9CC\uC774\uBA74 \uC989\uC2DC \uCC98\uD615\uD569\uB2C8\uB2E4."
+    damage: 44
+    maxRange: 7
+    criticalChance: 30
+    criticalDamageMultiplier: 2.6000001
+    effects:
+    - effectType: 64
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 1
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 200
+  - description: "\uBAA8\uB4E0 \uB808\uC778\uC5D0\uC11C \uCCB4\uB825 \uBE44\uC728\uC774
+      \uAC00\uC7A5 \uB0AE\uC740 \uC801\uC744 \uC870\uC900\uD569\uB2C8\uB2E4. \uACF5\uACA9
+      \uC804 \uBCF4\uC2A4\uAC00 \uC544\uB2CC \uC801\uC758 \uCCB4\uB825\uC774 25%
+      \uBBF8\uB9CC\uC774\uBA74 \uC989\uC2DC \uCC98\uD615\uD569\uB2C8\uB2E4."
+    damage: 56
+    maxRange: 7
+    criticalChance: 35
+    criticalDamageMultiplier: 2.8
+    effects:
+    - effectType: 64
+      target: 0
+      activationChance: 100
+      stackCount: 1
+      knockbackDistance: 1
+      amount: 0
+      secondTransferPercent: 0
+      thirdTransferPercent: 0
+    conditionalEvents: []
+    penetrationChances: []
+    shotgunShotCount: 1
+    lineMaterial: {fileID: 2100000, guid: d216c246d9ba4f7993e4625437b53cf8, type: 2}
+    doesNotConsumeTurn: 0
+    recoilStrength: 0.1
+    upgradeCost: 0
