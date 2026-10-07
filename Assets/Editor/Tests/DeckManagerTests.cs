@@ -229,6 +229,24 @@ public class DeckManagerTests
     }
 
     [Test]
+    public void FireLoadedBulletAt_CanConsumeOldestLoadedBulletFirst()
+    {
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        Assert.That(deckManager.TryReload(out BulletInstance oldest), Is.True);
+        Assert.That(deckManager.TryReload(out BulletInstance newest), Is.True);
+
+        Assert.That(
+            deckManager.TryFireLoadedBulletAt(0, out BulletInstance fired),
+            Is.True);
+        Assert.That(fired, Is.SameAs(oldest));
+        Assert.That(deckManager.LoadedBullets, Has.Count.EqualTo(1));
+        Assert.That(deckManager.LoadedBullets[0], Is.SameAs(newest));
+        Assert.That(deckManager.Graveyard, Does.Contain(oldest));
+        Assert.That(deckManager.TotalBulletCount, Is.EqualTo(2));
+    }
+
+    [Test]
     public void EjectSelectedLoadedBulletMovesOnlyRequestedChamber()
     {
         Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
@@ -646,6 +664,49 @@ public class DeckManagerTests
         Assert.That(deckManager.LoadedBullets, Is.Empty);
         Assert.That(playerMove.TurnCount, Is.Zero);
         Assert.That(completionCount, Is.Zero);
+    }
+
+    [Test]
+    public void BloodReloadAtOneHealthDoesNotReloadOrCompleteTurn()
+    {
+        Assert.That(deckManager.TryAddBullet(bulletData), Is.True);
+        PlayerMove playerMove = gameObject.AddComponent<PlayerMove>();
+        PlayerHealth playerHealth = gameObject.AddComponent<PlayerHealth>();
+        WaveManager waveManager = gameObject.AddComponent<WaveManager>();
+        PlayerShoot playerShoot = gameObject.AddComponent<PlayerShoot>();
+        playerHealth.RestoreRunHealth(1, 100);
+
+        FieldInfo rulesField = typeof(WaveManager).GetField(
+            "battleRuleContext",
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.That(rulesField, Is.Not.Null);
+        rulesField.SetValue(
+            waveManager,
+            new BattleRuleContext(SpecialBattleRule.BloodReload));
+
+        SerializedObject serializedShoot = new SerializedObject(playerShoot);
+        serializedShoot.FindProperty("deckManager").objectReferenceValue =
+            deckManager;
+        serializedShoot.FindProperty("playerMove").objectReferenceValue =
+            playerMove;
+        serializedShoot.FindProperty("playerHealth").objectReferenceValue =
+            playerHealth;
+        serializedShoot.FindProperty("waveManager").objectReferenceValue =
+            waveManager;
+        serializedShoot.ApplyModifiedPropertiesWithoutUndo();
+        int completionCount = 0;
+        int actionStartedCount = 0;
+        playerMove.TurnCompleted += () => completionCount++;
+        playerShoot.BehaviourActionStarted += _ => actionStartedCount++;
+
+        playerShoot.Reload();
+
+        Assert.That(playerHealth.CurrentHealth, Is.EqualTo(1));
+        Assert.That(deckManager.LoadedBullets, Is.Empty);
+        Assert.That(deckManager.ReloadableBulletCount, Is.EqualTo(1));
+        Assert.That(playerMove.TurnCount, Is.Zero);
+        Assert.That(completionCount, Is.Zero);
+        Assert.That(actionStartedCount, Is.Zero);
     }
 
     [Test]

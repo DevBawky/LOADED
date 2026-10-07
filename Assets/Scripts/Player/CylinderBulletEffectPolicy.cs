@@ -15,6 +15,25 @@ internal static class CylinderBulletEffectPolicy
         CurrencyManager currencyManager,
         PlayerHealth playerHealth)
     {
+        return ShouldShow(
+            loadedBullets,
+            bulletIndex,
+            deckManager,
+            playerShoot,
+            currencyManager,
+            playerHealth,
+            new CylinderFiringOrder(false));
+    }
+
+    public static bool ShouldShow(
+        IReadOnlyList<BulletInstance> loadedBullets,
+        int bulletIndex,
+        DeckManager deckManager,
+        PlayerShoot playerShoot,
+        CurrencyManager currencyManager,
+        PlayerHealth playerHealth,
+        CylinderFiringOrder firingOrder)
+    {
         if (loadedBullets == null
             || bulletIndex < 0
             || bulletIndex >= loadedBullets.Count)
@@ -41,25 +60,30 @@ internal static class CylinderBulletEffectPolicy
                 deckManager,
                 playerShoot,
                 currencyManager,
-                playerHealth))
+                playerHealth,
+                firingOrder))
         {
             return true;
         }
 
-        return WillReceiveEarlierBulletBuff(loadedBullets, bulletIndex);
+        return WillReceiveEarlierBulletBuff(
+            loadedBullets,
+            bulletIndex,
+            firingOrder);
     }
 
     private static bool WillReceiveEarlierBulletBuff(
         IReadOnlyList<BulletInstance> loadedBullets,
-        int targetIndex)
+        int targetIndex,
+        CylinderFiringOrder firingOrder)
     {
         float pendingStackBonus = 0f;
 
-        // The cylinder fires from the highest index down. Simulate only
-        // ordering effects that can enhance a later bullet before it fires.
-        for (int sourceIndex = loadedBullets.Count - 1;
-             sourceIndex > targetIndex;
-             sourceIndex--)
+        for (int sourceIndex = firingOrder.GetFirstIndex(
+                 loadedBullets.Count);
+             firingOrder.IsValidIndex(sourceIndex, loadedBullets.Count)
+                 && sourceIndex != targetIndex;
+             sourceIndex += firingOrder.Step)
         {
             BulletInstance source = loadedBullets[sourceIndex];
 
@@ -144,7 +168,8 @@ internal static class CylinderBulletEffectPolicy
         DeckManager deckManager,
         PlayerShoot playerShoot,
         CurrencyManager currencyManager,
-        PlayerHealth playerHealth)
+        PlayerHealth playerHealth,
+        CylinderFiringOrder firingOrder)
     {
         BulletEffectData effect = BulletEffectUtility.Find(
             bullet,
@@ -157,10 +182,13 @@ internal static class CylinderBulletEffectPolicy
 
         effect = BulletEffectUtility.Find(bullet, BulletEffectType.Resonance);
 
-        if (effect != null && effect.StackCount > 0 && bulletIndex + 1
-            < loadedBullets.Count
+        int previousBulletIndex = bulletIndex - firingOrder.Step;
+        if (effect != null && effect.StackCount > 0
+            && firingOrder.IsValidIndex(
+                previousBulletIndex,
+                loadedBullets.Count)
             && BulletEffectUtility.GetInflictedStatusMask(
-                loadedBullets[bulletIndex + 1]) != 0)
+                loadedBullets[previousBulletIndex]) != 0)
         {
             return true;
         }

@@ -10,7 +10,8 @@ public enum NodeMapNodeType
     Shop,
     Treasure,
     Event,
-    Boss
+    Boss,
+    SpecialBattle
 }
 
 public enum NodeMapBattleProgressSection
@@ -50,6 +51,7 @@ public sealed class NodeMapNodeData
     public int row;
     public NodeMapNodeType type;
     public int battleIndex = -1;
+    public SpecialBattleRule specialBattleRule;
     public List<int> nextNodeIds = new List<int>();
 }
 

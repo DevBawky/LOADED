@@ -19,6 +19,7 @@ public class BossBomb : MonoBehaviour
 
     private BossBombManager manager;
     private EnemyData sourceData;
+    private SpecialBattleBombProfile specialProfile;
     private int createdTurnCycle;
     private bool hasRangeWarning;
     private Color baseBombColor = Color.white;
@@ -29,6 +30,30 @@ public class BossBomb : MonoBehaviour
     public int CreatedTurnCycle => createdTurnCycle;
     public bool IsExploding => isExploding;
     public EnemyData SourceData => sourceData;
+    public SpecialBattleBombProfile SpecialProfile => specialProfile;
+    public int ExplosionRadius => specialProfile == null
+        ? sourceData == null ? 0 : sourceData.BigBarrel.BombExplosionRadius
+        : specialProfile.ExplosionRadius;
+    public float DodgeWindowDuration => specialProfile == null
+        ? sourceData == null
+            ? EnemyData.DefaultAttackDodgeWindowDuration
+            : sourceData.AttackDodgeWindowDuration
+        : specialProfile.DodgeWindowDuration;
+    public int PlayerDamage => specialProfile == null
+        ? sourceData == null ? 0 : sourceData.BigBarrel.BombDamage
+        : specialProfile.PlayerDamage;
+    public int EnemyDamage => specialProfile == null
+        ? sourceData == null ? 0 : sourceData.BigBarrel.BombDamage
+        : specialProfile.EnemyDamage;
+    public int BossDamage => specialProfile == null
+        ? sourceData == null ? 0 : sourceData.BigBarrel.BossSelfExplosionDamage
+        : specialProfile.BossDamage;
+    public GameObject ExplosionVfxPrefab => specialProfile == null
+        ? sourceData == null ? null : sourceData.ExplosionVfxPrefab
+        : specialProfile.ExplosionVfxPrefab;
+    public float ExplosionVfxScale => specialProfile == null
+        ? sourceData == null ? 1f : sourceData.ExplosionVfxScale
+        : specialProfile.ExplosionVfxScale;
 
     public bool Initialize(
         BossBombManager assignedManager,
@@ -48,13 +73,51 @@ public class BossBomb : MonoBehaviour
 
     public bool Initialize(
         BossBombManager assignedManager,
+        SpecialBattleBombProfile assignedProfile,
+        int assignedTileIndex,
+        int assignedLaneIndex,
+        int fuseTurns,
+        int turnCycle)
+    {
+        return InitializeInternal(
+            assignedManager,
+            null,
+            assignedProfile,
+            assignedTileIndex,
+            assignedLaneIndex,
+            fuseTurns,
+            turnCycle);
+    }
+
+    public bool Initialize(
+        BossBombManager assignedManager,
         EnemyData assignedSourceData,
         int assignedTileIndex,
         int assignedLaneIndex,
         int fuseTurns,
         int turnCycle)
     {
-        if (assignedManager == null || assignedSourceData == null
+        return InitializeInternal(
+            assignedManager,
+            assignedSourceData,
+            null,
+            assignedTileIndex,
+            assignedLaneIndex,
+            fuseTurns,
+            turnCycle);
+    }
+
+    private bool InitializeInternal(
+        BossBombManager assignedManager,
+        EnemyData assignedSourceData,
+        SpecialBattleBombProfile assignedProfile,
+        int assignedTileIndex,
+        int assignedLaneIndex,
+        int fuseTurns,
+        int turnCycle)
+    {
+        if (assignedManager == null
+            || assignedSourceData == null && assignedProfile == null
             || assignedTileIndex < 0)
         {
             return false;
@@ -62,6 +125,7 @@ public class BossBomb : MonoBehaviour
 
         manager = assignedManager;
         sourceData = assignedSourceData;
+        specialProfile = assignedProfile;
         tileIndex = assignedTileIndex;
         laneIndex = Mathf.Max(0, assignedLaneIndex);
         remainingFuse = Mathf.Clamp(fuseTurns, 1, 3);
@@ -156,7 +220,9 @@ public class BossBomb : MonoBehaviour
 
     private void OnEnable()
     {
-        if (manager != null && sourceData != null && !isExploding)
+        if (manager != null
+            && (sourceData != null || specialProfile != null)
+            && !isExploding)
         {
             CreateExplosionRangeTelegraph();
         }
@@ -254,7 +320,8 @@ public class BossBomb : MonoBehaviour
     private void CreateExplosionRangeTelegraph()
     {
         if (hasRangeWarning || (remainingFuse != 1 && !isExploding) || manager == null
-            || manager.BoardManager == null || sourceData == null)
+            || manager.BoardManager == null
+            || sourceData == null && specialProfile == null)
         {
             return;
         }
@@ -262,7 +329,7 @@ public class BossBomb : MonoBehaviour
         BoardManager board = manager.BoardManager;
         if (board.TryGetTilePosition(tileIndex, laneIndex, out Vector3 origin))
             board.SetWarningOrigin(this, origin);
-        int radius = sourceData.BigBarrel.BombExplosionRadius;
+        int radius = ExplosionRadius;
         int firstTile = Mathf.Max(0, tileIndex - radius);
         int lastTile = Mathf.Min(board.BoardCount - 1, tileIndex + radius);
         for (int tile = firstTile; tile <= lastTile; tile++)

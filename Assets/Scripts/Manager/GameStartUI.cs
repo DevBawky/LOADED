@@ -191,7 +191,8 @@ public sealed class GameStartUI : MonoBehaviour
     public IEnumerator Play(
         StageData stageData,
         BattleData battleData,
-        Action onFightStarted)
+        Action onFightStarted,
+        SpecialBattleRule specialBattleRule = SpecialBattleRule.None)
     {
         FindChildReferences();
 
@@ -207,7 +208,7 @@ public sealed class GameStartUI : MonoBehaviour
         }
 
         ResetVisualState();
-        SetBattleText(stageData, battleData);
+        SetBattleText(stageData, battleData, specialBattleRule);
         ConfigureMedalCriteria(
             BattleClearRewardCalculator.Calculate(
                 default,
@@ -470,14 +471,20 @@ public sealed class GameStartUI : MonoBehaviour
 
     private void SetBattleText(
         StageData stageData,
-        BattleData battleData)
+        BattleData battleData,
+        SpecialBattleRule specialBattleRule = SpecialBattleRule.None)
     {
         stageInfoText.text = StageTitleFormatter.Format(
             stageData,
             battleData);
-        stageSubTitleText.text = battleData == null
+        string battleDescription = battleData == null
             ? string.Empty
             : battleData.NoticeDescription;
+        stageSubTitleText.text = specialBattleRule == SpecialBattleRule.None
+            ? battleDescription
+            : $"{battleDescription}\n\n"
+                + $"[{BattleRuleContext.GetDisplayName(specialBattleRule)}]\n"
+                + BattleRuleContext.GetDescription(specialBattleRule);
     }
 
     private void SetBattleReport(BattleData battleData)

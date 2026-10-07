@@ -72,7 +72,8 @@ internal static class PlayerAttackDamageCalculator
         RelicManager relicManager,
         DeckManager deckManager,
         bool applyRuntimeRelicModifiers,
-        float criticalDamageMultiplierBonus = 0f)
+        float criticalDamageMultiplierBonus = 0f,
+        float battleDamageMultiplier = 1f)
     {
         if (bullet == null || bullet.Damage <= 0 || playerHealth == null)
         {
@@ -90,7 +91,8 @@ internal static class PlayerAttackDamageCalculator
         }
 
         int modifiedDamage = playerHealth.ModifyOutgoingAttackDamage(damage);
-        double combinedMultiplier = Math.Max(0d, damageMultiplier);
+        double combinedMultiplier = Math.Max(0d, damageMultiplier)
+            * Math.Max(0d, battleDamageMultiplier);
 
         if (applyRuntimeRelicModifiers && relicManager != null)
         {

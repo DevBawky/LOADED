@@ -57,6 +57,7 @@ public class StateManager : MonoBehaviour
     [Header("Runtime State")]
     [SerializeField] private int currentStageIndex = -1;
     [SerializeField] private int currentBattleIndex = -1;
+    [SerializeField] private SpecialBattleRule currentSpecialBattleRule;
     [SerializeField] private GameFlowState currentState =
         GameFlowState.Initializing;
 
@@ -75,6 +76,8 @@ public class StateManager : MonoBehaviour
 
     public int CurrentStageIndex => currentStageIndex;
     public int CurrentBattleIndex => currentBattleIndex;
+    public SpecialBattleRule CurrentSpecialBattleRule =>
+        currentSpecialBattleRule;
     public GameFlowState CurrentState => currentState;
     public RunStartMode CurrentRunStartMode => currentRunStartMode;
     public bool IsFreshRun => currentRunStartMode != RunStartMode.Continue;
@@ -118,6 +121,7 @@ public class StateManager : MonoBehaviour
     {
         currentStageIndex = stageIndex;
         currentBattleIndex = battleIndex;
+        currentSpecialBattleRule = SpecialBattleRule.None;
         currentState = flowState;
         StateChanged?.Invoke();
     }
@@ -276,6 +280,7 @@ public class StateManager : MonoBehaviour
                     out currentBattleIndex))
             {
                 currentBattleIndex = 0;
+                currentSpecialBattleRule = SpecialBattleRule.None;
             }
 
             if (startMode == RunStartMode.None)
@@ -357,6 +362,9 @@ public class StateManager : MonoBehaviour
             flowState = (int)currentState,
             stageIndex = currentStageIndex,
             battleIndex = currentBattleIndex,
+            specialBattleRule = (int)(waveManager == null
+                ? currentSpecialBattleRule
+                : waveManager.ActiveRules.Rule),
             battleBoardCount = boardManager.BoardCount,
             currentHealth = playerHealth.CurrentHealth,
             maxHealth = playerHealth.MaxHealth,
@@ -438,6 +446,11 @@ public class StateManager : MonoBehaviour
 
         currentStageIndex = saveData.stageIndex;
         currentBattleIndex = saveData.battleIndex;
+        currentSpecialBattleRule = Enum.IsDefined(
+            typeof(SpecialBattleRule),
+            saveData.specialBattleRule)
+                ? (SpecialBattleRule)saveData.specialBattleRule
+                : SpecialBattleRule.None;
         countBeforeCurrentBattle = saveData.startSelectedBattleFresh
             ? Mathf.Max(0, saveData.cumulativeBattleTurnCount)
             : Mathf.Max(
@@ -672,7 +685,10 @@ public class StateManager : MonoBehaviour
             return false;
         }
 
-        if (!waveManager.RestoreBattle(battle, saveData))
+        if (!waveManager.RestoreBattle(
+                battle,
+                saveData,
+                new BattleRuleContext(currentSpecialBattleRule)))
         {
             return false;
         }
@@ -866,6 +882,7 @@ public class StateManager : MonoBehaviour
 
             currentStageIndex = nextStageIndex;
             currentBattleIndex = nextBattleIndex;
+            currentSpecialBattleRule = SpecialBattleRule.None;
             StartCurrentBattle();
             return;
         }
@@ -939,7 +956,8 @@ public class StateManager : MonoBehaviour
         yield return gameStartUI.Play(
             CurrentStage,
             battle,
-            () => BeginBattleGameplay(battle));
+            () => BeginBattleGameplay(battle),
+            currentSpecialBattleRule);
         battleStartCoroutine = null;
     }
 
@@ -971,7 +989,9 @@ public class StateManager : MonoBehaviour
         }
         else
         {
-            beganBattle = waveManager.BeginBattle(battle);
+            beganBattle = waveManager.BeginBattle(
+                battle,
+                new BattleRuleContext(currentSpecialBattleRule));
         }
 
         if (!beganBattle)

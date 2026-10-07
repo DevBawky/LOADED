@@ -40,6 +40,8 @@ internal readonly struct EnemyBattleProgress
 
 public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 {
+    private const string SpecialBombProfileResourcePath =
+        "SpecialBattle/SpecialBattleBombProfile";
     internal const int ReinforcementActionInterval = 3;
     private const int EnemyCapacityPercentage = 40;
     private const int ImmediateEnemyPercentage = 10;
@@ -79,6 +81,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
     [SerializeField] private Transform enemyParent;
     [SerializeField] private RewardManager rewardManager;
     [SerializeField] private BossBombManager bossBombManager;
+    [SerializeField] private SpecialBattleBombProfile specialBattleBombProfile;
     [SerializeField] private DuelClockController duelClockController;
 
     [Header("Runtime State")]
@@ -130,6 +133,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         new EnemyTurnCycleRunner();
     private readonly EnemyPreparationScheduler preparationScheduler =
         new EnemyPreparationScheduler();
+    private BattleRuleContext battleRuleContext = BattleRuleContext.None;
 
     internal bool TryCommitEnemyTurnIntents(EnemyController requester)
     {
@@ -188,6 +192,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             ? duelClockEnemySpawnPool.RemainingCount
             : 0;
     public BossBombManager BombManager => bossBombManager;
+    public BattleRuleContext ActiveRules => battleRuleContext;
     internal EnemyBattleProgress EnemyProgress =>
         combatPacingMode == CombatPacingMode.DuelClock
             && isDuelClockEnemyPoolConfigured
@@ -293,23 +298,33 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             configuredWaves,
             configuredSpawnTerm,
             null,
-            CombatPacingMode.Legacy);
+            CombatPacingMode.Legacy,
+            BattleRuleContext.None);
     }
 
     public bool BeginBattle(BattleData battleData)
+    {
+        return BeginBattle(battleData, BattleRuleContext.None);
+    }
+
+    public bool BeginBattle(
+        BattleData battleData,
+        BattleRuleContext rules)
     {
         return battleData != null && BeginBattleInternal(
             Array.Empty<EnemyWave>(),
             0,
             battleData,
-            CombatPacingMode.DuelClock);
+            CombatPacingMode.DuelClock,
+            rules);
     }
 
     private bool BeginBattleInternal(
         IReadOnlyList<EnemyWave> configuredWaves,
         int configuredSpawnTerm,
         BattleData battleData,
-        CombatPacingMode configuredPacingMode)
+        CombatPacingMode configuredPacingMode,
+        BattleRuleContext rules)
     {
         if (!ValidateReferences())
         {
@@ -317,6 +332,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         }
 
         ResetBattleRuntime();
+        battleRuleContext = rules;
         ConfigureMaximumActiveEnemyCount();
         playerMove.SetWaveManager(this);
         playerMove.ResetKickCooldownForBattle();
@@ -398,12 +414,24 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             configuredSpawnTerm,
             null,
             CombatPacingMode.Legacy,
-            saveData);
+            saveData,
+            BattleRuleContext.None);
     }
 
     public bool RestoreBattle(
         BattleData battleData,
         RunSaveData saveData)
+    {
+        return RestoreBattle(
+            battleData,
+            saveData,
+            BattleRuleContext.None);
+    }
+
+    public bool RestoreBattle(
+        BattleData battleData,
+        RunSaveData saveData,
+        BattleRuleContext rules)
     {
         if (battleData == null || saveData == null)
         {
@@ -415,7 +443,8 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             0,
             battleData,
             CombatPacingMode.DuelClock,
-            saveData);
+            saveData,
+            rules);
     }
 
     private bool RestoreBattleInternal(
@@ -423,7 +452,8 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         int configuredSpawnTerm,
         BattleData battleData,
         CombatPacingMode configuredPacingMode,
-        RunSaveData saveData)
+        RunSaveData saveData,
+        BattleRuleContext rules)
     {
         if (!ValidateReferences() || saveData == null)
         {
@@ -431,6 +461,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         }
 
         ResetBattleRuntime();
+        battleRuleContext = rules;
         ConfigureMaximumActiveEnemyCount();
         playerMove.SetWaveManager(this);
         EnsureBossBombManager();
@@ -532,7 +563,8 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         if (bossBombManager != null
             && !bossBombManager.RestoreRunState(
                 saveData.bombs,
-                ResolveSavedEnemy))
+                ResolveSavedEnemy,
+                ResolveSpecialBombProfile))
         {
             ResetBattleRuntime();
             return false;
@@ -2009,11 +2041,43 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
                 enemy.CurrentLaneIndex);
         }
 
+        int defeatedLaneIndex = enemy.CurrentLaneIndex;
+        int defeatedTileIndex = -1;
+        bool hasDefeatedTile = boardManager != null
+            && boardManager.TryGetTileIndex(
+                enemy.transform.position,
+                defeatedLaneIndex,
+                out defeatedTileIndex);
+
         enemy.Defeated -= HandleEnemyDefeated;
         ReleaseMovementTiles(enemy);
         activeEnemies.Remove(enemy);
+        bool isFinalDefeat = IsFinalDefeatForPresentation();
+
+        if (battleRuleContext.UsesBloodReload
+            && playerHealth != null
+            && !playerHealth.IsDefeated)
+        {
+            playerHealth.Heal(BattleRuleContext.BloodReloadKillHeal);
+        }
+
+        if (battleRuleContext.CreatesDeathBombs
+            && !isFinalDefeat
+            && hasDefeatedTile)
+        {
+            EnsureBossBombManager();
+            specialBattleBombProfile ??=
+                Resources.Load<SpecialBattleBombProfile>(
+                    SpecialBombProfileResourcePath);
+            bossBombManager?.TrySpawnBomb(
+                specialBattleBombProfile,
+                defeatedTileIndex,
+                defeatedLaneIndex,
+                out _);
+        }
+
         EnemyDefeated?.Invoke(enemy);
-        if (!finalDefeatPresented && IsFinalDefeatForPresentation())
+        if (!finalDefeatPresented && isFinalDefeat)
         {
             finalDefeatPresented = true;
             FinalEnemyDefeated?.Invoke(enemy);
@@ -2228,6 +2292,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 
     private void ResetBattleRuntime()
     {
+        battleRuleContext = BattleRuleContext.None;
         isTestBattle = false;
         finalDefeatPresented = false;
         attackHover.Clear();
@@ -3111,6 +3176,21 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             boardManager,
             playerMove,
             playerHealth);
+    }
+
+    private SpecialBattleBombProfile ResolveSpecialBombProfile(
+        string profileId)
+    {
+        specialBattleBombProfile ??=
+            Resources.Load<SpecialBattleBombProfile>(
+                SpecialBombProfileResourcePath);
+        return specialBattleBombProfile != null
+            && string.Equals(
+                specialBattleBombProfile.ProfileId,
+                profileId,
+                StringComparison.Ordinal)
+                    ? specialBattleBombProfile
+                    : null;
     }
 
     private readonly struct EnemyTargetData

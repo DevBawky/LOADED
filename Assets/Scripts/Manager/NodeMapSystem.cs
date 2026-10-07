@@ -61,6 +61,13 @@ public class NodeMapSettingsDefinition : ScriptableObject
         },
         new NodeMapGenerationRule
         {
+            nodeType = NodeMapNodeType.SpecialBattle,
+            weight = 8,
+            minimumCount = 2,
+            maximumCount = 3
+        },
+        new NodeMapGenerationRule
+        {
             nodeType = NodeMapNodeType.Shop,
             weight = 0,
             minimumCount = 0,
@@ -85,6 +92,7 @@ public class NodeMapSettingsDefinition : ScriptableObject
     [SerializeField] private Sprite startIcon;
     [SerializeField] private Sprite battleIcon;
     [SerializeField] private Sprite eliteIcon;
+    [SerializeField] private Sprite specialIcon;
     [SerializeField] private Sprite shopIcon;
     [SerializeField] private Sprite treasureIcon;
     [SerializeField] private Sprite eventIcon;
@@ -111,6 +119,12 @@ public class NodeMapSettingsDefinition : ScriptableObject
             nodeType = NodeMapNodeType.EliteBattle,
             displayName = "정예 전투",
             description = "강력한 정예 적들과 전투를 진행합니다."
+        },
+        new NodeMapNodeDescription
+        {
+            nodeType = NodeMapNodeType.SpecialBattle,
+            displayName = "스페셜 전투",
+            description = "특수한 전투 규칙이 적용됩니다."
         },
         new NodeMapNodeDescription
         {
@@ -165,6 +179,9 @@ public class NodeMapSettingsDefinition : ScriptableObject
         NodeMapNodeType.Start => startIcon,
         NodeMapNodeType.NormalBattle => battleIcon,
         NodeMapNodeType.EliteBattle => eliteIcon != null ? eliteIcon : battleIcon,
+        NodeMapNodeType.SpecialBattle => specialIcon != null
+            ? specialIcon
+            : battleIcon,
         NodeMapNodeType.Shop => shopIcon,
         NodeMapNodeType.Treasure => treasureIcon,
         NodeMapNodeType.Event => eventIcon,
@@ -179,7 +196,7 @@ public class NodeMapSettingsDefinition : ScriptableObject
         {
             unchecked
             {
-                const int GenerationAlgorithmRevision = 9;
+                const int GenerationAlgorithmRevision = 10;
                 int hash = 17;
                 hash = hash * 31 + GenerationAlgorithmRevision;
                 hash = hash * 31 + Columns;
@@ -286,6 +303,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
     [SerializeField] private Sprite startIcon;
     [SerializeField] private Sprite normalBattleIcon;
     [SerializeField] private Sprite eliteBattleIcon;
+    [SerializeField] private Sprite specialBattleIcon;
     [SerializeField] private Sprite shopIcon;
     [SerializeField] private Sprite treasureIcon;
     [SerializeField] private Sprite eventIcon;
@@ -664,6 +682,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
             NodeMapNodeType.Start => startIcon,
             NodeMapNodeType.NormalBattle => normalBattleIcon,
             NodeMapNodeType.EliteBattle => eliteBattleIcon,
+            NodeMapNodeType.SpecialBattle => specialBattleIcon,
             NodeMapNodeType.Shop => shopIcon,
             NodeMapNodeType.Treasure => treasureIcon,
             NodeMapNodeType.Event => eventIcon,
@@ -1056,8 +1075,14 @@ public class NodeMapControllerDefinition : MonoBehaviour
         }
         if (nodeDescriptionText != null)
         {
-            nodeDescriptionText.text = description?.description
+            string baseDescription = description?.description
                 ?? string.Empty;
+            nodeDescriptionText.text = node.type == NodeMapNodeType.SpecialBattle
+                && node.specialBattleRule != SpecialBattleRule.None
+                ? $"{baseDescription}\n\n"
+                    + $"[{BattleRuleContext.GetDisplayName(node.specialBattleRule)}]\n"
+                    + BattleRuleContext.GetDescription(node.specialBattleRule)
+                : baseDescription;
         }
 
         describedNodeId = node.id;
@@ -1152,6 +1177,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
 
         if (selected.type == NodeMapNodeType.NormalBattle
             || selected.type == NodeMapNodeType.EliteBattle
+            || selected.type == NodeMapNodeType.SpecialBattle
             || selected.type == NodeMapNodeType.Boss)
         {
             battleIndex = ResolveStageBattleIndex(selected);
@@ -1170,7 +1196,11 @@ public class NodeMapControllerDefinition : MonoBehaviour
         if (battleIndex >= 0)
         {
             if (RunSaveSystem.PrepareForSelectedBattle(
-                    map.stageIndex, battleIndex))
+                    map.stageIndex,
+                    battleIndex,
+                    selected.type == NodeMapNodeType.SpecialBattle
+                        ? selected.specialBattleRule
+                        : SpecialBattleRule.None))
             {
                 RunSaveSystem.RequestStart(RunStartMode.Continue);
             }
@@ -1301,6 +1331,8 @@ public class NodeMapControllerDefinition : MonoBehaviour
                 settings.EliteBattles[Mathf.Abs(node.battleIndex) % settings.EliteBattles.Count],
             NodeMapNodeType.NormalBattle when normalBattles.Count > 0 =>
                 normalBattles[Mathf.Abs(node.battleIndex) % normalBattles.Count],
+            NodeMapNodeType.SpecialBattle when normalBattles.Count > 0 =>
+                normalBattles[Mathf.Abs(node.battleIndex) % normalBattles.Count],
             _ => null
         };
 
@@ -1389,6 +1421,7 @@ public class NodeMapControllerDefinition : MonoBehaviour
             NodeMapNodeType.Start => "START",
             NodeMapNodeType.NormalBattle => "BATTLE",
             NodeMapNodeType.EliteBattle => "ELITE",
+            NodeMapNodeType.SpecialBattle => "SPECIAL",
             NodeMapNodeType.Shop => "SHOP",
             NodeMapNodeType.Treasure => "TREASURE",
             NodeMapNodeType.Event => "EVENT",

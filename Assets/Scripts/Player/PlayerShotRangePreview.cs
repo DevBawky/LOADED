@@ -137,6 +137,23 @@ internal sealed class PlayerShotRangePreview
         out BulletInstance resolvedBullet,
         out int shotDirection)
     {
+        return TryResolveLoadedShot(
+            loadedBullets,
+            loadedBulletIndex,
+            facingDirection,
+            new CylinderFiringOrder(false),
+            out resolvedBullet,
+            out shotDirection);
+    }
+
+    internal static bool TryResolveLoadedShot(
+        IReadOnlyList<BulletInstance> loadedBullets,
+        int loadedBulletIndex,
+        int facingDirection,
+        CylinderFiringOrder firingOrder,
+        out BulletInstance resolvedBullet,
+        out int shotDirection)
+    {
         resolvedBullet = null;
         shotDirection = facingDirection >= 0 ? 1 : -1;
 
@@ -150,9 +167,9 @@ internal sealed class PlayerShotRangePreview
         BulletInstance previousResolvedBullet = null;
         int resolvedFacingDirection = shotDirection;
 
-        for (int index = loadedBullets.Count - 1;
-             index >= loadedBulletIndex;
-             index--)
+        for (int index = firingOrder.GetFirstIndex(loadedBullets.Count);
+             firingOrder.IsValidIndex(index, loadedBullets.Count);
+             index += firingOrder.Step)
         {
             resolvedBullet = BulletEffectUtility.ResolveShot(
                 loadedBullets[index],
@@ -192,6 +209,9 @@ internal sealed class PlayerShotRangePreview
             loadedBullets,
             loadedBulletIndex,
             facingDirection,
+            new CylinderFiringOrder(
+                waveManager != null
+                && waveManager.ActiveRules.ReversesCylinder),
             out resolvedBullet,
             out shotDirection);
     }

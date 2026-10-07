@@ -59,6 +59,7 @@ public partial class PlayerShoot
         private PlayerHealth playerHealth => owner.playerHealth;
         private BoardManager boardManager => owner.boardManager;
         private WaveManager waveManager => owner.waveManager;
+        private CylinderFiringOrder firingOrder => owner.FiringOrder;
         private Transform transform => owner.transform;
         private RelicManager relicManager
         {
@@ -203,9 +204,13 @@ public partial class PlayerShoot
             BulletRuntimeStateSnapshot previousPreFireState = default;
             bool hasPreviousPreFireState = false;
     
-            for (int bulletIndex = loadedBullets.Count - 1;
-                 bulletIndex >= hoveredBulletIndex;
-                 bulletIndex--)
+            for (int bulletIndex = firingOrder.GetFirstIndex(
+                     loadedBullets.Count);
+                 firingOrder.IsValidIndex(bulletIndex, loadedBullets.Count)
+                     && !firingOrder.IsAfter(
+                         bulletIndex,
+                         hoveredBulletIndex);
+                 bulletIndex += firingOrder.Step)
             {
                 BulletInstance firedBullet = loadedBullets[bulletIndex];
     
@@ -238,9 +243,16 @@ public partial class PlayerShoot
                 {
     
                     for (int remainingIndex = 0;
-                         remainingIndex < bulletIndex;
+                         remainingIndex < loadedBullets.Count;
                          remainingIndex++)
                     {
+                        if (!firingOrder.IsAfter(
+                                remainingIndex,
+                                bulletIndex))
+                        {
+                            continue;
+                        }
+
                         BulletInstance remainingBullet =
                             loadedBullets[remainingIndex];
     
@@ -283,8 +295,12 @@ public partial class PlayerShoot
                 damageMultiplier *= BulletEffectUtility
                     .GetPositionDamageMultiplier(
                         resolvedBullet,
-                        bulletIndex == initialLoadedCount - 1,
-                        bulletIndex == 0);
+                        firingOrder.IsFirstIndex(
+                            bulletIndex,
+                            initialLoadedCount),
+                        firingOrder.IsLastIndex(
+                            bulletIndex,
+                            initialLoadedCount));
                 damageMultiplier *= BulletEffectUtility
                     .GetRandomPelletDamageMultiplier(
                         resolvedBullet,
@@ -309,6 +325,7 @@ public partial class PlayerShoot
                         bulletIndex,
                         loadedBullets.Count,
                         initialLoadedCount,
+                        firingOrder,
                         out double relicDamageMultiplier,
                         out relicForcesCritical))
                 {
@@ -344,9 +361,16 @@ public partial class PlayerShoot
                     stackedDamageBonus = 0f;
     
                     for (int remainingIndex = 0;
-                         remainingIndex < bulletIndex;
+                         remainingIndex < loadedBullets.Count;
                          remainingIndex++)
                     {
+                        if (!firingOrder.IsAfter(
+                                remainingIndex,
+                                bulletIndex))
+                        {
+                            continue;
+                        }
+
                         BulletInstance remainingBullet =
                             loadedBullets[remainingIndex];
     
@@ -709,7 +733,9 @@ public partial class PlayerShoot
                     targetIsCritical,
                     damageMultiplier * targetMultiplier,
                     previewBulletsFired,
-                    firedBulletIndex <= 0,
+                    firingOrder.IsLastIndex(
+                        firedBulletIndex,
+                        deckManager.LoadedBullets.Count),
                     false);
                 if (FindSpecialEffect(
                         resolvedBullet,
@@ -894,7 +920,9 @@ public partial class PlayerShoot
                         state,
                         previewSniperBulletsFired),
                     previewBulletsFired,
-                    firedBulletIndex <= 0,
+                    firingOrder.IsLastIndex(
+                        firedBulletIndex,
+                        deckManager.LoadedBullets.Count),
                     false);
 
                 if (state.StatusStacks[(int)StatusEffectType.Mark] > 0)
@@ -1297,8 +1325,15 @@ public partial class PlayerShoot
         {
             previewRemainingLoadedBullets.Clear();
 
-            for (int index = 0; index < firedBulletIndex; index++)
+            for (int index = 0;
+                 index < deckManager.LoadedBullets.Count;
+                 index++)
             {
+                if (!firingOrder.IsAfter(index, firedBulletIndex))
+                {
+                    continue;
+                }
+
                 BulletInstance remainingBullet =
                     deckManager.LoadedBullets[index];
 
@@ -1324,7 +1359,9 @@ public partial class PlayerShoot
                     initialLoadedCount,
                     deckManager.MaxReloadAmount,
                     true,
-                    firedBulletIndex == 0,
+                    firingOrder.IsLastIndex(
+                        firedBulletIndex,
+                        initialLoadedCount),
                     resolvedBullet != firedBullet),
                 new BulletRuntimeCombatSnapshot(
                     GetPreviewAbilityStacks(firedBullet),
@@ -1891,6 +1928,12 @@ public partial class PlayerShoot
                     1,
                     Mathf.CeilToInt(
                         collidedState.Enemy.MaxHealth * damageRatio));
+                pushedDamage = waveManager == null
+                    ? pushedDamage
+                    : waveManager.ActiveRules.ScaleDamage(pushedDamage);
+                collidedDamage = waveManager == null
+                    ? collidedDamage
+                    : waveManager.ActiveRules.ScaleDamage(collidedDamage);
                 ApplyPreviewDamage(
                     pushedState,
                     pushedDamage,
@@ -2047,7 +2090,10 @@ public partial class PlayerShoot
                         remainingPoisonDamage * venomEffect.Amount / 100d));
                 ApplyPreviewDamage(
                     state,
-                    (int)scaledDamage,
+                    waveManager == null
+                        ? (int)scaledDamage
+                        : waveManager.ActiveRules.ScaleDamage(
+                            (int)scaledDamage),
                     color,
                     emphasized);
             }
@@ -2191,14 +2237,17 @@ public partial class PlayerShoot
         {
             IReadOnlyList<BulletInstance> loadedBullets =
                 deckManager.LoadedBullets;
-            int remainingCount = Mathf.Min(
-                firedBulletIndex,
-                loadedBullets.Count);
-    
             for (int bulletIndex = 0;
-                 bulletIndex < remainingCount;
+                 bulletIndex < loadedBullets.Count;
                  bulletIndex++)
             {
+                if (!firingOrder.IsAfter(
+                        bulletIndex,
+                        firedBulletIndex))
+                {
+                    continue;
+                }
+
                 BulletInstance bullet = loadedBullets[bulletIndex];
                 BulletEffectData focusEffect = FindSpecialEffect(
                     bullet,
@@ -2365,12 +2414,15 @@ public partial class PlayerShoot
         private void RecordPreviewShotForRemainingBullets(
             int firedBulletIndex)
         {
-            int remainingCount = Mathf.Min(
-                firedBulletIndex,
-                deckManager.LoadedBullets.Count);
-    
-            for (int index = 0; index < remainingCount; index++)
+            for (int index = 0;
+                 index < deckManager.LoadedBullets.Count;
+                 index++)
             {
+                if (!firingOrder.IsAfter(index, firedBulletIndex))
+                {
+                    continue;
+                }
+
                 BulletInstance bullet = deckManager.LoadedBullets[index];
     
                 if (bullet == null)

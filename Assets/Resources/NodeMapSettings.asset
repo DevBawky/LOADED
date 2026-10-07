@@ -45,12 +45,17 @@ MonoBehaviour:
     weight: 0
     minimumCount: 0
     maximumCount: 0
-  startIcon: {fileID: -3764558647745528456, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
+  - nodeType: 7
+    weight: 8
+    minimumCount: 2
+    maximumCount: 3
+  startIcon: {fileID: 2945834632122699969, guid: cddef3ad222b61b499c202f2b3dd3424, type: 3}
   battleIcon: {fileID: 5638554280527815675, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
   eliteIcon: {fileID: 5638554280527815675, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  shopIcon: {fileID: 4155087365185008038, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  treasureIcon: {fileID: -2323235933190528792, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
-  eventIcon: {fileID: -7778529729076754945, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
+  specialIcon: {fileID: 7944528932113196176, guid: c0a3cd2d197573843a6b91b745d2a30a, type: 3}
+  shopIcon: {fileID: -5419993759424957379, guid: 66e5c5168d4921b45a879a78a12b66ec, type: 3}
+  treasureIcon: {fileID: -7430330322050283292, guid: dc4a2b09149823b44a53868e05f8553d, type: 3}
+  eventIcon: {fileID: -6180303875081228106, guid: 9f3a08291739aad4c9bf2de4225d49c8, type: 3}
   bossIcon: {fileID: 1136793851880326518, guid: 63499a808b56f9a4f8ca8a780d0907c1, type: 3}
   nodeDescriptions:
   - nodeType: 0
@@ -81,5 +86,8 @@ MonoBehaviour:
     displayName: "\uBCF4\uC2A4"
     description: "\uC2A4\uD14C\uC774\uC9C0\uC758 \uBCF4\uC2A4\uC640 \uACB0\uC804\uC744
       \uCE58\uB985\uB2C8\uB2E4."
+  - nodeType: 7
+    displayName: "\uC2A4\uD398\uC15C \uC804\uD22C"
+    description: "\uD2B9\uC218\uD55C \uC804\uD22C \uADDC\uCE59\uC774 \uC801\uC6A9\uB429\uB2C8\uB2E4."
   columns: 15
   rows: 4

@@ -43,6 +43,12 @@ public static class NodeMapSaveSystem
             foreach (NodeMapNodeData node in data.nodes)
             {
                 node.nextNodeIds ??= new List<int>();
+                if (!Enum.IsDefined(
+                        typeof(SpecialBattleRule),
+                        node.specialBattleRule))
+                {
+                    node.specialBattleRule = SpecialBattleRule.None;
+                }
             }
             return true;
         }
@@ -178,6 +184,7 @@ public static class NodeMapSaveSystem
             NodeMapNodeType.Event => GetActiveEventNodeScene(),
             NodeMapNodeType.NormalBattle => "Battle",
             NodeMapNodeType.EliteBattle => "Battle",
+            NodeMapNodeType.SpecialBattle => "Battle",
             NodeMapNodeType.Boss => "Battle",
             _ => string.Empty
         };

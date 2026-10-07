@@ -302,7 +302,8 @@ public partial class PlayerShoot
                     break;
                 }
     
-                int bulletIndex = deckManager.LoadedBullets.Count - 1;
+                int bulletIndex = owner.FiringOrder.GetNextRemovalIndex(
+                    deckManager.LoadedBullets.Count);
                 BulletInstance bulletData = deckManager.LoadedBullets[bulletIndex];
     
                 if (bulletData == null)
@@ -320,7 +321,9 @@ public partial class PlayerShoot
                     resolvedBullet,
                     BulletEffectType.PowderPouch);
     
-                if (!deckManager.TryFireLoadedBullet(out BulletInstance firedBullet)
+                if (!deckManager.TryFireLoadedBulletAt(
+                        bulletIndex,
+                        out BulletInstance firedBullet)
                     || firedBullet != bulletData)
                 {
                     break;
@@ -807,7 +810,8 @@ public partial class PlayerShoot
             if (stackedDamageBonus > 0f
                 && deckManager.LoadedBullets.Count > 0)
             {
-                int nextBulletIndex = deckManager.LoadedBullets.Count - 1;
+                int nextBulletIndex = owner.FiringOrder.GetNextRemovalIndex(
+                    deckManager.LoadedBullets.Count);
                 deckManager.LoadedBullets[nextBulletIndex]
                     ?.AddTemporaryDamageBonus(stackedDamageBonus);
             }
@@ -1712,9 +1716,9 @@ public partial class PlayerShoot
 
             if (effect != null && playerHealth != null)
             {
-                playerHealth.ApplyStatusDamage(
+                playerHealth.SpendHealth(
                     Mathf.Max(0, Mathf.RoundToInt(effect.Amount)),
-                    false);
+                    true);
             }
         }
 
@@ -2277,7 +2281,8 @@ public partial class PlayerShoot
                     ? enemy.ExecuteByPlayer()
                     : enemy.ApplyAttackDamage(
                         attackDamage,
-                        targetIsCritical);
+                        targetIsCritical,
+                        false);
                 if (appliedDamage > 0)
                 {
                     enemiesHitThisTurn.Add(enemy.GetInstanceID());
@@ -2822,7 +2827,10 @@ public partial class PlayerShoot
                 int targetMaxHealth = enemy.MaxHealth;
                 int enemyInstanceId = enemy.GetInstanceID();
                 int reportedDamage = enemy.PredictAttackDamage(stormDamage);
-                int appliedDamage = enemy.ApplyAttackDamage(stormDamage, false);
+                int appliedDamage = enemy.ApplyAttackDamage(
+                    stormDamage,
+                    false,
+                    false);
     
                 if (appliedDamage > 0)
                 {
@@ -3004,7 +3012,8 @@ public partial class PlayerShoot
                 int reportedDamage = enemy.PredictAttackDamage(attackDamage);
                 int appliedDamage = enemy.ApplyAttackDamage(
                     attackDamage,
-                    targetIsCritical);
+                    targetIsCritical,
+                    false);
 
                 if (appliedDamage > 0)
                 {
@@ -3124,6 +3133,7 @@ public partial class PlayerShoot
                     transferDamage);
                 int appliedDamage = targetEnemy.ApplyAttackDamage(
                     transferDamage,
+                    false,
                     false);
     
                 if (appliedDamage > 0)
@@ -3246,6 +3256,7 @@ public partial class PlayerShoot
             int reportedDamage = target.PredictAttackDamage(transferDamage);
             int appliedDamage = target.ApplyAttackDamage(
                 transferDamage,
+                false,
                 false);
 
             if (appliedDamage > 0)

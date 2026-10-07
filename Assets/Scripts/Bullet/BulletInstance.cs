@@ -14,7 +14,8 @@ public readonly struct BulletTooltipContext
         int criticalShots,
         IReadOnlyList<BulletInstance> deckBullets,
         IReadOnlyList<BulletInstance> loadedBullets,
-        IReadOnlyList<BulletInstance> graveyardBullets)
+        IReadOnlyList<BulletInstance> graveyardBullets,
+        bool reverseCylinder = false)
     {
         CurrentGold = Mathf.Max(0, currentGold);
         CurrentHealth = Mathf.Max(0, currentHealth);
@@ -26,6 +27,7 @@ public readonly struct BulletTooltipContext
         DeckBullets = deckBullets ?? Array.Empty<BulletInstance>();
         LoadedBullets = loadedBullets ?? Array.Empty<BulletInstance>();
         GraveyardBullets = graveyardBullets ?? Array.Empty<BulletInstance>();
+        FiringOrder = new CylinderFiringOrder(reverseCylinder);
     }
 
     public int CurrentGold { get; }
@@ -38,6 +40,20 @@ public readonly struct BulletTooltipContext
     public IReadOnlyList<BulletInstance> DeckBullets { get; }
     public IReadOnlyList<BulletInstance> LoadedBullets { get; }
     public IReadOnlyList<BulletInstance> GraveyardBullets { get; }
+    public CylinderFiringOrder FiringOrder { get; }
+
+    public bool IsLastLoadedBullet(BulletInstance bullet)
+    {
+        if (bullet == null || LoadedBullets.Count <= 0)
+        {
+            return false;
+        }
+
+        int lastIndex = FiringOrder.IsReversed
+            ? LoadedBullets.Count - 1
+            : 0;
+        return ReferenceEquals(LoadedBullets[lastIndex], bullet);
+    }
 
     public static BulletTooltipContext Create(
         DeckManager deckManager,
@@ -66,7 +82,8 @@ public readonly struct BulletTooltipContext
             loadedBullets,
             deckManager == null
                 ? Array.Empty<BulletInstance>()
-                : deckManager.Graveyard);
+                : deckManager.Graveyard,
+            playerShoot != null && playerShoot.FiringOrder.IsReversed);
     }
 }
 
@@ -510,8 +527,7 @@ public sealed class BulletInstance
                 context.InitialLoadedCount,
                 context.MaxChambers,
                 isLoaded,
-                isLoaded && context.LoadedBullets.Count > 0
-                    && ReferenceEquals(context.LoadedBullets[0], this),
+                isLoaded && context.IsLastLoadedBullet(this),
                 false),
             new BulletRuntimeCombatSnapshot(
                 AbilityStacks,

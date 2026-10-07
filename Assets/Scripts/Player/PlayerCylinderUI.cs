@@ -931,13 +931,20 @@ public class PlayerCylinderUI : MonoBehaviour
                 && relicManager != null
                 && relicManager.IsLuckyChamberLoadedBullet(
                     index,
-                    initialLoadedCount);
+                    initialLoadedCount,
+                    playerShoot == null
+                        ? new CylinderFiringOrder(false)
+                        : playerShoot.FiringOrder);
             bool relicEnhanced = index < loadedCount
                 && relicManager != null
                 && relicManager.TryGetLoadedBulletRelicModifiers(
+                    loadedBullets[index],
                     index,
                     loadedCount,
                     initialLoadedCount,
+                    playerShoot == null
+                        ? new CylinderFiringOrder(false)
+                        : playerShoot.FiringOrder,
                     out _,
                     out _);
             bool active = relicEnhanced
@@ -989,7 +996,10 @@ public class PlayerCylinderUI : MonoBehaviour
             deckManager,
             playerShoot,
             currencyManager,
-            playerHealth);
+            playerHealth,
+            playerShoot == null
+                ? new CylinderFiringOrder(false)
+                : playerShoot.FiringOrder);
     }
     private void StartCylinderRotation(
         float targetAngle,

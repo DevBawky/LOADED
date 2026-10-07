@@ -84,17 +84,26 @@ public sealed class RelicManager : MonoBehaviour
         int loadedBulletIndex,
         int initialLoadedCount)
     {
+        return IsLuckyChamberLoadedBullet(
+            loadedBulletIndex,
+            initialLoadedCount,
+            new CylinderFiringOrder(false));
+    }
+
+    public bool IsLuckyChamberLoadedBullet(
+        int loadedBulletIndex,
+        int initialLoadedCount,
+        CylinderFiringOrder firingOrder)
+    {
         if (loadedBulletIndex < 0 || initialLoadedCount != 6
             || luckyChamberBulletIndex < 0)
         {
             return false;
         }
 
-        // LoadedBullets fires from the highest index down, while the relic
-        // records its choice as a zero-based firing-order index.
-        int selectedLoadedIndex = initialLoadedCount
-            - 1
-            - luckyChamberBulletIndex;
+        int selectedLoadedIndex = firingOrder.IsReversed
+            ? luckyChamberBulletIndex
+            : initialLoadedCount - 1 - luckyChamberBulletIndex;
         return loadedBulletIndex == selectedLoadedIndex;
     }
 
@@ -198,6 +207,7 @@ public sealed class RelicManager : MonoBehaviour
             loadedBulletIndex,
             currentLoadedCount,
             initialLoadedCount,
+            new CylinderFiringOrder(false),
             out damageMultiplier,
             out forcesCritical,
             stateLines);
@@ -208,6 +218,27 @@ public sealed class RelicManager : MonoBehaviour
         int loadedBulletIndex,
         int currentLoadedCount,
         int initialLoadedCount,
+        out double damageMultiplier,
+        out bool forcesCritical,
+        List<string> stateLines = null)
+    {
+        return TryGetLoadedBulletRelicModifiers(
+            loadedBullet,
+            loadedBulletIndex,
+            currentLoadedCount,
+            initialLoadedCount,
+            new CylinderFiringOrder(false),
+            out damageMultiplier,
+            out forcesCritical,
+            stateLines);
+    }
+
+    public bool TryGetLoadedBulletRelicModifiers(
+        BulletInstance loadedBullet,
+        int loadedBulletIndex,
+        int currentLoadedCount,
+        int initialLoadedCount,
+        CylinderFiringOrder firingOrder,
         out double damageMultiplier,
         out bool forcesCritical,
         List<string> stateLines = null)
@@ -223,9 +254,14 @@ public sealed class RelicManager : MonoBehaviour
         }
 
         bool enhanced = false;
-        bool isNextShot = loadedBulletIndex == currentLoadedCount - 1;
-        bool isFirstShot = loadedBulletIndex == initialLoadedCount - 1;
-        bool isLastShot = loadedBulletIndex == 0;
+        bool isNextShot = loadedBulletIndex
+            == firingOrder.GetFirstIndex(currentLoadedCount);
+        bool isFirstShot = firingOrder.IsFirstIndex(
+            loadedBulletIndex,
+            initialLoadedCount);
+        bool isLastShot = firingOrder.IsLastIndex(
+            loadedBulletIndex,
+            initialLoadedCount);
 
         foreach (RelicInstance relic in ownedRelics)
         {
@@ -277,7 +313,8 @@ public sealed class RelicManager : MonoBehaviour
                     case RelicEffectType.LuckyChamber:
                         applies = IsLuckyChamberLoadedBullet(
                             loadedBulletIndex,
-                            initialLoadedCount);
+                            initialLoadedCount,
+                            firingOrder);
                         effectMultiplier = effect.FinalDamageMultiplier;
                         break;
                     case RelicEffectType.ExecutionersOath:

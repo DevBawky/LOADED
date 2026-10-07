@@ -2092,6 +2092,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
     {
         return nodeType == NodeMapNodeType.NormalBattle
             || nodeType == NodeMapNodeType.EliteBattle
+            || nodeType == NodeMapNodeType.SpecialBattle
             || nodeType == NodeMapNodeType.Boss;
     }
 

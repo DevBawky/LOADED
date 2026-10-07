@@ -808,9 +808,13 @@ public class InventoryTooltipUI : MonoBehaviour
             : deckManager.LoadedBullets.Count;
 
         relicManager?.TryGetLoadedBulletRelicModifiers(
+            bullet,
             loadedBulletIndex,
             loadedCount,
             initialLoadedCount,
+            playerShoot == null
+                ? new CylinderFiringOrder(false)
+                : playerShoot.FiringOrder,
             out relicMultiplier,
             out forcesCritical,
             stateLines);

@@ -46,7 +46,10 @@ public static class RunSaveSystem
         requestedStartMode = mode;
     }
 
-    public static bool PrepareForSelectedBattle(int stageIndex, int battleIndex)
+    public static bool PrepareForSelectedBattle(
+        int stageIndex,
+        int battleIndex,
+        SpecialBattleRule specialBattleRule = SpecialBattleRule.None)
     {
         if (!TryLoad(out RunSaveData saveData))
         {
@@ -55,6 +58,11 @@ public static class RunSaveSystem
 
         saveData.stageIndex = Mathf.Max(0, stageIndex);
         saveData.battleIndex = Mathf.Max(0, battleIndex);
+        saveData.specialBattleRule = Enum.IsDefined(
+            typeof(SpecialBattleRule),
+            specialBattleRule)
+                ? (int)specialBattleRule
+                : (int)SpecialBattleRule.None;
         saveData.battleBoardCount = 0;
         saveData.flowState = (int)GameFlowState.Battle;
         saveData.startSelectedBattleFresh = true;
@@ -242,6 +250,12 @@ public static class RunSaveSystem
         saveData.nextCycleAcquisitionOrders ??= new List<int>();
         saveData.inventoryItemAssetNames ??= new List<string>();
         saveData.relics ??= new List<RunRelicSaveData>();
+        if (!Enum.IsDefined(
+                typeof(SpecialBattleRule),
+                saveData.specialBattleRule))
+        {
+            saveData.specialBattleRule = (int)SpecialBattleRule.None;
+        }
         saveData.battleBoardCount = Mathf.Max(
             0,
             saveData.battleBoardCount);
@@ -281,6 +295,8 @@ public static class RunSaveSystem
         {
             if (bomb != null)
             {
+                bomb.sourceEnemyAssetName ??= string.Empty;
+                bomb.specialBombProfileId ??= string.Empty;
                 bomb.laneIndex = Mathf.Max(0, bomb.laneIndex);
             }
         }

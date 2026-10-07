@@ -24,6 +24,13 @@ public static class NodeMapGenerator
         },
         new NodeMapGenerationRule
         {
+            nodeType = NodeMapNodeType.SpecialBattle,
+            weight = 8,
+            minimumCount = 2,
+            maximumCount = 3
+        },
+        new NodeMapGenerationRule
+        {
             nodeType = NodeMapNodeType.Shop,
             weight = 0,
             maximumCount = 0
@@ -180,6 +187,7 @@ public static class NodeMapGenerator
         Dictionary<NodeMapNodeType, int> counts = rules.ToDictionary(
             rule => rule.nodeType, _ => 0);
         HashSet<int> eliteColumns = new HashSet<int>();
+        HashSet<int> specialColumns = new HashSet<int>();
 
         // Guaranteed columns take priority over configured rules. The first
         // playable column remains a battle in very short maps. If fixed
@@ -221,7 +229,8 @@ public static class NodeMapGenerator
                              rule.nodeType,
                              maximumColumn,
                              firstShopColumn,
-                             eliteColumns))))
+                             eliteColumns,
+                             specialColumns))))
         {
             int maximum = rule.maximumCount < 0
                 ? nodes.Count
@@ -240,7 +249,8 @@ public static class NodeMapGenerator
                         rule.nodeType,
                         maximumColumn,
                         firstShopColumn,
-                        eliteColumns))
+                        eliteColumns,
+                        specialColumns))
                     .ToList();
                 if (eligibleNodes.Count == 0)
                 {
@@ -256,6 +266,10 @@ public static class NodeMapGenerator
                     selectedNode,
                     rule.nodeType,
                     eliteColumns);
+                RegisterSpecialColumn(
+                    selectedNode,
+                    rule.nodeType,
+                    specialColumns);
                 required--;
             }
         }
@@ -270,7 +284,8 @@ public static class NodeMapGenerator
                         rule.nodeType,
                         maximumColumn,
                         firstShopColumn,
-                        eliteColumns)
+                        eliteColumns,
+                        specialColumns)
                     && (rule.maximumCount < 0
                         || GetCount(counts, rule.nodeType)
                             < rule.maximumCount))
@@ -284,12 +299,14 @@ public static class NodeMapGenerator
                             rule.nodeType,
                             maximumColumn,
                             firstShopColumn,
-                            eliteColumns));
+                            eliteColumns,
+                            specialColumns));
                 node.type = fallback == null
                     ? NodeMapNodeType.NormalBattle
                     : fallback.nodeType;
                 IncrementCount(counts, node.type);
                 RegisterEliteColumn(node, node.type, eliteColumns);
+                RegisterSpecialColumn(node, node.type, specialColumns);
                 continue;
             }
 
@@ -308,11 +325,13 @@ public static class NodeMapGenerator
             node.type = selected.nodeType;
             IncrementCount(counts, node.type);
             RegisterEliteColumn(node, node.type, eliteColumns);
+            RegisterSpecialColumn(node, node.type, specialColumns);
         }
 
         foreach (NodeMapNodeData node in nodes)
         {
-            if (node.type == NodeMapNodeType.NormalBattle)
+            if (node.type == NodeMapNodeType.NormalBattle
+                || node.type == NodeMapNodeType.SpecialBattle)
             {
                 int poolCount = GetNormalBattleProgressSection(
                     node.column,
@@ -325,12 +344,30 @@ public static class NodeMapGenerator
                     _ => earlyBattleCount
                 };
                 node.battleIndex = random.Next(Mathf.Max(1, poolCount));
+
             }
             else if (node.type == NodeMapNodeType.EliteBattle)
             {
                 node.battleIndex = random.Next(
                     Mathf.Max(1, eliteBattleCount));
             }
+        }
+
+        List<SpecialBattleRule> specialRules = Enum
+            .GetValues(typeof(SpecialBattleRule))
+            .Cast<SpecialBattleRule>()
+            .Where(rule => rule != SpecialBattleRule.None)
+            .OrderBy(_ => random.Next())
+            .ToList();
+        int specialRuleIndex = 0;
+        foreach (NodeMapNodeData node in nodes
+                     .Where(node => node.type
+                         == NodeMapNodeType.SpecialBattle)
+                     .OrderBy(node => node.column)
+                     .ThenBy(node => node.row))
+        {
+            node.specialBattleRule = specialRules[
+                specialRuleIndex++ % specialRules.Count];
         }
     }
 
@@ -339,7 +376,8 @@ public static class NodeMapGenerator
         NodeMapNodeType type,
         int maximumColumn,
         int firstShopColumn,
-        IReadOnlyCollection<int> eliteColumns)
+        IReadOnlyCollection<int> eliteColumns,
+        IReadOnlyCollection<int> specialColumns)
     {
         if (node == null)
         {
@@ -357,6 +395,12 @@ public static class NodeMapGenerator
             || type == NodeMapNodeType.Treasure)
         {
             return false;
+        }
+
+        if (type == NodeMapNodeType.SpecialBattle)
+        {
+            return specialColumns == null
+                || !specialColumns.Contains(node.column);
         }
 
         if (type != NodeMapNodeType.EliteBattle)
@@ -377,6 +421,17 @@ public static class NodeMapGenerator
         if (node != null && type == NodeMapNodeType.EliteBattle)
         {
             eliteColumns?.Add(node.column);
+        }
+    }
+
+    private static void RegisterSpecialColumn(
+        NodeMapNodeData node,
+        NodeMapNodeType type,
+        ISet<int> specialColumns)
+    {
+        if (node != null && type == NodeMapNodeType.SpecialBattle)
+        {
+            specialColumns?.Add(node.column);
         }
     }
 

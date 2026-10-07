@@ -180,15 +180,24 @@ public class DeckManager : MonoBehaviour
 
     public bool TryFireLoadedBullet(out BulletInstance bullet)
     {
-        if (loadedBullets.Count == 0)
+        return TryFireLoadedBulletAt(
+            loadedBullets.Count - 1,
+            out bullet);
+    }
+
+    public bool TryFireLoadedBulletAt(
+        int loadedBulletIndex,
+        out BulletInstance bullet)
+    {
+        if (loadedBulletIndex < 0
+            || loadedBulletIndex >= loadedBullets.Count)
         {
             bullet = null;
             return false;
         }
 
-        int topIndex = loadedBullets.Count - 1;
-        bullet = loadedBullets[topIndex];
-        loadedBullets.RemoveAt(topIndex);
+        bullet = loadedBullets[loadedBulletIndex];
+        loadedBullets.RemoveAt(loadedBulletIndex);
         graveyard.Add(bullet);
         StateChanged?.Invoke();
         return true;

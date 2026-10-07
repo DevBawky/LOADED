@@ -34,6 +34,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
     private StatusEffectController statusEffects;
     private CombatFeedbackController combatFeedback;
     private RelicManager relicManager;
+    private WaveManager waveManager;
     private Volume damageFlashVolume;
     private VolumeProfile damageFlashProfile;
     private float damageFlashElapsed = -1f;
@@ -56,6 +57,8 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         statusEffects = GetComponent<StatusEffectController>();
         combatFeedback = FindFirstObjectByType<CombatFeedbackController>();
         relicManager = FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        waveManager = FindFirstObjectByType<WaveManager>(
             FindObjectsInactive.Include);
         ResolveUIReferences();
         ResolveStatusEffectUI();
@@ -95,6 +98,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyDamage(int damage)
     {
+        damage = ScaleBattleDamage(damage);
         if (damage <= 0 || IsDefeated)
         {
             return false;
@@ -124,6 +128,7 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyStatusDamage(int damage, bool creditedToPlayer)
     {
+        damage = ScaleBattleDamage(damage);
         if (damage <= 0 || IsDefeated)
         {
             return false;
@@ -182,6 +187,32 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
         currentHealth += increase;
         RefreshUI();
         HealthChanged?.Invoke(currentHealth, maxHealth);
+        return true;
+    }
+
+    public bool SpendHealth(int amount, bool canDefeat = true)
+    {
+        int cost = Mathf.Max(0, amount);
+
+        if (cost <= 0 || IsDefeated)
+        {
+            return false;
+        }
+
+        int previousHealth = currentHealth;
+        int minimumHealth = canDefeat ? 0 : 1;
+        SetCurrentHealth(Mathf.Max(minimumHealth, currentHealth - cost));
+
+        if (currentHealth >= previousHealth)
+        {
+            return false;
+        }
+
+        relicManager ??= FindFirstObjectByType<RelicManager>(
+            FindObjectsInactive.Include);
+        relicManager?.NotifyPlayerHealthLost(
+            previousHealth - currentHealth,
+            maxHealth);
         return true;
     }
 
@@ -324,6 +355,15 @@ public class PlayerHealth : MonoBehaviour, IStatusEffectTarget
                 }
             }
         }
+    }
+
+    private int ScaleBattleDamage(int damage)
+    {
+        waveManager ??= FindFirstObjectByType<WaveManager>(
+            FindObjectsInactive.Include);
+        return waveManager == null
+            ? Mathf.Max(0, damage)
+            : waveManager.ActiveRules.ScaleDamage(damage);
     }
 
     private void ResolveStatusEffectUI()

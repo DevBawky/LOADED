@@ -225,6 +225,8 @@ public partial class PlayerShoot : MonoBehaviour
     public int CriticalShotsThisCylinder => isFiring
         ? Mathf.Max(0, criticalShotsThisCylinder)
         : 0;
+    public CylinderFiringOrder FiringOrder => new CylinderFiringOrder(
+        waveManager != null && waveManager.ActiveRules.ReversesCylinder);
 
     private void Awake()
     {
@@ -536,6 +538,7 @@ public partial class PlayerShoot : MonoBehaviour
         if (deckManager.ReloadableBulletCount <= 0
             || deckManager.LoadedBullets.Count
                 >= deckManager.MaxReloadAmount
+            || !CanPayReloadHealthCost()
             || !TryBeginAction())
         {
             return;
@@ -550,6 +553,14 @@ public partial class PlayerShoot : MonoBehaviour
             SoundManager.PlaySfx("SFX_Player_Reload");
             combatPresentation?.PlayReload(loadedBullet, cylinderUI);
 
+            if (waveManager != null
+                && waveManager.ActiveRules.UsesBloodReload)
+            {
+                playerHealth?.SpendHealth(
+                    BattleRuleContext.BloodReloadHealthCost,
+                    false);
+            }
+
             relicManager ??= FindFirstObjectByType<RelicManager>(
                 FindObjectsInactive.Include);
             bool usesEmergencyReload = pendingEmergencyReload;
@@ -561,11 +572,25 @@ public partial class PlayerShoot : MonoBehaviour
                     loadedBullet,
                     wasCylinderEmpty));
 
-            if (consumesTurn)
+            if (consumesTurn
+                && (playerHealth == null || !playerHealth.IsDefeated))
             {
                 playerMove.CompleteTurn();
             }
         }
+    }
+
+    private bool CanPayReloadHealthCost()
+    {
+        if (waveManager == null
+            || !waveManager.ActiveRules.UsesBloodReload)
+        {
+            return true;
+        }
+
+        return playerHealth != null
+            && playerHealth.CurrentHealth
+                > BattleRuleContext.BloodReloadHealthCost;
     }
 
     public void Shoot()
@@ -598,7 +623,8 @@ public partial class PlayerShoot : MonoBehaviour
         }
 
         int horizontalDirection = transform.localScale.x >= 0f ? 1 : -1;
-        int firstBulletIndex = deckManager.LoadedBullets.Count - 1;
+        int firstBulletIndex = FiringOrder.GetFirstIndex(
+            deckManager.LoadedBullets.Count);
         BulletInstance firstBullet = deckManager.LoadedBullets[firstBulletIndex];
 
         if (firstBullet == null
@@ -779,7 +805,10 @@ public partial class PlayerShoot : MonoBehaviour
             relicManager,
             deckManager,
             applyRuntimeRelicModifiers,
-            criticalDamageMultiplierBonus);
+            criticalDamageMultiplierBonus,
+            waveManager == null
+                ? 1f
+                : waveManager.ActiveRules.DamageMultiplier);
     }
 
     private static bool IsBoardWideShot(BulletInstance bullet)

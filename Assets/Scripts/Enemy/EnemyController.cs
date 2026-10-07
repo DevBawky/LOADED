@@ -597,11 +597,23 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public int ApplyAttackDamage(int damage, bool isCritical)
     {
+        return ApplyAttackDamage(damage, isCritical, true);
+    }
+
+    public int ApplyAttackDamage(
+        int damage,
+        bool isCritical,
+        bool applyBattleMultiplier)
+    {
         if (damage <= 0 || currentHealth <= 0)
         {
             return 0;
         }
 
+        if (applyBattleMultiplier)
+        {
+            damage = ScaleBattleDamage(damage);
+        }
         int modifiedDamage = PredictAttackDamage(damage);
         int appliedDamage = ApplyDamageInternal(
             modifiedDamage,
@@ -811,6 +823,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         bool creditedToPlayer = false,
         bool reportDefeatToCombo = true)
     {
+        damage = ScaleBattleDamage(damage);
         if (creditedToPlayer && damage > 0 && currentHealth > 0)
         {
             PlayerIndirectDamageDealt?.Invoke(damage);
@@ -834,6 +847,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public bool ApplyCollisionDamage(int damage)
     {
+        damage = ScaleBattleDamage(damage);
         if (damage > 0 && currentHealth > 0)
         {
             PlayerIndirectDamageDealt?.Invoke(damage);
@@ -859,6 +873,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             && enemyData.BehaviorType == EnemyBehaviorType.BigBarrel
                 ? bossDamage
                 : normalDamage;
+        damage = ScaleBattleDamage(damage);
         int appliedDamage = ApplyDamageInternal(damage, false, 1.1f);
 
         if (appliedDamage > 0)
@@ -871,6 +886,7 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
     public int ApplyEnvironmentalDamage(int damage)
     {
+        damage = ScaleBattleDamage(damage);
         int appliedDamage = ApplyDamageInternal(damage, false, 0.8f);
 
         if (appliedDamage > 0)
@@ -879,6 +895,13 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         }
 
         return appliedDamage;
+    }
+
+    private int ScaleBattleDamage(int damage)
+    {
+        return waveManager == null
+            ? Mathf.Max(0, damage)
+            : waveManager.ActiveRules.ScaleDamage(damage);
     }
 
     public IEnumerator FlyTo(

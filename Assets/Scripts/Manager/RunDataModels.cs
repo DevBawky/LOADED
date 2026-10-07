@@ -105,6 +105,7 @@ public sealed class RunEnemySaveData
 public sealed class RunBombSaveData
 {
     public string sourceEnemyAssetName;
+    public string specialBombProfileId;
     public int tileIndex;
     public int laneIndex;
     public int remainingFuse;
@@ -168,6 +169,7 @@ public sealed class RunSaveData
     public int flowState = (int)GameFlowState.Battle;
     public int stageIndex;
     public int battleIndex;
+    public int specialBattleRule;
     public int battleBoardCount;
     public bool startSelectedBattleFresh;
     public int currentHealth;
