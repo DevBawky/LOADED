@@ -449,7 +449,7 @@ public sealed class Battle3DPresentationTests
             .FindProperty("shotInterval")
             .floatValue;
 
-        Assert.That(authoredInterval, Is.EqualTo(0.15f).Within(0.0001f));
+        Assert.That(authoredInterval, Is.EqualTo(0.05f).Within(0.0001f));
         Assert.That(
             PlayerShoot.ResolveProjectileTravelDuration(tileDistance),
             Is.EqualTo(expectedDuration).Within(0.0001f));

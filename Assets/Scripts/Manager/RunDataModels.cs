@@ -168,6 +168,7 @@ public sealed class RunSaveData
     public int flowState = (int)GameFlowState.Battle;
     public int stageIndex;
     public int battleIndex;
+    public int battleBoardCount;
     public bool startSelectedBattleFresh;
     public int currentHealth;
     public int maxHealth;

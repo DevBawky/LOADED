@@ -152,14 +152,14 @@ seconds at one tile, 0.08 at two, 0.10 at three, 0.12 at four, and 0.14 at five
 or more tiles. An unresolved distance uses the maximum `0.14` second delay.
 This duration controls only projectile arrival and damage timing.
 `PlayerShoot.shotInterval` independently keeps sequential shot launches at a
-fixed `0.15` second cadence. Projectile travel and cadence both use unscaled
+fixed `0.05` second cadence. Projectile travel and cadence both use unscaled
 time while still stopping for an explicit game pause, so muzzle and impact
 hit-stop do not lengthen either timer. `PlayerShoot` applies damage only after
 the projectile reaches the target and waits out any cadence time remaining
 after the shot's rule resolution. A missing or destroyed visual does not
 cancel or delay gameplay resolution.
 
-The current Player prefab uses a `0.15` second shot interval. The shared
+The current Player prefab uses a `0.05` second shot interval. The shared
 projectile profile uses scale `0.17` and arc height `0.05` so the sphere reads
 as a fast bullet instead of a large floating orb.
 
@@ -206,7 +206,7 @@ as a fast bullet instead of a large floating orb.
    hop between visual offsets.
 5. `PlayerShoot` creates `BulletProjectileView` as presentation for each shot,
    advances it to the target over the distance-resolved travel duration, and
-   then resolves damage and effects. A separate fixed `0.15` second cadence
+   then resolves damage and effects. A separate fixed `0.05` second cadence
    controls the next sequential shot. Both timings remain authoritative even
    if the optional projectile object is unavailable.
 6. Enemy world-space HUDs retain their authored lane layout: health and action

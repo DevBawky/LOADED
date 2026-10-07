@@ -417,7 +417,7 @@ MonoBehaviour:
   bulletFeedbackImage: {fileID: 0}
   combatPresentation: {fileID: 700000000000000020}
   combatFeedback: {fileID: 700000000000000021}
-  shotInterval: 0.15
+  shotInterval: 0.05
   maxRandomShotAngle: 5
 --- !u!114 &700000000000000020
 MonoBehaviour:

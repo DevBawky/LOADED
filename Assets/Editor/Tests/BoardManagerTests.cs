@@ -122,6 +122,25 @@ public class BoardManagerTests
     }
 
     [Test]
+    public void BattleBoardCountSave_NormalizesAndRoundTrips()
+    {
+        RunSaveData saveData = new RunSaveData
+        {
+            battleBoardCount = 8
+        };
+
+        string json = JsonUtility.ToJson(saveData);
+        RunSaveData restored = JsonUtility.FromJson<RunSaveData>(json);
+        RunSaveSystem.NormalizeSaveData(restored);
+
+        Assert.That(restored.battleBoardCount, Is.EqualTo(8));
+
+        restored.battleBoardCount = -1;
+        RunSaveSystem.NormalizeSaveData(restored);
+        Assert.That(restored.battleBoardCount, Is.Zero);
+    }
+
+    [Test]
     public void EnemyAndBombLaneSave_NormalizesAndRoundTrips()
     {
         RunSaveData saveData = new RunSaveData();
@@ -1352,7 +1371,7 @@ public class EnemyTileTelegraphTests
     }
 
     [Test]
-    public void AttackWithoutAnimatorEmphasizesAtDodgeWindowAndCompletesAtImpact()
+    public void AttackWithoutAnimatorFillsBeforeDodgeWindowAndImpact()
     {
         EnemyController enemy = CreateEnemy(EnemyBehaviorType.Melee);
         board.SetTileWarningActive(1, 0, enemy, true);
@@ -1364,9 +1383,18 @@ public class EnemyTileTelegraphTests
             new object[] { 0, onImpact, new System.Func<bool>(() => false) });
         Assert.That(animation.MoveNext(), Is.True);
         Assert.That(impacts, Is.Zero);
-        Assert.That(WarningProperty(1, 0, "_Urgency"), Is.EqualTo(1f));
+        Assert.That(WarningProperty(1, 0, "_Urgency"), Is.Zero);
         Assert.That(animation.Current, Is.InstanceOf<System.Collections.IEnumerator>());
-        // Resume the parent after its timing child, as Unity's coroutine runner does.
+
+        // Resume after the charge child: fill is complete, then the 0.2-second
+        // dodge window is yielded before any impact can resolve.
+        Assert.That(animation.MoveNext(), Is.True);
+        Assert.That(impacts, Is.Zero);
+        Assert.That(WarningProperty(1, 0, "_Urgency"), Is.EqualTo(1f));
+        Assert.That(WarningProperty(1, 0, "_Charge"), Is.EqualTo(1f));
+        Assert.That(animation.Current, Is.InstanceOf<System.Collections.IEnumerator>());
+
+        // Resume after the dodge child, as Unity's coroutine runner does.
         Assert.That(animation.MoveNext(), Is.False);
         Assert.That(impacts, Is.EqualTo(1));
         Assert.That(WarningProperty(1, 0, "_Afterglow"), Is.EqualTo(1f));

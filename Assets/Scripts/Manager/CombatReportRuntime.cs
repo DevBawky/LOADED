@@ -355,37 +355,9 @@ internal static class BattleClearRewardCalculator
 
     private static int GetTotalEnemyCount(BattleData battleData)
     {
-        if (battleData?.Waves == null)
-        {
-            return 0;
-        }
-
-        long totalEnemyCount = 0L;
-
-        foreach (EnemyWave wave in battleData.Waves)
-        {
-            if (wave?.Enemies == null)
-            {
-                continue;
-            }
-
-            foreach (EnemyWaveEntry entry in wave.Enemies)
-            {
-                if (entry?.EnemyData == null || entry.Count <= 0)
-                {
-                    continue;
-                }
-
-                totalEnemyCount += entry.Count;
-
-                if (totalEnemyCount >= int.MaxValue)
-                {
-                    return int.MaxValue;
-                }
-            }
-        }
-
-        return (int)totalEnemyCount;
+        return battleData == null
+            ? 0
+            : battleData.DuelClockEnemySpawnCount;
     }
 
     private static int GetPercentageThreshold(

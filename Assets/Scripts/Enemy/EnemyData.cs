@@ -155,7 +155,7 @@ public class EnemyData : ScriptableObject
     [Tooltip("Image | Queue와 행동 타일 하나가 서서히 나타나는 시간입니다.")]
     [SerializeField] private float queueElementRevealDuration = 0.25f;
     [Min(0f)]
-    [Tooltip("공격 애니메이션의 피격 키프레임이 없을 때의 공격 지연이자, 투척 도착 직전 및 폭탄 폭발 직후의 회피 가능 시간입니다.")]
+    [Tooltip("일반 공격은 경고가 완전히 찬 뒤, 투척 공격은 투사체가 도착하기 전부터 적용되는 회피 가능 시간입니다. 키프레임이 없는 공격과 폭탄의 경고 충전 시간에도 사용합니다.")]
     [SerializeField] private float attackDodgeWindowDuration =
         DefaultAttackDodgeWindowDuration;
     [Range(0f, 1f)]

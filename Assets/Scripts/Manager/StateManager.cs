@@ -357,6 +357,7 @@ public class StateManager : MonoBehaviour
             flowState = (int)currentState,
             stageIndex = currentStageIndex,
             battleIndex = currentBattleIndex,
+            battleBoardCount = boardManager.BoardCount,
             currentHealth = playerHealth.CurrentHealth,
             maxHealth = playerHealth.MaxHealth,
             money = currencyManager.CurrentMoney,
@@ -501,11 +502,20 @@ public class StateManager : MonoBehaviour
         RunSaveData restoredRun = pendingRestoredRun;
         pendingRestoredRun = null;
 
-        if (!TryGetCurrentBattle(out BattleData battle)
-            || battle.TilePrefab == null
+        if (!TryGetCurrentBattle(out BattleData battle))
+        {
+            RunSaveSystem.DeleteSave();
+            ShowRunComplete("CONFIGURATION ERROR");
+            return;
+        }
+
+        int boardCount = battle.ResolveSavedBoardCount(
+            restoredRun.battleBoardCount);
+
+        if (battle.TilePrefab == null
             || !ApplyBattleEnvironment(battle)
             || !boardManager.ConfigureBoard(
-                battle.BoardCount,
+                boardCount,
                 CurrentStage.LaneCount,
                 battle.TilePrefab)
             || !RestorePlayerRuntime(restoredRun))
@@ -577,11 +587,20 @@ public class StateManager : MonoBehaviour
         RunSaveData restoredRun = pendingRestoredRun;
         pendingRestoredRun = null;
 
-        if (!TryGetCurrentBattle(out BattleData battle)
-            || battle.TilePrefab == null
+        if (!TryGetCurrentBattle(out BattleData battle))
+        {
+            RunSaveSystem.DeleteSave();
+            ShowRunComplete("CONFIGURATION ERROR");
+            return;
+        }
+
+        int boardCount = battle.ResolveSavedBoardCount(
+            restoredRun.battleBoardCount);
+
+        if (battle.TilePrefab == null
             || !ApplyBattleEnvironment(battle)
             || !boardManager.ConfigureBoard(
-                battle.BoardCount,
+                boardCount,
                 CurrentStage.LaneCount,
                 battle.TilePrefab)
             || !RestorePlayerRuntime(restoredRun))
@@ -859,11 +878,21 @@ public class StateManager : MonoBehaviour
         StopBattleStartPresentation();
         waveManager.StopBattle();
 
-        if (!TryGetCurrentBattle(out BattleData battle)
-            || battle.TilePrefab == null
+        if (!TryGetCurrentBattle(out BattleData battle))
+        {
+            ShowRunComplete("CONFIGURATION ERROR");
+            return;
+        }
+
+        int boardCount = pendingRestoredRun == null
+            ? battle.RollBoardCount()
+            : battle.ResolveSavedBoardCount(
+                pendingRestoredRun.battleBoardCount);
+
+        if (battle.TilePrefab == null
             || !ApplyBattleEnvironment(battle)
             || !boardManager.ConfigureBoard(
-                battle.BoardCount,
+                boardCount,
                 CurrentStage.LaneCount,
                 battle.TilePrefab))
         {
@@ -871,7 +900,7 @@ public class StateManager : MonoBehaviour
             return;
         }
 
-        MovePlayerToBoardCenter(battle.BoardCount);
+        MovePlayerToBoardCenter(boardCount);
         currentState = GameFlowState.Battle;
         SetPanels(true, false, false);
         SetInputLocked(true);
@@ -1497,9 +1526,11 @@ public class StateManager : MonoBehaviour
                 BattleData battle = stage.Battles[battleIndex];
 
                 if (battle == null || battle.TilePrefab == null
-                    || battle.Waves.Count == 0
                     || battle.IsBoss != (battleIndex == lastBattleIndex)
-                    || !ValidateBattleWaves(stage, battle, battleIndex))
+                    || !ValidateBattleConfiguration(
+                        stage,
+                        battle,
+                        battleIndex))
                 {
                     Debug.LogError(
                         $"Stage '{stage.name}' has an invalid battle at index {battleIndex}. The final battle must be the only Boss battle.",
@@ -1512,44 +1543,46 @@ public class StateManager : MonoBehaviour
         return foundConfiguredStage;
     }
 
-    private bool ValidateBattleWaves(
+    private bool ValidateBattleConfiguration(
         StageData stage,
         BattleData battle,
         int battleIndex)
     {
-        int maximumEnemyCount = Mathf.Max(0, battle.BoardCount - 1);
-
-        for (int waveIndex = 0; waveIndex < battle.Waves.Count; waveIndex++)
+        if (battle.MinimumBoardCount <= 0
+            || battle.MaximumBoardCount < battle.MinimumBoardCount
+            || battle.DuelClockEnemySpawnEntries.Count == 0)
         {
-            EnemyWave wave = battle.Waves[waveIndex];
-
-            if (wave == null || wave.Enemies.Count == 0)
-            {
-                return false;
-            }
-
-            int enemyCount = 0;
-
-            foreach (EnemyWaveEntry entry in wave.Enemies)
-            {
-                if (entry == null || entry.EnemyData == null
-                    || entry.Count <= 0)
-                {
-                    return false;
-                }
-
-                enemyCount += entry.Count;
-            }
-
-            if (enemyCount <= 0 || enemyCount > maximumEnemyCount)
-            {
-                Debug.LogError(
-                    $"Stage '{stage.name}', battle {battleIndex}, wave {waveIndex} does not fit on its board.",
-                    stage);
-                return false;
-            }
+            return false;
         }
 
-        return true;
+        int minimumSpawnCount = 0;
+        HashSet<EnemyData> authoredEnemies = new HashSet<EnemyData>();
+
+        for (int entryIndex = 0;
+             entryIndex < battle.DuelClockEnemySpawnEntries.Count;
+             entryIndex++)
+        {
+            DuelClockEnemySpawnEntry entry =
+                battle.DuelClockEnemySpawnEntries[entryIndex];
+
+            if (entry == null || entry.EnemyData == null
+                || entry.Weight <= 0f
+                || !authoredEnemies.Add(entry.EnemyData))
+            {
+                return false;
+            }
+
+            minimumSpawnCount += entry.MinimumSpawnCount;
+        }
+
+        if (minimumSpawnCount <= battle.DuelClockEnemySpawnCount)
+        {
+            return true;
+        }
+
+        Debug.LogError(
+            $"Stage '{stage.name}', battle {battleIndex} has minimum enemy spawn counts above its total spawn count.",
+            stage);
+        return false;
     }
 }

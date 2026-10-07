@@ -116,8 +116,6 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
     private DuelClockEnemySpawnEntry[] duelClockSpawnEntries =
         Array.Empty<DuelClockEnemySpawnEntry>();
     private EnemyData[] duelClockAuthoredEnemies = Array.Empty<EnemyData>();
-    private EnemyData[] duelClockLegacyAuthoredEnemies =
-        Array.Empty<EnemyData>();
     private int duelClockEnemySpawnCount;
     private int pendingDuelClockEnemySpawns;
     private bool immediateSpawnOccurredDuringEnemyCycle;
@@ -301,10 +299,10 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
     public bool BeginBattle(BattleData battleData)
     {
         return battleData != null && BeginBattleInternal(
-            battleData.Waves,
-            battleData.SpawnTerm,
+            Array.Empty<EnemyWave>(),
+            0,
             battleData,
-            battleData.PacingMode);
+            CombatPacingMode.DuelClock);
     }
 
     private bool BeginBattleInternal(
@@ -412,15 +410,11 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             return false;
         }
 
-        CombatPacingMode savedPacingMode =
-            saveData.combatPacingMode == (int)CombatPacingMode.DuelClock
-                ? CombatPacingMode.DuelClock
-                : CombatPacingMode.Legacy;
         return RestoreBattleInternal(
-            battleData.Waves,
-            battleData.SpawnTerm,
+            Array.Empty<EnemyWave>(),
+            0,
             battleData,
-            savedPacingMode,
+            CombatPacingMode.DuelClock,
             saveData);
     }
 
@@ -2268,7 +2262,6 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         duelClockEnemySpawnPool.Clear();
         duelClockSpawnEntries = Array.Empty<DuelClockEnemySpawnEntry>();
         duelClockAuthoredEnemies = Array.Empty<EnemyData>();
-        duelClockLegacyAuthoredEnemies = Array.Empty<EnemyData>();
         duelClockEnemySpawnCount = 0;
         pendingDuelClockEnemySpawns = 0;
         isDuelClockEnemyPoolConfigured = false;
@@ -2345,7 +2338,7 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
                 saveData.duelClockEnemyMissedSpawnCounts,
                 saveData.duelClockLastSpawnedEnemyAssetName,
                 ResolveSavedEnemy)
-            : TryRestoreLegacyDuelClockEnemyPool(saveData);
+            : TryRestoreLegacyWeightedSpawnState(saveData);
 
         if (restored)
         {
@@ -2388,122 +2381,30 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
 
     private bool TryBuildDuelClockEnemyConfiguration(BattleData battleData)
     {
-        duelClockLegacyAuthoredEnemies = BuildLegacyDuelClockEnemyPool(
-            battleData);
-
-        if (battleData != null
-            && battleData.DuelClockEnemySpawnEntries.Count > 0)
+        if (battleData == null
+            || battleData.DuelClockEnemySpawnEntries.Count == 0)
         {
-            duelClockSpawnEntries = new DuelClockEnemySpawnEntry[
-                battleData.DuelClockEnemySpawnEntries.Count];
-
-            for (int index = 0; index < duelClockSpawnEntries.Length; index++)
-            {
-                duelClockSpawnEntries[index] =
-                    battleData.DuelClockEnemySpawnEntries[index];
-            }
-
-            duelClockEnemySpawnCount = battleData.DuelClockEnemySpawnCount;
+            duelClockSpawnEntries = Array.Empty<DuelClockEnemySpawnEntry>();
+            duelClockAuthoredEnemies = Array.Empty<EnemyData>();
+            duelClockEnemySpawnCount = 0;
+            return false;
         }
-        else
+
+        duelClockSpawnEntries = new DuelClockEnemySpawnEntry[
+            battleData.DuelClockEnemySpawnEntries.Count];
+
+        for (int index = 0; index < duelClockSpawnEntries.Length; index++)
         {
-            duelClockSpawnEntries = BuildWeightedEntriesFromLegacyPool(
-                duelClockLegacyAuthoredEnemies);
-            duelClockEnemySpawnCount = duelClockLegacyAuthoredEnemies.Length;
+            duelClockSpawnEntries[index] =
+                battleData.DuelClockEnemySpawnEntries[index];
         }
+
+        duelClockEnemySpawnCount = battleData.DuelClockEnemySpawnCount;
 
         duelClockAuthoredEnemies = BuildAuthoredEnemyList(
             duelClockSpawnEntries);
         return duelClockSpawnEntries.Length > 0
             && duelClockEnemySpawnCount > 0;
-    }
-
-    private EnemyData[] BuildLegacyDuelClockEnemyPool(BattleData battleData)
-    {
-        if (battleData != null && battleData.DuelClockEnemyPool.Count > 0)
-        {
-            EnemyData[] authoredPool = new EnemyData[
-                battleData.DuelClockEnemyPool.Count];
-
-            for (int index = 0; index < authoredPool.Length; index++)
-            {
-                authoredPool[index] = battleData.DuelClockEnemyPool[index];
-            }
-
-            return authoredPool;
-        }
-
-        List<EnemyData> flattenedEnemies = new List<EnemyData>();
-
-        foreach (EnemyWave wave in waves)
-        {
-            if (wave == null)
-            {
-                continue;
-            }
-
-            foreach (EnemyWaveEntry entry in wave.Enemies)
-            {
-                if (entry?.EnemyData == null || entry.Count <= 0)
-                {
-                    continue;
-                }
-
-                for (int count = 0; count < entry.Count; count++)
-                {
-                    flattenedEnemies.Add(entry.EnemyData);
-                }
-            }
-        }
-
-        return flattenedEnemies.ToArray();
-    }
-
-    private static DuelClockEnemySpawnEntry[]
-        BuildWeightedEntriesFromLegacyPool(
-            IReadOnlyList<EnemyData> legacyEnemies)
-    {
-        List<EnemyData> uniqueEnemies = new List<EnemyData>();
-        List<int> counts = new List<int>();
-
-        if (legacyEnemies == null)
-        {
-            return Array.Empty<DuelClockEnemySpawnEntry>();
-        }
-
-        for (int index = 0; index < legacyEnemies.Count; index++)
-        {
-            EnemyData enemy = legacyEnemies[index];
-
-            if (enemy == null)
-            {
-                return Array.Empty<DuelClockEnemySpawnEntry>();
-            }
-
-            int existingIndex = uniqueEnemies.IndexOf(enemy);
-
-            if (existingIndex >= 0)
-            {
-                counts[existingIndex]++;
-            }
-            else
-            {
-                uniqueEnemies.Add(enemy);
-                counts.Add(1);
-            }
-        }
-
-        DuelClockEnemySpawnEntry[] weightedEntries =
-            new DuelClockEnemySpawnEntry[uniqueEnemies.Count];
-
-        for (int index = 0; index < weightedEntries.Length; index++)
-        {
-            weightedEntries[index] = new DuelClockEnemySpawnEntry(
-                uniqueEnemies[index],
-                counts[index]);
-        }
-
-        return weightedEntries;
     }
 
     private static EnemyData[] BuildAuthoredEnemyList(
@@ -2524,61 +2425,83 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         return authoredEnemies;
     }
 
-    private bool TryRestoreLegacyDuelClockEnemyPool(RunSaveData saveData)
+    private bool TryRestoreLegacyWeightedSpawnState(RunSaveData saveData)
     {
         IReadOnlyList<string> remainingEnemyNames =
-            saveData.duelClockSpawnPoolInitialized
-                ? saveData.duelClockRemainingEnemyAssetNames
-                : BuildLegacyRemainingEnemyNames(
-                    saveData.currentWaveIndex);
+            saveData.duelClockRemainingEnemyAssetNames;
 
-        if (remainingEnemyNames == null
-            || duelClockLegacyAuthoredEnemies.Length
-                != duelClockEnemySpawnCount)
+        if (!saveData.duelClockSpawnPoolInitialized
+            || remainingEnemyNames == null
+            || remainingEnemyNames.Count > duelClockEnemySpawnCount)
         {
             return false;
         }
 
-        int[] remainingCounts = new int[duelClockSpawnEntries.Length];
-
         foreach (string enemyName in remainingEnemyNames)
         {
-            EnemyData enemy = ResolveSavedEnemy(enemyName);
-            int entryIndex = FindDuelClockSpawnEntryIndex(enemy);
-
-            if (entryIndex < 0)
+            if (FindDuelClockSpawnEntryIndex(
+                    ResolveSavedEnemy(enemyName)) < 0)
             {
                 return false;
             }
-
-            remainingCounts[entryIndex]++;
         }
 
-        int[] initialCounts = new int[duelClockSpawnEntries.Length];
+        int spawnedBudget = duelClockEnemySpawnCount
+            - remainingEnemyNames.Count;
+        int[] spawnedCounts = new int[duelClockSpawnEntries.Length];
+        int allocatedCount = 0;
 
-        foreach (EnemyData enemy in duelClockLegacyAuthoredEnemies)
+        if (saveData.enemies != null)
         {
-            int entryIndex = FindDuelClockSpawnEntryIndex(enemy);
-
-            if (entryIndex < 0)
+            foreach (RunEnemySaveData savedEnemy in saveData.enemies)
             {
-                return false;
-            }
+                int entryIndex = FindDuelClockSpawnEntryIndex(
+                    ResolveSavedEnemy(savedEnemy?.enemyAssetName));
 
-            initialCounts[entryIndex]++;
+                if (entryIndex < 0 || allocatedCount >= spawnedBudget)
+                {
+                    return false;
+                }
+
+                spawnedCounts[entryIndex]++;
+                allocatedCount++;
+            }
         }
 
-        List<int> spawnedCounts = new List<int>(initialCounts.Length);
-        List<int> missedSpawnCounts = new List<int>(initialCounts.Length);
+        int outstandingMinimum = GetOutstandingMinimumCount(
+            spawnedCounts);
 
-        for (int index = 0; index < initialCounts.Length; index++)
+        for (int index = 0;
+             index < spawnedCounts.Length
+             && outstandingMinimum > remainingEnemyNames.Count;
+             index++)
         {
-            if (remainingCounts[index] > initialCounts[index])
-            {
-                return false;
-            }
+            int unmetMinimum = Mathf.Max(
+                0,
+                duelClockSpawnEntries[index].MinimumSpawnCount
+                    - spawnedCounts[index]);
+            int additionalCount = Mathf.Min(
+                unmetMinimum,
+                Mathf.Min(
+                    outstandingMinimum - remainingEnemyNames.Count,
+                    spawnedBudget - allocatedCount));
+            spawnedCounts[index] += additionalCount;
+            allocatedCount += additionalCount;
+            outstandingMinimum -= additionalCount;
+        }
 
-            spawnedCounts.Add(initialCounts[index] - remainingCounts[index]);
+        if (allocatedCount > spawnedBudget
+            || outstandingMinimum > remainingEnemyNames.Count)
+        {
+            return false;
+        }
+
+        spawnedCounts[0] += spawnedBudget - allocatedCount;
+        List<int> restoredSpawnedCounts = new List<int>(spawnedCounts);
+        List<int> missedSpawnCounts = new List<int>(spawnedCounts.Length);
+
+        for (int index = 0; index < spawnedCounts.Length; index++)
+        {
             missedSpawnCounts.Add(0);
         }
 
@@ -2586,10 +2509,26 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
             duelClockSpawnEntries,
             duelClockEnemySpawnCount,
             remainingEnemyNames.Count,
-            spawnedCounts,
+            restoredSpawnedCounts,
             missedSpawnCounts,
             ResolveLegacyLastSpawnedEnemyName(saveData),
             ResolveSavedEnemy);
+    }
+
+    private int GetOutstandingMinimumCount(
+        IReadOnlyList<int> spawnedCounts)
+    {
+        int outstandingCount = 0;
+
+        for (int index = 0; index < duelClockSpawnEntries.Length; index++)
+        {
+            outstandingCount += Mathf.Max(
+                0,
+                duelClockSpawnEntries[index].MinimumSpawnCount
+                    - spawnedCounts[index]);
+        }
+
+        return outstandingCount;
     }
 
     private int FindDuelClockSpawnEntryIndex(EnemyData enemy)
@@ -2631,38 +2570,6 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
         return string.Empty;
     }
 
-    private List<string> BuildLegacyRemainingEnemyNames(
-        int savedCurrentWaveIndex)
-    {
-        List<string> remainingNames = new List<string>();
-
-        for (int waveIndex = Mathf.Max(0, savedCurrentWaveIndex + 1);
-             waveIndex < waves.Length;
-             waveIndex++)
-        {
-            EnemyWave wave = waves[waveIndex];
-
-            if (wave == null)
-            {
-                continue;
-            }
-
-            foreach (EnemyWaveEntry entry in wave.Enemies)
-            {
-                if (entry?.EnemyData == null || entry.Count <= 0)
-                {
-                    continue;
-                }
-
-                for (int count = 0; count < entry.Count; count++)
-                {
-                    remainingNames.Add(entry.EnemyData.name);
-                }
-            }
-        }
-
-        return remainingNames;
-    }
 
     private void RemoveMissingEnemies()
     {

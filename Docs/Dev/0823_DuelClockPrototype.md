@@ -7,6 +7,12 @@
 > Runtime combat no longer advances from elapsed time or a separate spawn
 > gauge.
 
+> 2026-10-07 authoring cleanup: `BattleData` no longer exposes the prototype
+> pacing mode, natural/paid progress, wave, spawn-term, or legacy enemy-pool
+> fields. Current encounters always use Cylinder Tempo and author only a
+> minimum/maximum board-count range, total enemy spawn count, and weighted
+> enemy entries. The selected board count is saved for stable restoration.
+
 ## Cylinder Tempo contract
 
 - The meter has six slots and advances only from completed player choices.
@@ -74,16 +80,15 @@ deterministic clock rule to player action completion, natural Battle-scene
 time, enemy-turn cycles, stun, active-battle save restoration, and a compact
 Battle HUD. A dedicated half-speed spawn gauge schedules reinforcements.
 
-Every current `BattleData` uses Duel Clock. The all-battle authoring command
-flattens each asset's legacy waves into a weighted enemy-type pool and a total
-spawn count. It also preserves the old duplicate list as hidden migration data
-for active version 3 saves created before the weighted selector existed.
+Every current `BattleData` uses Cylinder Tempo through the production
+`WaveManager` path. Weighted enemy entries and the total spawn count are the
+only authored enemy source; the old wave and duplicate migration pools no
+longer participate in runtime configuration.
 
 ## Ownership
 
-- `BattleData` owns authored pacing mode, natural and paid-action progress,
-  total spawn count, and weighted enemy entries. Free actions
-  are a fixed zero-progress rule rather than authored data.
+- `BattleData` owns the board-count range, total spawn count, and weighted
+  enemy entries. It contains no authored combat-pacing selector.
 - The scene-local `DuelClockController` owns the Duel Clock and spawn-gauge
   `DuelClockState` instances, natural progression gates, paid-action commits,
   preview queries, and save capture.

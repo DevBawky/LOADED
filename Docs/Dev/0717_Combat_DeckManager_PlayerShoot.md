@@ -1,5 +1,9 @@
 ## AI-004: DeckManager & PlayerShoot
 
+> 261007 전탄 발사 템포 조정: 한 물리 탄환의 모든 공격·능력·대체 적 스폰 정산을
+> 기다리는 직렬 완료 규칙은 유지하면서, 정산 후 다음 순차 사격까지의
+> `shotInterval`을 0.10초에서 0.05초로 줄여 발사 진행 속도를 2배로 높였다.
+
 > 261007 전탄 발사 직렬 완료 변경: `shotInterval`은 더 이상 발사 시작과 동시에
 > 병렬로 흐르지 않는다. 각 실제 사격은 투사체 도착, 예정된 모든 대상의 피해와
 > 조건부/대상별 능력, 귀환탄·폭풍 후속 피해, 사격 결과 정산을 모두 마친 뒤에
@@ -29,7 +33,7 @@
 
 > 260802 플레이어 사격 효과음 변경: `PlayerShoot`이 성공한 장전과 실제 개별 사격 시점에 각각 등록된 AudioClip 목록에서 하나를 무작위로 재생한다. 발사음은 일반 공격과 크리티컬 공격 목록으로 분리한다. 세 효과음 묶음은 독립적인 볼륨 및 최소·최대 피치를 사용하고, 빠른 연속 사격에서도 이전 소리의 피치가 바뀌지 않도록 AudioSource 풀을 사용한다.
 
-> 260926 3D 투사체 타이밍 변경: 각 플레이어 Projectile은 타일 거리에 따라 `Clamp(0.04 + tileDistance * 0.02, 0.06, 0.14)`초 동안 비행한 뒤 피해를 적용한다. 거리 계산이 불가능한 특수 발사는 최대값인 0.14초를 사용한다. Projectile 도착 시간은 피해 시점만 결정하며, 다음 순차 발사는 거리와 무관한 고정 `shotInterval` 0.15초를 기준으로 진행한다. 두 타이머는 명시적인 게임 일시정지만 존중하는 unscaled time을 사용하므로 발사·피격 히트스톱이나 슬로모션이 실제 발사 간격을 늘리지 않는다.
+> 260926 3D 투사체 타이밍 변경: 각 플레이어 Projectile은 타일 거리에 따라 `Clamp(0.04 + tileDistance * 0.02, 0.06, 0.14)`초 동안 비행한 뒤 피해를 적용한다. 거리 계산이 불가능한 특수 발사는 최대값인 0.14초를 사용한다. Projectile 도착 시간은 피해 시점만 결정하며, 다음 순차 발사는 거리와 무관한 고정 `shotInterval` 0.05초를 기준으로 진행한다. 두 타이머는 명시적인 게임 일시정지만 존중하는 unscaled time을 사용하므로 발사·피격 히트스톱이나 슬로모션이 실제 발사 간격을 늘리지 않는다.
 
 > 260802 실린더 회전 동기화 수정: 빠른 전탄 발사 중 이전 회전이 끝나기 전에 다음 탄환이 제거되면 현재 중간 각도에서 목표를 다시 더해 회전 오차가 누적되던 문제를 수정했다. 목표 각도는 장전 수에 따른 절대 각도로 계산하고, 장전 수가 변하지 않은 Deck 상태 이벤트는 진행 중인 회전을 중단하지 않는다.
 
@@ -69,7 +73,7 @@
 * R 키는 장전, Space 키와 마우스 왼쪽 버튼은 발사에 사용합니다.
 * UI 연결을 위해 `Reload`와 `Shoot`을 공개 메소드로 구현합니다.
 * 성공한 장전은 턴을 소비하고 실패한 장전과 발사는 턴을 소비하지 않습니다.
-* `shotInterval`을 추가하고 기본값을 0.2초로 설정합니다.
+* `shotInterval`을 추가하고 현재 기본값을 0.05초로 설정합니다.
 * Shoot 한 번에 장전된 탄환을 `shotInterval` 간격으로 전부 순차 발사합니다.
 * 각 탄환 발사 시 `Panel | Floating > Bullet FeedBack Image`를 해당 탄환의 Primary Line Color와 알파 0.2로 활성화하고 `shotInterval` 동안 알파를 0까지 감소시킵니다.
 * 연속 발사 중 장전, 추가 발사, 이동, 회전, 대기, 약실 제거를 포함한 모든 플레이어 행동을 실행하지 않습니다.
@@ -209,7 +213,7 @@
 
 현재 셔플 순서인 `deck`, 장전 순서인 `loadedBullets`, 발사 완료 순서인 `graveyard`는 `Runtime State` 아래의 직렬화 필드로 선언해 Play Mode Inspector에서 확인할 수 있다. 외부 UI에는 `Deck`, `LoadedBullets`, `Graveyard`, `MaxReloadAmount` 읽기 전용 프로퍼티와 `StateChanged` 이벤트를 제공한다. 리스트의 끝을 장전 큐의 위로 사용하며 `TryFireLoadedBullet`은 마지막에 장전한 탄환부터 제거해 무덤 끝에 추가한다.
 
-`PlayerShoot`은 R, Space, 마우스 왼쪽 버튼을 새 Input System으로 처리하고 공개 `Reload`, `Shoot`, `TryEjectLoadedBullet` 메소드를 제공한다. `shotInterval`은 기본 0.2초이며, `Shoot`은 Coroutine을 시작해 장전 목록의 마지막 탄환부터 LIFO 순서로 전부 발사한다. S 키와 Wait 버튼은 `PlayerMove.Wait`를 호출해 행동 없이 한 턴을 넘긴다. 실린더 탄환 우클릭은 선택한 탄환 한 발을 사용한 탄환 순환으로 옮기며 턴을 소비하지 않는다. 연속 발사 중에는 `isFiring`으로 R, Space, 마우스 발사와 UI의 Reload, 약실 제거 및 Shoot 재호출을 막는다. 동시에 `PlayerMove.SetShooting(true)`를 전달해 키보드·마우스 및 UI에서 호출되는 이동, 회전, 대기도 차단한다. 발사 묶음의 턴 완료 처리까지 끝난 뒤 잠금을 해제하며 PlayerShoot이 비활성화될 때도 잠금 상태를 복구한다. `Time.frameCount`를 이용한 같은 프레임 중복 방어도 유지했다. UI 위의 마우스 클릭은 Inspector에서 연결한 `EventSystem`으로 판별해 월드 발사 입력에서 제외한다. `InventoryUI`는 아이템 슬롯 클릭을 `IPointerClickHandler`로 받아 처리하므로 아이템 사용·판매·이벤트 선택과 같은 좌클릭이 사격 입력으로 동시에 전달되지 않는다.
+`PlayerShoot`은 R, Space, 마우스 왼쪽 버튼을 새 Input System으로 처리하고 공개 `Reload`, `Shoot`, `TryEjectLoadedBullet` 메소드를 제공한다. `shotInterval`은 기본 0.05초이며, `Shoot`은 Coroutine을 시작해 장전 목록의 마지막 탄환부터 LIFO 순서로 전부 발사한다. S 키와 Wait 버튼은 `PlayerMove.Wait`를 호출해 행동 없이 한 턴을 넘긴다. 실린더 탄환 우클릭은 선택한 탄환 한 발을 사용한 탄환 순환으로 옮기며 턴을 소비하지 않는다. 연속 발사 중에는 `isFiring`으로 R, Space, 마우스 발사와 UI의 Reload, 약실 제거 및 Shoot 재호출을 막는다. 동시에 `PlayerMove.SetShooting(true)`를 전달해 키보드·마우스 및 UI에서 호출되는 이동, 회전, 대기도 차단한다. 발사 묶음의 턴 완료 처리까지 끝난 뒤 잠금을 해제하며 PlayerShoot이 비활성화될 때도 잠금 상태를 복구한다. `Time.frameCount`를 이용한 같은 프레임 중복 방어도 유지했다. UI 위의 마우스 클릭은 Inspector에서 연결한 `EventSystem`으로 판별해 월드 발사 입력에서 제외한다. `InventoryUI`는 아이템 슬롯 클릭을 `IPointerClickHandler`로 받아 처리하므로 아이템 사용·판매·이벤트 선택과 같은 좌클릭이 사격 입력으로 동시에 전달되지 않는다.
 
 `Stage 1`의 `Panel | Floating > Bullet FeedBack Image`를 `PlayerShoot > Bullet Feedback Image`에 직접 연결했다. 탄환이 실제로 장전 목록에서 제거된 직후 해당 탄환의 `Primary Line Color` RGB와 고정 알파 0.2를 적용해 활성화하며, 현재 `Shot Interval` 동안 알파만 선형으로 0까지 감소시킨 뒤 비활성화한다. 다음 탄환이 먼저 발사되면 기존 페이드를 중단하고 새 탄환 색상으로 처음부터 다시 시작한다. 일시정지 중에는 페이드 시간이 진행되지 않으며, 전체 화면 Image가 UI 입력을 가로채지 않도록 Raycast Target을 런타임에 해제한다.
 

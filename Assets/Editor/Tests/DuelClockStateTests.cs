@@ -169,7 +169,7 @@ public sealed class DuelClockStateTests
     }
 }
 
-public sealed class BattleDataCombatPacingTests
+public sealed class BattleDataBoardRangeTests
 {
     private BattleData battleData;
 
@@ -186,22 +186,49 @@ public sealed class BattleDataCombatPacingTests
     }
 
     [Test]
-    public void NewBattleDefaultsToLegacyPacing()
+    public void NewBattleDefaultsToSevenBoardTiles()
     {
-        Assert.That((int)CombatPacingMode.Legacy, Is.Zero);
-        Assert.That((int)CombatPacingMode.DuelClock, Is.EqualTo(1));
-        Assert.That(battleData.PacingMode,
-            Is.EqualTo(CombatPacingMode.Legacy));
+        Assert.That(battleData.MinimumBoardCount, Is.EqualTo(7));
+        Assert.That(battleData.MaximumBoardCount, Is.EqualTo(7));
+        Assert.That(battleData.RollBoardCount(), Is.EqualTo(7));
     }
 
     [Test]
-    public void NewBattleUsesPrototypeDuelClockValues()
+    public void SavedBoardCountOutsideRangeFallsBackToMinimum()
     {
-        Assert.That(battleData.DuelClockNaturalProgressPerSecond,
-            Is.EqualTo(4f));
-        Assert.That(battleData.DuelClockPaidActionProgress,
-            Is.EqualTo(45f));
-        Assert.That(DuelClockState.CycleLength, Is.EqualTo(100d));
+        Assert.That(battleData.ResolveSavedBoardCount(0), Is.EqualTo(7));
+        Assert.That(battleData.ResolveSavedBoardCount(7), Is.EqualTo(7));
+        Assert.That(battleData.ResolveSavedBoardCount(8), Is.EqualTo(7));
+    }
+
+    [Test]
+    public void BoardRollUsesInclusiveAuthoredRange()
+    {
+        SerializedObject serialized = new SerializedObject(battleData);
+        serialized.FindProperty("minimumBoardCount").intValue = 5;
+        serialized.FindProperty("maximumBoardCount").intValue = 8;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        UnityEngine.Random.State originalState = UnityEngine.Random.state;
+        HashSet<int> results = new HashSet<int>();
+
+        try
+        {
+            UnityEngine.Random.InitState(1729);
+
+            for (int index = 0; index < 256; index++)
+            {
+                int boardCount = battleData.RollBoardCount();
+                Assert.That(boardCount, Is.InRange(5, 8));
+                results.Add(boardCount);
+            }
+        }
+        finally
+        {
+            UnityEngine.Random.state = originalState;
+        }
+
+        Assert.That(results, Does.Contain(5));
+        Assert.That(results, Does.Contain(8));
     }
 }
 
@@ -298,7 +325,7 @@ public sealed class WaveManagerActiveEnemyLimitTests
 public sealed class DuelClockBattleAssetTests
 {
     [Test]
-    public void EveryBattleUsesDuelClockAndAValidEnemyPool()
+    public void EveryBattleUsesCylinderTempoAndAValidEnemyPool()
     {
         string[] battleGuids = AssetDatabase.FindAssets(
             "t:BattleData",
@@ -312,43 +339,34 @@ public sealed class DuelClockBattleAssetTests
             BattleData battle = AssetDatabase.LoadAssetAtPath<BattleData>(
                 assetPath);
             Assert.That(battle, Is.Not.Null, assetPath);
-            int flattenedEnemyCount = 0;
+            Assert.That(
+                battle.MaximumBoardCount,
+                Is.GreaterThanOrEqualTo(battle.MinimumBoardCount),
+                assetPath);
+            Assert.That(
+                battle.DuelClockEnemySpawnEntries,
+                Is.Not.Empty,
+                assetPath);
+            int minimumSpawnCount = 0;
+            HashSet<EnemyData> authoredEnemies = new HashSet<EnemyData>();
 
-            foreach (EnemyWave wave in battle.Waves)
+            foreach (DuelClockEnemySpawnEntry entry in
+                     battle.DuelClockEnemySpawnEntries)
             {
-                foreach (EnemyWaveEntry entry in wave.Enemies)
-                {
-                    flattenedEnemyCount += entry.Count;
-                }
-            }
-
-            Assert.That(battle.PacingMode,
-                Is.EqualTo(CombatPacingMode.DuelClock), assetPath);
-            if (battle.DuelClockEnemySpawnEntries.Count > 0)
-            {
-                int minimumSpawnCount = 0;
-
-                foreach (DuelClockEnemySpawnEntry entry in
-                         battle.DuelClockEnemySpawnEntries)
-                {
-                    Assert.That(entry, Is.Not.Null, assetPath);
-                    Assert.That(entry.EnemyData, Is.Not.Null, assetPath);
-                    Assert.That(entry.Weight, Is.GreaterThan(0f), assetPath);
-                    minimumSpawnCount += entry.MinimumSpawnCount;
-                }
-
+                Assert.That(entry, Is.Not.Null, assetPath);
+                Assert.That(entry.EnemyData, Is.Not.Null, assetPath);
+                Assert.That(entry.Weight, Is.GreaterThan(0f), assetPath);
                 Assert.That(
-                    battle.DuelClockEnemySpawnCount,
-                    Is.GreaterThanOrEqualTo(minimumSpawnCount),
+                    authoredEnemies.Add(entry.EnemyData),
+                    Is.True,
                     assetPath);
+                minimumSpawnCount += entry.MinimumSpawnCount;
             }
-            else
-            {
-                Assert.That(battle.DuelClockEnemyPool.Count,
-                    Is.EqualTo(flattenedEnemyCount), assetPath);
-                Assert.That(battle.DuelClockEnemyPool,
-                    Has.None.Null, assetPath);
-            }
+
+            Assert.That(
+                battle.DuelClockEnemySpawnCount,
+                Is.GreaterThanOrEqualTo(minimumSpawnCount),
+                assetPath);
         }
     }
 }
@@ -1194,14 +1212,6 @@ public sealed class DuelClockControllerTests
         float paidProgress)
     {
         BattleData battle = CreateAsset<BattleData>();
-        SerializedObject serializedBattle = new SerializedObject(battle);
-        serializedBattle.FindProperty("combatPacingMode").enumValueIndex =
-            (int)CombatPacingMode.DuelClock;
-        serializedBattle.FindProperty("duelClockNaturalProgressPerSecond")
-            .floatValue = naturalProgress;
-        serializedBattle.FindProperty("duelClockPaidActionProgress")
-            .floatValue = paidProgress;
-        serializedBattle.ApplyModifiedPropertiesWithoutUndo();
         return battle;
     }
 
@@ -2191,14 +2201,6 @@ public sealed class WaveManagerPacingDispatchTests
     {
         BattleData battle = ScriptableObject.CreateInstance<BattleData>();
         createdAssets.Add(battle);
-        SerializedObject serializedBattle = new SerializedObject(battle);
-        serializedBattle.FindProperty("combatPacingMode").enumValueIndex =
-            (int)CombatPacingMode.DuelClock;
-        serializedBattle.FindProperty("duelClockNaturalProgressPerSecond")
-            .floatValue = naturalProgress;
-        serializedBattle.FindProperty("duelClockPaidActionProgress")
-            .floatValue = paidProgress;
-        serializedBattle.ApplyModifiedPropertiesWithoutUndo();
         return battle;
     }
 }

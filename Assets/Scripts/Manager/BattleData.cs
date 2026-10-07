@@ -90,38 +90,22 @@ public class BattleData : ScriptableObject
     [SerializeField] private BattleType battleType;
     [Tooltip("Battle 씬의 3D 환경, 카메라와 조명 설정입니다.")]
     [SerializeField] private BattleEnvironmentProfile environmentProfile;
+    [Tooltip("전투 시작 시 생성할 보드 칸 수의 최솟값입니다.")]
     [Min(1)]
-    [SerializeField] private int boardCount = 7;
+    [SerializeField] private int minimumBoardCount = 7;
+    [Tooltip("전투 시작 시 생성할 보드 칸 수의 최댓값입니다.")]
+    [Min(1)]
+    [SerializeField] private int maximumBoardCount = 7;
     [SerializeField] private BoardTile tilePrefab;
-    [Min(0)]
-    [SerializeField] private int spawnTerm = 2;
-    [SerializeField] private EnemyWave[] waves = Array.Empty<EnemyWave>();
 
-    [Header("Combat Pacing")]
-    [SerializeField] private CombatPacingMode combatPacingMode =
-        CombatPacingMode.Legacy;
-    [HideInInspector]
-    [Min(0f)]
-    [Tooltip("Legacy Duel Clock value retained for serialized asset compatibility. Cylinder Tempo has no natural charge.")]
-    [SerializeField] private float duelClockNaturalProgressPerSecond = 4f;
-    [HideInInspector]
-    [Min(0f)]
-    [Tooltip("Legacy Duel Clock value retained for serialized asset compatibility. Cylinder Tempo uses fixed per-action costs.")]
-    [SerializeField] private float duelClockPaidActionProgress = 45f;
-    [HideInInspector]
+    [Header("Enemy Spawning")]
     [Min(1)]
-    [Tooltip("Legacy reinforcement interval retained for serialized asset compatibility. The spawn gauge now controls reinforcements.")]
-    [SerializeField] private int duelClockEnemyWaveCount = 5;
-    [Min(1)]
-    [Tooltip("Total enemies spawned during this Duel Clock battle.")]
+    [Tooltip("이 전투에서 생성되는 적의 총 수입니다.")]
     [SerializeField] private int duelClockEnemySpawnCount = 1;
-    [Tooltip("Weighted enemy types available to this Duel Clock battle.")]
+    [Tooltip("이 전투에서 등장할 수 있는 적과 가중치입니다.")]
     [SerializeField] private DuelClockEnemySpawnEntry[]
         duelClockEnemySpawnEntries =
             Array.Empty<DuelClockEnemySpawnEntry>();
-    [HideInInspector]
-    [SerializeField] private EnemyData[] duelClockEnemyPool =
-        Array.Empty<EnemyData>();
 
     public string BattleId => battleId;
     public string DisplayName => displayName;
@@ -138,16 +122,13 @@ public class BattleData : ScriptableObject
     public BattleEnvironmentProfile EnvironmentProfile =>
         environmentProfile;
     public bool IsBoss => battleType == BattleType.Boss;
-    public int BoardCount => Mathf.Max(1, boardCount);
+    public int MinimumBoardCount => Mathf.Max(
+        1,
+        Mathf.Min(minimumBoardCount, maximumBoardCount));
+    public int MaximumBoardCount => Mathf.Max(
+        MinimumBoardCount,
+        Mathf.Max(minimumBoardCount, maximumBoardCount));
     public BoardTile TilePrefab => tilePrefab;
-    public int SpawnTerm => Mathf.Max(0, spawnTerm);
-    public IReadOnlyList<EnemyWave> Waves =>
-        waves ?? (IReadOnlyList<EnemyWave>)Array.Empty<EnemyWave>();
-    public CombatPacingMode PacingMode => combatPacingMode;
-    public float DuelClockNaturalProgressPerSecond =>
-        Mathf.Max(0f, duelClockNaturalProgressPerSecond);
-    public float DuelClockPaidActionProgress =>
-        Mathf.Max(0f, duelClockPaidActionProgress);
     public int DuelClockEnemySpawnCount =>
         Mathf.Max(1, duelClockEnemySpawnCount);
     public IReadOnlyList<DuelClockEnemySpawnEntry>
@@ -155,6 +136,32 @@ public class BattleData : ScriptableObject
             duelClockEnemySpawnEntries
             ?? (IReadOnlyList<DuelClockEnemySpawnEntry>)Array.Empty<
                 DuelClockEnemySpawnEntry>();
-    public IReadOnlyList<EnemyData> DuelClockEnemyPool =>
-        duelClockEnemyPool ?? (IReadOnlyList<EnemyData>)Array.Empty<EnemyData>();
+
+    public int RollBoardCount()
+    {
+        int minimum = MinimumBoardCount;
+        int maximum = MaximumBoardCount;
+        return minimum == maximum
+            ? minimum
+            : UnityEngine.Random.Range(minimum, maximum + 1);
+    }
+
+    public int ResolveSavedBoardCount(int savedBoardCount)
+    {
+        return savedBoardCount >= MinimumBoardCount
+            && savedBoardCount <= MaximumBoardCount
+                ? savedBoardCount
+                : MinimumBoardCount;
+    }
+
+    private void OnValidate()
+    {
+        minimumBoardCount = Mathf.Max(1, minimumBoardCount);
+        maximumBoardCount = Mathf.Max(
+            minimumBoardCount,
+            maximumBoardCount);
+        duelClockEnemySpawnCount = Mathf.Max(
+            1,
+            duelClockEnemySpawnCount);
+    }
 }

@@ -19,36 +19,9 @@ MonoBehaviour:
   clearNoticeDescription: "\uBAA8\uB4E0 \uC801\uC744 \uC18C\uD0D5\uD588\uC2B5\uB2C8\uB2E4!"
   battleType: 0
   environmentProfile: {fileID: 11400000, guid: ef883037f77d1cf4e99fcd515900fb66, type: 2}
-  boardCount: 7
+  minimumBoardCount: 6
+  maximumBoardCount: 10
   tilePrefab: {fileID: 6102437938462105721, guid: a8a92d97c094e1b42bdbf5fbb08aa209, type: 3}
-  spawnTerm: 2
-  waves:
-  - enemies:
-    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 3
-  - enemies:
-    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 3
-    - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-      count: 1
-  - enemies:
-    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 2
-    - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-      count: 2
-  - enemies:
-    - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-      count: 1
-    - enemyData: {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-      count: 1
-    - enemyData: {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
-      count: 1
-    - enemyData: {fileID: 11400000, guid: 546274efc59a7a64ab1efd44b977fcea, type: 2}
-      count: 1
-  combatPacingMode: 1
-  duelClockNaturalProgressPerSecond: 15
-  duelClockPaidActionProgress: 50
-  duelClockEnemyWaveCount: 3
   duelClockEnemySpawnCount: 18
   duelClockEnemySpawnEntries:
   - enemyData: {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
@@ -76,19 +49,3 @@ MonoBehaviour:
     minimumSpawnCount: 1
     missedSpawnWeightIncrease: 1
     previousSpawnWeightMultiplier: 0.3
-  duelClockEnemyPool:
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-  - {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-  - {fileID: 11400000, guid: 938c3d4b3a649834cad71bcc06e834c7, type: 2}
-  - {fileID: 11400000, guid: c643f327e3f2cdc4ab5965f063630a69, type: 2}
-  - {fileID: 11400000, guid: 53e47cb6d943a7647aae7a913f2245d3, type: 2}
-  - {fileID: 11400000, guid: 546274efc59a7a64ab1efd44b977fcea, type: 2}

@@ -369,17 +369,14 @@ public class BossBombManager : MonoBehaviour
             int centerTile = bomb.TileIndex;
             int laneIndex = bomb.LaneIndex;
             int radius = sourceData.BigBarrel.BombExplosionRadius;
-            EnemyPlayerDodgeWindowState dodgeState =
-                CapturePlayerDodgeWindow(centerTile, laneIndex, radius);
             QueueChainBombs(centerTile, laneIndex, radius, bomb);
             pendingExplosionResolutions++;
-            StartCoroutine(ResolveExplosionAfterDodgeWindow(
+            StartCoroutine(ResolveExplosionAfterWarning(
                 bomb,
                 sourceData,
                 centerTile,
                 laneIndex,
-                radius,
-                dodgeState));
+                radius));
         }
 
         detonationQueue.Clear();
@@ -387,30 +384,55 @@ public class BossBombManager : MonoBehaviour
         isProcessingDetonations = false;
     }
 
-    private IEnumerator ResolveExplosionAfterDodgeWindow(
+    private IEnumerator ResolveExplosionAfterWarning(
         BossBomb bomb,
         EnemyData sourceData,
         int centerTile,
         int laneIndex,
-        int radius,
-        EnemyPlayerDodgeWindowState dodgeState)
+        int radius)
     {
-        SoundManager.PlayEnemyAttackWarning();
-        float elapsedTime = 0f;
-        EnemyPlayerDodgeResolution dodgeResolution = default;
         float dodgeWindowDuration = sourceData == null
             ? EnemyData.DefaultAttackDodgeWindowDuration
             : sourceData.AttackDodgeWindowDuration;
+        float chargeElapsedTime = 0f;
 
-        while (elapsedTime < dodgeWindowDuration)
+        while (chargeElapsedTime < dodgeWindowDuration)
         {
             yield return null;
 
             if (!GamePauseController.IsPaused)
             {
-                elapsedTime += Time.deltaTime;
+                chargeElapsedTime += Time.deltaTime;
                 boardManager?.SetWarningProgress(bomb,
-                    dodgeWindowDuration <= 0f ? 1f : elapsedTime / dodgeWindowDuration);
+                    dodgeWindowDuration <= 0f
+                        ? 1f
+                        : chargeElapsedTime / dodgeWindowDuration);
+            }
+        }
+
+        if (bombsPaused || bomb == null || sourceData == null
+            || !activeBombs.Contains(bomb))
+        {
+            pendingExplosionResolutions = Mathf.Max(
+                0,
+                pendingExplosionResolutions - 1);
+            yield break;
+        }
+
+        boardManager?.SetWarningProgress(bomb, 1f);
+        SoundManager.PlayEnemyAttackWarning();
+        EnemyPlayerDodgeWindowState dodgeState =
+            CapturePlayerDodgeWindow(centerTile, laneIndex, radius);
+        EnemyPlayerDodgeResolution dodgeResolution = default;
+        float dodgeElapsedTime = 0f;
+
+        while (dodgeElapsedTime < dodgeWindowDuration)
+        {
+            yield return null;
+
+            if (!GamePauseController.IsPaused)
+            {
+                dodgeElapsedTime += Time.deltaTime;
                 TryConfirmPlayerDodge(
                     dodgeState,
                     IsPlayerThreatened(centerTile, laneIndex, radius),
@@ -436,7 +458,6 @@ public class BossBombManager : MonoBehaviour
             IsPlayerThreatened(centerTile, laneIndex, radius),
             sourceData,
             ref dodgeResolution);
-        boardManager?.SetWarningProgress(bomb, 1f);
         SoundManager.PlaySfx("SFX_BigBarrel_Bomb");
         combatFeedback ??= FindFirstObjectByType<CombatFeedbackController>();
         combatFeedback?.RecordExplosionCameraShake();

@@ -106,9 +106,13 @@ public sealed class SceneIntegrityTests
                 Is.Not.Null,
                 $"Stage 1 battle '{battle.name}' is missing a tile prefab.");
             Assert.That(
-                battle.Waves,
+                battle.DuelClockEnemySpawnEntries,
                 Is.Not.Empty,
-                $"Stage 1 battle '{battle.name}' has no authored waves.");
+                $"Stage 1 battle '{battle.name}' has no authored enemy pool.");
+            Assert.That(
+                battle.MaximumBoardCount,
+                Is.GreaterThanOrEqualTo(battle.MinimumBoardCount),
+                $"Stage 1 battle '{battle.name}' has an invalid board range.");
             Assert.That(
                 battle.IsBoss,
                 Is.EqualTo(index == lastBattleIndex),

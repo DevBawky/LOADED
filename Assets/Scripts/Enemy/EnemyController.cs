@@ -2337,11 +2337,6 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             yield break;
         }
 
-        if (enemyData.BehaviorType == EnemyBehaviorType.Gunner)
-        {
-            SoundManager.PlaySfx("SFX_Enemy_Shoot");
-        }
-
         BeginAttackTelegraph(attackData);
         if (enemyData.BehaviorType == EnemyBehaviorType.Thrower)
         {
@@ -3816,7 +3811,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
         EnemyPlayerDodgeWindowState dodgeState = default;
         EnemyPlayerDodgeResolution dodgeResolution = default;
         bool dodgeWindowStarted = false;
+        bool dodgeWindowResolved = false;
         bool attackEvaluated = false;
+        float dodgeWindowDuration = enemyData == null
+            ? EnemyData.DefaultAttackDodgeWindowDuration
+            : enemyData.AttackDodgeWindowDuration;
+        float dodgeWindowElapsedTime = 0f;
+        isAttackDodgeWindowOpen = false;
+        isAttackActiveWindowOpen = false;
 
         void BeginDodgeWindow()
         {
@@ -3826,8 +3828,14 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             }
 
             dodgeWindowStarted = true;
+            telegraphPresenter?.SetProgress(1f);
             isAttackDodgeWindowOpen = true;
             SoundManager.PlayEnemyAttackWarning();
+            if (enemyData != null
+                && enemyData.BehaviorType == EnemyBehaviorType.Gunner)
+            {
+                SoundManager.PlaySfx("SFX_Enemy_Shoot");
+            }
             telegraphPresenter?.MarkAttackImminent();
             dodgeState = CapturePlayerDodgeWindow(isPlayerThreatened);
         }
@@ -3850,13 +3858,26 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
 
         void EvaluateAttackAtImpact()
         {
-            if (evaluateAttackHit == null || attackEvaluated)
+            if (evaluateAttackHit == null || attackEvaluated
+                || !dodgeWindowResolved)
             {
                 return;
             }
 
             attackEvaluated = true;
             telegraphPresenter?.SetProgress(1f);
+            evaluateAttackHit(dodgeResolution.PlayerDodged);
+        }
+
+        void ResolveDodgeWindow()
+        {
+            if (dodgeWindowResolved || evaluateAttackHit == null)
+            {
+                return;
+            }
+
+            TryConfirmDodgeBeforeImpact();
+            dodgeWindowResolved = true;
             isAttackDodgeWindowOpen = false;
 
             if (!dodgeResolution.IsResolved)
@@ -3866,32 +3887,36 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                     isPlayerThreatened?.Invoke() == true,
                     ref dodgeResolution);
             }
-
-            evaluateAttackHit(dodgeResolution.PlayerDodged);
         }
 
-        if (!hasAnimation)
+        if (evaluateAttackHit != null)
         {
-            BeginDodgeWindow();
-            float chargeElapsed = 0f;
-            float chargeDuration = enemyData == null
-                ? EnemyData.DefaultAttackDodgeWindowDuration : enemyData.AttackDodgeWindowDuration;
+            float chargeElapsedTime = 0f;
             yield return WaitForAttackTiming(
-                chargeDuration,
+                dodgeWindowDuration,
                 () =>
                 {
-                    chargeElapsed += Time.deltaTime;
-                    telegraphPresenter?.SetProgress(chargeDuration <= 0f ? 1f : chargeElapsed / chargeDuration);
-                    TryConfirmDodgeBeforeImpact();
+                    chargeElapsedTime += Time.deltaTime;
+                    telegraphPresenter?.SetProgress(
+                        dodgeWindowDuration <= 0f
+                            ? 1f
+                            : chargeElapsedTime / dodgeWindowDuration);
                 });
-            TryConfirmDodgeBeforeImpact();
+            telegraphPresenter?.SetProgress(1f);
+            BeginDodgeWindow();
+        }
+
+        if (!hasAnimation || avatarAnimator == null)
+        {
+            yield return WaitForAttackTiming(
+                dodgeWindowDuration,
+                TryConfirmDodgeBeforeImpact);
+            ResolveDodgeWindow();
             EvaluateAttackAtImpact();
             yield break;
         }
 
         int animationSequence = ++avatarAnimationSequence;
-        isAttackDodgeWindowOpen = false;
-        isAttackActiveWindowOpen = false;
         avatarEffects?.StopEffects();
         avatarAnimator.Play(animationStateHash, 0, 0f);
         avatarAnimator.Update(0f);
@@ -3902,19 +3927,12 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
             attackState.length / Mathf.Max(0.01f, avatarAnimator.speed));
         bool hasActiveWindow = TryGetAttackActiveWindowTiming(
             out EnemyAttackActiveWindowTiming activeWindowTiming);
-        float fallbackHitTime = enemyData == null
-            ? EnemyData.DefaultAttackDodgeWindowDuration
-            : enemyData.AttackDodgeWindowDuration;
+        float fallbackHitTime = dodgeWindowDuration;
 
         float elapsedTime = 0f;
         float previousNormalizedTime = 0f;
         float postImpactElapsedTime = 0f;
-
-        if (evaluateAttackHit != null && (!hasActiveWindow
-            || activeWindowTiming.DodgeStartNormalizedTime <= 0f))
-        {
-            BeginDodgeWindow();
-        }
+        bool activeWindowReached = false;
 
         while (elapsedTime < duration && avatarAnimator != null
             && animationSequence == avatarAnimationSequence)
@@ -3925,52 +3943,38 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 float normalizedTime = duration <= 0f
                     ? 1f
                     : Mathf.Clamp01(elapsedTime / duration);
-                float impactTime = hasActiveWindow
-                    ? duration * activeWindowTiming.StartNormalizedTime : fallbackHitTime;
-                if (!attackEvaluated)
-                    telegraphPresenter?.SetProgress(impactTime <= 0f ? 1f : elapsedTime / impactTime);
 
-                if (hasActiveWindow)
+                if (!activeWindowReached)
                 {
-                    if (!dodgeWindowStarted
-                        && (isAttackDodgeWindowOpen
-                            || activeWindowTiming.CrossesDodgeStart(
+                    activeWindowReached = hasActiveWindow
+                        ? isAttackActiveWindowOpen
+                            || activeWindowTiming.CrossesActiveStart(
                                 previousNormalizedTime,
-                                normalizedTime)))
-                    {
-                        BeginDodgeWindow();
-                    }
-
-                    bool activeWindowReached =
-                        isAttackActiveWindowOpen
-                        || activeWindowTiming.CrossesActiveStart(
-                            previousNormalizedTime,
-                            normalizedTime)
-                        || normalizedTime
-                            >= activeWindowTiming.StartNormalizedTime;
-
-                    if (activeWindowReached)
-                    {
-                        EvaluateAttackAtImpact();
-                    }
-                    else
-                    {
-                        TryConfirmDodgeBeforeImpact();
-                    }
+                                normalizedTime)
+                            || normalizedTime
+                                >= activeWindowTiming.StartNormalizedTime
+                        : elapsedTime >= fallbackHitTime;
                 }
-                else if (elapsedTime >= fallbackHitTime)
-                {
-                    EvaluateAttackAtImpact();
-                }
-                else
+
+                if (!dodgeWindowResolved)
                 {
                     TryConfirmDodgeBeforeImpact();
+
+                    if (dodgeWindowElapsedTime >= dodgeWindowDuration)
+                    {
+                        ResolveDodgeWindow();
+                    }
+                }
+
+                if (activeWindowReached && dodgeWindowResolved)
+                {
+                    EvaluateAttackAtImpact();
                 }
 
                 previousNormalizedTime = normalizedTime;
 
-                // Keep aim, dodge and authored active windows at their original
-                // speed. Only the gunner's cosmetic tail may finish early.
+                // Keep authored impact timing at its original speed. Only the
+                // gunner's cosmetic tail may finish early after the hit.
                 if (attackEvaluated && enemyData != null
                     && enemyData.BehaviorType == EnemyBehaviorType.Gunner
                     && postImpactElapsedTime >= GunnerPostImpactPresentationDuration
@@ -3990,33 +3994,27 @@ public partial class EnemyController : MonoBehaviour, IStatusEffectTarget
                 {
                     postImpactElapsedTime += Time.deltaTime;
                 }
+                else if (dodgeWindowStarted)
+                {
+                    dodgeWindowElapsedTime += Time.deltaTime;
+                }
             }
         }
 
         if (animationSequence == avatarAnimationSequence)
         {
-            if (evaluateAttackHit != null && hasActiveWindow)
-            {
-                if (!dodgeWindowStarted
-                    && activeWindowTiming.CrossesDodgeStart(
-                        previousNormalizedTime,
-                        1f))
-                {
-                    BeginDodgeWindow();
-                }
-
-                TryConfirmDodgeBeforeImpact();
-                EvaluateAttackAtImpact();
-            }
-            else if (evaluateAttackHit != null
-                && !attackEvaluated)
+            if (evaluateAttackHit != null && !dodgeWindowResolved)
             {
                 yield return WaitForAttackTiming(
-                    Mathf.Max(0f, fallbackHitTime - elapsedTime),
+                    Mathf.Max(
+                        0f,
+                        dodgeWindowDuration - dodgeWindowElapsedTime),
                     TryConfirmDodgeBeforeImpact);
-                TryConfirmDodgeBeforeImpact();
-                EvaluateAttackAtImpact();
+                ResolveDodgeWindow();
             }
+
+            activeWindowReached = true;
+            EvaluateAttackAtImpact();
 
             isAttackDodgeWindowOpen = false;
             isAttackActiveWindowOpen = false;

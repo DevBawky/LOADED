@@ -65,6 +65,17 @@ UI 규칙:
 - `Assets/Scenes/Battle.unity`
 - `Assets/Prefabs/UI/Canvas.prefab`
 
+전장 작성 규칙(2026-10-07):
+
+- `BattleData`의 `Minimum Board Count`와 `Maximum Board Count` 사이에서
+  전투 시작 시 보드 칸 수를 한 번 선택한다.
+- 선택된 칸 수는 런 저장 데이터에 포함되며 이어하기와 전투 종료 화면 복원에서
+  다시 추첨하지 않는다.
+- 적 구성은 `Duel Clock Enemy Spawn Count`와
+  `Duel Clock Enemy Spawn Entries`만 사용한다.
+- 구형 `Board Count`, `Spawn Term`, `Waves`, `Combat Pacing`, 자연/행동
+  진행도 및 레거시 적 풀 필드는 `BattleData`에서 제거됐다.
+
 ## 3. 2026-09-30 입력 안정화 수정
 
 ### 확인된 원인
@@ -135,7 +146,6 @@ UI 규칙:
 현재 콘솔의 남은 경고는 이번 입력 수정에서 새로 발생한 것이 아니다.
 
 - 사용되지 않는 `DuelClockController.SpawnCyclesCommitted`
-- 사용되지 않는 `BattleData.duelClockEnemyWaveCount`
 - 사용되지 않는 `CurrencyManager` 골드 연출 시간 필드
 - Train 하위 Door 오브젝트의 음수 스케일 `BoxCollider` 경고가 이전 Play 기록에 존재한다.
 

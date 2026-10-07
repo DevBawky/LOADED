@@ -1,5 +1,10 @@
 ## AI-006: EnemyController & WaveManager
 
+> 2026-10-07 후속 변경: 아래 `Waves`와 `Spawn Term` 설명은 레거시 구현
+> 기록이다. 현재 `BattleData`는 최소·최대 보드 칸 수와 가중치 적 스폰
+> 엔트리만 작성하며, `WaveManager`의 production 경로는 Cylinder Tempo를
+> 사용한다. 레거시 웨이브 API는 격리된 테스트 전투 호환용으로만 남아 있다.
+
 > 260802 후속 변경: `BattleData.Waves`는 적 프리팹 대신 `EnemyData`를 참조하고, `WaveManager`는 공용 `Enemy.prefab` 하나를 생성한 뒤 데이터를 주입한다. 최신 구조는 [`0802_EnemyData_Template_and_ActionPresentation.md`](0802_EnemyData_Template_and_ActionPresentation.md)를 기준으로 한다.
 
 > 260718 후속 변경: `WaveManager`는 현재 전투의 웨이브 실행만 담당한다. 전투 하나는 독립 `BattleData`, `StageData`는 BattleData 참조 배열이며 MainGame·Stage Clear·Shop 전환은 `StateManager`가 담당한다. 최신 적용 구조는 `0718_Shop_Reward_StageSystem.md`를 기준으로 한다.

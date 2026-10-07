@@ -55,6 +55,7 @@ public static class RunSaveSystem
 
         saveData.stageIndex = Mathf.Max(0, stageIndex);
         saveData.battleIndex = Mathf.Max(0, battleIndex);
+        saveData.battleBoardCount = 0;
         saveData.flowState = (int)GameFlowState.Battle;
         saveData.startSelectedBattleFresh = true;
         saveData.cumulativeBattleTurnCount = Mathf.Max(
@@ -241,6 +242,9 @@ public static class RunSaveSystem
         saveData.nextCycleAcquisitionOrders ??= new List<int>();
         saveData.inventoryItemAssetNames ??= new List<string>();
         saveData.relics ??= new List<RunRelicSaveData>();
+        saveData.battleBoardCount = Mathf.Max(
+            0,
+            saveData.battleBoardCount);
         saveData.playerLaneIndex = Mathf.Max(0, saveData.playerLaneIndex);
         saveData.playerTurnCount = Mathf.Max(0, saveData.playerTurnCount);
         saveData.cumulativeBattleTurnCount = Mathf.Max(

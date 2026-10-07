@@ -166,7 +166,7 @@ public partial class PlayerShoot : MonoBehaviour
     [SerializeField] private CombatPresentation combatPresentation;
     [SerializeField] private CombatFeedbackController combatFeedback;
     [Min(0f)]
-    [SerializeField] private float shotInterval = 0.15f;
+    [SerializeField] private float shotInterval = 0.05f;
 
     [Header("Shot Presentation")]
     [Min(0f)]
