@@ -155,10 +155,12 @@ MonoBehaviour:
   bulletIcon: {fileID: 0}
   bulletCylinderIcon: {fileID: 6593522042275190805}
   bulletNameText: {fileID: 1750971112117414349}
+  bulletTypeText: {fileID: 0}
   bulletGradeText: {fileID: 7937270184303281158}
   bulletDescriptionText: {fileID: 5784132723172537242}
   cylinderBulletTooltip: {fileID: 1831650271031403061}
   cylinderBulletNameText: {fileID: 2261475064601650278}
+  cylinderBulletTypeText: {fileID: 0}
   cylinderBulletGradeText: {fileID: 3618011689560352398}
   cylinderBulletDescriptionText: {fileID: 8680578652756337635}
   bulletTypeDescriptionPanel: {fileID: 4241802821600990949}
@@ -986,7 +988,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 8532437008094872239, guid: beac5afa4482adf48be401ff8c64ea23, type: 3}
+    - {fileID: 464740037819878849, guid: beac5afa4482adf48be401ff8c64ea23, type: 3}
+    - {fileID: 1976992175532299486, guid: beac5afa4482adf48be401ff8c64ea23, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
@@ -1155,6 +1160,14 @@ PrefabInstance:
     - target: {fileID: 3480381736572636194, guid: 768bcf5cf6355084c81fbda3b7fd5431, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4004946976281392130, guid: 768bcf5cf6355084c81fbda3b7fd5431, type: 3}
+      propertyPath: m_text
+      value: "\uC0C1\uC810"
+      objectReference: {fileID: 0}
+    - target: {fileID: 4004946976281392130, guid: 768bcf5cf6355084c81fbda3b7fd5431, type: 3}
+      propertyPath: m_fontSize
+      value: 51.05
       objectReference: {fileID: 0}
     - target: {fileID: 5736583663976514214, guid: 768bcf5cf6355084c81fbda3b7fd5431, type: 3}
       propertyPath: m_ChildAlignment
