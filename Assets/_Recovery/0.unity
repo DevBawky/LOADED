@@ -48898,18 +48898,6 @@ PrefabInstance:
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
       objectReference: {fileID: 2023230408}
-    - target: {fileID: 2706846102208123270, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
-      propertyPath: m_text
-      value: <color=red>Subscribe </color>& <color=blue>Like
-      objectReference: {fileID: 0}
-    - target: {fileID: 2706846102208123270, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
-      propertyPath: m_fontSize
-      value: 45.55
-      objectReference: {fileID: 0}
-    - target: {fileID: 2706846102208123270, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
-      propertyPath: m_fontStyle
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 3155917204408910007, guid: de39f2726ecb0b8409f8b20af40dddbd, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1

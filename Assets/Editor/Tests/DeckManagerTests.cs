@@ -1085,6 +1085,153 @@ public sealed class ComboFeedbackProgressionTests
     private const string PlayerPrefabPath =
         "Assets/Prefabs/Player/Player.prefab";
 
+    [TestCase(0, 0f)]
+    [TestCase(4, 0f)]
+    [TestCase(5, 0.16f)]
+    [TestCase(40, 1f)]
+    [TestCase(330, 1f)]
+    public void ComboHeat_IgnitesAtFiveAndSaturatesAtForty(
+        int comboCount,
+        float expectedHeat)
+    {
+        Assert.That(
+            CombatComboHeatView.CalculateHeat(comboCount),
+            Is.EqualTo(expectedHeat).Within(0.0001f));
+    }
+
+    [TestCase(0f, 1f)]
+    [TestCase(2.5f, 0.5f)]
+    [TestCase(5f, 0f)]
+    [TestCase(8f, 0f)]
+    public void ComboHeat_FadesOutAcrossFiveSeconds(
+        float elapsedSinceDefeat,
+        float expectedMultiplier)
+    {
+        Assert.That(
+            CombatComboHeatView.CalculateFadeMultiplier(
+                elapsedSinceDefeat),
+            Is.EqualTo(expectedMultiplier).Within(0.0001f));
+    }
+
+    [TestCase(4, (int)ComboHeatTier.None)]
+    [TestCase(5, (int)ComboHeatTier.Spark)]
+    [TestCase(10, (int)ComboHeatTier.Glow)]
+    [TestCase(20, (int)ComboHeatTier.Blaze)]
+    [TestCase(30, (int)ComboHeatTier.Inferno)]
+    [TestCase(40, (int)ComboHeatTier.Maximum)]
+    [TestCase(179, (int)ComboHeatTier.Maximum)]
+    public void ComboHeat_UsesReachableFortyComboTiers(
+        int comboCount,
+        int expectedTier)
+    {
+        Assert.That(
+            (int)CombatComboHeatView.ResolveTier(comboCount),
+            Is.EqualTo(expectedTier));
+    }
+
+    [Test]
+    public void ComboHeat_RapidDefeatsUseBoundedPresentationPool()
+    {
+        GameObject host = new GameObject(
+            "Combo Heat Test",
+            typeof(RectTransform));
+        GameObject comboObject = new GameObject(
+            "Combo",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+        GameObject damageObject = new GameObject(
+            "Damage",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+
+        try
+        {
+            comboObject.transform.SetParent(host.transform, false);
+            damageObject.transform.SetParent(host.transform, false);
+            CombatComboHeatView view = host.AddComponent<
+                CombatComboHeatView>();
+            view.Configure(
+                comboObject.GetComponent<TMP_Text>(),
+                damageObject.GetComponent<TMP_Text>());
+
+            for (int comboCount = 1; comboCount <= 330; comboCount++)
+            {
+                view.Pulse(comboCount);
+            }
+
+            view.Render(330, 1f, 1f, 0f, false);
+
+            Assert.That(view.CurrentHeat, Is.EqualTo(1f));
+            Assert.That(
+                view.ActiveEmberCount,
+                Is.LessThanOrEqualTo(CombatComboHeatView.MaximumEmbers));
+        }
+        finally
+        {
+            Object.DestroyImmediate(host);
+        }
+    }
+
+    [Test]
+    public void ComboHeat_IgnitionShowsEveryEdgeAndNewDefeatRestartsFade()
+    {
+        GameObject host = new GameObject(
+            "Combo Heat Edge Test",
+            typeof(RectTransform));
+        GameObject comboObject = new GameObject(
+            "Combo",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+        GameObject damageObject = new GameObject(
+            "Damage",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(TextMeshProUGUI));
+
+        try
+        {
+            comboObject.transform.SetParent(host.transform, false);
+            damageObject.transform.SetParent(host.transform, false);
+            CombatComboHeatView view = host.AddComponent<
+                CombatComboHeatView>();
+            view.Configure(
+                comboObject.GetComponent<TMP_Text>(),
+                damageObject.GetComponent<TMP_Text>());
+
+            view.Pulse(5);
+            view.Render(5, 1f, 1f, 0f, false);
+
+            UnityEngine.UI.Image[] edgeImages = host
+                .GetComponentsInChildren<UnityEngine.UI.Image>(true)
+                .Where(image => image.name.Contains("Heat"))
+                .ToArray();
+            Assert.That(edgeImages, Has.Length.EqualTo(8));
+            Assert.That(
+                edgeImages.All(image => image.color.a > 0f),
+                Is.True);
+
+            view.Render(5, 1f, 1f, 2.5f, false);
+            Assert.That(view.CurrentHeat, Is.EqualTo(0.08f).Within(0.0001f));
+
+            view.Pulse(6);
+            view.Render(6, 1f, 1f, 0f, false);
+            Assert.That(
+                view.CurrentHeat,
+                Is.EqualTo(CombatComboHeatView.CalculateHeat(6))
+                    .Within(0.0001f));
+
+            view.Render(6, 1f, 1f, 5f, false);
+            Assert.That(view.CurrentHeat, Is.Zero);
+        }
+        finally
+        {
+            Object.DestroyImmediate(host);
+        }
+    }
+
     private static void InvokeLifecycleMethod(
         CombatFeedbackController feedback,
         string methodName)

@@ -141,19 +141,21 @@ public class StageProgressUI : MonoBehaviour
     {
         ResolveStageTitleText();
 
-        if (stageTitleText == null || stateManager == null)
+        if (stageTitleText == null)
         {
-            if (stageTitleText != null
-                && !string.IsNullOrEmpty(externalStageTitle))
-            {
-                stageTitleText.text = externalStageTitle;
-            }
             return;
         }
 
         if (!string.IsNullOrEmpty(externalStageTitle))
         {
             stageTitleText.text = externalStageTitle;
+            return;
+        }
+
+        // BattleTest uses the authored title as part of its recording setup.
+        // Runtime stage state must not overwrite that scene-local presentation.
+        if (BattleTestContext.IsActive || stateManager == null)
+        {
             return;
         }
 

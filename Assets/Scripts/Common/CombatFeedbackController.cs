@@ -382,6 +382,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
     private CanvasGroup cylinderChainCanvasGroup;
     private CanvasGroup comboCountCanvasGroup;
     private CanvasGroup damageCanvasGroup;
+    private CombatComboHeatView comboHeatView;
     private RectTransform comboRect;
     private RectTransform cylinderChainRect;
     private RectTransform damageRect;
@@ -559,6 +560,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
                     ? 1f
                     : 0f;
         }
+
+        RefreshComboHeatImmediate();
     }
 
     private void Awake()
@@ -634,6 +637,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
         RestoreVolume();
         ResetFullscreenImpact();
         ResetUiTransforms();
+        if (comboHeatView != null)
+        {
+            comboHeatView.ResetPresentation();
+        }
         ClearComboKillTexts();
         ClearDodgeAfterimages();
         defeatPresentationGeneration++;
@@ -741,6 +748,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         if (damageCanvasGroup != null)
         {
             damageCanvasGroup.alpha = 0f;
+        }
+
+        if (comboHeatView != null)
+        {
+            comboHeatView.ResetPresentation();
         }
     }
 
@@ -970,6 +982,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
         StopCountDrainAnimation();
         RefreshComboCountValues();
         UpdateComboText();
+        if (comboHeatView != null)
+        {
+            comboHeatView.Pulse(comboCount);
+        }
 
         bool playComboGoldSfx = false;
         if (comboCount > 1 && comboGoldPerKill > 0)
@@ -2199,6 +2215,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
         UpdateComboText();
         UpdateDamageText(false);
         RefreshComboCountValues();
+        if (comboHeatView != null)
+        {
+            comboHeatView.ResetPresentation();
+        }
     }
 
     private void UpdateDamage(float deltaTime)
@@ -2300,6 +2320,16 @@ public sealed class CombatFeedbackController : MonoBehaviour
         if (comboText != null && comboCount > 0)
         {
             comboText.color = GetComboColor();
+        }
+
+        if (comboHeatView != null)
+        {
+            comboHeatView.Render(
+                comboCount,
+                comboCanvasGroup.alpha,
+                damageCanvasGroup.alpha,
+                deltaTime,
+                GamePauseController.IsPaused);
         }
     }
 
@@ -2496,6 +2526,10 @@ public sealed class CombatFeedbackController : MonoBehaviour
             cylinderChainText.gameObject);
         comboCountCanvasGroup = GetOrAddCanvasGroup(comboCountRoot.gameObject);
         damageCanvasGroup = GetOrAddCanvasGroup(currentDamageText.gameObject);
+        comboHeatView = CombatComboHeatView.GetOrCreate(
+            feedbackPanel,
+            comboText,
+            currentDamageText);
         comboCanvasGroup.alpha = comboCount > 0 ? 1f : 0f;
         cylinderChainCanvasGroup.alpha = 0f;
         comboCountCanvasGroup.alpha = comboCanvasGroup.alpha;
@@ -2504,6 +2538,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         UpdateComboText();
         UpdateDamageText(false);
         RefreshComboCountValues();
+        RefreshComboHeatImmediate();
     }
 
     private static TMP_Text CreateCylinderChainText(
@@ -2649,6 +2684,23 @@ public sealed class CombatFeedbackController : MonoBehaviour
         UpdateComboText();
         UpdateDamageText(false);
         RefreshComboCountValues();
+        RefreshComboHeatImmediate();
+    }
+
+    private void RefreshComboHeatImmediate()
+    {
+        if (comboHeatView == null || comboCanvasGroup == null
+            || damageCanvasGroup == null)
+        {
+            return;
+        }
+
+        comboHeatView.Render(
+            comboCount,
+            comboCanvasGroup.alpha,
+            damageCanvasGroup.alpha,
+            0f,
+            GamePauseController.IsPaused);
     }
 
     private void ResetUiTransforms()

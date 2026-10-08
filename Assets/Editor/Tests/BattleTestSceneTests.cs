@@ -50,6 +50,52 @@ public sealed class BattleTestSceneTests
         }
     }
 
+    [Test]
+    public void StageTitleKeepsItsAuthoredBattleTestText()
+    {
+        SceneSetup[] previous = EditorSceneManager.GetSceneManagerSetup();
+
+        try
+        {
+            EditorSceneManager.OpenScene(BattleTestSceneBuilder.ScenePath);
+            StageProgressUI progress =
+                Object.FindFirstObjectByType<StageProgressUI>();
+            Assert.That(progress, Is.Not.Null);
+
+            var data = new SerializedObject(progress);
+            TMP_Text title = (TMP_Text)data.FindProperty("stageTitleText")
+                .objectReferenceValue;
+            Assert.That(title, Is.Not.Null);
+
+            const string authoredTitle = "BattleTest Recording";
+            title.text = authoredTitle;
+
+            var update = typeof(StageProgressUI).GetMethod(
+                "UpdateStageTitle",
+                System.Reflection.BindingFlags.Instance
+                | System.Reflection.BindingFlags.NonPublic);
+            Assert.That(update, Is.Not.Null);
+            update.Invoke(progress, null);
+
+            Assert.That(title.text, Is.EqualTo(authoredTitle));
+        }
+        finally
+        {
+            if (previous.Any(value => value.isLoaded
+                && value.isActive
+                && !string.IsNullOrEmpty(value.path)))
+            {
+                EditorSceneManager.RestoreSceneManagerSetup(previous);
+            }
+            else
+            {
+                EditorSceneManager.NewScene(
+                    NewSceneSetup.EmptyScene,
+                    NewSceneMode.Single);
+            }
+        }
+    }
+
     private static void AssertCatalog<T>(T[] catalog) where T : Object
     {
         T[] authored = AssetDatabase.FindAssets("t:" + typeof(T).Name, new[] { "Assets" })
