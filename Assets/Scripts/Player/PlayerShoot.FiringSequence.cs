@@ -781,6 +781,7 @@ public partial class PlayerShoot
 
                 CompletePhysicalBulletCriticalScope();
 
+                owner.PhysicalBulletResolved?.Invoke();
                 yield return WaitForEnemyReplacementAfterBullet();
 
                 previousResolvedBullet = resolvedBullet;
@@ -2778,6 +2779,11 @@ public partial class PlayerShoot
             BulletInstance bullet,
             CombatFeedbackController.DefeatPresentationCue cue)
         {
+            if (cue.SuppressPresentation)
+            {
+                return;
+            }
+
             float feedbackMultiplier = cue.FeedbackMultiplier > 0f
                 ? cue.FeedbackMultiplier
                 : 1f;

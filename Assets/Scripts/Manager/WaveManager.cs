@@ -670,9 +670,35 @@ public class WaveManager : MonoBehaviour, IEnemyTurnCycleRuntime
     internal bool TrySpawnTestEnemy(
         EnemyData data, int tile, int lane, out EnemyController enemy)
     {
+        return TrySpawnTestEnemy(
+            data,
+            tile,
+            lane,
+            false,
+            out enemy);
+    }
+
+    internal bool TrySpawnTestEnemyAfterPhysicalBullet(
+        EnemyData data, int tile, int lane, out EnemyController enemy)
+    {
+        return TrySpawnTestEnemy(
+            data,
+            tile,
+            lane,
+            true,
+            out enemy);
+    }
+
+    private bool TrySpawnTestEnemy(
+        EnemyData data,
+        int tile,
+        int lane,
+        bool allowDuringShooting,
+        out EnemyController enemy)
+    {
         enemy = null;
         if (!isTestBattle || IsResolvingTurn || playerMove.IsActing
-            || playerMove.IsShooting
+            || playerMove.IsShooting && !allowDuringShooting
             || !TrySpawnEnemy(data, tile, lane, out enemy))
         {
             return false;

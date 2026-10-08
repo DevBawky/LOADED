@@ -18,7 +18,7 @@ internal sealed class BattleTestCommandRouter
         + "bullet level <보유 번호> <강화 수치> / bullet remove <보유 번호>\n"
         + "relic add <유물> / relic remove <보유 번호> : 추가 / 제거\n"
         + "spawn <적> <칸> <레인> / random <수> : 지정 생성 / 무작위 생성\n"
-        + "refill on|off [점유율 0~100] / refill percent <점유율> : 전멸 시 자동 보충\n"
+        + "refill on|off [점유율 0~100] / refill percent <점유율> / refill limit <0~10, 0은 무한>\n"
         + "spawnpool [<적> on|off] : 자동 스폰 대상 목록 조회 / 허용 설정\n"
         + "enemy kill|remove <칸> <레인> : 처치 / 보상 없이 제거\n"
         + "enemy hp|shield|damage <칸> <레인> <수치> : 체력·보호막·피해\n"
@@ -83,6 +83,11 @@ internal sealed class BattleTestCommandRouter
                     {
                         Count(args, 3, 3);
                         return target.SetEnemyRefill(target.EnemyAutoRefill, Number(args[2]));
+                    }
+                    if (args[1] == "limit")
+                    {
+                        Count(args, 3, 3);
+                        return target.SetEnemyRefillLimit(Number(args[2]));
                     }
                     return target.SetEnemyRefill(Toggle(args[1]), args.Length == 3 ? Number(args[2]) : target.EnemyRefillPercent);
                 case "enemy":

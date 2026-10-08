@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public partial class PlayerShoot : MonoBehaviour
 {
     public event Action<BulletInstance> BulletFired;
+    internal event Action PhysicalBulletResolved;
     internal event Action<int> ShotgunVolleyPresented;
     public event Action<int> DamageDealt;
     public event Action<PlayerBehaviourAction> BehaviourActionStarted;
@@ -394,19 +395,22 @@ public partial class PlayerShoot : MonoBehaviour
                     true,
                     enemy.LastDamageAbsorbed);
         snapshot.OverkillStrength = presentationCue.OverkillStrength;
-        combatPresentation?.PlayImpact(
-            snapshot,
-            horizontalDirection,
-            currentConsumedBullet,
-            CombatImpactTier.Defeat,
-            presentationCue.FeedbackMultiplier > 0f
-                ? presentationCue.FeedbackMultiplier
-                : 1f,
-            combatFeedback == null
-                ? 0f
-                : combatFeedback.GetRemainingDefeatPresentationDelay(
-                    presentationCue),
-            presentationCue.WasFinalEnemy);
+        if (!presentationCue.SuppressPresentation)
+        {
+            combatPresentation?.PlayImpact(
+                snapshot,
+                horizontalDirection,
+                currentConsumedBullet,
+                CombatImpactTier.Defeat,
+                presentationCue.FeedbackMultiplier > 0f
+                    ? presentationCue.FeedbackMultiplier
+                    : 1f,
+                combatFeedback == null
+                    ? 0f
+                    : combatFeedback.GetRemainingDefeatPresentationDelay(
+                        presentationCue),
+                presentationCue.WasFinalEnemy);
+        }
         pendingEffectDefeats[enemy] = new ManagedEffectDefeatResult(
             damage,
             healthBeforeDamage,

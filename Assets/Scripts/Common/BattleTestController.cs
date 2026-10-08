@@ -7,6 +7,8 @@ using UnityEngine;
 [DefaultExecutionOrder(-50)]
 public sealed class BattleTestController : MonoBehaviour
 {
+    internal const int MaximumEnemyRefillLimit = 10;
+
     [SerializeField] private BoardManager board;
     [SerializeField] private WaveManager waves;
     [SerializeField] private DeckManager deck;
@@ -37,10 +39,14 @@ public sealed class BattleTestController : MonoBehaviour
     private bool checkpointEmergencyReload;
     private bool checkpointEnemyAutoRefill;
     private int checkpointEnemyRefillPercent;
+    private int checkpointEnemyRefillLimit;
+    private int checkpointEnemyRefillUses;
     private Dictionary<EnemyData, bool> checkpointEnemySpawnAllowed;
     private readonly Dictionary<EnemyData, bool> enemySpawnAllowed = new Dictionary<EnemyData, bool>();
     private bool enemyAutoRefill;
     private int enemyRefillPercent = 50;
+    private int enemyRefillLimit;
+    private int enemyRefillUses;
     private bool enemyRefillPending;
     private bool initialized;
     private long totalDamage;
@@ -64,10 +70,19 @@ public sealed class BattleTestController : MonoBehaviour
     public bool AutomaticTurns => waves.TestAutomaticTurns;
     internal bool EnemyAutoRefill => enemyAutoRefill;
     internal int EnemyRefillPercent => enemyRefillPercent;
+    internal int EnemyRefillLimit => enemyRefillLimit;
+    internal int EnemyRefillUses => enemyRefillUses;
+    internal int EnemyRefillsRemaining => enemyRefillLimit == 0
+        ? -1
+        : Mathf.Max(0, enemyRefillLimit - enemyRefillUses);
+    internal string EnemyRefillLimitSummary => enemyRefillLimit == 0
+        ? "보충 횟수 무한"
+        : $"보충 {enemyRefillUses}/{enemyRefillLimit}회 사용 · {EnemyRefillsRemaining}회 남음";
     internal string EnemyRefillSummary => !enemySpawnAllowed.ContainsValue(true)
         ? "자동 스폰 대상 없음 · 적 도감에서 켜 주세요"
         : $"전체 {board.TotalTileCount}칸 · {enemyRefillPercent}% → 최대 "
-        + $"{CalculateEnemyRefillCount(board.TotalTileCount, enemyRefillPercent, board.TotalTileCount - 1)}마리";
+        + $"{CalculateEnemyRefillCount(board.TotalTileCount, enemyRefillPercent, board.TotalTileCount - 1)}마리"
+        + " · 적 체력 유지";
     public string Summary => !initialized ? "전투 테스트를 준비하고 있습니다." :
         $"{board.LaneCount}레인 × {board.BoardCount}칸 | 체력 {health.CurrentHealth}/{health.MaxHealth}"
         + $" | 골드 {currency.CurrentMoney} | 적 {waves.ActiveEnemies.Count}"
@@ -103,6 +118,7 @@ public sealed class BattleTestController : MonoBehaviour
         state.ConfigureExternalSceneState(0, 0, GameFlowState.Battle);
         player.SetInputLocked(false);
         shooting.DamageDealt += HandleDamage;
+        shooting.PhysicalBulletResolved += HandlePhysicalBulletResolved;
         waves.EnemyDefeated += HandleDefeat;
         waves.StateChanged += HandleEnemyStateChanged;
         foreach (EnemyData enemy in enemyCatalog)
@@ -114,6 +130,7 @@ public sealed class BattleTestController : MonoBehaviour
     private void OnDestroy()
     {
         if (shooting != null) shooting.DamageDealt -= HandleDamage;
+        if (shooting != null) shooting.PhysicalBulletResolved -= HandlePhysicalBulletResolved;
         if (waves != null) waves.EnemyDefeated -= HandleDefeat;
         if (waves != null) waves.StateChanged -= HandleEnemyStateChanged;
         BattleTestContext.Reset();
@@ -124,19 +141,42 @@ public sealed class BattleTestController : MonoBehaviour
 
     private void HandleEnemyStateChanged()
     {
-        enemyRefillPending = enemyAutoRefill && waves.IsTestBattle && waves.ActiveEnemies.Count == 0;
+        enemyRefillPending = CanAutoRefill
+            && waves.IsTestBattle
+            && waves.ActiveEnemies.Count == 0;
     }
 
     private void LateUpdate()
     {
-        // Do not let new targets enter the shot, chain effect or enemy cycle that cleared the board.
-        if (!enemyRefillPending || !BattleTestContext.IsActive || !IsSettled
+        if (IsSettled) TryRefillEnemies(false);
+    }
+
+    private void HandlePhysicalBulletResolved()
+    {
+        // The resolved bullet's chained and conditional effects have finished,
+        // so replacements may become targets for the next physical bullet.
+        TryRefillEnemies(true);
+    }
+
+    private void TryRefillEnemies(bool afterPhysicalBullet)
+    {
+        if (!enemyRefillPending || !BattleTestContext.IsActive
             || health.IsDefeated || !waves.IsTestBattle) return;
         enemyRefillPending = false;
-        if (!enemyAutoRefill || enemyRefillPercent == 0 || waves.ActiveEnemies.Count != 0) return;
+        if (!CanAutoRefill || enemyRefillPercent == 0 || waves.ActiveEnemies.Count != 0) return;
         List<Vector2Int> cells = GetEmptyEnemyCells();
-        SpawnRandomEnemies(cells, CalculateEnemyRefillCount(board.TotalTileCount, enemyRefillPercent, cells.Count));
+        int spawned = SpawnRandomEnemies(
+            cells,
+            CalculateEnemyRefillCount(
+                board.TotalTileCount,
+                enemyRefillPercent,
+                cells.Count),
+            afterPhysicalBullet);
+        if (spawned > 0 && enemyRefillLimit > 0) enemyRefillUses++;
     }
+
+    private bool CanAutoRefill => enemyAutoRefill
+        && (enemyRefillLimit == 0 || enemyRefillUses < enemyRefillLimit);
 
     internal static int CalculateEnemyRefillCount(int totalTiles, int percent, int availableCells)
     {
@@ -151,7 +191,18 @@ public sealed class BattleTestController : MonoBehaviour
         enemyAutoRefill = enabled;
         enemyRefillPercent = percent;
         HandleEnemyStateChanged();
-        return $"전멸 시 자동 보충: {(enabled ? "켜짐" : "꺼짐")} · {EnemyRefillSummary}";
+        return $"전멸 시 자동 보충: {(enabled ? "켜짐" : "꺼짐")} · {EnemyRefillSummary} · {EnemyRefillLimitSummary}";
+    }
+
+    internal string SetEnemyRefillLimit(int limit)
+    {
+        RequireIdle();
+        if (limit < 0 || limit > MaximumEnemyRefillLimit)
+            throw new ArgumentException($"자동 보충 횟수는 0~{MaximumEnemyRefillLimit}회로 설정해 주세요. 0은 무한입니다.");
+        enemyRefillLimit = limit;
+        enemyRefillUses = 0;
+        HandleEnemyStateChanged();
+        return $"전멸 시 자동 보충 {EnemyRefillLimitSummary}.";
     }
 
     internal bool IsEnemySpawnAllowed(EnemyData enemy) => enemy != null
@@ -341,7 +392,7 @@ public sealed class BattleTestController : MonoBehaviour
             throw new InvalidOperationException("자동 스폰 대상이 없습니다. 적 도감에서 원하는 적의 자동 스폰을 켜 주세요.");
         List<Vector2Int> cells = GetEmptyEnemyCells();
         if (count > cells.Count) throw new ArgumentException($"빈칸은 {cells.Count}개입니다.");
-        int spawned = SpawnRandomEnemies(cells, count);
+        int spawned = SpawnRandomEnemies(cells, count, false);
         return $"서로 다른 빈칸에 무작위 적 {spawned}마리를 생성했습니다. (요청 {count}마리)";
     }
 
@@ -359,7 +410,10 @@ public sealed class BattleTestController : MonoBehaviour
         return cells;
     }
 
-    private int SpawnRandomEnemies(List<Vector2Int> cells, int count)
+    private int SpawnRandomEnemies(
+        List<Vector2Int> cells,
+        int count,
+        bool afterPhysicalBullet)
     {
         // Filter before rolling so excluded entries never consume a spawn attempt or RNG draw.
         EnemyData[] candidates = enemyCatalog.Where(IsEnemySpawnAllowed).ToArray();
@@ -371,7 +425,14 @@ public sealed class BattleTestController : MonoBehaviour
             Vector2Int cell = cells[choice];
             cells.RemoveAt(choice);
             EnemyData data = candidates[UnityEngine.Random.Range(0, candidates.Length)];
-            if (waves.TrySpawnTestEnemy(data, cell.x, cell.y, out _)) spawned++;
+            bool didSpawn = afterPhysicalBullet
+                ? waves.TrySpawnTestEnemyAfterPhysicalBullet(
+                    data,
+                    cell.x,
+                    cell.y,
+                    out _)
+                : waves.TrySpawnTestEnemy(data, cell.x, cell.y, out _);
+            if (didSpawn) spawned++;
         }
         return spawned;
     }
@@ -489,6 +550,8 @@ public sealed class BattleTestController : MonoBehaviour
         checkpointEmergencyReload = shooting.TestPendingEmergencyReload;
         checkpointEnemyAutoRefill = enemyAutoRefill;
         checkpointEnemyRefillPercent = enemyRefillPercent;
+        checkpointEnemyRefillLimit = enemyRefillLimit;
+        checkpointEnemyRefillUses = enemyRefillUses;
         checkpointEnemySpawnAllowed = new Dictionary<EnemyData, bool>(enemySpawnAllowed);
         return "테스트 상태를 저장했습니다. F5로 복원할 수 있으며 Play 종료 시 사라집니다.";
     }
@@ -521,6 +584,8 @@ public sealed class BattleTestController : MonoBehaviour
         shooting.RestoreTestShotState(checkpointEmergencyReload);
         enemyAutoRefill = checkpointEnemyAutoRefill;
         enemyRefillPercent = checkpointEnemyRefillPercent;
+        enemyRefillLimit = checkpointEnemyRefillLimit;
+        enemyRefillUses = checkpointEnemyRefillUses;
         enemySpawnAllowed.Clear();
         foreach (var entry in checkpointEnemySpawnAllowed) enemySpawnAllowed.Add(entry.Key, entry.Value);
         HandleEnemyStateChanged();

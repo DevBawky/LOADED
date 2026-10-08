@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEditor;
@@ -133,6 +134,7 @@ public sealed class BattleTestEnemyRefillTests
         AssertDistinctFreeCells(test);
         Assert.That(Field<RectTransform>(gui, "ownedContent").GetComponentsInChildren<BattleTestListRow>().Length, Is.EqualTo(7));
         Assert.That(Field<TMP_Text>(gui, "enemyRefillLabel").text, Does.Contain("켜짐"));
+        Assert.That(test.EnemyRefillSummary, Does.Contain("적 체력 유지"));
         Run(test, "checkpoint");
         Run(test, "refill off 10");
         Run(test, "clear");
@@ -187,7 +189,7 @@ public sealed class BattleTestEnemyRefillTests
     }
 
     [UnityTest]
-    public IEnumerator LastEnemyShotFinishesBeforeReplacementEnemiesSpawn()
+    public IEnumerator RefillLimitStopsAtMaximumRestoresWithCheckpointAndZeroIsUnlimited()
     {
         EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
         yield return new EnterPlayMode();
@@ -196,29 +198,161 @@ public sealed class BattleTestEnemyRefillTests
         yield return null;
         yield return null;
         BattleTestController test = Object.FindFirstObjectByType<BattleTestController>();
-        var console = Object.FindFirstObjectByType<BattleTestConsole>();
-        var shoot = Object.FindFirstObjectByType<PlayerShoot>();
-        Run(test, "ai off"); Run(test, "god on");
-        Run(test, "deck set Normal 0"); Run(test, "fill");
-        Run(test, "player 2 0"); Run(test, "spawn 0 3 0"); Run(test, "enemy hp 3 0 1");
-        Run(test, "refill on 50");
-        console.SetOpen(false);
-        shoot.Shoot();
-        float deadline = Time.realtimeSinceStartup + 10;
-        while (!test.IsSettled && Time.realtimeSinceStartup < deadline)
+        BattleTestGui gui = Object.FindFirstObjectByType<BattleTestGui>();
+        WaveManager waves = test.TestWaves;
+        gui.SelectPage(2);
+        yield return null;
+
+        UnityEngine.UI.Slider limit = Field<UnityEngine.UI.Slider>(gui, "enemyRefillLimit");
+        TMP_Text limitLabel = Field<TMP_Text>(gui, "enemyRefillLimitLabel");
+        Assert.That(limit.minValue, Is.Zero);
+        Assert.That(limit.maxValue, Is.EqualTo(BattleTestController.MaximumEnemyRefillLimit));
+        Assert.That(limit.wholeNumbers, Is.True);
+        Assert.That(limitLabel.text, Does.Contain("무한"));
+        Assert.That(limit.GetComponent<BattleTestControlTooltip>().Explanation, Does.Contain("0은 무한"));
+        Assert.That(test.ExecuteCommand("refill limit 11"), Does.StartWith(BattleTestCommandRouter.RejectedPrefix));
+
+        limit.value = 1;
+        Assert.That(test.EnemyRefillLimit, Is.EqualTo(1));
+        Assert.That(test.EnemyRefillUses, Is.Zero);
+        Run(test, "refill on 0");
+        yield return null;
+        yield return null;
+        Assert.That(waves.ActiveEnemies.Count, Is.Zero);
+        Assert.That(test.EnemyRefillUses, Is.Zero, "적을 생성하지 못하면 제한 횟수를 사용하지 않아야 합니다.");
+        Run(test, "refill percent 50");
+        yield return null;
+        yield return null;
+        Assert.That(waves.ActiveEnemies.Count, Is.EqualTo(7));
+        Assert.That(test.EnemyRefillUses, Is.EqualTo(1));
+
+        limit.value = 2;
+        Assert.That(test.EnemyRefillUses, Is.Zero, "제한을 바꾸면 사용 횟수를 다시 시작해야 합니다.");
+        Run(test, "clear");
+        yield return null;
+        yield return null;
+        Assert.That(waves.ActiveEnemies.Count, Is.EqualTo(7));
+        Assert.That(test.EnemyRefillUses, Is.EqualTo(1));
+        Run(test, "checkpoint");
+        Run(test, "clear");
+        yield return null;
+        yield return null;
+        Assert.That(waves.ActiveEnemies.Count, Is.EqualTo(7));
+        Assert.That(test.EnemyRefillUses, Is.EqualTo(2));
+        Run(test, "clear");
+        yield return null;
+        yield return null;
+        Assert.That(waves.ActiveEnemies.Count, Is.Zero);
+        Assert.That(test.EnemyRefillsRemaining, Is.Zero);
+
+        Run(test, "reset");
+        Assert.That(test.EnemyRefillLimit, Is.EqualTo(2));
+        Assert.That(test.EnemyRefillUses, Is.EqualTo(1));
+        Assert.That(waves.ActiveEnemies.Count, Is.EqualTo(7));
+        Run(test, "clear");
+        yield return null;
+        yield return null;
+        Assert.That(test.EnemyRefillUses, Is.EqualTo(2));
+        Run(test, "clear");
+        yield return null;
+        yield return null;
+        Assert.That(waves.ActiveEnemies.Count, Is.Zero);
+
+        limit.value = 0;
+        yield return null;
+        yield return null;
+        Assert.That(test.EnemyRefillLimit, Is.Zero);
+        Assert.That(test.EnemyRefillUses, Is.Zero);
+        Assert.That(waves.ActiveEnemies.Count, Is.EqualTo(7));
+        Run(test, "clear");
+        yield return null;
+        yield return null;
+        Assert.That(waves.ActiveEnemies.Count, Is.EqualTo(7));
+        Assert.That(test.EnemyRefillUses, Is.Zero);
+        LogAssert.NoUnexpectedReceived();
+        yield return new ExitPlayMode();
+    }
+
+    [UnityTest]
+    public IEnumerator ExtinctionRefillsAfterPhysicalBulletBeforeRemainingCylinderShots()
+    {
+        EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+        yield return new EnterPlayMode();
+        yield return ExerciseExtinctionRefillDuringCylinder();
+        yield return new ExitPlayMode();
+    }
+
+    private static IEnumerator ExerciseExtinctionRefillDuringCylinder()
+    {
+        int previousSceneHandle = UnityEngine.SceneManagement.SceneManager
+            .GetActiveScene().handle;
+        EditorSceneManager.LoadSceneInPlayMode(BattleTestSceneBuilder.ScenePath,
+            new UnityEngine.SceneManagement.LoadSceneParameters(UnityEngine.SceneManagement.LoadSceneMode.Single));
+        BattleTestController test = null;
+        float sceneDeadline = Time.realtimeSinceStartup + 10f;
+        while (Time.realtimeSinceStartup < sceneDeadline)
         {
-            Assert.That(test.TestWaves.ActiveEnemies.Count, Is.LessThanOrEqualTo(1), "사격 중에는 새 적을 넣으면 안 됩니다.");
             yield return null;
+            UnityEngine.SceneManagement.Scene activeScene =
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (activeScene.handle == previousSceneHandle
+                || activeScene.path != BattleTestSceneBuilder.ScenePath)
+                continue;
+            test = Object.FindFirstObjectByType<BattleTestController>();
+            if (test != null && test.IsReady) break;
+        }
+        Assert.That(test != null && test.IsReady, Is.True,
+            "BattleTest scene did not finish loading.");
+        BattleTestConsole console =
+            Object.FindFirstObjectByType<BattleTestConsole>();
+        PlayerShoot shoot = Object.FindFirstObjectByType<PlayerShoot>();
+        WaveManager waves = Object.FindFirstObjectByType<WaveManager>();
+        DeckManager deck = Object.FindFirstObjectByType<DeckManager>();
+        Assert.That(console, Is.Not.Null);
+        Assert.That(shoot, Is.Not.Null);
+        Assert.That(waves, Is.Not.Null);
+        Assert.That(deck, Is.Not.Null);
+        Run(test, "ai off"); Run(test, "god on");
+        Run(test, "deck set Normal 0");
+        for (int index = 1; index < 6; index++)
+            Run(test, "bullet add Normal 0");
+        Run(test, "fill");
+        Run(test, "player 2 0");
+        Run(test, "spawn 0 3 0"); Run(test, "enemy hp 3 0 1");
+        Assert.That(deck.LoadedBullets.Count, Is.EqualTo(6));
+        Run(test, "refill on 100");
+        console.SetOpen(false);
+        var enemiesAtShot = new List<int>();
+        int damageEvents = 0;
+        System.Action<BulletInstance> fired = _ =>
+            enemiesAtShot.Add(waves.ActiveEnemies.Count);
+        System.Action<int> damaged = _ => damageEvents++;
+        shoot.BulletFired += fired;
+        shoot.DamageDealt += damaged;
+        try
+        {
+            shoot.Shoot();
+            float deadline = Time.realtimeSinceStartup + 10;
+            while (!test.IsSettled && Time.realtimeSinceStartup < deadline)
+                yield return null;
+        }
+        finally
+        {
+            shoot.BulletFired -= fired;
+            shoot.DamageDealt -= damaged;
         }
         Assert.That(test.IsSettled, Is.True);
-        yield return null;
-        yield return null;
-        Assert.That(test.TestWaves.ActiveEnemies.Count, Is.EqualTo(7));
+        Assert.That(enemiesAtShot, Has.Count.EqualTo(6));
+        Assert.That(enemiesAtShot[0], Is.EqualTo(1));
+        Assert.That(enemiesAtShot.Skip(1), Is.All.GreaterThan(0),
+            "전멸 직후 보충된 적은 다음 물리 탄환부터 표적이 되어야 합니다.");
+        Assert.That(damageEvents, Is.GreaterThanOrEqualTo(6),
+            "남은 실린더 탄환도 보충된 적에게 피해를 줘야 합니다.");
+        Assert.That(waves.ActiveEnemies.Count, Is.GreaterThan(0));
         AssertDistinctFreeCells(test);
         Run(test, "refill off"); Run(test, "clear");
         yield return null;
         Assert.That(test.TestWaves.ActiveEnemies.Count, Is.Zero);
-        yield return new ExitPlayMode();
     }
 
     private static void AssertDistinctFreeCells(BattleTestController test)
@@ -234,6 +368,7 @@ public sealed class BattleTestEnemyRefillTests
             Assert.That(test.TestWaves.BombManager.HasBombAtTile(cell.x, cell.y), Is.False);
         }
     }
+
     private static void RunEnemy(BattleTestController test, EnemyController enemy, string operation)
     {
         RunEnemySaveData saved = enemy.CaptureRunState(test.TestWaves.ActiveEnemies);

@@ -39,7 +39,10 @@ public sealed class BattleTestGui : MonoBehaviour
     [SerializeField] private TMP_InputField enemyRefillPercent;
     [SerializeField] private TMP_Text enemyRefillLabel;
     [SerializeField] private TMP_Text enemyRefillSummary;
+    [SerializeField] private UnityEngine.UI.Slider enemyRefillLimit;
+    [SerializeField] private TMP_Text enemyRefillLimitLabel;
     private int displayedRefillPercent = -1;
+    private int displayedRefillLimit = -1;
     private readonly int[] gradeSelections = new int[2];
     private readonly int[] typeSelections = new int[2];
     internal string AddedBulletLevel => bulletLevel.text;
@@ -69,6 +72,7 @@ public sealed class BattleTestGui : MonoBehaviour
         addSelected.onClick.AddListener(AddSelectedBullet);
         statusType.onClick.AddListener(CycleStatus);
         applyStatus.onClick.AddListener(ApplyStatus);
+        enemyRefillLimit.onValueChanged.AddListener(HandleEnemyRefillLimitChanged);
         for (int i = 0; i < tabs.Length; i++)
         {
             int index = i;
@@ -91,6 +95,7 @@ public sealed class BattleTestGui : MonoBehaviour
         addSelected.onClick.RemoveListener(AddSelectedBullet);
         statusType.onClick.RemoveListener(CycleStatus);
         applyStatus.onClick.RemoveListener(ApplyStatus);
+        enemyRefillLimit.onValueChanged.RemoveListener(HandleEnemyRefillLimitChanged);
         for (int i = 0; i < tabActions.Count; i++) tabs[i].onClick.RemoveListener(tabActions[i]);
         tabActions.Clear();
     }
@@ -100,10 +105,18 @@ public sealed class BattleTestGui : MonoBehaviour
         if (!controller.IsReady) return;
         enemyRefillLabel.text = "전멸 시 자동 보충: " + (controller.EnemyAutoRefill ? "켜짐" : "꺼짐");
         enemyRefillSummary.text = controller.EnemyRefillSummary;
+        enemyRefillLimitLabel.text = controller.EnemyRefillLimit == 0
+            ? "최대 횟수: 무한"
+            : $"최대 횟수: {controller.EnemyRefillLimit}회 · 남음 {controller.EnemyRefillsRemaining}회";
         if (displayedRefillPercent != controller.EnemyRefillPercent)
         {
             displayedRefillPercent = controller.EnemyRefillPercent;
             enemyRefillPercent.SetTextWithoutNotify(displayedRefillPercent.ToString());
+        }
+        if (displayedRefillLimit != controller.EnemyRefillLimit)
+        {
+            displayedRefillLimit = controller.EnemyRefillLimit;
+            enemyRefillLimit.SetValueWithoutNotify(displayedRefillLimit);
         }
         if (!initialized) { initialized = true; SelectPage(0); }
         if (console.IsOpen && dirty && !interactions.IsDragging && Time.unscaledTime >= nextRefresh)
@@ -123,6 +136,9 @@ public sealed class BattleTestGui : MonoBehaviour
         gradeSelections[page] = gradeFilter.value; typeSelections[page] = typeFilter.value;
         interactions.Cancel(); dirty = resetScroll = true; nextRefresh = 0;
     }
+
+    private void HandleEnemyRefillLimitChanged(float value) =>
+        Run($"refill limit {Mathf.RoundToInt(value)}");
 
     public void SelectPage(int index)
     {

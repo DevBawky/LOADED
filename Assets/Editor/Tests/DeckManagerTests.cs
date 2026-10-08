@@ -1374,6 +1374,45 @@ public sealed class ComboFeedbackProgressionTests
 
         Assert.That(presentationTime, Is.EqualTo(12f));
     }
+
+    [Test]
+    public void DefeatPresentationTime_DropsOverflowAndKeepsFinalDefeatBounded()
+    {
+        const float currentTime = 10f;
+        const float interval = 0.18f;
+        const int maximumQueuedPresentations = 4;
+        float nextPresentationTime = 0f;
+        int presentedCount = 0;
+        float finalPresentationTime = 0f;
+
+        for (int killCount = 1; killCount <= 330; killCount++)
+        {
+            bool isFinalDefeat = killCount == 330;
+            bool shouldPresent = CombatFeedbackController
+                .TryCalculateDefeatPresentationTime(
+                    currentTime,
+                    nextPresentationTime,
+                    interval,
+                    maximumQueuedPresentations,
+                    isFinalDefeat,
+                    out float presentationTime);
+
+            if (!shouldPresent)
+            {
+                continue;
+            }
+
+            presentedCount++;
+            finalPresentationTime = presentationTime;
+            nextPresentationTime = presentationTime + interval;
+        }
+
+        Assert.That(presentedCount, Is.EqualTo(6));
+        Assert.That(
+            finalPresentationTime - currentTime,
+            Is.LessThanOrEqualTo(
+                interval * maximumQueuedPresentations + 0.0001f));
+    }
 }
 
 public sealed class CombatImpactTierUtilityTests

@@ -76,6 +76,7 @@ internal readonly struct FiringSequenceDefeatFeedbackProfile
 public sealed class CombatFeedbackController : MonoBehaviour
 {
     private const int MaxFullscreenImpacts = 4;
+    private const int MaximumQueuedDefeatPresentations = 4;
     private const string FeedbackPanelName = "Panel | Feedback";
     private const string ComboTextName = "Text | Combo";
     private const string CylinderChainTextName = "Text | Cylinder Chain";
@@ -135,7 +136,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
             float overkillStrength = 0f,
             int firingSequenceDefeatCount = 1,
             bool hasPreviousDefeatPosition = false,
-            Vector3 previousDefeatPosition = default)
+            Vector3 previousDefeatPosition = default,
+            bool suppressPresentation = false)
         {
             FeedbackMultiplier = Mathf.Max(0f, feedbackMultiplier);
             PresentationTime = Mathf.Max(0f, presentationTime);
@@ -146,6 +148,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
                 firingSequenceDefeatCount);
             HasPreviousDefeatPosition = hasPreviousDefeatPosition;
             PreviousDefeatPosition = previousDefeatPosition;
+            SuppressPresentation = suppressPresentation;
         }
 
         public float FeedbackMultiplier { get; }
@@ -155,6 +158,7 @@ public sealed class CombatFeedbackController : MonoBehaviour
         public int FiringSequenceDefeatCount { get; }
         public bool HasPreviousDefeatPosition { get; }
         public Vector3 PreviousDefeatPosition { get; }
+        public bool SuppressPresentation { get; }
     }
 
     private readonly struct DefeatFeedbackRequest
@@ -1007,9 +1011,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
         float amplifiedIntensity = baseIntensity
             * defeatFeedbackMultiplier;
 
-        float presentationDelay = ReserveDefeatPresentationDelay(
+        bool shouldPresent = TryReserveDefeatPresentationDelay(
             defeatPresentationClock,
-            defeatPresentationInterval);
+            defeatPresentationInterval,
+            wasFinalEnemy,
+            out float presentationDelay);
         float overkillStrength = CombatPresentation.CalculateOverkillStrength(
             appliedDamage, targetHealthBeforeDamage, targetShieldBeforeDamage);
         DefeatFeedbackRequest request = new DefeatFeedbackRequest(
@@ -1023,11 +1029,11 @@ public sealed class CombatFeedbackController : MonoBehaviour
             playComboGoldSfx,
             overkillStrength);
 
-        if (presentationDelay <= 0f)
+        if (shouldPresent && presentationDelay <= 0f)
         {
             PlayDefeatFeedback(request);
         }
-        else
+        else if (shouldPresent)
         {
             StartCoroutine(PlayDefeatFeedbackAfterDelay(
                 request,
@@ -1042,7 +1048,8 @@ public sealed class CombatFeedbackController : MonoBehaviour
             overkillStrength,
             presentationKillCount,
             hasPreviousDefeatPosition,
-            previousDefeatPosition);
+            previousDefeatPosition,
+            !shouldPresent);
     }
 
     public float GetRemainingDefeatPresentationDelay(
@@ -1053,16 +1060,58 @@ public sealed class CombatFeedbackController : MonoBehaviour
             cue.PresentationTime - defeatPresentationClock);
     }
 
-    private float ReserveDefeatPresentationDelay(
+    private bool TryReserveDefeatPresentationDelay(
         float currentTime,
-        float interval)
+        float interval,
+        bool forcePresentation,
+        out float delay)
     {
-        float presentationTime = CalculateDefeatPresentationTime(
+        bool shouldPresent = TryCalculateDefeatPresentationTime(
             currentTime,
-            nextDefeatPresentationTime);
+            nextDefeatPresentationTime,
+            interval,
+            MaximumQueuedDefeatPresentations,
+            forcePresentation,
+            out float presentationTime);
+
+        if (!shouldPresent)
+        {
+            delay = 0f;
+            return false;
+        }
+
         nextDefeatPresentationTime = presentationTime
             + Mathf.Max(0f, interval);
-        return Mathf.Max(0f, presentationTime - currentTime);
+        delay = Mathf.Max(0f, presentationTime - currentTime);
+        return true;
+    }
+
+    internal static bool TryCalculateDefeatPresentationTime(
+        float currentTime,
+        float nextPresentationTime,
+        float interval,
+        int maximumQueuedPresentations,
+        bool forcePresentation,
+        out float presentationTime)
+    {
+        float safeInterval = Mathf.Max(0f, interval);
+        float maximumDelay = safeInterval
+            * Mathf.Max(0, maximumQueuedPresentations);
+        float requestedTime = CalculateDefeatPresentationTime(
+            currentTime,
+            nextPresentationTime);
+
+        if (!forcePresentation
+            && requestedTime - currentTime > maximumDelay + 0.0001f)
+        {
+            presentationTime = currentTime;
+            return false;
+        }
+
+        presentationTime = Mathf.Min(
+            requestedTime,
+            currentTime + maximumDelay);
+        return true;
     }
 
     internal static float CalculateDefeatPresentationTime(
@@ -1202,17 +1251,20 @@ public sealed class CombatFeedbackController : MonoBehaviour
             false,
             enemy.LastDamageAbsorbed);
         snapshot.OverkillStrength = cue.OverkillStrength;
-        presentation?.PlayImpact(
-            snapshot,
-            horizontalDirection,
-            null,
-            CombatImpactTier.Defeat,
-            cue.FeedbackMultiplier,
-            GetRemainingDefeatPresentationDelay(cue),
-            cue.WasFinalEnemy,
-            cue.FiringSequenceDefeatCount,
-            cue.HasPreviousDefeatPosition,
-            cue.PreviousDefeatPosition);
+        if (!cue.SuppressPresentation)
+        {
+            presentation?.PlayImpact(
+                snapshot,
+                horizontalDirection,
+                null,
+                CombatImpactTier.Defeat,
+                cue.FeedbackMultiplier,
+                GetRemainingDefeatPresentationDelay(cue),
+                cue.WasFinalEnemy,
+                cue.FiringSequenceDefeatCount,
+                cue.HasPreviousDefeatPosition,
+                cue.PreviousDefeatPosition);
+        }
     }
 
     private void SpawnKillComboText(

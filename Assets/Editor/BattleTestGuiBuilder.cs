@@ -161,10 +161,14 @@ internal static class BattleTestGuiBuilder
         {
             if (tooltip.name == "모두 정리") tooltip.Configure(interactions, BattleTestHelpText.For("모두 정리"));
         }
-        if (data.FindProperty("enemyRefillPanel").objectReferenceValue != null) return;
+        if (data.FindProperty("enemyRefillPanel").objectReferenceValue != null
+            && data.FindProperty("enemyRefillLimit").objectReferenceValue != null) return;
         var title = (TMP_Text)data.FindProperty("leftTitle").objectReferenceValue;
         var handle = new SerializedObject(title.GetComponent<BattleTestWindowHandle>());
         var content = (GameObject)handle.FindProperty("content").objectReferenceValue;
+        GameObject existing = (GameObject)data.FindProperty("enemyRefillPanel").objectReferenceValue;
+        if (existing != null) UnityEngine.Object.DestroyImmediate(existing);
+        data.Update();
         RectTransform panel = CreateEnemyRefillControls(content.transform, title.font,
             (BattleTestConsole)data.FindProperty("console").objectReferenceValue,
             (BattleTestController)data.FindProperty("controller").objectReferenceValue, data);
@@ -175,16 +179,20 @@ internal static class BattleTestGuiBuilder
     private static RectTransform CreateEnemyRefillControls(Transform parent, TMP_FontAsset font,
         BattleTestConsole console, BattleTestController controller, SerializedObject guiData)
     {
-        RectTransform panel = Rect("전멸 자동 보충 설정", parent, .025f, .165f, .975f, .33f);
+        RectTransform panel = Rect("전멸 자동 보충 설정", parent, .025f, .15f, .975f, .345f);
         UnityEngine.UI.Button toggle = CommandButton("전멸 시 자동 보충", panel, font, console, controller,
-            "refill toggle", 0, .44f, .53f, .90f);
-        TMP_InputField percent = Field("점유율 (%)", panel, font, "50", .56f, .38f, .77f, 1);
+            "refill toggle", 0, .56f, .53f, .96f);
+        TMP_InputField percent = Field("점유율 (%)", panel, font, "50", .56f, .51f, .77f, 1);
         CommandButton("점유율 적용", panel, font, console, controller,
-            "refill percent {0}", .80f, .44f, 1, .90f, false, percent);
-        TMP_Text summary = Label("자동 보충 목표", panel, font, 17, 0, 0, 1, .33f);
+            "refill percent {0}", .80f, .56f, 1, .96f, false, percent);
+        TMP_Text limitLabel = Label("자동 보충 횟수 표시", panel, font, 17, 0, .25f, .38f, .50f);
+        limitLabel.alignment = TextAlignmentOptions.MidlineLeft;
+        UnityEngine.UI.Slider limit = Slider("자동 보충 횟수", panel, .40f, .27f, 1, .48f);
+        TMP_Text summary = Label("자동 보충 목표", panel, font, 16, 0, 0, 1, .23f);
         summary.color = new Color(.62f, .91f, .80f);
         Set(guiData, "enemyRefillPanel", panel.gameObject); Set(guiData, "enemyRefillPercent", percent);
         Set(guiData, "enemyRefillLabel", toggle.GetComponentInChildren<TMP_Text>()); Set(guiData, "enemyRefillSummary", summary);
+        Set(guiData, "enemyRefillLimit", limit); Set(guiData, "enemyRefillLimitLabel", limitLabel);
         panel.gameObject.SetActive(false);
         return panel;
     }
@@ -405,6 +413,29 @@ internal static class BattleTestGuiBuilder
         label.text = name; label.alignment = TextAlignmentOptions.Center;
         label.enableAutoSizing = true; label.fontSizeMin = 15; label.fontSizeMax = 21;
         return button;
+    }
+    private static UnityEngine.UI.Slider Slider(string name, Transform parent,
+        float x0, float y0, float x1, float y1)
+    {
+        RectTransform root = Rect(name, parent, x0, y0, x1, y1);
+        RectTransform background = Box("배경", root, 0, .32f, 1, .68f, new Color(.13f, .18f, .24f));
+        background.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
+        RectTransform fillArea = Rect("채움 영역", root, .025f, .32f, .975f, .68f);
+        RectTransform fill = Box("채움", fillArea, 0, 0, 1, 1, new Color(.15f, .64f, .50f));
+        fill.GetComponent<UnityEngine.UI.Image>().raycastTarget = false;
+        RectTransform handleArea = Rect("손잡이 영역", root, .025f, 0, .975f, 1);
+        RectTransform handle = Box("손잡이", handleArea, 0, .08f, 0, .92f, new Color(.72f, .95f, .86f));
+        handle.sizeDelta = new Vector2(18, 0);
+        var slider = root.gameObject.AddComponent<UnityEngine.UI.Slider>();
+        slider.minValue = 0;
+        slider.maxValue = BattleTestController.MaximumEnemyRefillLimit;
+        slider.wholeNumbers = true;
+        slider.value = 0;
+        slider.fillRect = fill;
+        slider.handleRect = handle;
+        slider.targetGraphic = handle.GetComponent<UnityEngine.UI.Image>();
+        slider.direction = UnityEngine.UI.Slider.Direction.LeftToRight;
+        return slider;
     }
     private static RectTransform Box(string name, Transform parent, float x0, float y0, float x1, float y1, Color color, bool raycast = true)
     {
