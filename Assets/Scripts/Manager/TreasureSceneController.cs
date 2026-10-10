@@ -131,6 +131,7 @@ public sealed class TreasureSceneController : MonoBehaviour
             return;
         }
 
+        relicTooltip?.Hide();
         runData.treasureChoiceResolved = true;
         if (instructionText != null)
         {
@@ -775,11 +776,21 @@ public sealed class TreasureRelicChoiceUI : MonoBehaviour,
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        tooltip?.Hide(relic);
+        HideTooltip();
     }
 
     public void OnPointerMove(PointerEventData eventData)
     {
         tooltip?.Move(relic, eventData.position);
+    }
+
+    private void OnDisable()
+    {
+        HideTooltip();
+    }
+
+    internal void HideTooltip()
+    {
+        tooltip?.Hide(relic);
     }
 }

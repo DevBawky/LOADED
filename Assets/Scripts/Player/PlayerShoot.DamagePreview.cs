@@ -7,15 +7,15 @@ public partial class PlayerShoot
     private sealed class DamagePreviewController
     {
         private readonly PlayerShoot owner;
-        private readonly List<EnemyController> targetBuffer =
-            new List<EnemyController>();
-        private readonly List<EnemyController> hitBuffer =
-            new List<EnemyController>();
-        private readonly Dictionary<EnemyController, DamagePreviewEnemyState>
+        private readonly List<DamagePreviewEnemyState> targetBuffer =
+            new List<DamagePreviewEnemyState>();
+        private readonly List<DamagePreviewEnemyState> hitBuffer =
+            new List<DamagePreviewEnemyState>();
+        private readonly Dictionary<int, DamagePreviewEnemyState>
             damagePreviewStates =
-                new Dictionary<EnemyController, DamagePreviewEnemyState>();
-        private readonly HashSet<EnemyController> previewedEnemies =
-            new HashSet<EnemyController>();
+                new Dictionary<int, DamagePreviewEnemyState>();
+        private readonly HashSet<DamagePreviewEnemyState> previewedTargets =
+            new HashSet<DamagePreviewEnemyState>();
         private readonly PhysicalBulletCriticalScope<DamagePreviewEnemyState>
             previewPhysicalBulletCriticalScope =
                 new PhysicalBulletCriticalScope<DamagePreviewEnemyState>();
@@ -86,15 +86,13 @@ public partial class PlayerShoot
 
             foreach (DamagePreviewEnemyState state in damagePreviewStates.Values)
             {
-                if (state.Enemy == null || state.Segments.Count == 0)
+                if (state.TargetTransform == null || state.Segments.Count == 0)
                 {
                     continue;
                 }
 
-                state.Enemy.ShowDamagePreview(
-                    state.Segments,
-                    previewBullet);
-                previewedEnemies.Add(state.Enemy);
+                state.ShowDamagePreview(previewBullet);
+                previewedTargets.Add(state);
                 displayedAnyDamage = true;
             }
 
@@ -103,15 +101,15 @@ public partial class PlayerShoot
 
         public void Clear()
         {
-            foreach (EnemyController enemy in previewedEnemies)
+            foreach (DamagePreviewEnemyState state in previewedTargets)
             {
-                if (enemy != null)
+                if (state != null)
                 {
-                    enemy.ClearDamagePreview();
+                    state.ClearDamagePreview();
                 }
             }
 
-            previewedEnemies.Clear();
+            previewedTargets.Clear();
         }
 
         private void InitializeDamagePreviewState()
@@ -148,24 +146,57 @@ public partial class PlayerShoot
                 ? 0
                 : playerMove.CurrentLaneIndex;
     
-            foreach (EnemyController enemy in waveManager.ActiveEnemies)
+            if (waveManager != null)
             {
-                if (enemy != null && enemy.CurrentHealth > 0)
+                foreach (EnemyController enemy in waveManager.ActiveEnemies)
                 {
-                    DamagePreviewEnemyState state =
-                        new DamagePreviewEnemyState(enemy);
-                    state.WasHitThisTurn = owner.firingSequence != null
-                        && owner.firingSequence.WasEnemyHitThisTurn(enemy);
-    
-                    if (boardManager.TryGetTileIndex(
-                            enemy.transform.position,
-                            enemy.CurrentLaneIndex,
-                            out int enemyTileIndex))
+                    if (enemy != null && enemy.CurrentHealth > 0)
                     {
-                        state.TileIndex = enemyTileIndex;
+                        DamagePreviewEnemyState state =
+                            new DamagePreviewEnemyState(enemy);
+                        state.WasHitThisTurn = owner.firingSequence != null
+                            && owner.firingSequence.WasEnemyHitThisTurn(enemy);
+
+                        if (boardManager.TryGetTileIndex(
+                                enemy.transform.position,
+                                enemy.CurrentLaneIndex,
+                                out int enemyTileIndex))
+                        {
+                            state.TileIndex = enemyTileIndex;
+                        }
+
+                        damagePreviewStates[state.InstanceId] = state;
                     }
-    
-                    damagePreviewStates[enemy] = state;
+                }
+            }
+
+            if (owner.attackTargetRegistry != null)
+            {
+                foreach (IPlayerAttackTarget target in
+                         owner.attackTargetRegistry.Targets)
+                {
+                    if (!PlayerAttackTargetRegistry.IsAlive(target)
+                        || !target.IsTargetable
+                        || target.TargetTransform == null)
+                    {
+                        continue;
+                    }
+
+                    DamagePreviewEnemyState state =
+                        new DamagePreviewEnemyState(target);
+                    state.WasHitThisTurn = owner.firingSequence != null
+                        && owner.firingSequence.WasTargetHitThisTurn(
+                            state.InstanceId);
+
+                    if (boardManager.TryGetTileIndex(
+                            target.TargetTransform.position,
+                            target.LaneIndex,
+                            out int targetTileIndex))
+                    {
+                        state.TileIndex = targetTileIndex;
+                    }
+
+                    damagePreviewStates[state.InstanceId] = state;
                 }
             }
     
@@ -691,7 +722,7 @@ public partial class PlayerShoot
             {
                 previewPreviousPhysicalTarget = previewLastPhysicalTarget;
                 previewLastPhysicalTarget = hitBuffer.Count > 0
-                    ? hitBuffer[0]
+                    ? hitBuffer[0].Enemy
                     : null;
             }
     
@@ -703,13 +734,10 @@ public partial class PlayerShoot
     
             for (int hitIndex = 0; hitIndex < hitBuffer.Count; hitIndex++)
             {
-                EnemyController enemy = hitBuffer[hitIndex];
-    
-                if (enemy == null
-                    || !damagePreviewStates.TryGetValue(
-                        enemy,
-                        out DamagePreviewEnemyState state)
-                    || state.RemainingHealth <= 0)
+                DamagePreviewEnemyState state = hitBuffer[hitIndex];
+                EnemyController enemy = state == null ? null : state.Enemy;
+
+                if (state == null || !state.IsValid)
                 {
                     continue;
                 }
@@ -723,7 +751,9 @@ public partial class PlayerShoot
                     : relicManager
                         .GetPreviewTargetConditionalDamageMultiplier(
                             CountActiveStatusTypes(state),
-                            CountPreviewActiveEnemies()));
+                            state.IsEnemy
+                                ? CountPreviewActiveEnemies()
+                                : CountPreviewActiveAttackTargets()));
                 bool targetIsCritical = ResolvePreviewPhysicalBulletCritical(
                     guaranteedCritical,
                     state);
@@ -740,6 +770,7 @@ public partial class PlayerShoot
                 if (FindSpecialEffect(
                         resolvedBullet,
                         BulletEffectType.Execution) != null
+                    && enemy != null
                     && !enemy.IsBoss
                     && enemy.MaxHealth > 0
                     && (long)state.RemainingHealth * 4L < enemy.MaxHealth)
@@ -776,20 +807,23 @@ public partial class PlayerShoot
                     emphasized);
                 state.WasHitThisTurn = true;
     
-                ApplyPreviewWallImpactDamageTransfer(
-                    resolvedBullet,
-                    state,
-                    horizontalDirection,
-                    transferBaseDamage,
-                    previewColor,
-                    emphasized);
+                if (state.IsEnemy)
+                {
+                    ApplyPreviewWallImpactDamageTransfer(
+                        resolvedBullet,
+                        state,
+                        horizontalDirection,
+                        transferBaseDamage,
+                        previewColor,
+                        emphasized);
 
-                ApplyPreviewClosedCircuitDamageTransfer(
-                    state,
-                    horizontalDirection,
-                    attackDamage,
-                    previewColor,
-                    emphasized);
+                    ApplyPreviewClosedCircuitDamageTransfer(
+                        state,
+                        horizontalDirection,
+                        attackDamage,
+                        previewColor,
+                        emphasized);
+                }
     
                 ApplyGuaranteedPreviewEffects(
                     resolvedBullet,
@@ -799,13 +833,16 @@ public partial class PlayerShoot
                     emphasized,
                     appliedDamage);
     
-                ApplyGuaranteedManagedPreviewEffects(
-                    resolvedBullet,
-                    state,
-                    previewColor,
-                    emphasized);
+                if (state.IsEnemy)
+                {
+                    ApplyGuaranteedManagedPreviewEffects(
+                        resolvedBullet,
+                        state,
+                        previewColor,
+                        emphasized);
+                }
     
-                if (state.RemainingHealth <= 0)
+                if (state.IsEnemy && state.RemainingHealth <= 0)
                 {
                     previewShotDefeatedEnemy = true;
                     ApplyGuaranteedPreviewConditionalEffects(
@@ -868,12 +905,10 @@ public partial class PlayerShoot
                 return;
             }
 
-            EnemyController turnaroundEnemy = hitBuffer[hitBuffer.Count - 1];
+            DamagePreviewEnemyState turnaroundState =
+                hitBuffer[hitBuffer.Count - 1];
 
-            if (turnaroundEnemy == null
-                || !damagePreviewStates.TryGetValue(
-                    turnaroundEnemy,
-                    out DamagePreviewEnemyState turnaroundState)
+            if (turnaroundState == null || !turnaroundState.IsEnemy
                 || turnaroundState.TileIndex < 0)
             {
                 return;
@@ -992,11 +1027,11 @@ public partial class PlayerShoot
 
             if (forcedPreviewTarget != null
                 && damagePreviewStates.TryGetValue(
-                    forcedPreviewTarget,
+                    forcedPreviewTarget.GetInstanceID(),
                     out DamagePreviewEnemyState forcedState)
                 && forcedState.RemainingHealth > 0)
             {
-                targetBuffer.Add(forcedPreviewTarget);
+                targetBuffer.Add(forcedState);
                 return true;
             }
     
@@ -1005,7 +1040,7 @@ public partial class PlayerShoot
                 foreach (DamagePreviewEnemyState state
                          in damagePreviewStates.Values)
                 {
-                    if (state.Enemy != null && state.RemainingHealth > 0
+                    if (state.IsValid
                         && (bullet.BulletType != BulletType.Storm
                             || BulletEffectUtility.CanStormTarget(
                                 bullet,
@@ -1013,7 +1048,7 @@ public partial class PlayerShoot
                                 state.LaneIndex,
                                 state.TotalStatusStackCount)))
                     {
-                        targetBuffer.Add(state.Enemy);
+                        targetBuffer.Add(state);
                     }
                 }
     
@@ -1027,7 +1062,17 @@ public partial class PlayerShoot
 
                 if (target != null)
                 {
-                    targetBuffer.Add(target);
+                    targetBuffer.Add(
+                        damagePreviewStates[target.GetInstanceID()]);
+                }
+                else
+                {
+                    DamagePreviewEnemyState neutralTarget =
+                        SelectClosestPreviewNeutralTarget();
+                    if (neutralTarget != null)
+                    {
+                        targetBuffer.Add(neutralTarget);
+                    }
                 }
 
                 return targetBuffer.Count > 0;
@@ -1055,7 +1100,7 @@ public partial class PlayerShoot
             foreach (DamagePreviewEnemyState state
                      in damagePreviewStates.Values)
             {
-                if (state.Enemy == null || state.RemainingHealth <= 0
+                if (!state.IsValid
                     || !CanPlayerEffectTargetLane(
                         previewPlayerLaneIndex,
                         state.LaneIndex,
@@ -1071,23 +1116,19 @@ public partial class PlayerShoot
                     && Mathf.Abs(offset) <= GetPreviewShotRange(bullet)
                     && Mathf.Abs(offset) < blockerDistance)
                 {
-                    targetBuffer.Add(state.Enemy);
+                    targetBuffer.Add(state);
                 }
             }
     
             targetBuffer.Sort((first, second) =>
             {
-                DamagePreviewEnemyState firstState =
-                    damagePreviewStates[first];
-                DamagePreviewEnemyState secondState =
-                    damagePreviewStates[second];
                 int distanceComparison = Mathf.Abs(
-                        firstState.TileIndex - previewPlayerTileIndex)
+                        first.TileIndex - previewPlayerTileIndex)
                     .CompareTo(Mathf.Abs(
-                        secondState.TileIndex - previewPlayerTileIndex));
+                        second.TileIndex - previewPlayerTileIndex));
                 return distanceComparison != 0
                     ? distanceComparison
-                    : firstState.TileIndex.CompareTo(secondState.TileIndex);
+                    : first.TileIndex.CompareTo(second.TileIndex);
             });
     
             return targetBuffer.Count > 0;
@@ -1162,7 +1203,7 @@ public partial class PlayerShoot
             if (FindSpecialEffect(bullet, BulletEffectType.LockOn) != null
                 && previewLastPhysicalTarget != null
                 && damagePreviewStates.TryGetValue(
-                    previewLastPhysicalTarget,
+                    previewLastPhysicalTarget.GetInstanceID(),
                     out DamagePreviewEnemyState lockedState)
                 && lockedState.RemainingHealth > 0)
             {
@@ -1250,8 +1291,8 @@ public partial class PlayerShoot
             else if (FindSpecialEffect(bullet, BulletEffectType.Mastery)
                      != null)
             {
-                int maxHealthComparison = candidate.Enemy.MaxHealth.CompareTo(
-                    current.Enemy.MaxHealth);
+                int maxHealthComparison = candidate.MaxHealth.CompareTo(
+                    current.MaxHealth);
                 if (maxHealthComparison != 0)
                 {
                     return maxHealthComparison > 0;
@@ -1274,9 +1315,9 @@ public partial class PlayerShoot
                          BulletEffectType.Execution) != null)
             {
                 long left = (long)candidate.RemainingHealth
-                    * Mathf.Max(1, current.Enemy.MaxHealth);
+                    * Mathf.Max(1, current.MaxHealth);
                 long right = (long)current.RemainingHealth
-                    * Mathf.Max(1, candidate.Enemy.MaxHealth);
+                    * Mathf.Max(1, candidate.MaxHealth);
                 if (left != right)
                 {
                     return left < right;
@@ -1294,8 +1335,34 @@ public partial class PlayerShoot
                 }
             }
 
-            return candidate.Enemy.GetInstanceID()
-                < current.Enemy.GetInstanceID();
+            return candidate.InstanceId < current.InstanceId;
+        }
+
+        private DamagePreviewEnemyState SelectClosestPreviewNeutralTarget()
+        {
+            DamagePreviewEnemyState best = null;
+
+            foreach (DamagePreviewEnemyState candidate
+                     in damagePreviewStates.Values)
+            {
+                if (candidate == null || candidate.IsEnemy
+                    || !candidate.IsValid)
+                {
+                    continue;
+                }
+
+                if (best == null
+                    || GetPreviewTileDistance(candidate)
+                        < GetPreviewTileDistance(best)
+                    || GetPreviewTileDistance(candidate)
+                        == GetPreviewTileDistance(best)
+                    && candidate.InstanceId < best.InstanceId)
+                {
+                    best = candidate;
+                }
+            }
+
+            return best;
         }
 
         private int GetPreviewTileDistance(DamagePreviewEnemyState state)
@@ -1461,6 +1528,7 @@ public partial class PlayerShoot
                          in damagePreviewStates.Values)
                 {
                     if (targetState == sourceState
+                        || !targetState.IsEnemy
                         || targetState.RemainingHealth <= 0
                         || !CanPlayerEffectTargetLane(
                             sourceState.LaneIndex,
@@ -1499,9 +1567,12 @@ public partial class PlayerShoot
             Color color,
             bool emphasized)
         {
+            int predictedDamage = state.IsEnemy
+                ? Mathf.Max(0, damage)
+                : state.NeutralTarget.PredictAttackDamage(damage);
             int appliedDamage = Mathf.Min(
                 state.RemainingHealth,
-                Mathf.Max(0, damage));
+                Mathf.Max(0, predictedDamage));
     
             if (appliedDamage <= 0)
             {
@@ -1555,6 +1626,22 @@ public partial class PlayerShoot
                      in damagePreviewStates.Values)
             {
                 if (state.Enemy != null && state.RemainingHealth > 0)
+                {
+                    count++;
+                }
+            }
+
+            return count;
+        }
+
+        private int CountPreviewActiveAttackTargets()
+        {
+            int count = 0;
+
+            foreach (DamagePreviewEnemyState state
+                     in damagePreviewStates.Values)
+            {
+                if (state.IsValid && count < int.MaxValue)
                 {
                     count++;
                 }
@@ -1791,7 +1878,8 @@ public partial class PlayerShoot
         private bool ApplyPreviewPositionSwap(
             DamagePreviewEnemyState enemyState)
         {
-            if (enemyState == null || enemyState.RemainingHealth <= 0
+            if (enemyState == null || !enemyState.IsEnemy
+                || enemyState.RemainingHealth <= 0
                 || enemyState.TileIndex < 0 || previewPlayerTileIndex < 0
                 || enemyState.TileIndex == previewPlayerTileIndex)
             {
@@ -1826,7 +1914,8 @@ public partial class PlayerShoot
                 bool occupied = false;
                 foreach (DamagePreviewEnemyState state in damagePreviewStates.Values)
                 {
-                    if (state.RemainingHealth > 0 && state.LaneIndex == previewPlayerLaneIndex
+                    if (state.IsEnemy && state.RemainingHealth > 0
+                        && state.LaneIndex == previewPlayerLaneIndex
                         && state.TileIndex == nextTile)
                     {
                         occupied = true;
@@ -1845,6 +1934,11 @@ public partial class PlayerShoot
             bool guaranteedCritical,
             DamagePreviewEnemyState state)
         {
+            if (state == null || !state.IsEnemy)
+            {
+                return guaranteedCritical;
+            }
+
             return previewPhysicalBulletCriticalScope.Resolve(
                 guaranteedCritical,
                 state,
@@ -1869,7 +1963,8 @@ public partial class PlayerShoot
             Color color,
             bool emphasized)
         {
-            if (pushedState == null || pushedState.RemainingHealth <= 0
+            if (pushedState == null || !pushedState.IsEnemy
+                || pushedState.RemainingHealth <= 0
                 || pushedState.TileIndex < 0 || maxTravelDistance <= 0)
             {
                 return false;
@@ -1892,7 +1987,8 @@ public partial class PlayerShoot
                 foreach (DamagePreviewEnemyState state
                          in damagePreviewStates.Values)
                 {
-                    if (state != pushedState && state.RemainingHealth > 0
+                    if (state != pushedState && state.IsEnemy
+                        && state.RemainingHealth > 0
                         && state.LaneIndex == pushedState.LaneIndex
                         && state.TileIndex == nextTileIndex)
                     {
@@ -1953,7 +2049,8 @@ public partial class PlayerShoot
             DamagePreviewEnemyState state,
             BulletEffectData effect)
         {
-            if (state == null || state.RemainingHealth <= 0)
+            if (state == null || !state.IsEnemy
+                || state.RemainingHealth <= 0)
             {
                 return false;
             }
@@ -2477,9 +2574,18 @@ public partial class PlayerShoot
         }
 
         private void SortTargetsByTileIndex(
-            List<EnemyController> targets)
+            List<DamagePreviewEnemyState> targets)
         {
-            owner.SortTargetsByTileIndex(targets);
+            targets.Sort((first, second) =>
+            {
+                int firstColumn = boardManager.GetColumnIndex(
+                    first.TileIndex,
+                    first.LaneIndex);
+                int secondColumn = boardManager.GetColumnIndex(
+                    second.TileIndex,
+                    second.LaneIndex);
+                return firstColumn.CompareTo(secondColumn);
+            });
         }
     }
 }

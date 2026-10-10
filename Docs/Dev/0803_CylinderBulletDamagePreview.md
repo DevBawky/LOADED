@@ -40,9 +40,9 @@
 3. `PlayerShoot.ShowLoadedBulletDamagePreview(index)`를 호출한다.
 4. `PlayerShoot`이 첫 번째 탄환부터 호버한 탄환까지 발사 결과를 순서대로 시뮬레이션한다.
 5. 피격 대상별로 남은 체력과 탄환별 피해 구간을 누적한다.
-6. 각 `EnemyController`가 구간 목록을 `EnemyHealthBarFeedback`에 전달한다.
-7. `EnemyHealthBarFeedback`이 `HP_Value` 자식으로 예상 피해 오버레이를 만들고 셰이더에 구간과 색상을 전달한다.
-8. 호버가 끝나거나 UI 상태가 바뀌면 모든 적의 예상 피해를 제거한다.
+6. 적은 `EnemyController`가 구간 목록을 `EnemyHealthBarFeedback`에 전달하고, `PlayerAttackTargetRegistry`의 중립 표적은 선택적인 `IPlayerAttackTargetPresentation` 구현으로 같은 구간 목록을 받는다.
+7. 적은 `EnemyHealthBarFeedback`의 셰이더 오버레이를 사용한다. 보물상자는 `TreasureChestHealthBar`의 단순 색상 구간과 예상 잔여 내구도 텍스트를 사용한다.
+8. 호버가 끝나거나 UI 상태가 바뀌면 모든 적과 표시 가능한 중립 표적의 예상 피해를 제거한다.
 
 ## 피해 예측 규칙
 
@@ -91,7 +91,9 @@
 
 ## 피해 구간 데이터
 
-적마다 `DamagePreviewEnemyState`를 유지한다.
+피격 가능한 적과 중립 표적마다 내부 피해 프리뷰 상태를 유지한다. 기존
+`DamagePreviewEnemyState`는 호환성을 위해 이름을 유지하지만, 중립 표적의 현재/최대
+내구도와 표시 어댑터도 담는다.
 
 - 현재 시뮬레이션상 남은 체력
 - 보드 타일 위치
@@ -196,6 +198,8 @@ HP_Bar
 | `Assets/Scripts/Player/PlayerShoot.cs` | 호버한 순번까지 확정 전투 결과 시뮬레이션 |
 | `Assets/Scripts/Enemy/EnemyController.cs` | 적 체력 정보와 피해 구간을 체력바 피드백에 전달 |
 | `Assets/Scripts/Enemy/EnemyHealthBarFeedback.cs` | `HP_Value` 기반 오버레이 생성과 구간 데이터 설정 |
+| `Assets/Scripts/Player/PlayerAttackTargetRegistry.cs` | 전투 외 중립 표적과 선택적 피해 프리뷰 표현 계약 |
+| `Assets/Scripts/Manager/TreasureChestHealthBar.cs` | 보물상자 피해 구간과 예상 잔여 내구도 표시 |
 | `Assets/Shaders/EnemyHealthBarImpact.shader` | 여러 피해 구간의 색상, 경계, 강조 애니메이션 렌더링 |
 
 ## 계산 규칙 공유

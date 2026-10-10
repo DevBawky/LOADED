@@ -338,6 +338,22 @@ public static class RunSaveSystem
                 saveData.eventChoiceFailureCounts[index]);
         }
         saveData.completedEventIds ??= new List<string>();
+        saveData.treasureChestMaxHealth = Mathf.Max(
+            0,
+            saveData.treasureChestMaxHealth);
+        saveData.treasureChestCurrentHealth ??= new List<int>();
+        saveData.treasureChestDestroyed ??= new List<bool>();
+        for (int index = 0;
+             index < saveData.treasureChestCurrentHealth.Count;
+             index++)
+        {
+            saveData.treasureChestCurrentHealth[index] = Mathf.Max(
+                0,
+                saveData.treasureChestCurrentHealth[index]);
+        }
+        saveData.treasurePendingRewardCount = Mathf.Max(
+            0,
+            saveData.treasurePendingRewardCount);
         saveData.treasureOfferRelicIds ??= new List<string>();
     }
 

@@ -278,6 +278,7 @@ float4 _KillImpactColors[4];
 | `Assets/Scripts/Sound/SoundManager.cs` | 처치 단계별 피치·금속음·저역음 레이어와 짧은 BGM 덕킹 |
 | `Assets/Scripts/Player/PlayerShoot.cs` | 실제 피해·처치 이벤트 전달, 실린더 진행도 계산 |
 | `Assets/Scripts/Enemy/EnemyController.cs` | 상태 피해의 실제 적용 대미지 반환 |
+| `Assets/Scripts/Manager/TreasureChestTarget.cs` | 중립 표적의 국소 압축·반동과 공통 충격 스냅샷 제공 |
 | `Assets/Shaders/KillImpactFullscreen.shader` | 카메라 컬러 기반 다중 충격파 후처리 |
 | `Assets/Shaders/CombatMuzzleFlash.shader` | 총구 화염과 적 접촉 파열 원호를 `Effect Mode`로 분기하는 절차형 셰이더 |
 | `Assets/Materials/KillImpactFullscreen.mat` | Full Screen Pass용 머티리얼 |

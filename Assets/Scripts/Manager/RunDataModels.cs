@@ -245,5 +245,10 @@ public sealed class RunSaveData
     public bool treasureVisitActive;
     public bool treasureChestOpened;
     public bool treasureChoiceResolved;
+    public int treasureChestMaxHealth;
+    public List<int> treasureChestCurrentHealth = new List<int>();
+    public List<bool> treasureChestDestroyed = new List<bool>();
+    public int treasurePendingRewardCount;
+    public bool treasureRewardSelectionActive;
     public List<string> treasureOfferRelicIds = new List<string>();
 }

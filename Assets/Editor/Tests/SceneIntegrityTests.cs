@@ -397,6 +397,107 @@ public sealed class SceneIntegrityTests
         }
     }
 
+    [Test]
+    public void TreasureScene_UsesFixedCombatScaffold()
+    {
+        SceneSetup[] originalSetup = EditorSceneManager.GetSceneManagerSetup();
+
+        try
+        {
+            Scene scene = EditorSceneManager.OpenScene(
+                "Assets/Scenes/Treasure.unity",
+                OpenSceneMode.Single);
+            GameObject[] roots = scene.GetRootGameObjects();
+            BoardManager boardManager = roots
+                .SelectMany(root => root.GetComponentsInChildren<
+                    BoardManager>(true))
+                .Single();
+            StateManager stateManager = roots
+                .SelectMany(root => root.GetComponentsInChildren<
+                    StateManager>(true))
+                .Single();
+            WaveManager waveManager = roots
+                .SelectMany(root => root.GetComponentsInChildren<
+                    WaveManager>(true))
+                .Single();
+            PlayerMove playerMove = roots
+                .SelectMany(root => root.GetComponentsInChildren<
+                    PlayerMove>(true))
+                .Single();
+            TreasureChestTarget[] chests = roots
+                .SelectMany(root => root.GetComponentsInChildren<
+                    TreasureChestTarget>(true))
+                .OrderBy(chest => chest.TileIndex)
+                .ToArray();
+
+            Assert.That(boardManager.BoardCount, Is.EqualTo(10));
+            Assert.That(boardManager.LaneCount, Is.EqualTo(1));
+            Assert.That(boardManager.BoardDistance, Is.EqualTo(2f));
+            Assert.That(stateManager.enabled, Is.False);
+            Assert.That(waveManager.enabled, Is.False);
+            Assert.That(
+                stateManager.GetComponent<TreasureCombatSceneController>(),
+                Is.Not.Null);
+            Assert.That(
+                roots.SelectMany(root => root.GetComponentsInChildren<
+                        PlayerAttackTargetRegistry>(true)).SingleOrDefault(),
+                Is.Not.Null);
+            Assert.That(
+                chests.Select(chest => chest.TileIndex),
+                Is.EqualTo(new[] { 2, 4, 6 }));
+            Assert.That(
+                chests.All(chest => chest.LaneIndex == 0),
+                Is.True);
+            Assert.That(
+                chests.All(chest => chest.GetComponentInChildren<
+                    SpriteRenderer>(true)?.sprite != null),
+                Is.True);
+            Assert.That(
+                boardManager.TryGetTileIndex(
+                    playerMove.transform.position,
+                    0,
+                    out int playerTileIndex),
+                Is.True);
+            Assert.That(playerTileIndex, Is.EqualTo(0));
+
+            Transform exitLabel = roots
+                .SelectMany(root => root.GetComponentsInChildren<Transform>(
+                    true))
+                .SingleOrDefault(child => child.name == "Text | Next Area");
+            Assert.That(exitLabel, Is.Not.Null);
+            Assert.That(
+                exitLabel.GetComponent<TMP_Text>().text,
+                Is.EqualTo("다음 지역으로 이동"));
+            Assert.That(
+                exitLabel.GetComponent<TMP_Text>().alignment,
+                Is.EqualTo(TextAlignmentOptions.Center));
+            Assert.That(
+                exitLabel.GetComponent<RectTransform>().pivot,
+                Is.EqualTo(new Vector2(0.5f, 0.5f)));
+
+            Transform cameraAnchor = roots
+                .SelectMany(root => root.GetComponentsInChildren<Transform>(
+                    true))
+                .SingleOrDefault(child =>
+                    child.name == "Treasure Camera Anchor");
+            Assert.That(cameraAnchor, Is.Not.Null);
+
+            Transform rewardPanel = roots
+                .SelectMany(root => root.GetComponentsInChildren<Transform>(
+                    true))
+                .SingleOrDefault(child => child.name == "Panel | Treasure");
+            Assert.That(rewardPanel, Is.Not.Null);
+            Assert.That(rewardPanel.gameObject.activeSelf, Is.False);
+        }
+        finally
+        {
+            if (originalSetup.Length > 0)
+            {
+                EditorSceneManager.RestoreSceneManagerSetup(originalSetup);
+            }
+        }
+    }
+
     private static void AssertBattlePool(
         IReadOnlyList<BattleData> battles,
         HashSet<BattleData> stageBattles,

@@ -290,6 +290,22 @@ public class BoardManager : MonoBehaviour
         return true;
     }
 
+    public bool SetTilePersistentHighlightColor(
+        int tileIndex,
+        int laneIndex,
+        Color? color)
+    {
+        int index = GetSpawnedTileIndex(tileIndex, laneIndex);
+        if (index < 0 || index >= spawnedTiles.Count
+            || spawnedTiles[index] == null)
+        {
+            return false;
+        }
+
+        spawnedTiles[index].SetPersistentHighlightColor(color);
+        return true;
+    }
+
     internal void SetGridBorderColor(Color? color)
     {
         if (gridBorderColor == color)

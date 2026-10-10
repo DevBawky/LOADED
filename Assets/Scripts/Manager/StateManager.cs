@@ -126,6 +126,25 @@ public class StateManager : MonoBehaviour
         StateChanged?.Invoke();
     }
 
+    /// <summary>
+    /// Configures a non-Battle scene that intentionally reuses the combat HUD.
+    /// Existing external scenes keep the HUD hidden through the three-argument
+    /// overload.
+    /// </summary>
+    public void ConfigureExternalSceneState(
+        int stageIndex,
+        int battleIndex,
+        GameFlowState flowState,
+        bool showCombatHud)
+    {
+        currentStageIndex = stageIndex;
+        currentBattleIndex = battleIndex;
+        currentSpecialBattleRule = SpecialBattleRule.None;
+        currentState = flowState;
+        SetPanels(showCombatHud, false, false);
+        StateChanged?.Invoke();
+    }
+
     private void Awake()
     {
         SetPanels(false, false, false);

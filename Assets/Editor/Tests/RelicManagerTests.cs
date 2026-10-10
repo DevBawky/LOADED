@@ -401,6 +401,44 @@ public sealed class RelicManagerTests
     }
 
     [Test]
+    public void TreasureRelicChoice_HideTooltipClearsHoveredRelic()
+    {
+        RelicData relicData = CreateRelic("treasure-tooltip-relic");
+        GameObject canvasObject = new GameObject(
+            "Treasure Tooltip Test Canvas",
+            typeof(RectTransform),
+            typeof(Canvas));
+        GameObject choiceObject = new GameObject(
+            "Treasure Relic Choice",
+            typeof(RectTransform));
+        choiceObject.transform.SetParent(canvasObject.transform, false);
+
+        try
+        {
+            RelicTooltipUI tooltip = RelicTooltipUI.GetOrCreate(
+                choiceObject.transform);
+            Assert.That(tooltip, Is.Not.Null);
+            TreasureRelicChoiceUI choice = choiceObject.AddComponent<
+                TreasureRelicChoiceUI>();
+            choice.Initialize(tooltip, relicData);
+            choice.OnPointerEnter(
+                new UnityEngine.EventSystems.PointerEventData(null)
+                {
+                    position = Vector2.zero
+                });
+            Assert.That(tooltip.gameObject.activeSelf, Is.True);
+
+            choice.HideTooltip();
+
+            Assert.That(tooltip.gameObject.activeSelf, Is.False);
+        }
+        finally
+        {
+            Object.DestroyImmediate(canvasObject);
+        }
+    }
+
+    [Test]
     public void RequestedRelics_AreAuthoredWithActiveAbilities()
     {
         string[] activeRelicIds =

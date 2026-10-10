@@ -298,12 +298,26 @@ public sealed class CombatPresentation : MonoBehaviour
             return default;
         }
 
-        SortingGroup sortingGroup = enemy.GetComponent<SortingGroup>();
+        return CaptureTarget(
+            enemy.transform,
+            FindSnapshotRenderer(enemy));
+    }
+
+    public EnemySnapshot CaptureTarget(
+        Transform targetTransform,
+        SpriteRenderer renderer)
+    {
+        if (targetTransform == null)
+        {
+            return default;
+        }
+
+        SortingGroup sortingGroup = targetTransform.GetComponent<SortingGroup>();
         EnemySnapshot snapshot = new EnemySnapshot
         {
-            Position = enemy.transform.position,
-            VisualPosition = enemy.transform.position,
-            Rotation = enemy.transform.rotation,
+            Position = targetTransform.position,
+            VisualPosition = targetTransform.position,
+            Rotation = targetTransform.rotation,
             Scale = Vector3.one,
             Color = Color.white,
             SortingLayerId = sortingGroup == null
@@ -314,8 +328,6 @@ public sealed class CombatPresentation : MonoBehaviour
                 : sortingGroup.sortingOrder,
             Captured = true
         };
-        SpriteRenderer renderer = FindSnapshotRenderer(enemy);
-
         if (renderer == null)
         {
             return snapshot;
@@ -325,7 +337,7 @@ public sealed class CombatPresentation : MonoBehaviour
         snapshot.Material = renderer.sharedMaterial;
         snapshot.VisualPosition = renderer.transform.position;
         snapshot.Position = BattleCameraEffectSpace.ResolveActorVisualCenter(
-            enemy.transform,
+            targetTransform,
             Camera.main,
             ResolveImpactWorldPosition(renderer, snapshot.Position));
         snapshot.Rotation = renderer.transform.rotation;

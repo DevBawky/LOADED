@@ -16,6 +16,51 @@ public partial class PlayerShoot : MonoBehaviour
     public event Action<BulletInstance> LoadedBulletEjected;
     public event Action LoadedBulletDamagePreviewShown;
 
+    private readonly struct PlayerAttackTarget
+    {
+        public PlayerAttackTarget(EnemyController enemy)
+        {
+            Enemy = enemy;
+            NeutralTarget = null;
+        }
+
+        public PlayerAttackTarget(IPlayerAttackTarget neutralTarget)
+        {
+            Enemy = null;
+            NeutralTarget = neutralTarget;
+        }
+
+        public EnemyController Enemy { get; }
+        public IPlayerAttackTarget NeutralTarget { get; }
+        public bool IsEnemy => Enemy != null;
+        public bool IsAlive => IsEnemy
+            ? Enemy.CurrentHealth > 0
+            : PlayerAttackTargetRegistry.IsAlive(NeutralTarget)
+                && NeutralTarget.IsTargetable;
+        public Transform TargetTransform => IsEnemy
+            ? Enemy.transform
+            : NeutralTarget?.TargetTransform;
+        public Vector3 ImpactPoint => IsEnemy
+            ? Enemy.HoverRenderer == null
+                ? Enemy.transform.position
+                : Enemy.HoverRenderer.bounds.center
+            : NeutralTarget == null
+                ? Vector3.zero
+                : NeutralTarget.ImpactPoint;
+        public int LaneIndex => IsEnemy
+            ? Enemy.CurrentLaneIndex
+            : NeutralTarget == null ? 0 : NeutralTarget.LaneIndex;
+        public int InstanceId => IsEnemy
+            ? Enemy.GetInstanceID()
+            : TargetTransform == null ? 0 : TargetTransform.GetInstanceID();
+        public int TotalStatusStackCount => IsEnemy
+            ? Enemy.TotalStatusStackCount
+            : NeutralTarget == null ? 0 : NeutralTarget.TotalStatusStackCount;
+        public int ActiveStatusTypeCount => IsEnemy
+            ? Enemy.ActiveStatusTypeCount
+            : NeutralTarget == null ? 0 : NeutralTarget.ActiveStatusTypeCount;
+    }
+
     private readonly struct DamageReservation
     {
         public DamageReservation(EnemyController enemy, int damage)
@@ -30,14 +75,16 @@ public partial class PlayerShoot : MonoBehaviour
 
     private readonly struct BulletHitTarget
     {
-        public BulletHitTarget(EnemyController enemy)
+        public BulletHitTarget(PlayerAttackTarget target)
         {
-            Enemy = enemy;
-            InstanceId = enemy.GetInstanceID();
-            InitialPosition = enemy.transform.position;
+            Target = target;
+            InstanceId = target.InstanceId;
+            InitialPosition = target.TargetTransform == null
+                ? Vector3.zero
+                : target.TargetTransform.position;
         }
 
-        public EnemyController Enemy { get; }
+        public PlayerAttackTarget Target { get; }
         public int InstanceId { get; }
         public Vector3 InitialPosition { get; }
     }
@@ -80,6 +127,7 @@ public partial class PlayerShoot : MonoBehaviour
         {
             Enemy = enemy;
             RemainingHealth = enemy == null ? 0 : enemy.CurrentHealth;
+            MaxHealth = enemy == null ? 1 : Mathf.Max(1, enemy.MaxHealth);
             LaneIndex = enemy == null ? 0 : enemy.CurrentLaneIndex;
             StatusStacks = new int[
                 StatusEffectController.StackableStatusTypeCount];
@@ -100,8 +148,40 @@ public partial class PlayerShoot : MonoBehaviour
             IsExposed = enemy.IsExposed;
         }
 
+        public DamagePreviewEnemyState(IPlayerAttackTarget neutralTarget)
+        {
+            NeutralTarget = neutralTarget;
+            RemainingHealth = PlayerAttackTargetRegistry.IsAlive(neutralTarget)
+                ? Mathf.Max(0, neutralTarget.CurrentDurability)
+                : 0;
+            MaxHealth = PlayerAttackTargetRegistry.IsAlive(neutralTarget)
+                ? Mathf.Max(1, neutralTarget.MaxDurability)
+                : 1;
+            LaneIndex = PlayerAttackTargetRegistry.IsAlive(neutralTarget)
+                ? neutralTarget.LaneIndex
+                : 0;
+            StatusStacks = new int[
+                StatusEffectController.StackableStatusTypeCount];
+            Segments = new List<
+                EnemyHealthBarFeedback.DamagePreviewSegment>();
+        }
+
         public EnemyController Enemy { get; }
+        public IPlayerAttackTarget NeutralTarget { get; }
+        public bool IsEnemy => Enemy != null;
+        public bool IsValid => IsEnemy
+            ? Enemy != null && RemainingHealth > 0
+            : PlayerAttackTargetRegistry.IsAlive(NeutralTarget)
+                && NeutralTarget.IsTargetable
+                && RemainingHealth > 0;
+        public Transform TargetTransform => IsEnemy
+            ? Enemy.transform
+            : NeutralTarget?.TargetTransform;
+        public int InstanceId => IsEnemy
+            ? Enemy.GetInstanceID()
+            : TargetTransform == null ? 0 : TargetTransform.GetInstanceID();
         public int RemainingHealth { get; set; }
+        public int MaxHealth { get; }
         public int TileIndex { get; set; } = -1;
         public int LaneIndex { get; }
         public int[] StatusStacks { get; }
@@ -149,6 +229,34 @@ public partial class PlayerShoot : MonoBehaviour
                 return total >= int.MaxValue ? int.MaxValue : (int)total;
             }
         }
+
+        public void ShowDamagePreview(BulletData bullet)
+        {
+            if (Enemy != null)
+            {
+                Enemy.ShowDamagePreview(Segments, bullet);
+                return;
+            }
+
+            if (NeutralTarget is IPlayerAttackTargetPresentation presentation)
+            {
+                presentation.ShowDamagePreview(Segments, bullet);
+            }
+        }
+
+        public void ClearDamagePreview()
+        {
+            if (Enemy != null)
+            {
+                Enemy.ClearDamagePreview();
+                return;
+            }
+
+            if (NeutralTarget is IPlayerAttackTargetPresentation presentation)
+            {
+                presentation.ClearDamagePreview();
+            }
+        }
     }
 
     [SerializeField] private DeckManager deckManager;
@@ -166,6 +274,7 @@ public partial class PlayerShoot : MonoBehaviour
     [SerializeField] private Image bulletFeedbackImage;
     [SerializeField] private CombatPresentation combatPresentation;
     [SerializeField] private CombatFeedbackController combatFeedback;
+    [SerializeField] private PlayerAttackTargetRegistry attackTargetRegistry;
     [Min(0f)]
     [SerializeField] private float shotInterval = 0.05f;
 
@@ -177,10 +286,10 @@ public partial class PlayerShoot : MonoBehaviour
     private bool isFiring;
     private BulletShotFeedbackView bulletFeedbackView;
     private FiringSequenceController firingSequence;
-    private readonly List<EnemyController> targetBuffer =
-        new List<EnemyController>();
-    private readonly List<EnemyController> hitBuffer =
-        new List<EnemyController>();
+    private readonly List<PlayerAttackTarget> targetBuffer =
+        new List<PlayerAttackTarget>();
+    private readonly List<PlayerAttackTarget> hitBuffer =
+        new List<PlayerAttackTarget>();
     private readonly List<BulletInstance> ownedBulletBuffer =
         new List<BulletInstance>();
     private readonly HashSet<BulletData> ownedBulletTypeBuffer =
@@ -237,6 +346,8 @@ public partial class PlayerShoot : MonoBehaviour
         combatFeedback ??= GetComponent<CombatFeedbackController>();
         relicManager ??= FindFirstObjectByType<RelicManager>(
             FindObjectsInactive.Include);
+        attackTargetRegistry ??=
+            FindFirstObjectByType<PlayerAttackTargetRegistry>();
 
         if (combatPresentation == null)
         {
@@ -722,8 +833,9 @@ public partial class PlayerShoot : MonoBehaviour
     {
         ClearLoadedBulletDamagePreview();
 
-        if (isFiring || deckManager == null || waveManager == null
+        if (isFiring || deckManager == null
             || playerHealth == null || boardManager == null
+            || waveManager == null && attackTargetRegistry == null
             || loadedBulletIndex < 0
             || loadedBulletIndex >= deckManager.LoadedBullets.Count)
         {
@@ -913,6 +1025,40 @@ public partial class PlayerShoot : MonoBehaviour
     private void ShowBulletFeedback(BulletInstance bulletData)
     {
         bulletFeedbackView?.Show(bulletData, shotInterval);
+    }
+
+    private void SortTargetsByTileIndex(List<PlayerAttackTarget> targets)
+    {
+        if (boardManager == null)
+        {
+            return;
+        }
+
+        targets.Sort((first, second) =>
+        {
+            int firstIndex = 0;
+            int secondIndex = 0;
+            bool hasFirst = first.TargetTransform != null
+                && boardManager.TryGetTileIndex(
+                    first.TargetTransform.position,
+                    first.LaneIndex,
+                    out firstIndex);
+            bool hasSecond = second.TargetTransform != null
+                && boardManager.TryGetTileIndex(
+                    second.TargetTransform.position,
+                    second.LaneIndex,
+                    out secondIndex);
+
+            if (!hasFirst || !hasSecond)
+            {
+                return hasFirst == hasSecond ? 0 : hasFirst ? -1 : 1;
+            }
+
+            return boardManager.GetColumnIndex(firstIndex, first.LaneIndex)
+                .CompareTo(boardManager.GetColumnIndex(
+                    secondIndex,
+                    second.LaneIndex));
+        });
     }
 
     private bool TryBeginAction()

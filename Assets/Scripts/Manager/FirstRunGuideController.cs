@@ -489,6 +489,7 @@ public sealed class FirstRunGuideController : MonoBehaviour
     {
         if (treasureGuideStarted || IsGuideDisabled()
             || SceneManager.GetActiveScene().name != "Treasure"
+            || FindFirstObjectByType<TreasureCombatSceneController>() != null
             || !IsFirstActiveNodeOfType(NodeMapNodeType.Treasure)
             || LoadingTransitionController.IsTransitioning)
         {

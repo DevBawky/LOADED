@@ -296,8 +296,16 @@ public sealed class FullCylinderFiringTests
                 var states = (IDictionary)preview.GetType().GetField("damagePreviewStates", Private).GetValue(preview);
                 foreach (DictionaryEntry pair in states)
                 {
-                    expectedHealth[(EnemyController)pair.Key] = (int)pair.Value.GetType()
-                        .GetProperty("RemainingHealth").GetValue(pair.Value);
+                    EnemyController enemy = (EnemyController)pair.Value
+                        .GetType()
+                        .GetProperty("Enemy")
+                        .GetValue(pair.Value);
+                    if (enemy != null)
+                    {
+                        expectedHealth[enemy] = (int)pair.Value.GetType()
+                            .GetProperty("RemainingHealth")
+                            .GetValue(pair.Value);
+                    }
                 }
                 Assert.That(JsonUtility.ToJson(UnityEngine.Random.state), Is.EqualTo(randomBefore), "Preview RNG");
                 Assert.That(deck.LoadedBullets.Count, Is.EqualTo(3), "Preview must not consume bullets");

@@ -2,6 +2,7 @@
 using System;
 using System.Linq;
 using TMPro;
+using Unity.Cinemachine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -13,6 +14,7 @@ using Object = UnityEngine.Object;
 
 public static class TreasureSceneSetupBuilder
 {
+    private const string BattleScenePath = "Assets/Scenes/Battle.unity";
     private const string TreasureScenePath = "Assets/Scenes/Treasure.unity";
     private const string ShopCanvasPath =
         "Assets/Prefabs/UI/Shop/ShopCanvas.prefab";
@@ -29,6 +31,8 @@ public static class TreasureSceneSetupBuilder
         "Assets/Materials/UI/MainButtonLoaded.mat";
     private const string LoadedFontAssetPath =
         "Assets/Package/Galmuri9 SDF.asset";
+    private const string TreasureChestSpritePath =
+        "Assets/Sprites/Environment/Treasure/TreasureChest.png";
 
     private static readonly Color BackdropColor =
         new Color(0.018f, 0.014f, 0.012f, 0.995f);
@@ -52,19 +56,19 @@ public static class TreasureSceneSetupBuilder
                 "Exit Play Mode before building the Treasure scene.");
         }
 
-        EnsurePrerequisites();
         EnsureFolder("Assets/Prefabs/UI", "Treasure");
-        BuildTreasurePanel();
-        BuildTreasureCanvas();
-        ApplyTreasureCanvasPresentation();
-        BuildTreasureManagers();
+        if (AssetDatabase.LoadAssetAtPath<GameObject>(TreasurePanelPath) == null)
+        {
+            throw new MissingReferenceException(
+                "Treasure reward panel is missing: " + TreasurePanelPath);
+        }
         BuildTreasureScene();
         EnsureSceneInBuildSettings();
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log(
-            "Dedicated Treasure scene, canvas, and managers were built successfully.");
+            "Treasure combat scaffold was built successfully.");
     }
 
     [MenuItem("Tools/LOADED/UI/Rebuild Treasure Presentation")]
@@ -800,57 +804,244 @@ public static class TreasureSceneSetupBuilder
 
     private static void BuildTreasureScene()
     {
+        Scene battleScene = EditorSceneManager.OpenScene(
+            BattleScenePath,
+            OpenSceneMode.Single);
+        if (!EditorSceneManager.SaveScene(
+                battleScene,
+                TreasureScenePath,
+                true))
+        {
+            throw new InvalidOperationException(
+                "Could not copy Battle.unity to Treasure.unity.");
+        }
+
         Scene scene = EditorSceneManager.OpenScene(
             TreasureScenePath,
             OpenSceneMode.Single);
-        Camera mainCamera = scene.GetRootGameObjects()
-            .SelectMany(root => root.GetComponentsInChildren<Camera>(true))
+        GameObject[] roots = scene.GetRootGameObjects();
+        BoardManager boardManager = roots
+            .SelectMany(root => root.GetComponentsInChildren<BoardManager>(true))
+            .FirstOrDefault();
+        StateManager stateManager = roots
+            .SelectMany(root => root.GetComponentsInChildren<StateManager>(true))
+            .FirstOrDefault();
+        WaveManager waveManager = roots
+            .SelectMany(root => root.GetComponentsInChildren<WaveManager>(true))
+            .FirstOrDefault();
+        PlayerMove playerMove = roots
+            .SelectMany(root => root.GetComponentsInChildren<PlayerMove>(true))
             .FirstOrDefault();
 
-        foreach (GameObject root in scene.GetRootGameObjects())
+        if (boardManager == null || stateManager == null
+            || waveManager == null || playerMove == null)
         {
-            if (mainCamera == null
-                || root != mainCamera.transform.root.gameObject)
+            throw new InvalidOperationException(
+                "Battle scene is missing a Treasure scaffold prerequisite.");
+        }
+
+        SerializedObject board = new SerializedObject(boardManager);
+        board.FindProperty("boardCount").intValue = 10;
+        board.FindProperty("laneCount").intValue = 1;
+        board.FindProperty("boardDistance").floatValue = 2f;
+        board.ApplyModifiedPropertiesWithoutUndo();
+
+        stateManager.enabled = false;
+        waveManager.enabled = false;
+        DuelClockController duelClock = waveManager.GetComponent<
+            DuelClockController>();
+        if (duelClock != null)
+        {
+            duelClock.enabled = false;
+        }
+
+        TreasureCombatSceneController controller =
+            stateManager.GetComponent<TreasureCombatSceneController>();
+        controller ??= stateManager.gameObject.AddComponent<
+            TreasureCombatSceneController>();
+
+        foreach (Canvas canvas in roots
+                     .SelectMany(root => root.GetComponentsInChildren<Canvas>(
+                         true)))
+        {
+            if (canvas.name == "Canvas | Game Start")
             {
-                Object.DestroyImmediate(root);
+                canvas.gameObject.SetActive(false);
             }
         }
 
-        if (mainCamera == null)
+        Canvas combatCanvas = roots
+            .SelectMany(root => root.GetComponentsInChildren<Canvas>(true))
+            .FirstOrDefault(canvas => canvas.name == "Canvas");
+        if (combatCanvas == null)
         {
-            GameObject cameraObject = new GameObject(
-                "Main Camera",
-                typeof(Camera),
-                typeof(AudioListener));
-            cameraObject.tag = "MainCamera";
-            cameraObject.transform.position = new Vector3(0f, 0f, -10f);
-            mainCamera = cameraObject.GetComponent<Camera>();
-            mainCamera.orthographic = true;
+            throw new InvalidOperationException(
+                "Battle scene is missing the combat Canvas.");
         }
-        mainCamera.clearFlags = CameraClearFlags.SolidColor;
-        mainCamera.backgroundColor = new Color(0.025f, 0.02f, 0.035f, 1f);
 
-        GameObject canvasPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-            TreasureCanvasPath);
-        GameObject canvasObject = PrefabUtility.InstantiatePrefab(
-            canvasPrefab,
-            scene) as GameObject;
-        Canvas canvas = canvasObject.GetComponent<Canvas>();
-        canvas.worldCamera = mainCamera;
-        canvas.planeDistance = 10f;
-        canvasObject.transform.localScale = Vector3.one;
+        Transform existingPanel = FindDescendant(
+            combatCanvas.transform,
+            "Panel | Treasure");
+        if (existingPanel != null)
+        {
+            Object.DestroyImmediate(existingPanel.gameObject);
+        }
 
-        GameObject managersPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-            TreasureManagersPath);
-        PrefabUtility.InstantiatePrefab(managersPrefab, scene);
+        GameObject panelPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            TreasurePanelPath);
+        GameObject rewardPanel = PrefabUtility.InstantiatePrefab(
+            panelPrefab,
+            combatCanvas.transform) as GameObject;
+        rewardPanel.name = "Panel | Treasure";
+        rewardPanel.SetActive(false);
+        rewardPanel.transform.SetAsFirstSibling();
 
-        new GameObject(
-            "EventSystem",
-            typeof(EventSystem),
-            typeof(InputSystemUIInputModule));
+        Transform existingTreasureRoot = roots
+            .Select(root => root.transform)
+            .FirstOrDefault(root => root.name == "##--TREASURE--##");
+        if (existingTreasureRoot != null)
+        {
+            Object.DestroyImmediate(existingTreasureRoot.gameObject);
+        }
+
+        GameObject treasureRoot = new GameObject("##--TREASURE--##");
+        treasureRoot.AddComponent<PlayerAttackTargetRegistry>();
+        Sprite chestSprite = LoadTreasureChestSprite();
+        CreateCameraAnchor(treasureRoot.transform, boardManager, roots);
+        CreateChest(
+            treasureRoot.transform,
+            boardManager,
+            chestSprite,
+            1,
+            2);
+        CreateChest(
+            treasureRoot.transform,
+            boardManager,
+            chestSprite,
+            2,
+            4);
+        CreateChest(
+            treasureRoot.transform,
+            boardManager,
+            chestSprite,
+            3,
+            6);
+        CreateExitLabel(treasureRoot.transform, boardManager);
+
+        foreach (BattleCameraEdgeHoverController edgeHover in roots
+                     .SelectMany(root => root.GetComponentsInChildren<
+                         BattleCameraEdgeHoverController>(true)))
+        {
+            edgeHover.enabled = false;
+        }
+
+        if (boardManager.TryGetTilePosition(
+                0,
+                0,
+                out Vector3 playerPosition))
+        {
+            playerMove.transform.position = playerPosition
+                + new Vector3(0f, 0.3f, 0f);
+            playerMove.SetLaneIndex(0);
+        }
 
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene, TreasureScenePath);
+    }
+
+    private static void CreateChest(
+        Transform parent,
+        BoardManager boardManager,
+        Sprite chestSprite,
+        int number,
+        int tileIndex)
+    {
+        GameObject chestObject = new GameObject($"Treasure Chest {number}");
+        chestObject.transform.SetParent(parent, false);
+        TreasureChestTarget chest = chestObject.AddComponent<
+            TreasureChestTarget>();
+        chest.Configure(tileIndex, 0, chestSprite);
+        chest.Place(boardManager);
+    }
+
+    private static void CreateCameraAnchor(
+        Transform parent,
+        BoardManager boardManager,
+        GameObject[] sceneRoots)
+    {
+        GameObject anchorObject = new GameObject("Treasure Camera Anchor");
+        anchorObject.transform.SetParent(parent, false);
+        if (boardManager.TryGetTilePosition(0, 0, out Vector3 first)
+            && boardManager.TryGetTilePosition(9, 0, out Vector3 last))
+        {
+            anchorObject.transform.position = (first + last) * 0.5f
+                + new Vector3(0f, 0.3f, 0f);
+        }
+
+        Camera mainCamera = sceneRoots
+            .SelectMany(root => root.GetComponentsInChildren<Camera>(true))
+            .FirstOrDefault(camera => camera.CompareTag("MainCamera"));
+        CinemachineCamera cinemachineCamera = mainCamera == null
+            ? null
+            : mainCamera.GetComponent<CinemachineCamera>();
+        if (cinemachineCamera == null)
+        {
+            throw new InvalidOperationException(
+                "Battle scene is missing its Cinemachine camera.");
+        }
+        cinemachineCamera.Follow = anchorObject.transform;
+    }
+
+    private static void CreateExitLabel(
+        Transform parent,
+        BoardManager boardManager)
+    {
+        GameObject labelObject = new GameObject(
+            "Text | Next Area",
+            typeof(TextMeshPro));
+        labelObject.transform.SetParent(parent, false);
+        TextMeshPro label = labelObject.GetComponent<TextMeshPro>();
+        label.text = "다음 지역으로 이동";
+        label.fontSize = 2.4f;
+        label.alignment = TextAlignmentOptions.Center;
+        label.color = new Color(0.45f, 1f, 0.58f, 1f);
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.sortingOrder = 10;
+        TMP_FontAsset font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(
+            LoadedFontAssetPath);
+        if (font != null)
+        {
+            label.font = font;
+        }
+        RectTransform rect = label.rectTransform;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(5.5f, 1.3f);
+
+        if (boardManager.TryGetTilePosition(
+                9,
+                0,
+                out Vector3 exitPosition))
+        {
+            labelObject.transform.position = exitPosition
+                + new Vector3(0f, 1.35f, 0f);
+        }
+    }
+
+    private static Sprite LoadTreasureChestSprite()
+    {
+        Sprite sprite = AssetDatabase
+            .LoadAllAssetRepresentationsAtPath(TreasureChestSpritePath)
+            .OfType<Sprite>()
+            .SingleOrDefault();
+        sprite ??= AssetDatabase.LoadAssetAtPath<Sprite>(
+            TreasureChestSpritePath);
+        if (sprite == null)
+        {
+            throw new MissingReferenceException(
+                "Treasure chest sprite is missing: "
+                + TreasureChestSpritePath);
+        }
+        return sprite;
     }
 
     private static void EnsureSceneInBuildSettings()

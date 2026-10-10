@@ -11,7 +11,9 @@ public class BoardTile : MonoBehaviour
     private Material gridMaterial;
     private MeshRenderer warningRenderer;
     private MeshRenderer previewRenderer;
+    private MeshRenderer persistentHighlightRenderer;
     private MaterialPropertyBlock previewProperties;
+    private MaterialPropertyBlock persistentHighlightProperties;
     private MaterialPropertyBlock warningProperties;
     private bool warningActive;
     private const float AfterglowDuration = 0.18f;
@@ -138,6 +140,40 @@ public class BoardTile : MonoBehaviour
         previewProperties.SetColor(TintId, color.Value);
         previewRenderer.enabled = true;
         UpdatePreviewInset();
+    }
+
+    internal void SetPersistentHighlightColor(Color? color)
+    {
+        if (!color.HasValue)
+        {
+            if (persistentHighlightRenderer != null)
+            {
+                persistentHighlightRenderer.enabled = false;
+            }
+            return;
+        }
+
+        if (warningRenderer == null)
+        {
+            return;
+        }
+
+        if (persistentHighlightRenderer == null)
+        {
+            persistentHighlightRenderer = CreateRenderer(
+                "Grid Persistent Highlight",
+                warningMesh,
+                warningRenderer.sortingLayerID,
+                warningRenderer.sortingOrder);
+            persistentHighlightProperties = new MaterialPropertyBlock();
+            persistentHighlightProperties.SetFloat(WarningEffectId, 1f);
+            persistentHighlightProperties.SetFloat(InsetId, 0.045f);
+        }
+
+        persistentHighlightProperties.SetColor(TintId, color.Value);
+        persistentHighlightRenderer.SetPropertyBlock(
+            persistentHighlightProperties);
+        persistentHighlightRenderer.enabled = true;
     }
 
     internal void SetGridBorderColor(Color? color)
